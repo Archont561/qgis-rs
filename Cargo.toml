@@ -1,0 +1,19 @@
+[workspace]
+resolver = "2"
+members = ["crates/*"]
+
+[workspace.package]
+version  = "0.1.0"
+edition  = "2021"
+license  = "GPL-2.0-or-later"
+
+[workspace.dependencies]
+cxx = "1.0.194"
+cxx-build = "1.0.194"
+anyhow = "1"
+serde_json = "1"
+walkdir = "2"
+xshell = "0.2"
+cc = "1.2.65"
+thiserror = "2.0.18"
+qgis-sys = { path = "crates/qgis-sys" }
