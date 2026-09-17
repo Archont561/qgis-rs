@@ -13,8 +13,17 @@ convco       = ">=0.6.4,<0.7"
 [feature.qgis.dependencies]
 qgis = ">=3.44.9,<4"
 
+[feature.docs.dependencies]
+bun = ">=1.0.0,<2"
+
+[feature.docs.tasks]
+docs-dev = { cmd = "bun run dev", cwd = "apps/docs" }
+docs-build = { cmd = "bun run build", cwd = "apps/docs" }
+docs-preview = { cmd = "bun run preview", cwd = "apps/docs" }
+
 [environments]
 default = { features = ["qgis"] }
+docs = { features = ["docs"] }
 
 [tasks]
 

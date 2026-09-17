@@ -1,0 +1,81 @@
+---
+title: Introduction
+description: Learn about qgis-rs and how it brings QGIS rendering to Rust
+---
+
+# Welcome to qgis-rs
+
+**qgis-rs** provides safe, idiomatic Rust bindings to the QGIS C++ API, enabling you to render QGIS projects, work with geospatial data, and build high-performance GIS applications in Rust.
+
+## Why qgis-rs?
+
+- **Native Performance**: Render QGIS projects at native speed without Python overhead
+- **Type Safety**: Leverage Rust's type system to catch errors at compile time
+- **Zero-Cost Abstractions**: Safe wrappers with no runtime overhead
+- **Full QGIS Power**: Access the complete QGIS API from Rust
+
+## What You Can Build
+
+### Rendering Applications
+- Batch render thousands of QGIS projects
+- Generate map tiles (XYZ, MBTiles, PMTiles)
+- Export print layouts to PDF/SVG/PNG
+
+### GIS Servers
+- High-performance WMS/WFS servers
+- OGC API Features endpoints
+- Tile servers with intelligent caching
+
+### Desktop Tools
+- Command-line GIS utilities
+- Custom QGIS plugins with Rust acceleration
+- Data processing pipelines
+
+### Libraries
+- Geospatial analysis libraries
+- Custom rendering engines
+- Data format converters
+
+## Quick Example
+
+```rust
+use qgis_render::{Project, RenderSettings};
+
+// Load a QGIS project
+let project = Project::open("map.qgs")?;
+
+// Render to PNG
+let settings = RenderSettings::new()
+    .width(1920)
+    .height(1080)
+    .extent(project.extent());
+
+project.render_to_file(&settings, "output.png")?;
+```
+
+## Core Crates
+
+| Crate | Purpose |
+|-------|---------|
+| `qgis-sys` | Low-level CXX bindings to QGIS C++ API |
+| `qgis-render` | High-level rendering API |
+| `qgis-server` | HTTP server for WMS/WFS/OGC APIs |
+| `qgis-cli` | Command-line interface |
+| `qgis-sdk` | Plugin development SDK |
+
+## Next Steps
+
+- **[Installation](/getting-started/installation)** — Set up qgis-rs in your project
+- **[Quick Start](/getting-started/quick-start)** — Render your first QGIS project
+- **[Architecture](/concepts/architecture)** — Understand how qgis-rs works
+- **[API Reference](/reference)** — Explore the complete API
+
+## Community
+
+- **GitHub**: [github.com/yourusername/qgis-rs](https://github.com/yourusername/qgis-rs)
+- **Issues**: Report bugs and request features
+- **Discussions**: Ask questions and share ideas
+
+## License
+
+qgis-rs is dual-licensed under Apache-2.0 and MIT.

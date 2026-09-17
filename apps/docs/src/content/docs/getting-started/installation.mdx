@@ -1,0 +1,184 @@
+---
+title: Installation
+description: How to install qgis-rs and set up your development environment
+---
+
+# Installation
+
+qgis-rs requires QGIS 3.44.9 or later and Rust 1.96.0 or later.
+
+## Prerequisites
+
+### System Dependencies
+
+qgis-rs links against the QGIS C++ libraries. You need:
+
+- **QGIS** ≥ 3.44.9
+- **Rust** ≥ 1.96.0
+- **C++ compiler** with C++17 support
+
+### Using Pixi (Recommended)
+
+The easiest way to set up the development environment is with [Pixi](https://pixi.sh):
+
+```bash
+# Install pixi if you haven't already
+curl -fsSL https://pixi.sh/install.sh | bash
+
+# Clone the repository
+git clone https://github.com/yourusername/qgis-rs.git
+cd qgis-rs
+
+# Activate the environment (installs QGIS + Rust + tools)
+pixi shell
+
+# Verify installation
+cargo build
+```
+
+### Manual Installation
+
+If you prefer not to use Pixi:
+
+**Ubuntu/Debian:**
+```bash
+# Add QGIS repository
+wget -qO - https://qgis.org/downloads/qgis-2024.gpg.key | sudo gpg --no-default-keyring --keyring gnupg-ring:/etc/apt/trusted.gpg.d/qgis-archive.gpg --import
+sudo add-apt-repository "deb https://qgis.org/ubuntu $(lsb_release -c -s) main"
+
+# Install QGIS and development libraries
+sudo apt update
+sudo apt install qgis libqgis-dev
+
+# Install Rust
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+```
+
+**macOS (Homebrew):**
+```bash
+# Install QGIS
+brew install qgis
+
+# Install Rust
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+```
+
+## Add to Your Project
+
+### Using Cargo
+
+```bash
+cargo add qgis-render
+```
+
+Or add to your `Cargo.toml`:
+
+```toml
+[dependencies]
+qgis-render = "0.1"
+```
+
+### From Git (Development)
+
+```toml
+[dependencies]
+qgis-render = { git = "https://github.com/yourusername/qgis-rs", branch = "main" }
+```
+
+## Verify Installation
+
+Create a simple test program:
+
+```rust
+// src/main.rs
+use qgis_render::Project;
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Initialize QGIS (required once per application)
+    qgis_render::init()?;
+    
+    println!("qgis-rs is working!");
+    println!("QGIS version: {}", qgis_render::version());
+    
+    Ok(())
+}
+```
+
+Run it:
+
+```bash
+cargo run
+```
+
+Expected output:
+```
+qgis-rs is working!
+QGIS version: 3.44.9
+```
+
+## Docker
+
+For containerized deployments:
+
+```dockerfile
+FROM condaforge/mambaforge:latest
+
+# Install QGIS
+RUN mamba install -c conda-forge qgis
+
+# Install Rust
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+ENV PATH="/root/.cargo/bin:${PATH}"
+
+# Copy your application
+COPY . /app
+WORKDIR /app
+
+# Build
+RUN cargo build --release
+
+# Set environment for headless rendering
+ENV QT_QPA_PLATFORM=offscreen
+
+CMD ["./target/release/your-app"]
+```
+
+## Troubleshooting
+
+### QGIS Not Found
+
+If you see `cannot find -lqgis_core`:
+
+```bash
+# Check QGIS installation
+qgis --version
+
+# Set library path
+export LD_LIBRARY_PATH=/usr/lib:$LD_LIBRARY_PATH  # Linux
+export DYLD_LIBRARY_PATH=/Applications/QGIS.app/Contents/MacOS/lib:$DYLD_LIBRARY_PATH  # macOS
+```
+
+### Compilation Errors
+
+If you see C++ compilation errors:
+
+```bash
+# Ensure you have a C++ compiler
+g++ --version  # Should show GCC or Clang
+
+# Install build essentials (Ubuntu/Debian)
+sudo apt install build-essential
+```
+
+### Headless Rendering Issues
+
+For server environments without a display:
+
+```bash
+export QT_QPA_PLATFORM=offscreen
+```
+
+## Next Steps
+
+- **[Quick Start](/getting-started/quick-start)** — Render your first QGIS project
+- **[Architecture](/concepts/architecture)** — Understand how qgis-rs works

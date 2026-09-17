@@ -1,0 +1,89 @@
+---
+title: API Reference
+description: Complete API documentation for qgis-rs crates
+---
+
+# API Reference
+
+Complete API documentation for the qgis-rs crates.
+
+## Crates
+
+### qgis-render
+
+The core rendering library.
+
+**Main Types:**
+- [`Project`](/reference/render/project) — Load and manage QGIS projects
+- [`Layer`](/reference/render/layer) — Access vector and raster layers
+- [`Feature`](/reference/render/feature) — Iterate over features
+- [`Geometry`](/reference/render/geometry) — Spatial operations
+- [`RenderSettings`](/reference/render/settings) — Configure rendering
+- [`Crs`](/reference/render/crs) — Coordinate reference systems
+
+### qgis-sys
+
+Low-level CXX bindings to QGIS C++ API.
+
+:::caution
+This is an internal crate. Use `qgis-render` instead.
+:::
+
+### qgis-server
+
+HTTP server for WMS/WFS/OGC APIs.
+
+### qgis-cli
+
+Command-line interface.
+
+### qgis-sdk
+
+Plugin development SDK (Python).
+
+## Modules
+
+### Rendering
+
+- [`render`](/reference/render) — Rendering functions and types
+- [`tiles`](/reference/tiles) — Tile generation
+- [`layout`](/reference/layout) — Print layouts
+
+### Data Access
+
+- [`features`](/reference/features) — Feature iteration and filtering
+- [`geometry`](/reference/geometry) — Geometry operations
+- [`crs`](/reference/crs) — Coordinate transforms
+
+### Server
+
+- [`server`](/reference/server) — HTTP server
+- [`wms`](/reference/wms) — WMS protocol
+- [`wfs`](/reference/wfs) — WFS protocol
+
+### Expressions
+
+- [`expr`](/reference/expr) — QGIS expression engine
+
+## Error Handling
+
+All fallible operations return `Result<T, QgisError>`:
+
+```rust
+use qgis_render::QgisError;
+
+match Project::open("map.qgs") {
+    Ok(project) => { /* ... */ }
+    Err(QgisError::FileNotFound(path)) => { /* ... */ }
+    Err(QgisError::InvalidProject { message }) => { /* ... */ }
+    Err(e) => { /* catch-all */ }
+}
+```
+
+## Thread Safety
+
+QGIS objects are `!Send + !Sync`. See [Architecture](/concepts/architecture#thread-safety) for details.
+
+## Examples
+
+See the [Guides](/guides/rendering-projects) section for practical examples.

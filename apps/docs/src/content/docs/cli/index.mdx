@@ -1,0 +1,47 @@
+---
+title: CLI Overview
+description: Command-line interface for qgis-rs
+---
+
+# qgis-cli
+
+The `qgis-cli` binary provides command-line access to qgis-rs rendering and serving capabilities.
+
+## Commands
+
+| Command | Description |
+|---------|-------------|
+| [`render`](/cli/render) | Render a QGIS project to an image |
+| [`tiles`](/cli/tiles) | Generate tile pyramids |
+| [`batch`](/cli/batch) | Batch render multiple extents |
+| [`info`](/cli/info) | Inspect a QGIS project |
+| [`serve`](/cli/serve) | Start an HTTP map server |
+| [`export`](/cli/export) | Export features from a layer |
+
+## Installation
+
+```bash
+cargo install qgis-cli
+```
+
+Or build from source:
+
+```bash
+cargo build --release -p qgis-cli
+```
+
+## Quick Examples
+
+```bash
+# Render a project
+qgis-cli render map.qgs -o map.png
+
+# Generate tiles
+qgis-cli tiles map.qgs -z 10-14 -b 14,50,15,51 -o ./tiles/
+
+# Start a server
+qgis-cli serve map.qgs --port 8080
+
+# Inspect a project
+qgis-cli info map.qgs
+```

@@ -1,0 +1,244 @@
+---
+title: QGIS Integration
+description: How qgis-rs maps to QGIS concepts and classes
+---
+
+# QGIS Integration
+
+qgis-rs provides Rust bindings to the QGIS C++ API. This page explains how qgis-rs types map to QGIS classes.
+
+## Type Mapping
+
+| qgis-rs Type | QGIS Class | Purpose |
+|--------------|------------|---------|
+| `Project` | `QgsProject` | Load and manage `.qgs`/`.qgz` files |
+| `Layer` | `QgsMapLayer` | Base class for all layers |
+| `VectorLayer` | `QgsVectorLayer` | Vector data (points, lines, polygons) |
+| `RasterLayer` | `QgsRasterLayer` | Raster data (GeoTIFF, imagery) |
+| `Feature` | `QgsFeature` | Single feature with geometry + attributes |
+| `Geometry` | `QgsGeometry` | Spatial geometry (uses GEOS) |
+| `Crs` | `QgsCoordinateReferenceSystem` | Coordinate reference system |
+| `CoordTransform` | `QgsCoordinateTransform` | Transform coordinates between CRS |
+| `RenderSettings` | `QgsMapSettings` | Configure rendering parameters |
+| `Image` | `QImage` | Rendered image output |
+| `Expression` | `QgsExpression` | QGIS expression engine |
+
+## Concept Mapping
+
+### Projects
+
+**QGIS:**
+```python
+# PyQGIS
+project = QgsProject.instance()
+project.read("map.qgs")
+layers = project.mapLayers()
+```
+
+**qgis-rs:**
+```rust
+let project = Project::open("map.qgs")?;
+let layers = project.layers();
+```
+
+### Layers
+
+**QGIS:**
+```python
+layer = project.mapLayersByName("buildings")[0]
+if layer.type() == QgsMapLayerType.VectorLayer:
+    vector_layer = layer
+    count = vector_layer.featureCount()
+```
+
+**qgis-rs:**
+```rust
+let layer = project.layer("buildings")?;
+if let Some(vector) = layer.as_vector() {
+    let count = vector.feature_count();
+}
+```
+
+### Features
+
+**QGIS:**
+```python
+for feature in layer.getFeatures():
+    name = feature["name"]
+    geom = feature.geometry()
+    area = geom.area()
+```
+
+**qgis-rs:**
+```rust
+for feature in layer.features() {
+    let name = feature.get("name")?;
+    let area = feature.geometry().area();
+}
+```
+
+### Rendering
+
+**QGIS:**
+```python
+settings = QgsMapSettings()
+settings.setExtent(layer.extent())
+settings.setOutputSize(QSize(1920, 1080))
+settings.setLayers([layer])
+
+job = QgsMapRendererSequentialJob(settings)
+job.start()
+job.waitForFinished()
+image = job.renderedImage()
+image.save("output.png")
+```
+
+**qgis-rs:**
+```rust
+let settings = RenderSettings::new(1920, 1080)
+    .extent(layer.extent())
+    .layers(&[layer]);
+
+project.render_to_file(&settings, "output.png")?;
+```
+
+## QGIS Version Compatibility
+
+qgis-rs targets **QGIS 3.44.9 LTS** (Long Term Support).
+
+### API Stability
+
+QGIS follows semantic versioning:
+- **3.x**: Stable API, backward compatible
+- **4.x**: Breaking changes (not yet released)
+
+qgis-rs will track QGIS LTS releases:
+- Current: QGIS 3.44.9 LTS
+- Next: QGIS 3.46 LTS (when released)
+
+### Deprecated APIs
+
+Some QGIS APIs are deprecated but still functional. qgis-rs avoids deprecated APIs and uses modern alternatives:
+
+| Deprecated | Modern Alternative |
+|------------|-------------------|
+| `QgsMapLayerRegistry` | `QgsProject::instance()` |
+| `QgsFeature::setGeometryAndOwnership()` | `QgsFeature::setGeometry()` |
+| `QgsCoordinateReferenceSystem::createFromId()` | `QgsCoordinateReferenceSystem::fromEpsgId()` |
+
+## Data Providers
+
+QGIS uses a provider architecture for data access. qgis-rs supports all QGIS providers:
+
+| Provider | Format | qgis-rs Support |
+|----------|--------|-----------------|
+| `ogr` | Shapefile, GeoPackage, GeoJSON, etc. | ✅ Full |
+| `postgres` | PostGIS | ✅ Full |
+| `wms` | Web Map Service | ✅ Full |
+| `wfs` | Web Feature Service | ✅ Full |
+| `gdal` | GeoTIFF, ECW, JP2, etc. | ✅ Full |
+| `wcs` | Web Coverage Service | ✅ Full |
+| `delimitedtext` | CSV with coordinates | ✅ Full |
+| `spatialite` | SpatiaLite | ✅ Full |
+| `mssql` | SQL Server | ⚠️ Untested |
+| `oracle` | Oracle Spatial | ⚠️ Untested |
+
+### Provider-Specific Features
+
+**PostGIS:**
+```rust
+let layer = project.layer("buildings")?;
+let vector = layer.as_vector()?;
+
+// PostGIS-specific: spatial index is automatically used
+let request = FeatureRequest::new()
+    .filter(Expression::gt("height", 50))
+    .bounding_box(extent);
+
+// Translates to: SELECT * FROM buildings WHERE height > 50 AND ST_Intersects(...)
+for feature in vector.features_with(request) {
+    // ...
+}
+```
+
+**WMS/WFS:**
+```rust
+// Remote layers work transparently
+let wms_layer = project.layer("satellite_imagery")?;
+project.render_to_file(&settings, "output.png")?;  // Fetches tiles on-demand
+```
+
+## Qt Integration
+
+QGIS is built on Qt. qgis-rs handles Qt integration transparently:
+
+### QApplication
+
+QGIS requires a `QApplication` instance. qgis-rs creates one automatically:
+
+```rust
+// Automatically initializes Qt/QGIS on first use
+let project = Project::open("map.qgs")?;
+```
+
+For advanced control:
+
+```rust
+// Explicit initialization
+qgis_render::init()?;
+
+// Your code here
+
+// Cleanup (optional — happens automatically on process exit)
+qgis_render::cleanup()?;
+```
+
+### Qt Types
+
+qgis-rs converts Qt types to Rust types automatically:
+
+| Qt Type | Rust Type |
+|---------|-----------|
+| `QString` | `String` |
+| `QVariant` | `Value` (enum: String, Number, Bool, etc.) |
+| `QgsRectangle` | `Extent` |
+| `QgsPointXY` | `(f64, f64)` |
+| `QImage` | `Image` (wrapper) |
+| `QColor` | `Color` (wrapper) |
+
+### Signal/Slot
+
+qgis-rs does not expose Qt signals/slots. Use Rust closures instead:
+
+```rust
+// QGIS (C++)
+connect(layer, &QgsVectorLayer::featureAdded, this, &MyClass::onFeatureAdded);
+
+// qgis-rs (Rust)
+layer.on_feature_added(|feature| {
+    println!("Feature added: {}", feature.id());
+});
+```
+
+## Limitations
+
+### Not Supported
+
+- **QGIS GUI widgets** (`QgsMapCanvas`, `QgsLayerTreeView`) — qgis-rs is for server/CLI use
+- **QGIS Processing algorithms** — Use `qgis_process` CLI or PyQGIS
+- **QGIS 3D rendering** — Not exposed in libqgis_core
+- **QGIS Server** — Use qgis-server instead (separate crate)
+
+### Thread Safety
+
+QGIS is not thread-safe. See [Architecture → Thread Safety](/concepts/architecture#thread-safety) for details.
+
+### Memory Management
+
+qgis-rs uses RAII (Resource Acquisition Is Initialization). QGIS objects are cleaned up automatically when Rust objects are dropped.
+
+## Next Steps
+
+- **[Architecture](/concepts/architecture)** — Deep dive into implementation
+- **[API Reference](/reference)** — Complete API documentation
+- **[Working with Layers](/guides/working-with-layers)** — Practical examples
