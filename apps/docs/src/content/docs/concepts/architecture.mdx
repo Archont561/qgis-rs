@@ -1,0 +1,274 @@
+---
+title: Architecture
+description: How qgis-rs bridges Rust and QGIS
+---
+
+# Architecture
+
+qgis-rs uses a layered architecture to provide safe, idiomatic Rust bindings to the QGIS C++ API.
+
+## Overview
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Your Application                                            │
+│  (qgis-render, qgis-cli, qgis-server, qgis-sdk)            │
+└────────────────────────┬────────────────────────────────────┘
+                         │
+                         ▼
+┌─────────────────────────────────────────────────────────────┐
+│  qgis-render                                                 │
+│  High-level Rust API                                         │
+│  - Project, Layer, Feature, Geometry                        │
+│  - RenderSettings, MapSettings                              │
+│  - Tile rendering, batch processing                         │
+└────────────────────────┬────────────────────────────────────┘
+                         │
+                         ▼
+┌─────────────────────────────────────────────────────────────┐
+│  qgis-sys                                                    │
+│  Low-level CXX bindings                                      │
+│  - FFI declarations                                         │
+│  - Handle management                                        │
+│  - Type conversions                                         │
+└────────────────────────┬────────────────────────────────────┘
+                         │
+                         ▼
+┌─────────────────────────────────────────────────────────────┐
+│  QGIS C++ API                                                │
+│  libqgis_core.so / libqgis_core.dylib / qgis_core.dll       │
+│  - QgsProject, QgsVectorLayer, QgsGeometry                  │
+│  - QgsMapSettings, QgsMapRendererJob                        │
+│  - Qt framework                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+## Layer Breakdown
+
+### qgis-sys: FFI Layer
+
+The foundation layer uses [CXX](https://cxx.rs/) to generate safe FFI bindings to QGIS C++ classes.
+
+**Key Components:**
+
+- **Handle System**: Opaque pointers to QGIS objects with proper lifetime management
+- **Type Conversions**: Automatic conversion between Rust and C++ types (strings, vectors, etc.)
+- **Error Handling**: C++ exceptions → Rust `Result` types
+- **Thread Safety**: `!Send + !Sync` markers for QGIS objects (QGIS is not thread-safe)
+
+**Example:**
+
+```rust
+// qgis-sys/src/core/project/project.rs
+#[cxx::bridge(namespace = "qgis_shim::core")]
+pub mod ffi {
+    unsafe extern "C++" {
+        include!("qgis-sys/include/core/project.h");
+        
+        type QgsProjectHandle;
+        
+        fn create_project() -> UniquePtr<QgsProjectHandle>;
+        fn read_project(handle: &QgsProjectHandle, path: &str) -> Result<bool>;
+        fn project_title(handle: &QgsProjectHandle) -> String;
+    }
+}
+```
+
+### qgis-render: High-Level API
+
+The user-facing layer provides idiomatic Rust APIs that wrap the low-level FFI.
+
+**Key Components:**
+
+- **Project**: Load and inspect `.qgs`/`.qgz` files
+- **Layer**: Access vector/raster layers and their data
+- **Feature**: Iterate over features with attributes and geometry
+- **Geometry**: Spatial operations (buffer, intersection, etc.)
+- **RenderSettings**: Configure rendering (extent, CRS, DPI)
+- **Tile Rendering**: Generate tile pyramids (XYZ, MBTiles, PMTiles)
+
+**Design Principles:**
+
+1. **Builder Pattern**: `RenderSettings::new(1024, 768).extent(...).crs(...).dpi(...)`
+2. **Lazy Iteration**: `layer.features()` returns an iterator, not a `Vec`
+3. **Result Everywhere**: All fallible operations return `Result<T, QgisError>`
+4. **Sensible Defaults**: 96 DPI, project CRS, transparent background
+
+**Example:**
+
+```rust
+// qgis-render/src/project.rs
+pub struct Project {
+    handle: UniquePtr<ffi::QgsProjectHandle>,
+}
+
+impl Project {
+    pub fn open(path: impl AsRef<Path>) -> Result<Self> {
+        let handle = ffi::create_project();
+        let path_str = path.as_ref().to_string_lossy();
+        
+        if !ffi::read_project(&handle, &path_str)? {
+            return Err(QgisError::InvalidProject(path.into()));
+        }
+        
+        Ok(Self { handle })
+    }
+    
+    pub fn title(&self) -> String {
+        ffi::project_title(&self.handle)
+    }
+}
+```
+
+## Thread Safety
+
+QGIS is **not thread-safe**. The QGIS documentation explicitly states:
+
+> "QGIS server classes are not thread safe, you should always use a multiprocessing model or containers when building scalable applications"
+
+qgis-rs enforces this at compile time:
+
+```rust
+// QGIS objects are !Send + !Sync
+// This prevents accidental cross-thread usage
+let project = Project::open("map.qgs")?;
+
+// ✗ Compile error: Project cannot be sent between threads
+std::thread::spawn(move || {
+    project.render(...);  // ERROR
+});
+
+// ✓ Correct: use a worker pool with thread affinity
+let pool = RenderPool::new(4);  // 4 workers, each owns a QGIS context
+pool.render(request).await;
+```
+
+## Memory Management
+
+qgis-rs uses a **handle-based** approach to manage QGIS object lifetimes:
+
+```rust
+// Rust owns the handle
+let project = Project::open("map.qgs")?;
+
+// Handle is a UniquePtr<QgsProjectHandle>
+// When Project is dropped, the handle is dropped,
+// which calls the C++ destructor
+
+// Borrowed references are safe within the lifetime
+let layer = project.layer("buildings")?;  // &Layer
+let features = layer.features();          // FeatureIterator<'_>
+```
+
+**Ownership Rules:**
+
+1. **Owned**: `Project`, `Layer`, `Feature` — you own these, they clean up on drop
+2. **Borrowed**: `&Layer`, `&Feature` — borrowed from parent, lifetime-bound
+3. **Transferred**: `project.take_layer("name")` — transfers ownership to you
+
+## Data Flow
+
+### Rendering a Project
+
+```
+1. Project::open("map.qgs")
+   └─> qgis-sys: create_project() + read_project()
+       └─> QGIS: QgsProject::read(path)
+           └─> Parse XML, load layers, apply styles
+
+2. project.render_to_file(settings, "out.png")
+   └─> qgis-sys: render_project()
+       └─> QGIS: QgsMapRendererSequentialJob
+           ├─> Setup QgsMapSettings (extent, CRS, layers)
+           ├─> Render each layer (vector/raster)
+           ├─> Composite layers (blend modes, opacity)
+           └─> Output QImage → save to PNG
+
+3. Return Result<()>
+   └─> Success or QgisError
+```
+
+### Accessing Features
+
+```
+1. project.layer("buildings")
+   └─> qgis-sys: get_layer()
+       └─> QGIS: QgsProject::mapLayersByName()
+           └─> Return QgsMapLayer*
+
+2. layer.as_vector()
+   └─> Cast to QgsVectorLayer
+
+3. layer.features()
+   └─> qgis-sys: get_features()
+       └─> QGIS: QgsVectorLayer::getFeatures()
+           └─> Return QgsFeatureIterator
+
+4. for feature in features { ... }
+   └─> Lazy iteration
+       └─> QGIS: iterator.nextFeature()
+           ├─> Fetch geometry
+           ├─> Fetch attributes
+           └─> Convert to Rust types
+```
+
+## Performance Characteristics
+
+| Operation | Cost | Notes |
+|-----------|------|-------|
+| `Project::open()` | Medium (100-500ms) | Parses XML, loads layer metadata |
+| `layer.features()` | Low (1-10ms) | Creates iterator, no data fetched yet |
+| `feature.geometry` | Low (1-10μs) | Geometry already loaded with feature |
+| `project.render()` | High (100ms-10s) | Depends on complexity, DPI, extent |
+| `geometry.buffer()` | Medium (10-100μs) | GEOS operation |
+| `crs.transform()` | Low (1-10μs) | PROJ operation |
+
+**Optimization Tips:**
+
+1. **Reuse Projects**: Don't re-open the same project repeatedly
+2. **Filter Features**: Use `FeatureRequest::filter()` to fetch only what you need
+3. **Select Attributes**: Use `FeatureRequest::select()` to skip unused columns
+4. **Skip Geometry**: Use `FeatureRequest::no_geometry()` if you only need attributes
+5. **Batch Rendering**: Use `RenderPool` for parallel rendering with thread affinity
+
+## Platform Support
+
+| Platform | Status | Notes |
+|----------|--------|-------|
+| Linux (x86_64) | ✅ Full support | Primary development platform |
+| macOS (ARM64) | ✅ Full support | Requires Homebrew QGIS |
+| macOS (x86_64) | ✅ Full support | Requires Homebrew QGIS |
+| Windows (x86_64) | ⚠️ Experimental | Requires OSGeo4W QGIS |
+| Linux (ARM64) | ⚠️ Untested | Should work, not CI-tested |
+
+## Dependencies
+
+### Runtime Dependencies
+
+- **QGIS** ≥ 3.44.9 (libqgis_core)
+- **Qt** 6.x (bundled with QGIS)
+- **GDAL** 3.x (bundled with QGIS)
+- **PROJ** 9.x (bundled with QGIS)
+
+### Build Dependencies
+
+- **Rust** ≥ 1.96.0
+- **C++ compiler** with C++17 support
+- **CXX** (Rust crate, auto-installed)
+- **cxx-build** (Rust crate, auto-installed)
+
+## Security Considerations
+
+1. **Untrusted Projects**: `.qgs` files can reference arbitrary data sources (PostGIS, WMS, file paths). Only load projects from trusted sources.
+
+2. **Expression Evaluation**: QGIS expressions are powerful but can access the filesystem and execute code. Disable expression evaluation in untrusted contexts.
+
+3. **Network Access**: QGIS can fetch remote data (WMS, WFS, WCS). Use firewall rules to restrict network access in production.
+
+4. **Resource Limits**: Rendering large projects can consume significant CPU/memory. Use timeouts and resource limits in server deployments.
+
+## Next Steps
+
+- **[API Design](/concepts/api-design)** — Detailed API documentation
+- **[QGIS Integration](/concepts/qgis-integration)** — How qgis-rs maps to QGIS concepts
+- **[Rendering Projects](/guides/rendering-projects)** — Practical rendering examples

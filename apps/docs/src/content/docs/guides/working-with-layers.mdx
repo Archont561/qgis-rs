@@ -1,0 +1,99 @@
+---
+title: Working with Layers
+description: How to access and manipulate vector and raster layers
+---
+
+# Working with Layers
+
+This guide covers accessing and working with vector and raster layers in QGIS projects.
+
+## Accessing Layers
+
+```rust
+let project = Project::open("map.qgs")?;
+
+// By name
+let layer = project.layer("buildings")?;
+
+// By ID
+let layer = project.layer_by_id("buildings_abc123")?;
+
+// All layers
+let layers = project.layers();
+for layer in layers {
+    println!("{}: {:?}", layer.name(), layer.layer_type());
+}
+```
+
+## Vector Layers
+
+### Feature Iteration
+
+```rust
+let vector = layer.as_vector()?;
+
+for feature in vector.features() {
+    println!("id={} geom={:?}", feature.id(), feature.geometry());
+    println!("name={}", feature.get("name")?);
+    println!("height={}", feature.get("height")?);
+}
+```
+
+### Filtering
+
+```rust
+use qgis_render::{FeatureRequest, Expression, Extent};
+
+let request = FeatureRequest::new()
+    .filter(Expression::gt("height", 50))
+    .bounding_box(Extent::new(14.0, 50.0, 15.0, 51.0))
+    .select(["name", "height"])
+    .limit(1000);
+
+for feature in vector.features_with(request) {
+    println!("{}: {}m", feature.get("name")?, feature.get("height")?);
+}
+```
+
+### Feature Count
+
+```rust
+let total = vector.feature_count();
+let filtered = vector.count_with(request)?;
+```
+
+## Raster Layers
+
+```rust
+let raster = layer.as_raster()?;
+
+println!("bands={}", raster.band_count());
+println!("size={}x{}", raster.width(), raster.height());
+
+let block = raster.read_block(1, extent, 256, 256)?;
+```
+
+## Geometry Operations
+
+```rust
+let geom = feature.geometry();
+
+// Properties
+geom.area()
+geom.length()
+geom.centroid()
+geom.bounding_box()
+
+// Operations
+geom.buffer(10.0)
+geom.simplify(0.01)
+geom.intersection(&other)
+geom.union(&other)
+geom.contains(&point)
+geom.distance(&other)
+```
+
+## Next Steps
+
+- **[Rendering Projects](/guides/rendering-projects)** — Render maps and tiles
+- **[Plugin Development](/guides/plugin-development)** — Build QGIS plugins

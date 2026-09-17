@@ -1,0 +1,77 @@
+---
+title: Plugin Development
+description: Build QGIS plugins with Python and optional Rust acceleration
+---
+
+# Plugin Development
+
+The qgis-sdk provides a Python framework for building QGIS plugins with optional Rust acceleration.
+
+## Installation
+
+```bash
+pip install qgis-sdk
+```
+
+## Pure Python Plugin
+
+```python
+from qgis_sdk import Plugin, Algorithm, parameter, output
+
+class BufferAdvanced(Algorithm):
+    id = "my_plugin:buffer"
+    name = "Advanced Buffer"
+    group = "Vector geometry"
+
+    input_layer = parameter.source("Input layer", required=True)
+    distance = parameter.distance("Buffer distance", default=10.0)
+    output_layer = output.sink("Buffered")
+
+    def process(self, context):
+        source = context.get(self.input_layer)
+        dist = context.get(self.distance)
+        sink = context.create_sink(self.output_layer, ...)
+
+        for feature in source.features():
+            buffered = feature.geometry.buffer(dist)
+            out = feature.clone()
+            out.geometry = buffered
+            sink.add_feature(out)
+
+        return {self.output_layer: sink}
+```
+
+## Rust Acceleration
+
+```python
+from qgis_sdk import rust_accelerated
+
+class BufferFast(Algorithm):
+    @rust_accelerated(fallback="process_python")
+    def process(self, context):
+        pass  # Replaced by Rust at runtime
+
+    def process_python(self, context):
+        # Pure Python fallback
+        ...
+```
+
+## CLI
+
+```bash
+# Scaffold a new plugin
+qgis-plugin new my-plugin
+
+# Development mode
+qgis-plugin dev
+
+# Build and package
+qgis-plugin build
+
+# Publish to QGIS Plugin Repository
+qgis-plugin publish
+```
+
+## Next Steps
+
+See the [qgis-plugin-sdk](https://github.com/yourusername/qgis-rs/blob/main/.knowledge/qgis-plugin-sdk.md) design document for the complete SDK specification.

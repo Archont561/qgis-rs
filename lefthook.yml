@@ -1,0 +1,19 @@
+pre-commit:
+  parallel: true
+  commands:
+    fmt-rs:
+      glob: "*.rs"
+      run: cargo fmt --all --check
+
+    fmt-cpp:
+      glob: "*.{cpp,h}"
+      run: clang-format --dry-run --Werror {staged_files}
+
+    lint-rs:
+      glob: "*.rs"
+      run: cargo clippy --workspace --all-targets -- -D warnings
+
+commit-msg:
+  commands:
+    convco:
+      run: convco check --from-stdin < {1}

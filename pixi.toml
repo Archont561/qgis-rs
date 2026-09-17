@@ -1,0 +1,238 @@
+[workspace]
+name      = "qgis-rs"
+channels  = ["conda-forge"]
+platforms = ["linux-64"]
+
+[dependencies]
+rust         = ">=1.96.0,<1.97"
+cxx-compiler = ">=1.11.0,<2"
+clang-tools  = ">=22.1.8,<23"
+lefthook     = ">=2.1.9,<3"
+convco       = ">=0.6.4,<0.7"
+
+[feature.qgis.dependencies]
+qgis = ">=3.44.9,<4"
+
+[feature.docs.dependencies]
+bun = ">=1.0.0,<2"
+
+[feature.docs.tasks]
+docs-dev = { cmd = "bun run dev", cwd = "apps/docs" }
+docs-build = { cmd = "bun run build", cwd = "apps/docs" }
+docs-preview = { cmd = "bun run preview", cwd = "apps/docs" }
+
+[environments]
+default = { features = ["qgis"], solve-group = "default" }
+docs = { features = ["docs"], solve-group = "default" }
+
+[tasks]
+
+# ── internal ──────────────────────────────────────────────────────────────────
+setup = { cmd = "ln -sf $CONDA_PREFIX/lib/libqca-qt6.so.2 $CONDA_PREFIX/lib/libqca-qt5.so.2" }
+_build-for-lint = { cmd = "cargo build -p qgis-sys" }
+
+# ── formatting ────────────────────────────────────────────────────────────────
+fmt-rs  = { cmd = "cargo fmt --all" }
+fmt-cpp = { cmd = "bash -c 'clang-format -i $(find crates/qgis-sys/src crates/qgis-sys/include -name \"*.cpp\" -o -name \"*.h\")'" }
+fmt     = { depends-on = ["fmt-rs", "fmt-cpp"] }
+
+# ── checks ────────────────────────────────────────────────────────────────────
+check-rs  = { cmd = "cargo fmt --all --check" }
+check-cpp = { cmd = "bash -c 'clang-format --dry-run --Werror $(find crates/qgis-sys/src crates/qgis-sys/include -name \"*.cpp\" -o -name \"*.h\")'" }
+lint-rs   = { cmd = "cargo clippy --workspace --all-targets -- -D warnings" }
+
+lint-cpp = { cmd = """bash -c '
+  SRCS=$(find crates/qgis-sys/src -name "*.cpp")
+  QT_INC=$CONDA_PREFIX/include/qt
+  [ ! -d "$QT_INC" ] && QT_INC=$CONDA_PREFIX/include/qt6
+  CXX_OUT=$(find target/debug/build/qgis-sys-*/out/cxxbridge -maxdepth 0 2>/dev/null | head -1)
+  clang-tidy $SRCS \
+    --extra-arg=--sysroot=$CONDA_PREFIX/x86_64-conda-linux-gnu/sysroot \
+    --extra-arg=-I$(find $CONDA_PREFIX/lib/gcc -name "stddef.h" | head -1 | xargs dirname) \
+    -- -std=c++17 \
+    -Icrates/qgis-sys \
+    -Icrates/qgis-sys/include \
+    -I${CXX_OUT}/include \
+    -I${CXX_OUT}/crate \
+    -I$CONDA_PREFIX/include/qgis \
+    -I$QT_INC \
+    -I$QT_INC/QtCore \
+    -I$QT_INC/QtGui \
+    -I$QT_INC/QtWidgets \
+    -I$QT_INC/QtXml'""", depends-on = ["_build-for-lint"] }
+
+lint = { depends-on = ["lint-rs", "lint-cpp"] }
+
+# ── tests ─────────────────────────────────────────────────────────────────────
+[tasks.test]
+args = [{ arg = "package", default = "" }, { arg = "clean", default = "" }]
+cmd = """bash -c '
+  if [ "{{ clean }}" = "--clean" ]; then
+    if [ -n "{{ package }}" ]; then
+      cargo clean -p {{ package }}
+    else
+      cargo clean
+    fi
+  fi
+
+  if [ -n "{{ package }}" ]; then
+    QT_QPA_PLATFORM=offscreen \
+    cargo test -p {{ package }} --no-default-features \
+      --test application_info -- --test-threads=1
+  else
+    QT_QPA_PLATFORM=offscreen \
+    cargo test --workspace --no-default-features \
+      --test application_info -- --test-threads=1
+  fi'"""
+depends-on = ["setup"]
+
+[tasks.test-full]
+args = [{ arg = "package", default = "" }, { arg = "clean", default = "" }]
+cmd = """bash -c '
+  if [ "{{ clean }}" = "--clean" ]; then
+    if [ -n "{{ package }}" ]; then
+      cargo clean -p {{ package }}
+    else
+      cargo clean
+    fi
+  fi
+
+  if [ -n "{{ package }}" ]; then
+    PROJ_DATA=$CONDA_PREFIX/share/proj \
+    QT_QPA_PLATFORM=offscreen \
+    QGIS_PLUGINPATH=$CONDA_PREFIX/lib/qgis/plugins \
+    cargo test -p {{ package }} --no-default-features \
+      --test application_lifecycle --test vector_layer \
+      -- --test-threads=1
+  else
+    PROJ_DATA=$CONDA_PREFIX/share/proj \
+    QT_QPA_PLATFORM=offscreen \
+    QGIS_PLUGINPATH=$CONDA_PREFIX/lib/qgis/plugins \
+    cargo test --workspace --no-default-features \
+      --test application_lifecycle --test vector_layer \
+      -- --test-threads=1
+  fi'"""
+depends-on = ["setup"]
+
+# ── clean ─────────────────────────────────────────────────────────────────────
+[tasks.clean]
+args = [{ arg = "package", default = "" }]
+cmd = "bash -c 'if [ -n \"{{ package }}\" ]; then cargo clean -p {{ package }}; else cargo clean; fi'"
+
+# ── CI ────────────────────────────────────────────────────────────────────────
+
+# ── scaffold ──────────────────────────────────────────────────────────────────
+# Usage: pixi run scaffold <layer> <concept> <qgis_class> <short_name>
+# Example: pixi run scaffold core geometry QgsGeometry geometry
+[tasks.scaffold]
+args = [
+  { arg = "layer" },
+  { arg = "concept" },
+  { arg = "qgis_class" },
+  { arg = "short_name" },
+]
+cmd = """bash -c '
+  CRATE=crates/qgis-sys
+  LAYER="{{ layer }}"
+  CONCEPT="{{ concept }}"
+  QCLASS="{{ qgis_class }}"
+  SHORT="{{ short_name }}"
+  HANDLE="${QCLASS}Handle"
+  DIR="$CRATE/src/$LAYER/$CONCEPT"
+
+  mkdir -p "$DIR"
+
+  # ── header ──────────────────────────────────────────────────────────────
+  cat > "$CRATE/include/$LAYER/$CONCEPT.h" << EOF
+#pragma once
+
+#include "rust/cxx.h"
+#include "qgis-sys/include/core/handle.h"
+
+namespace qgis_shim::$LAYER {
+
+QGIS_DECLARE_HANDLE($HANDLE);
+
+} // namespace qgis_shim::$LAYER
+
+#include "qgis-sys/src/$LAYER/$CONCEPT/$SHORT.rs.h"
+
+namespace qgis_shim::$LAYER {
+
+// TODO: declare FFI functions here
+
+} // namespace qgis_shim::$LAYER
+EOF
+
+  # ── rust bridge ─────────────────────────────────────────────────────────
+  cat > "$DIR/$SHORT.rs" << EOF
+#[cxx::bridge(namespace = "qgis_shim::$LAYER")]
+pub mod ffi {
+    unsafe extern "C++" {
+        include!("qgis-sys/include/$LAYER/$CONCEPT.h");
+
+        type $HANDLE;
+
+        // TODO: declare FFI functions here
+    }
+}
+EOF
+
+  # ── cpp shim ────────────────────────────────────────────────────────────
+  cat > "$DIR/$SHORT.cpp" << EOF
+#include "qgis-sys/include/$LAYER/$CONCEPT.h"
+#include "qgis-sys/include/core/convert.h"
+
+// TODO: #include <qgs....h>
+
+// QGIS_DEFINE_HANDLE_DTOR(qgis_shim::$LAYER, $HANDLE, ::$QCLASS)
+
+namespace {
+
+// QGIS_HANDLE_CAST(qgis_shim::$LAYER::$HANDLE, ::$QCLASS)
+
+} // namespace
+
+namespace qgis_shim::$LAYER {
+
+// TODO: implement FFI functions here
+
+} // namespace qgis_shim::$LAYER
+EOF
+
+  # ── mod.rs ──────────────────────────────────────────────────────────────
+  cat > "$DIR/mod.rs" << EOF
+pub mod $SHORT;
+EOF
+
+  # ── wire into parent mod.rs ─────────────────────────────────────────────
+  PARENT_MOD="$CRATE/src/$LAYER/mod.rs"
+  if ! grep -q "pub mod $CONCEPT;" "$PARENT_MOD" 2>/dev/null; then
+    echo "pub mod $CONCEPT;" >> "$PARENT_MOD"
+  fi
+
+  # ── wire into lib.rs ────────────────────────────────────────────────────
+  LIB_RS="$CRATE/src/lib.rs"
+  ALIAS="${SHORT}_ffi"
+  USE_LINE="pub use $LAYER::$CONCEPT::$SHORT::ffi as $ALIAS;"
+  if ! grep -q "$ALIAS" "$LIB_RS" 2>/dev/null; then
+    echo "$USE_LINE" >> "$LIB_RS"
+  fi
+
+  echo ""
+  echo "✅ scaffolded $LAYER/$CONCEPT"
+  echo "   header:  $CRATE/include/$LAYER/$CONCEPT.h"
+  echo "   bridge:  $DIR/$SHORT.rs"
+  echo "   shim:    $DIR/$SHORT.cpp"
+  echo "   mod:     $DIR/mod.rs"
+  echo ""
+  echo "Next steps:"
+  echo "  1. Edit the header — declare FFI functions"
+  echo "  2. Edit the .rs    — declare matching Rust signatures"
+  echo "  3. Edit the .cpp   — implement the functions"
+  echo "  4. cargo build -p qgis-sys"
+'"""
+
+
+ci      = { depends-on = ["check-rs", "check-cpp", "lint-rs", "test"] }
+ci-full = { depends-on = ["check-rs", "check-cpp", "lint-rs", "lint-cpp", "test-full"] }

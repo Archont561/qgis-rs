@@ -1,0 +1,82 @@
+---
+title: Rendering Projects
+description: How to render QGIS projects with various options
+---
+
+# Rendering Projects
+
+This guide covers rendering QGIS projects to images, tiles, and PDFs.
+
+## Basic Rendering
+
+```rust
+use qgis_render::{Project, RenderSettings};
+
+let project = Project::open("map.qgs")?;
+let settings = RenderSettings::new(1920, 1080);
+
+project.render_to_file(&settings, "output.png")?;
+```
+
+## Custom Extent
+
+```rust
+use qgis_render::Extent;
+
+let settings = RenderSettings::new(1920, 1080)
+    .extent(Extent::new(14.0, 50.0, 15.0, 51.0));  // Warsaw area
+
+project.render_to_file(&settings, "warsaw.png")?;
+```
+
+## High DPI
+
+```rust
+let settings = RenderSettings::new(3840, 2160)  // 4K
+    .dpi(300);  // Print quality
+
+project.render_to_file(&settings, "print.png")?;
+```
+
+## Specific Layers
+
+```rust
+let settings = RenderSettings::new(1920, 1080)
+    .layers(&["buildings", "roads", "labels"]);
+
+project.render_to_file(&settings, "filtered.png")?;
+```
+
+## Tile Rendering
+
+```rust
+use qgis_render::tiles::{TilePlan, TileFormat};
+
+let plan = TilePlan::new()
+    .zoom_range(10..=14)
+    .bounds(project.extent())
+    .tile_size(256)
+    .format(TileFormat::Png);
+
+plan.render_to_dir(&project, "./tiles/", 8)?;  // 8 parallel workers
+```
+
+## Batch Rendering
+
+```rust
+let projects = ["map1.qgs", "map2.qgs", "map3.qgs"];
+
+for path in projects {
+    let project = Project::open(path)?;
+    let settings = RenderSettings::new(1920, 1080)
+        .extent(project.extent());
+    
+    let output = format!("{}.png", path.trim_end_matches(".qgs"));
+    project.render_to_file(&settings, &output)?;
+}
+```
+
+## Next Steps
+
+- **[Working with Layers](/guides/working-with-layers)** — Access and manipulate layer data
+- **[Plugin Development](/guides/plugin-development)** — Build QGIS plugins with Rust

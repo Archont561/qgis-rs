@@ -1,0 +1,267 @@
+---
+title: API Design
+description: Design principles and patterns used in qgis-rs
+---
+
+# API Design
+
+qgis-rs follows a set of design principles to provide an idiomatic, safe, and ergonomic Rust API.
+
+## Core Principles
+
+### 1. Builder Pattern for Configuration
+
+Complex configuration objects use the builder pattern:
+
+```rust
+let settings = RenderSettings::new(1920, 1080)
+    .extent(Extent::new(14.0, 50.0, 15.0, 51.0))
+    .crs(Crs::from_epsg(3857)?)
+    .dpi(150)
+    .background(Color::WHITE)
+    .layers(&["buildings", "roads"])
+    .antialiasing(true);
+```
+
+**Benefits:**
+- Clear, readable configuration
+- Method chaining
+- Optional parameters with sensible defaults
+- Type-safe at compile time
+
+### 2. Lazy Iteration
+
+Feature iteration is lazy — data is fetched on-demand:
+
+```rust
+// No features fetched yet
+let features = layer.features();
+
+// Fetches features one at a time as we iterate
+for feature in features {
+    println!("{}", feature.get("name")?);
+    
+    // Stop early — remaining features never fetched
+    if some_condition {
+        break;
+    }
+}
+```
+
+**Benefits:**
+- Memory efficient (no `Vec<Feature>` allocation)
+- Works with large datasets (millions of features)
+- Early termination saves time
+
+### 3. Result Everywhere
+
+All fallible operations return `Result<T, QgisError>`:
+
+```rust
+match Project::open("map.qgs") {
+    Ok(project) => println!("Loaded: {}", project.title()),
+    Err(QgisError::FileNotFound(path)) => eprintln!("File not found: {}", path),
+    Err(QgisError::InvalidProject { message }) => eprintln!("Invalid project: {}", message),
+    Err(e) => eprintln!("Error: {}", e),
+}
+```
+
+**Benefits:**
+- Explicit error handling
+- No panics in library code
+- Exhaustive error types for pattern matching
+
+### 4. Sensible Defaults
+
+Methods have reasonable defaults so simple cases are one-liners:
+
+```rust
+// Minimal configuration
+let image = project.render_to_image(RenderSettings::new(1024, 768))?;
+image.save("output.png")?;
+
+// Defaults used:
+// - Extent: project.extent()
+// - CRS: project.crs()
+// - DPI: 96
+// - Background: transparent
+// - Layers: all visible layers
+```
+
+### 5. Consistent Naming
+
+Verbs and patterns are consistent across the API:
+
+| Pattern | Example |
+|---------|---------|
+| `open()` | `Project::open("map.qgs")` |
+| `render()` | `project.render(&settings)` |
+| `save()` | `image.save("out.png")` |
+| `to_*()` | `geometry.to_wkt()`, `image.to_png_bytes()` |
+| `from_*()` | `Crs::from_epsg(4326)`, `Geometry::from_wkt(...)` |
+| `as_*()` | `layer.as_vector()`, `feature.as_json()` |
+
+## Type System
+
+### Core Types
+
+```rust
+// Projects and layers
+pub struct Project { /* ... */ }
+pub struct Layer { /* ... */ }
+pub struct VectorLayer { /* ... */ }
+pub struct RasterLayer { /* ... */ }
+
+// Data access
+pub struct Feature { /* ... */ }
+pub struct Field { /* ... */ }
+pub struct Geometry { /* ... */ }
+
+// Configuration
+pub struct RenderSettings { /* builder */ }
+pub struct MapSettings { /* builder */ }
+pub struct FeatureRequest { /* builder */ }
+
+// Spatial types
+pub struct Extent { pub min_x: f64, pub min_y: f64, pub max_x: f64, pub max_y: f64 }
+pub struct Crs { /* opaque */ }
+pub struct CoordTransform { /* opaque */ }
+
+// Output
+pub struct Image { /* pixel buffer */ }
+pub struct TileCoord { pub z: u8, pub x: u32, pub y: u32 }
+```
+
+### Enums
+
+```rust
+pub enum LayerType {
+    Vector,
+    Raster,
+    Mesh,
+    VectorTile,
+    PointCloud,
+}
+
+pub enum GeometryType {
+    Point,
+    MultiPoint,
+    LineString,
+    MultiLineString,
+    Polygon,
+    MultiPolygon,
+    GeometryCollection,
+}
+
+pub enum BlendMode {
+    Normal,
+    Multiply,
+    Screen,
+    Overlay,
+    // ... 12 blend modes total
+}
+```
+
+### Error Types
+
+```rust
+pub enum QgisError {
+    FileNotFound(PathBuf),
+    InvalidProject { message: String },
+    BadLayer { name: String, uri: String },
+    UnsupportedFormat(String),
+    RenderError(String),
+    ExpressionError { expr: String, message: String },
+    CrsError(String),
+    IoError(std::io::Error),
+    // ...
+}
+
+impl std::error::Error for QgisError {}
+impl std::fmt::Display for QgisError { /* ... */ }
+```
+
+## Ownership and Lifetimes
+
+### Owned vs Borrowed
+
+```rust
+// Owned — you control the lifetime
+let project = Project::open("map.qgs")?;
+let geometry = Geometry::from_wkt("POINT(0 0)")?;
+
+// Borrowed — lifetime tied to parent
+let layer: &Layer = project.layer("buildings")?;
+let field: &Field = &layer.fields()[0];
+
+// Transferred — ownership moves to you
+let layer = project.take_layer("buildings")?;  // Project no longer owns it
+```
+
+### Thread Safety
+
+QGIS objects are `!Send + !Sync` (not thread-safe):
+
+```rust
+// ✗ Compile error
+std::thread::spawn(move || {
+    project.render(...);  // ERROR: Project is !Send
+});
+
+// ✓ Use a render pool with thread affinity
+let pool = RenderPool::new(4);
+pool.render(request).await;
+```
+
+## Advanced Patterns
+
+### Filtering and Selection
+
+```rust
+let request = FeatureRequest::new()
+    .filter(Expression::gt("population", 1_000_000))
+    .bounding_box(Extent::new(14.0, 50.0, 15.0, 51.0))
+    .select(["name", "population"])  // Only fetch these columns
+    .limit(1000)
+    .no_geometry();                  // Skip geometry if not needed
+
+for feature in layer.features_with(request) {
+    // Fast: only fetched name and population
+    println!("{}: {}", feature.get("name")?, feature.get("population")?);
+}
+```
+
+### Spatial Queries
+
+```rust
+let polygon = Geometry::from_wkt("POLYGON((...))")?;
+
+let request = FeatureRequest::new()
+    .intersects(&polygon)
+    .select_all();
+
+let count = layer.count_with(request)?;
+println!("{} features intersect the polygon", count);
+```
+
+### Coordinate Transforms
+
+```rust
+let wgs84 = Crs::from_epsg(4326)?;
+let mercator = Crs::from_epsg(3857)?;
+
+let transform = CoordTransform::new(&wgs84, &mercator)?;
+
+// Single point
+let (x, y) = transform.transform(14.0, 50.0)?;
+
+// Batch transform (more efficient)
+let points = [(14.0, 50.0), (15.0, 51.0), (16.0, 52.0)];
+let transformed = transform.transform_batch(&points)?;
+```
+
+## Next Steps
+
+- **[QGIS Integration](/concepts/qgis-integration)** — How qgis-rs maps to QGIS concepts
+- **[API Reference](/reference)** — Complete API documentation
+- **[Rendering Projects](/guides/rendering-projects)** — Practical examples

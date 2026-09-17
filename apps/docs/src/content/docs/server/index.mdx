@@ -1,0 +1,60 @@
+---
+title: Server Overview
+description: HTTP server for serving QGIS maps and data
+---
+
+# qgis-server
+
+The `qgis-server` crate provides a high-performance HTTP server for serving QGIS projects via WMS, WFS, OGC API, and XYZ tiles.
+
+## Features
+
+- **WMS 1.3** — Web Map Service
+- **WFS 1.1** — Web Feature Service
+- **OGC API Features** — Modern REST API
+- **XYZ Tiles** — Slippy map tiles
+- **Tile Caching** — LRU memory + disk cache
+- **Authentication** — API keys, JWT
+- **Multi-tenancy** — Serve multiple projects
+
+## Quick Start
+
+```bash
+# Start server
+qgis-cli serve map.qgs --port 8080
+
+# Endpoints:
+# GET /wms?SERVICE=WMS&REQUEST=GetMap&...
+# GET /wfs?SERVICE=WFS&REQUEST=GetFeature&...
+# GET /tiles/{z}/{x}/{y}.png
+# GET /collections
+```
+
+## Docker
+
+```bash
+docker run -v ./maps:/data -p 8080:8080 qgis-server /data/project.qgs
+```
+
+## Configuration
+
+```rust
+use qgis_render::server::{Server, CacheConfig, AuthConfig};
+
+let server = Server::new(project)
+    .workers(4)
+    .tile_cache(CacheConfig::new()
+        .memory_mb(512)
+        .disk_path("./cache/"))
+    .auth(AuthConfig::new()
+        .api_keys(vec!["key-abc123"]));
+```
+
+## Performance
+
+| Metric | QGIS Server | qgis-server |
+|--------|-------------|-------------|
+| Startup time | 10-30s | 50-100ms |
+| Memory (idle) | 256MB-1GB | 30-80MB |
+| Concurrency | Single-threaded | Async (tokio) |
+| Caching | None | Built-in LRU |

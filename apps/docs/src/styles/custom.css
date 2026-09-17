@@ -1,0 +1,53 @@
+/* Custom styles for qgis-rs documentation */
+
+/* Hero section gradient */
+:root {
+  --sl-color-accent-low: #1a2332;
+  --sl-color-accent: #3b82f6;
+  --sl-color-accent-high: #93c5fd;
+}
+
+/* Code block styling */
+.sl-markdown-content pre {
+  border: 1px solid var(--sl-color-gray-5);
+  border-radius: 8px;
+}
+
+/* Rust syntax highlighting accent */
+.sl-markdown-content code {
+  font-size: 0.9em;
+}
+
+/* Sidebar navigation */
+nav.sidebar {
+  font-size: 0.9rem;
+}
+
+/* Card-style feature boxes on landing page */
+.card {
+  padding: 1.5rem;
+  border-radius: 12px;
+  background: var(--sl-color-bg-nav);
+  border: 1px solid var(--sl-color-gray-6);
+}
+
+.card h3 {
+  margin-top: 0;
+}
+
+/* Table styling */
+.sl-markdown-content table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.sl-markdown-content th,
+.sl-markdown-content td {
+  padding: 0.75rem;
+  border: 1px solid var(--sl-color-gray-5);
+}
+
+.sl-markdown-content th {
+  background: var(--sl-color-bg-nav);
+  font-weight: 600;
+}

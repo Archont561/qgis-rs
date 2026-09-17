@@ -1,0 +1,100 @@
+# ci.yml — validate PRs: check pixi environments and run tests
+#
+# Runs on every PR to main. Validates:
+# 1. Pixi environments are valid (default + docs)
+# 2. Rust code compiles and tests pass
+# 3. Documentation site builds
+
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  validate-pixi:
+    name: Validate Pixi environments
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: set up pixi
+        uses: prefix-dev/setup-pixi@d3f436a425481402e6a95a1d1fc10331c708cd9e # v0.10.2
+        with:
+          pixi-version: v0.81.0
+          run-install: false
+          cache: false
+
+      - name: validate default environment
+        run: |
+          pixi install -e default
+          pixi run -e default cargo --version
+          pixi run -e default pixi --version
+
+      - name: validate docs environment
+        run: |
+          pixi install -e docs
+          pixi run -e docs bun --version
+
+  test-rust:
+    name: Test Rust code
+    runs-on: ubuntu-latest
+    needs: validate-pixi
+    
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: set up pixi
+        uses: prefix-dev/setup-pixi@d3f436a425481402e6a95a1d1fc10331c708cd9e # v0.10.2
+        with:
+          pixi-version: v0.81.0
+          run-install: false
+          cache: false
+
+      - name: install environment
+        run: pixi install -e default
+
+      - name: run tests
+        run: pixi run -e default cargo test --workspace
+
+  build-docs:
+    name: Build documentation site
+    runs-on: ubuntu-latest
+    needs: validate-pixi
+    
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: set up pixi
+        uses: prefix-dev/setup-pixi@d3f436a425481402e6a95a1d1fc10331c708cd9e # v0.10.2
+        with:
+          pixi-version: v0.81.0
+          run-install: false
+          cache: false
+
+      - name: install docs environment
+        run: pixi install -e docs
+
+      - name: install dependencies
+        working-directory: apps/docs
+        run: pixi run -e docs bun install
+
+      - name: build documentation
+        working-directory: apps/docs
+        run: pixi run -e docs bun run build
+
+      - name: upload docs artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: docs-site
+          path: apps/docs/dist/
+          retention-days: 7

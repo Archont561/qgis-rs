@@ -1,0 +1,30 @@
+# general
+.*
+_*
+
+# git / github
+!.git*
+
+# knowledge bundle
+!.knowledge/
+
+# pixi
+!.pixi/config.toml
+
+# cargo
+/target
+!.cargo
+
+# cpp
+!.clang*
+compile_commands.json
+symbology-style.db
+
+# pixi-sandbox
+.pixi-sandbox/
+dist/
+
+# docs app (Node.js / Astro)
+apps/docs/node_modules/
+apps/docs/dist/
+apps/docs/.astro/

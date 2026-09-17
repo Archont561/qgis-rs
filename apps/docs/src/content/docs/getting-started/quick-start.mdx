@@ -1,0 +1,181 @@
+---
+title: Quick Start
+description: Render your first QGIS project in 5 minutes
+---
+
+# Quick Start
+
+Let's render a QGIS project to PNG in under 5 minutes.
+
+## 1. Create a New Project
+
+```bash
+cargo new qgis-hello
+cd qgis-hello
+cargo add qgis-render
+```
+
+## 2. Write the Code
+
+Edit `src/main.rs`:
+
+```rust
+use qgis_render::{Project, RenderSettings, Extent, Crs};
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Initialize QGIS (required once per application)
+    qgis_render::init()?;
+    
+    // Load a QGIS project
+    let project = Project::open("my-map.qgs")?;
+    
+    println!("Project: {}", project.title());
+    println!("Layers: {}", project.layers().len());
+    println!("Extent: {:?}", project.extent());
+    
+    // Configure rendering
+    let settings = RenderSettings::new(1920, 1080)
+        .extent(project.extent())
+        .crs(Crs::from_epsg(3857)?)  // Web Mercator
+        .dpi(96);
+    
+    // Render to PNG
+    project.render_to_file(&settings, "output.png")?;
+    
+    println!("✓ Rendered to output.png");
+    
+    Ok(())
+}
+```
+
+## 3. Get a QGIS Project
+
+Download a sample QGIS project or use your own:
+
+```bash
+# Example: download a sample project
+wget https://example.com/sample-map.qgs
+```
+
+Or create a simple one in QGIS Desktop:
+1. Open QGIS
+2. Add a vector layer (e.g., Natural Earth countries)
+3. Style it (categorized by continent)
+4. Save as `my-map.qgs`
+
+## 4. Run It
+
+```bash
+cargo run
+```
+
+Expected output:
+```
+Project: World Map
+Layers: 3
+Extent: Extent { min_x: -180.0, min_y: -90.0, max_x: 180.0, max_y: 90.0 }
+✓ Rendered to output.png
+```
+
+Open `output.png` to see your rendered map!
+
+## 5. Try More Features
+
+### Render Specific Layers
+
+```rust
+let settings = RenderSettings::new(1920, 1080)
+    .layers(&["countries", "cities"])  // Only render these layers
+    .extent(project.extent());
+```
+
+### Render Tiles
+
+```rust
+use qgis_render::tiles::{TilePlan, TileFormat};
+
+let plan = TilePlan::new()
+    .zoom_range(10..=14)
+    .bounds(project.extent())
+    .tile_size(256)
+    .format(TileFormat::Png);
+
+plan.render_to_dir(&project, "./tiles/", 8)?;  // 8 parallel workers
+```
+
+### Access Features
+
+```rust
+let layer = project.layer("countries").unwrap();
+let vector = layer.as_vector().unwrap();
+
+for feature in vector.features().take(10) {
+    println!("{}: pop={}", 
+        feature.get("name")?,
+        feature.get("population")?
+    );
+}
+```
+
+### Use the CLI
+
+```bash
+# Render from command line
+qgis-cli render my-map.qgs -o output.png
+
+# Generate tiles
+qgis-cli tiles my-map.qgs -z 10-14 -o ./tiles/
+
+# Start a WMS server
+qgis-cli serve my-map.qgs --port 8080
+```
+
+## What's Next?
+
+- **[Working with Layers](/guides/working-with-layers)** — Read and manipulate vector/raster data
+- **[Rendering Projects](/guides/rendering-projects)** — Advanced rendering options
+- **[Plugin Development](/guides/plugin-development)** — Build QGIS plugins with Rust
+- **[CLI Reference](/cli)** — Command-line tool documentation
+
+## Common Patterns
+
+### Batch Rendering
+
+```rust
+let projects = ["map1.qgs", "map2.qgs", "map3.qgs"];
+
+for path in projects {
+    let project = Project::open(path)?;
+    let settings = RenderSettings::new(1920, 1080)
+        .extent(project.extent());
+    
+    let output = format!("{}.png", path.trim_end_matches(".qgs"));
+    project.render_to_file(&settings, &output)?;
+    
+    println!("✓ {}", output);
+}
+```
+
+### Custom Extent
+
+```rust
+let settings = RenderSettings::new(1920, 1080)
+    .extent(Extent::new(14.0, 50.0, 15.0, 51.0))  // Warsaw area
+    .crs(Crs::from_epsg(4326)?);
+```
+
+### High DPI Rendering
+
+```rust
+let settings = RenderSettings::new(3840, 2160)  // 4K
+    .dpi(300)  // Print quality
+    .extent(project.extent());
+
+project.render_to_file(&settings, "print.png")?;
+```
+
+## Need Help?
+
+- **[API Reference](/reference)** — Complete API documentation
+- **[GitHub Issues](https://github.com/yourusername/qgis-rs/issues)** — Report bugs
+- **[Discussions](https://github.com/yourusername/qgis-rs/discussions)** — Ask questions
