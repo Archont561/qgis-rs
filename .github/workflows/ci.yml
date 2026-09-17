@@ -36,13 +36,13 @@ jobs:
 
       - name: validate default environment
         run: |
-          pixi install --locked -e default
+          pixi install -e default
           pixi run -e default cargo --version
           pixi run -e default pixi --version
 
       - name: validate docs environment
         run: |
-          pixi install --locked -e docs
+          pixi install -e docs
           pixi run -e docs bun --version
 
   test-rust:
@@ -61,7 +61,7 @@ jobs:
           cache: false
 
       - name: install environment
-        run: pixi install --locked -e default
+        run: pixi install -e default
 
       - name: run tests
         run: pixi run -e default cargo test --workspace
@@ -82,7 +82,7 @@ jobs:
           cache: false
 
       - name: install docs environment
-        run: pixi install --locked -e docs
+        run: pixi install -e docs
 
       - name: install dependencies
         working-directory: apps/docs
