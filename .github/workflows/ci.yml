@@ -32,7 +32,7 @@ jobs:
         with:
           pixi-version: v0.81.0
           run-install: false
-          cache: true
+          cache: false
 
       - name: validate default environment
         run: |
@@ -58,7 +58,7 @@ jobs:
         with:
           pixi-version: v0.81.0
           run-install: false
-          cache: true
+          cache: false
 
       - name: install environment
         run: pixi install --locked -e default
@@ -79,7 +79,7 @@ jobs:
         with:
           pixi-version: v0.81.0
           run-install: false
-          cache: true
+          cache: false
 
       - name: install docs environment
         run: pixi install --locked -e docs
