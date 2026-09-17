@@ -22,8 +22,8 @@ docs-build = { cmd = "bun run build", cwd = "apps/docs" }
 docs-preview = { cmd = "bun run preview", cwd = "apps/docs" }
 
 [environments]
-default = { features = ["qgis"] }
-docs = { features = ["docs"] }
+default = { features = ["qgis"], solve-group = "default" }
+docs = { features = ["docs"], solve-group = "default" }
 
 [tasks]
 
