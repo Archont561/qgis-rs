@@ -105,14 +105,23 @@ class BridgeRuntime:
         self._webview = webview
 
         try:
-            from qgis.PyQt.QtWebChannel import QWebChannel
+            from .._qt import QWebChannel
         except ImportError:
             try:
-                from PyQt5.QtWebChannel import QWebChannel
+                from qgis.PyQt.QtWebChannel import QWebChannel  # type: ignore
             except ImportError:
-                # No QWebChannel available — fallback for testing
-                print("[BridgeRuntime] QWebChannel not available, skipping registration")
-                return self
+                try:
+                    from PyQt5.QtWebChannel import QWebChannel  # type: ignore
+                except ImportError:
+                    try:
+                        from PyQt6.QtWebChannel import QWebChannel  # type: ignore
+                    except ImportError:
+                        try:
+                            from PySide6.QtWebChannel import QWebChannel  # type: ignore
+                        except ImportError:
+                            # No QWebChannel available — fallback for testing
+                            print("[BridgeRuntime] QWebChannel not available, skipping registration")
+                            return self
 
         try:
             channel = QWebChannel(webview.page() if hasattr(webview, "page") else webview)

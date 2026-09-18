@@ -137,10 +137,14 @@ class Plugin:
     deprecated: bool = False
     has_processing_provider: bool = False
     server: bool = False
+    icon: str | None = None
+    changelog: str | None = None
+    plugin_dependencies: str | None = None
 
     def __init__(self, iface: Any = None) -> None:
         self.iface = iface
         self._created: list[tuple[ActionSpec, Any]] = []
+        self._processing_provider: Any = None
 
     # -- declaration ------------------------------------------------------
 
@@ -187,12 +191,19 @@ class Plugin:
             if spec.menu:
                 self.iface.addPluginToMenu(spec.menu_path, widget)
 
+        # Processing provider registration
+        self._init_processing_provider()
+
         self.on_init(self.iface)
 
     def unload(self, iface: Any = None) -> None:
         """Remove everything :meth:`init_gui` added."""
         if iface is not None:
             self.iface = iface
+        
+        # Unregister processing provider
+        self._unload_processing_provider()
+        
         for spec, widget in reversed(self._created):
             if spec.toolbar and hasattr(self.iface, "removeToolBarIcon"):
                 self.iface.removeToolBarIcon(widget)
@@ -200,6 +211,48 @@ class Plugin:
                 self.iface.removePluginMenu(spec.menu_path, widget)
         self._created.clear()
         self.on_unload(self.iface)
+
+    def _init_processing_provider(self) -> None:
+        """Initialize processing provider if algorithms defined."""
+        algorithms = getattr(self, "algorithms", None) or getattr(self.__class__, "algorithms", [])
+        if not algorithms and not getattr(self, "has_processing_provider", False) and not getattr(self.__class__, "has_processing_provider", False):
+            return
+
+        if not algorithms:
+            # No algorithms but flag set — nothing to register, but keep honest
+            return
+
+        try:
+            from ..processing_bridge import build_provider, register_provider
+            provider_id = getattr(self, "provider_id", None) or getattr(self.__class__, "provider_id", "") or ""
+            if not provider_id:
+                # Derive from first algorithm id or plugin name
+                first = algorithms[0] if algorithms else None
+                if first:
+                    alg_id = getattr(first, "id", "") if not isinstance(first, type) else getattr(first, "id", "")
+                    if ":" in alg_id:
+                        provider_id = alg_id.split(":", 1)[0]
+                if not provider_id:
+                    provider_id = getattr(self, "name", "qgis_sdk").lower().replace(" ", "_")
+
+            provider_name = getattr(self, "provider_name", None) or getattr(self.__class__, "provider_name", "") or getattr(self, "name", "") or provider_id
+            icon = getattr(self, "icon", None) or getattr(self.__class__, "icon", "") or ""
+
+            provider = build_provider(algorithms, provider_id=provider_id, provider_name=provider_name, icon_path=icon)
+            if register_provider(provider):
+                self._processing_provider = provider
+        except Exception as e:
+            print(f"[Plugin] failed to register processing provider: {e}")
+
+    def _unload_processing_provider(self) -> None:
+        if self._processing_provider is None:
+            return
+        try:
+            from ..processing_bridge import unregister_provider
+            unregister_provider(self._processing_provider)
+            self._processing_provider = None
+        except Exception as e:
+            print(f"[Plugin] failed to unregister provider: {e}")
 
     # -- hooks ------------------------------------------------------------
 
@@ -219,7 +272,10 @@ class Plugin:
         """
         if self.action_factory is not None:
             return self.action_factory(spec, self._invoke(spec))
-        from ..qt import make_action  # imported lazily: needs Qt
+        try:
+            from .._qt import make_action  # type: ignore
+        except ImportError:
+            from ..qt import make_action  # type: ignore  # fallback shim
 
         return make_action(spec, self._invoke(spec), parent=self.iface)
 

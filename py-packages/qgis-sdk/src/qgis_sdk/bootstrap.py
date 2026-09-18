@@ -166,7 +166,8 @@ def install_from_pip(target_dir=None, auto_confirm=False) -> bool:
 
 def ask_user_to_install(parent=None) -> str:
     try:
-        from qgis.PyQt.QtWidgets import QMessageBox
+        from ._qt import QMessageBox
+
         msg = QMessageBox(parent)
         msg.setWindowTitle("qgis-sdk required")
         msg.setText(
@@ -175,9 +176,12 @@ def ask_user_to_install(parent=None) -> str:
             "Yes = auto-install via pip to plugin's extlibs (no admin needed)\n"
             "No = show manual instructions"
         )
-        msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel)
-        msg.setDefaultButton(QMessageBox.Yes)
-        ret = msg.exec()
+        try:
+            msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel)
+            msg.setDefaultButton(QMessageBox.Yes)
+        except Exception:
+            pass
+        ret = msg.exec() if hasattr(msg, "exec") else msg.exec_()
         if ret == QMessageBox.Yes:
             return "auto"
         elif ret == QMessageBox.No:
@@ -192,7 +196,8 @@ def ask_user_to_install(parent=None) -> str:
 
 def show_manual_instructions(parent=None):
     try:
-        from qgis.PyQt.QtWidgets import QMessageBox
+        from ._qt import QMessageBox
+
         QMessageBox.information(
             parent,
             "Install qgis-sdk",

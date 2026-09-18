@@ -12,6 +12,9 @@ _*
 !_core.pyi
 !_core.py
 !_native.py
+!_qt.py
+!_runtime.py
+!_vendor.py
 
 # git / github
 !.git*

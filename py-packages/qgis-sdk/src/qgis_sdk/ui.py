@@ -1,19 +1,7 @@
 """
 qgis_sdk.ui — UI helpers for QGIS plugins: dialogs via PyQt and WebEngine with HTML.
 
-This module provides Pythonic wrappers around QGIS/Qt UI patterns discovered via web research:
-- Qt Designer .ui loading via uic.loadUiType (recommended over pyuic5) [pyqgis.com]
-- QDialog with layouts, promoted widgets, QSettings persistence, QgsTaskManager
-- QWebEngineView with HTML/CSS/JS and QWebChannel bridge (Python ↔ JS)
-
-Supports any modern frontend stack inside QWebEngineView (Chromium):
-- Vanilla JS + Leaflet/MapLibre (scaffold default)
-- React 18 (hook useQgisBridge, Babel CDN or Vite build -> web/dist)
-- Vue 3 Composition API (ref/onMounted, Vite build)
-- Web Components (Shadow DOM, customElements, no build step)
-
-The Rust core (qgis_sdk._core) accelerates validation and scaffolding at native speed,
-but all UI code falls back to pure Python so tests run without QGIS/Qt.
+This module now uses qgis_sdk._qt as the single Qt funnel (PyQt6/PySide6 support).
 """
 
 from __future__ import annotations
@@ -24,52 +12,37 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, List, Optional, Tuple, Union
 
-# ── Lazy Qt imports (no import at module scope — keeps SDK testable without QGIS) ──
+from ._qt import (
+    get_binding,
+    get_delete_on_close,
+    get_window_modality,
+    _get_qt_modules,
+    _require_qt as _qt_require_qt,
+    _require_webengine as _qt_require_webengine,
+    make_dialog as _qt_make_dialog,
+    make_web_view as _qt_make_web_view,
+)
+
+# ── Lazy Qt imports via _qt funnel ───────────────────────────────────────────
 
 def _require_qt():
-    """Try to import Qt, return (QtWidgets, uic, QWebEngineView, QWebChannel) or raise with helpful message."""
+    """Try to import Qt via _qt funnel, return (QtWidgets, uic, Qt, QWebEngineView, QWebChannel)."""
     try:
-        from qgis.PyQt import QtWidgets, uic  # type: ignore
-        from qgis.PyQt.QtCore import Qt  # type: ignore
-        return QtWidgets, uic, Qt, None, None
+        return _qt_require_qt()
     except ImportError as exc:
-        # Try PyQt directly
-        try:
-            from PyQt5 import QtWidgets, uic  # type: ignore
-            from PyQt5.QtCore import Qt  # type: ignore
-            return QtWidgets, uic, Qt, None, None
-        except ImportError:
-            try:
-                from PyQt6 import QtWidgets, uic  # type: ignore
-                from PyQt6.QtCore import Qt  # type: ignore
-                return QtWidgets, uic, Qt, None, None
-            except ImportError as exc2:
-                from .runtime import PyQgisImportError
-                raise PyQgisImportError(
-                    f"Qt not available: {exc2}. Install QGIS or PyQt5/6 to use UI dialogs."
-                ) from exc2
+        from .runtime import PyQgisImportError
+        raise PyQgisImportError(
+            f"Qt not available: {exc}. Install QGIS or PyQt6/PySide6."
+        ) from exc
 
 def _require_webengine():
-    """Import QWebEngineView and QWebChannel, or raise."""
     try:
-        from qgis.PyQt.QtWebEngineWidgets import QWebEngineView  # type: ignore
-        from qgis.PyQt.QtWebChannel import QWebChannel  # type: ignore
-        return QWebEngineView, QWebChannel
-    except ImportError:
-        try:
-            from PyQt5.QtWebEngineWidgets import QWebEngineView  # type: ignore
-            from PyQt5.QtWebChannel import QWebChannel  # type: ignore
-            return QWebEngineView, QWebChannel
-        except ImportError:
-            try:
-                from PyQt6.QtWebEngineWidgets import QWebEngineView  # type: ignore
-                from PyQt6.QtWebChannel import QWebChannel  # type: ignore
-                return QWebEngineView, QWebChannel
-            except ImportError as exc:
-                from .runtime import PyQgisImportError
-                raise PyQgisImportError(
-                    f"QtWebEngine not available: {exc}. Install qt-webengine or PyQtWebEngine."
-                ) from exc
+        return _qt_require_webengine()
+    except ImportError as exc:
+        from .runtime import PyQgisImportError
+        raise PyQgisImportError(
+            f"QtWebEngine not available: {exc}. Install qt-webengine or PyQtWebEngine."
+        ) from exc
 
 # ── Declarative field definitions ───────────────────────────────────────────
 
@@ -142,21 +115,7 @@ class layout:
 # ── Dialog (declarative + .ui loading) ───────────────────────────────────────
 
 class Dialog:
-    """Declarative QDialog — builds from FieldSpec list or .ui file, with QSettings persistence.
-
-    Example:
-        dlg = Dialog(
-            title="My Tool",
-            layout=layout.vertical(
-                field.layer("input_layer", label="Input layer"),
-                field.spin("threshold", label="Threshold", default=0.5),
-                layout.buttons(Button.ok(), Button.cancel())
-            ),
-            persist=True  # saves to QSettings
-        )
-        if dlg.exec() == Dialog.Accepted:
-            print(dlg.get("input_layer"))
-    """
+    """Declarative QDialog — builds from FieldSpec list or .ui file, with QSettings persistence."""
 
     Accepted = 1
     Rejected = 0
@@ -198,7 +157,6 @@ class Dialog:
     def get(self, name: str) -> Any:
         """Get field value."""
         if self._qdialog is not None:
-            # Try to get from actual QDialog widgets
             try:
                 widget = getattr(self._qdialog, f"{name}_field", None) or getattr(self._qdialog, name, None)
                 if widget is not None:
@@ -229,43 +187,56 @@ class Dialog:
     def _exec_from_ui(self) -> int:
         try:
             QtWidgets, uic, Qt, _, _ = _require_qt()
-            FORM_CLASS, _ = uic.loadUiType(str(self.ui_file))
+            mods = _get_qt_modules()
+            binding = mods.get("binding", get_binding())
 
-            class UiDialog(QtWidgets.QDialog, FORM_CLASS):
-                def __init__(inner_self, parent=None):
-                    super().__init__(parent)
-                    inner_self.setupUi(inner_self)
-                    inner_self.setWindowTitle(self.title)
-                    inner_self.setAttribute(Qt.WA_DeleteOnClose)
-                    if self.width and self.height:
-                        inner_self.resize(self.width, self.height)
+            if binding == "pyside6":
+                # Use QUiLoader path via _qt.make_dialog
+                dlg = _qt_make_dialog(str(self.ui_file), parent=self.parent, title=self.title)
+                self._qdialog = dlg
+                if self.persist:
+                    self._restore_qsettings(dlg)
+                result = dlg.exec() if hasattr(dlg, "exec") else dlg.exec_()
+                if self.persist and result == QtWidgets.QDialog.Accepted:
+                    self._save_qsettings(dlg)
+                return result
+            else:
+                FORM_CLASS, _ = uic.loadUiType(str(self.ui_file))
 
-            # Parent handling for QGIS
-            parent = self.parent
-            if parent is None:
-                try:
-                    from qgis.utils import iface  # type: ignore
-                    if iface and hasattr(iface, "mainWindow"):
-                        parent = iface.mainWindow()
-                except Exception:
-                    parent = None
+                class UiDialog(QtWidgets.QDialog, FORM_CLASS):  # type: ignore
+                    def __init__(inner_self, parent=None):
+                        super().__init__(parent)
+                        inner_self.setupUi(inner_self)
+                        inner_self.setWindowTitle(self.title)
+                        wa = get_delete_on_close()
+                        if wa is not None:
+                            inner_self.setAttribute(wa)
+                        if self.width and self.height:
+                            inner_self.resize(self.width, self.height)
 
-            dlg = UiDialog(parent)
-            self._qdialog = dlg
+                parent = self.parent
+                if parent is None:
+                    try:
+                        from qgis.utils import iface  # type: ignore
+                        if iface and hasattr(iface, "mainWindow"):
+                            parent = iface.mainWindow()
+                    except Exception:
+                        parent = None
 
-            # Restore QSettings if persist
-            if self.persist:
-                self._restore_qsettings(dlg)
+                dlg = UiDialog(parent)
+                self._qdialog = dlg
 
-            result = dlg.exec()
-            
-            if self.persist and result == QtWidgets.QDialog.Accepted:
-                self._save_qsettings(dlg)
+                if self.persist:
+                    self._restore_qsettings(dlg)
 
-            return result
+                result = dlg.exec() if hasattr(dlg, "exec") else dlg.exec_()
+                
+                if self.persist and result == QtWidgets.QDialog.Accepted:
+                    self._save_qsettings(dlg)
+
+                return result
 
         except Exception as exc:
-            # Fallback for testing without Qt
             print(f"[Dialog fallback] {self.title} — {exc}")
             print(f"Fields: {self._values}")
             return Dialog.Accepted
@@ -277,11 +248,12 @@ class Dialog:
             dlg = QtWidgets.QDialog(self.parent)
             dlg.setWindowTitle(self.title)
             dlg.resize(self.width, self.height)
-            dlg.setAttribute(Qt.WA_DeleteOnClose)
+            wa = get_delete_on_close()
+            if wa is not None:
+                dlg.setAttribute(wa)
 
             layout = QtWidgets.QVBoxLayout(dlg)
 
-            # Create widgets from FieldSpec
             for item in self._flatten_layout(self.layout_spec):
                 if isinstance(item, FieldSpec):
                     row = QtWidgets.QHBoxLayout()
@@ -322,7 +294,6 @@ class Dialog:
                         btn = QtWidgets.QPushButton("Browse...")
                         row.addWidget(btn)
                     elif item.field_type == "layer":
-                        # Try QgsMapLayerComboBox, fallback to QComboBox
                         try:
                             from qgis.gui import QgsMapLayerComboBox  # type: ignore
                             widget = QgsMapLayerComboBox()
@@ -338,12 +309,10 @@ class Dialog:
 
                     layout.addLayout(row)
                 elif isinstance(item, str) and item in ("ok", "cancel", "apply"):
-                    pass  # handled by button box
+                    pass
                 elif isinstance(item, list):
-                    # Nested layout — skip for simplicity in fallback
                     pass
 
-            # Button box
             button_box = QtWidgets.QDialogButtonBox(
                 QtWidgets.QDialogButtonBox.Ok | QtWidgets.QDialogButtonBox.Cancel
             )
@@ -357,7 +326,7 @@ class Dialog:
             if self.persist:
                 self._restore_qsettings(dlg)
 
-            result = dlg.exec()
+            result = dlg.exec() if hasattr(dlg, "exec") else dlg.exec_()
 
             if self.persist and result == QtWidgets.QDialog.Accepted:
                 self._save_qsettings(dlg)
@@ -367,12 +336,15 @@ class Dialog:
         except Exception as exc:
             print(f"[Dialog fallback] {self.title} — {exc}")
             print(f"Fields: {self._values}")
-            # For testing, simulate user accepting with defaults
             return Dialog.Accepted
 
     def _restore_qsettings(self, dlg: Any) -> None:
         try:
-            from qgis.PyQt.QtCore import QSettings  # type: ignore
+            mods = _get_qt_modules()
+            QtCore = mods.get("QtCore") if mods else None
+            QSettings = getattr(QtCore, "QSettings", None) if QtCore else None
+            if QSettings is None:
+                return
             settings = QSettings()
             prefix = f"{self.title}/dialog"
             for name in self._values:
@@ -385,11 +357,14 @@ class Dialog:
 
     def _save_qsettings(self, dlg: Any) -> None:
         try:
-            from qgis.PyQt.QtCore import QSettings  # type: ignore
+            mods = _get_qt_modules()
+            QtCore = mods.get("QtCore") if mods else None
+            QSettings = getattr(QtCore, "QSettings", None) if QtCore else None
+            if QSettings is None:
+                return
             settings = QSettings()
             prefix = f"{self.title}/dialog"
             for name in self._values:
-                # Try to get actual widget value
                 actual = self.get(name)
                 settings.setValue(f"{prefix}/{name}", actual)
         except Exception:
@@ -398,20 +373,6 @@ class Dialog:
 # ── Decorator for dialog functions ──────────────────────────────────────────
 
 def dialog(title: str = "Dialog", width: int = 400, height: int = 300, persist: bool = False):
-    """Decorator to define a dialog from a function returning FieldSpec list.
-
-    Example:
-        @dialog(title="Settings", persist=True)
-        def settings_dialog():
-            return [
-                field.text("name", label="Name"),
-                field.spin("threshold", label="Threshold", default=0.5),
-            ]
-
-        dlg = settings_dialog()
-        if dlg.exec() == Dialog.Accepted:
-            print(dlg.get("name"))
-    """
     def decorator(func: Callable[[], List[Any]]):
         def wrapper(*args, **kwargs) -> Dialog:
             layout_spec = func(*args, **kwargs)
@@ -424,35 +385,7 @@ def dialog(title: str = "Dialog", width: int = 400, height: int = 300, persist: 
 # ── WebEngine with HTML ─────────────────────────────────────────────────────
 
 class WebDialog:
-    """QDialog + QWebEngineView + QWebChannel — HTML/CSS/JS dialog for QGIS plugins.
-
-    Example:
-        dlg = WebDialog(
-            title="Map View",
-            html="<html><body><h1>Hello</h1><div id='map'></div></body></html>",
-            width=800,
-            height=600,
-        )
-
-        @web_bridge(dlg)
-        class Bridge:
-            def get_layer(self):
-                return {"name": "buildings", "count": 100}
-
-        dlg.exec()
-
-    JS side (inside html):
-        <script src="qrc:///qtwebchannel/qwebchannel.js"></script>
-        <script>
-        var bridge = null;
-        new QWebChannel(qt.webChannelTransport, function(channel) {
-            bridge = channel.objects.bridge;
-            bridge.get_layer(function(info) {
-                document.getElementById('layer').innerText = info.name;
-            });
-        });
-        </script>
-    """
+    """QDialog + QWebEngineView + QWebChannel — HTML/CSS/JS dialog for QGIS plugins."""
 
     def __init__(
         self,
@@ -479,15 +412,12 @@ class WebDialog:
         if not path.exists():
             raise FileNotFoundError(f"HTML file not found: {html_file}")
         html = path.read_text(encoding="utf-8")
-        # baseUrl for relative resources
         return cls(title=title, html=html, width=width, height=height, parent=parent)
 
     def set_bridge(self, bridge_obj: Any) -> None:
-        """Set Python object exposed to JS via QWebChannel as 'bridge'."""
         self._bridge = bridge_obj
 
     def run_js(self, js_code: str, callback: Optional[Callable] = None) -> None:
-        """Run JavaScript in web view: Python → JS."""
         if self._web_view is not None:
             try:
                 if callback:
@@ -500,24 +430,53 @@ class WebDialog:
             print(f"[WebDialog fallback] Would run JS: {js_code[:100]}")
 
     def exec(self) -> int:
-        """Show dialog modally."""
         try:
             QtWidgets, _, Qt, _, _ = _require_qt()
             QWebEngineView, QWebChannel = _require_webengine()
 
-            from qgis.PyQt.QtCore import QObject, pyqtSlot, QVariant, QUrl  # type: ignore
+            mods = _get_qt_modules()
+            QtCore = mods.get("QtCore") if mods else None
+            if QtCore is None:
+                raise ImportError("QtCore not available")
 
-            # Create dialog
+            # Get QObject, Slot, QVariant via _qt funnel
+            try:
+                QObject = QtCore.QObject
+                QVariant = QtCore.QVariant
+                # Signal/Slot
+                if hasattr(QtCore, "pyqtSlot"):
+                    pyqtSlot = QtCore.pyqtSlot
+                elif hasattr(QtCore, "Slot"):
+                    pyqtSlot = QtCore.Slot
+                else:
+                    pyqtSlot = lambda *a, **k: (lambda f: f)
+            except AttributeError:
+                from qgis.PyQt.QtCore import QObject, pyqtSlot, QVariant  # type: ignore
+                # fallback, will fail if not available but we try
+
+            # Try to get QUrl
+            try:
+                QUrl = QtCore.QUrl
+            except AttributeError:
+                QUrl = None
+                if QUrl is None:
+                    try:
+                        from qgis.PyQt.QtCore import QUrl as QUrlFallback  # type: ignore
+                        QUrl = QUrlFallback
+                    except ImportError:
+                        pass
+
             dlg = QtWidgets.QDialog(self.parent)
             dlg.setWindowTitle(self.title)
             dlg.resize(self.width, self.height)
-            dlg.setAttribute(Qt.WA_DeleteOnClose)
+            wa = get_delete_on_close()
+            if wa is not None:
+                dlg.setAttribute(wa)
 
             vbox = QtWidgets.QVBoxLayout(dlg)
             web_view = QWebEngineView()
             vbox.addWidget(web_view)
 
-            # Button box
             button_box = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.Ok | QtWidgets.QDialogButtonBox.Cancel)
             button_box.accepted.connect(dlg.accept)
             button_box.rejected.connect(dlg.reject)
@@ -525,12 +484,8 @@ class WebDialog:
 
             dlg.setLayout(vbox)
 
-            # Setup QWebChannel if bridge provided
             if self._bridge is not None:
-                # Wrap bridge to ensure pyqtSlot decorators
-                # If bridge is already QObject, use directly, else wrap
                 if not isinstance(self._bridge, QObject):
-                    # Create dynamic QObject wrapper
                     bridge_obj = self._wrap_bridge(self._bridge, QObject, pyqtSlot, QVariant)
                 else:
                     bridge_obj = self._bridge
@@ -539,19 +494,18 @@ class WebDialog:
                 channel.registerObject("bridge", bridge_obj)
                 web_view.page().setWebChannel(channel)
 
-            # Load HTML
-            if self.url:
+            if self.url and QUrl is not None:
                 web_view.setUrl(QUrl(self.url))
             else:
-                # Ensure qwebchannel.js is available — Qt provides built-in at qrc:///
-                # If html doesn't include it, we could inject, but we assume user includes
-                # <script src="qrc:///qtwebchannel/qwebchannel.js"></script>
-                web_view.setHtml(self.html, QUrl.fromLocalFile(str(Path.cwd() / "index.html")))
+                if QUrl is not None:
+                    web_view.setHtml(self.html, QUrl.fromLocalFile(str(Path.cwd() / "index.html")))
+                else:
+                    web_view.setHtml(self.html)
 
             self._qdialog = dlg
             self._web_view = web_view
 
-            return dlg.exec()
+            return dlg.exec() if hasattr(dlg, "exec") else dlg.exec_()
 
         except Exception as exc:
             print(f"[WebDialog fallback] {self.title} — {exc}")
@@ -561,58 +515,35 @@ class WebDialog:
             return Dialog.Accepted
 
     def _wrap_bridge(self, bridge_obj: Any, QObject, pyqtSlot, QVariant):
-        """Wrap plain Python object into QObject with pyqtSlot methods."""
-        # For simplicity, if bridge_obj is already a class with methods, create QObject subclass
-        # that delegates to it and decorates methods as slots
-        
-        # If bridge_obj is a class instance with methods, we create a QObject that exposes them
-        # via pyqtSlot. For this fallback, we use a generic approach: expose methods that don't
-        # start with _ as slots returning QVariant.
-
         class BridgeWrapper(QObject):
             def __init__(self, inner):
                 super().__init__()
                 self._inner = inner
 
-        # Dynamically add slots for each public method
         for attr_name in dir(bridge_obj):
             if attr_name.startswith('_'):
                 continue
             attr = getattr(bridge_obj, attr_name)
             if callable(attr):
-                # Create slot wrapper
-                def make_slot(method):
-                    @pyqtSlot(result=QVariant)
-                    def slot_wrapper(self):
-                        try:
-                            result = method()
-                            # If result is dict/list, return as QVariant
-                            return result
-                        except Exception as e:
-                            print(f"Bridge method {method.__name__} failed: {e}")
-                            return None
-                    # For methods with args, need more complex handling — use generic QVariant slot
-                    @pyqtSlot(str, result=str)
-                    def slot_wrapper_str(self, arg):
-                        try:
-                            result = method(arg)
-                            return json.dumps(result) if isinstance(result, (dict, list)) else str(result)
-                        except Exception as e:
-                            return json.dumps({"error": str(e)})
-                    return slot_wrapper
-
-                # We add both versions — simple heuristic: try to detect if method expects args
                 import inspect
                 sig = inspect.signature(attr)
                 if len(sig.parameters) == 0:
+                    def make_slot(method):
+                        @pyqtSlot(result=QVariant)
+                        def slot_wrapper(self):
+                            try:
+                                result = method()
+                                return result
+                            except Exception as e:
+                                print(f"Bridge method {method.__name__} failed: {e}")
+                                return None
+                        return slot_wrapper
                     setattr(BridgeWrapper, attr_name, make_slot(attr))
                 else:
-                    # For methods with args, create a slot that takes string and returns string (JSON)
                     def make_slot_with_arg(method):
                         @pyqtSlot(str, result=str)
                         def slot_wrapper(self, arg):
                             try:
-                                # Try to parse arg as JSON, else pass as string
                                 try:
                                     parsed = json.loads(arg)
                                     result = method(parsed)
@@ -631,18 +562,6 @@ class WebDialog:
 # ── web_bridge decorator ────────────────────────────────────────────────────
 
 def web_bridge(web_dialog: WebDialog):
-    """Decorator to register a bridge class for WebDialog.
-
-    Example:
-        dlg = WebDialog(html="...")
-
-        @web_bridge(dlg)
-        class Bridge:
-            def get_data(self):
-                return {"key": "value"}
-
-        dlg.exec()
-    """
     def decorator(cls):
         instance = cls()
         web_dialog.set_bridge(instance)
@@ -652,53 +571,12 @@ def web_bridge(web_dialog: WebDialog):
 # ── Convenience helpers ─────────────────────────────────────────────────────
 
 def make_dialog(ui_file: Union[str, Path], parent: Any = None, title: Optional[str] = None) -> Any:
-    """Load .ui file and return QDialog instance (Rust-accelerated validation)."""
-    ui_path = Path(ui_file)
-    if not ui_path.exists():
-        raise FileNotFoundError(f"UI file not found: {ui_file}")
-
-    # Validate via Rust core if available
-    try:
-        from . import _core as core  # type: ignore
-        if hasattr(core, "validate_plugin_structure"):
-            errors = core.validate_plugin_structure(str(ui_path.parent))
-            if errors:
-                print(f"Validation warnings: {errors}")
-    except ImportError:
-        pass
-
-    QtWidgets, uic, Qt, _, _ = _require_qt()
-    FORM_CLASS, _ = uic.loadUiType(str(ui_path))
-
-    class UiDialog(QtWidgets.QDialog, FORM_CLASS):
-        def __init__(self, parent=None):
-            super().__init__(parent)
-            self.setupUi(self)
-            if title:
-                self.setWindowTitle(title)
-            self.setAttribute(Qt.WA_DeleteOnClose)
-
-    # Parent handling
-    if parent is None:
-        try:
-            from qgis.utils import iface  # type: ignore
-            if iface and hasattr(iface, "mainWindow"):
-                parent = iface.mainWindow()
-        except Exception:
-            parent = None
-
-    return UiDialog(parent)
+    """Load .ui file and return QDialog instance (uses _qt funnel)."""
+    return _qt_make_dialog(ui_file, parent=parent, title=title)
 
 def make_web_view(html: str = "", url: Optional[str] = None, parent: Any = None) -> Any:
-    """Create QWebEngineView with HTML or URL."""
-    QWebEngineView, _ = _require_webengine()
-    view = QWebEngineView(parent)
-    if url:
-        from qgis.PyQt.QtCore import QUrl  # type: ignore
-        view.setUrl(QUrl(url))
-    else:
-        view.setHtml(html)
-    return view
+    """Create QWebEngineView with HTML or URL (uses _qt funnel)."""
+    return _qt_make_web_view(html, url=url, parent=parent)
 
 __all__ = [
     "Dialog",

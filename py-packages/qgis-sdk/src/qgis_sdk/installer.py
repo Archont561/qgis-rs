@@ -99,8 +99,7 @@ class Installer:
     def show_dialog(self, parent=None) -> bool:
         """Show QMessageBox with progress — for QGIS."""
         try:
-            from qgis.PyQt.QtWidgets import QMessageBox, QProgressDialog
-            from qgis.PyQt.QtCore import Qt
+            from ._qt import QMessageBox, QProgressDialog, get_window_modality
 
             if self.is_installed():
                 QMessageBox.information(parent, "qgis-sdk", "qgis-sdk is already installed.")
@@ -115,7 +114,9 @@ class Installer:
 
             # Show progress dialog while installing
             progress = QProgressDialog("Installing qgis-sdk...", "Cancel", 0, 0, parent)
-            progress.setWindowModality(Qt.WindowModal)
+            modality = get_window_modality()
+            if modality is not None:
+                progress.setWindowModality(modality)
             progress.setMinimumDuration(0)
             progress.show()
 

@@ -1,11 +1,15 @@
 """Processing algorithms: declarative parameters and outputs.
 
+Now with extended param/output kinds and tags/help_url/flags support.
+
     from qgis_sdk import Algorithm, parameter, output
 
     class BufferAdvanced(Algorithm):
         id = "my_plugin:buffer_advanced"
         name = "Advanced Buffer"
         group = "Vector geometry"
+        tags = ["buffer", "geometry"]
+        help_url = "https://example.com/docs"
 
         input_layer = parameter.source("Input layer")
         distance = parameter.distance("Buffer distance", default=10.0)
@@ -23,8 +27,8 @@ QGIS. Only :meth:`Algorithm.to_qgis` touches ``processing``.
 from __future__ import annotations
 
 from collections.abc import Iterator
-from dataclasses import dataclass, field
-from typing import Any, ClassVar
+from dataclasses import dataclass
+from typing import Any, ClassVar, Dict, List
 
 __all__ = ["Algorithm", "OutputSpec", "ParamSpec", "output", "parameter"]
 
@@ -40,6 +44,10 @@ class ParamSpec:
     options: tuple[str, ...] = ()
     minimum: float | None = None
     maximum: float | None = None
+    # Extended
+    metadata: Dict[str, Any] | None = None
+    advanced: bool = False
+    default_expression: str | None = None
 
     def validate(self, value: Any) -> Any:
         """Check ``value`` against this spec and return it."""
@@ -71,8 +79,8 @@ class parameter:
     """Namespace of parameter factories, mirroring QGIS parameter types."""
 
     @staticmethod
-    def source(description: str, *, required: bool = True) -> ParamSpec:
-        return ParamSpec("source", description, required=required)
+    def source(description: str, *, required: bool = True, advanced: bool = False) -> ParamSpec:
+        return ParamSpec("source", description, required=required, advanced=advanced)
 
     @staticmethod
     def distance(
@@ -81,42 +89,116 @@ class parameter:
         default: float | None = None,
         minimum: float | None = 0.0,
         maximum: float | None = None,
+        advanced: bool = False,
     ) -> ParamSpec:
         return ParamSpec(
             "distance", description, required=default is None, default=default,
-            minimum=minimum, maximum=maximum,
+            minimum=minimum, maximum=maximum, advanced=advanced,
         )
 
     @staticmethod
-    def boolean(description: str, *, default: bool = False) -> ParamSpec:
-        return ParamSpec("boolean", description, required=False, default=default)
+    def boolean(description: str, *, default: bool = False, advanced: bool = False) -> ParamSpec:
+        return ParamSpec("boolean", description, required=False, default=default, advanced=advanced)
 
     @staticmethod
     def enum(
-        description: str, options: list[str], *, default: str | None = None
+        description: str, options: list[str], *, default: str | None = None, advanced: bool = False
     ) -> ParamSpec:
         return ParamSpec(
             "enum", description, required=default is None, default=default,
-            options=tuple(options),
+            options=tuple(options), advanced=advanced,
         )
 
     @staticmethod
-    def string(description: str, *, default: str | None = None) -> ParamSpec:
-        return ParamSpec("string", description, required=default is None, default=default)
+    def string(description: str, *, default: str | None = None, advanced: bool = False) -> ParamSpec:
+        return ParamSpec("string", description, required=default is None, default=default, advanced=advanced)
 
     @staticmethod
     def number(
         description: str, *, default: float | None = None,
-        minimum: float | None = None, maximum: float | None = None,
+        minimum: float | None = None, maximum: float | None = None, advanced: bool = False,
     ) -> ParamSpec:
         return ParamSpec(
             "number", description, required=default is None, default=default,
-            minimum=minimum, maximum=maximum,
+            minimum=minimum, maximum=maximum, advanced=advanced,
         )
 
     @staticmethod
-    def crs(description: str, *, default: str = "EPSG:4326") -> ParamSpec:
-        return ParamSpec("crs", description, required=False, default=default)
+    def crs(description: str, *, default: str = "EPSG:4326", advanced: bool = False) -> ParamSpec:
+        return ParamSpec("crs", description, required=False, default=default, advanced=advanced)
+
+    # Extended types
+    @staticmethod
+    def layer(description: str, *, required: bool = True, advanced: bool = False) -> ParamSpec:
+        return ParamSpec("layer", description, required=required, advanced=advanced)
+
+    @staticmethod
+    def vector(description: str, *, required: bool = True, advanced: bool = False) -> ParamSpec:
+        return ParamSpec("vector", description, required=required, advanced=advanced)
+
+    @staticmethod
+    def raster(description: str, *, required: bool = True, advanced: bool = False) -> ParamSpec:
+        return ParamSpec("raster", description, required=required, advanced=advanced)
+
+    @staticmethod
+    def field(description: str, *, parent: str = "", required: bool = True, advanced: bool = False) -> ParamSpec:
+        return ParamSpec("field", description, required=required, advanced=advanced, metadata={"parent": parent})
+
+    @staticmethod
+    def multiple_layer(description: str, *, required: bool = True, advanced: bool = False) -> ParamSpec:
+        return ParamSpec("multiple_layer", description, required=required, advanced=advanced)
+
+    @staticmethod
+    def expression(description: str, *, default: str = "", parent: str = "", advanced: bool = False) -> ParamSpec:
+        return ParamSpec("expression", description, required=False, default=default, advanced=advanced, metadata={"parent": parent})
+
+    @staticmethod
+    def extent(description: str, *, required: bool = True, advanced: bool = False) -> ParamSpec:
+        return ParamSpec("extent", description, required=required, advanced=advanced)
+
+    @staticmethod
+    def point(description: str, *, required: bool = True, advanced: bool = False) -> ParamSpec:
+        return ParamSpec("point", description, required=required, advanced=advanced)
+
+    @staticmethod
+    def geometry(description: str, *, required: bool = True, advanced: bool = False) -> ParamSpec:
+        return ParamSpec("geometry", description, required=required, advanced=advanced)
+
+    @staticmethod
+    def range(description: str, *, default: tuple = (0, 100), advanced: bool = False) -> ParamSpec:
+        return ParamSpec("range", description, required=False, default=default, advanced=advanced)
+
+    @staticmethod
+    def matrix(description: str, *, default: list = None, advanced: bool = False) -> ParamSpec:
+        return ParamSpec("matrix", description, required=False, default=default or [], advanced=advanced)
+
+    @staticmethod
+    def file(description: str, *, required: bool = True, extension: str = "", advanced: bool = False) -> ParamSpec:
+        return ParamSpec("file", description, required=required, advanced=advanced, metadata={"extension": extension})
+
+    @staticmethod
+    def folder(description: str, *, required: bool = True, advanced: bool = False) -> ParamSpec:
+        return ParamSpec("folder", description, required=required, advanced=advanced)
+
+    @staticmethod
+    def authcfg(description: str, *, required: bool = False, advanced: bool = False) -> ParamSpec:
+        return ParamSpec("authcfg", description, required=required, advanced=advanced)
+
+    @staticmethod
+    def color(description: str, *, default: str = "#000000", advanced: bool = False) -> ParamSpec:
+        return ParamSpec("color", description, required=False, default=default, advanced=advanced)
+
+    @staticmethod
+    def layout(description: str, *, required: bool = True, advanced: bool = False) -> ParamSpec:
+        return ParamSpec("layout", description, required=required, advanced=advanced)
+
+    @staticmethod
+    def map_theme(description: str, *, required: bool = True, advanced: bool = False) -> ParamSpec:
+        return ParamSpec("map_theme", description, required=required, advanced=advanced)
+
+    @staticmethod
+    def projection(description: str, *, default: str = "EPSG:4326", advanced: bool = False) -> ParamSpec:
+        return ParamSpec("projection", description, required=False, default=default, advanced=advanced)
 
 
 class output:
@@ -141,7 +223,12 @@ class Algorithm:
     id: ClassVar[str] = ""
     name: ClassVar[str] = ""
     group: ClassVar[str] = ""
+    group_id: ClassVar[str] = ""
     description: ClassVar[str] = ""
+    tags: ClassVar[List[str]] = []
+    help_url: ClassVar[str] = ""
+    flags: ClassVar[Dict[str, bool]] = {}
+    provider_id: ClassVar[str] = ""
 
     def __init_subclass__(cls, **kwargs: Any) -> None:
         super().__init_subclass__(**kwargs)
@@ -188,10 +275,7 @@ class Algorithm:
     # -- QGIS bridge ------------------------------------------------------
 
     def to_qgis(self) -> Any:
-        """Build the ``QgsProcessingAlgorithm`` this class describes.
-
-        Imported lazily: this is the only place the SDK needs Processing.
-        """
+        """Build the ``QgsProcessingAlgorithm`` this class describes."""
         from .processing_bridge import build_algorithm  # lazy: needs QGIS
 
         return build_algorithm(self)

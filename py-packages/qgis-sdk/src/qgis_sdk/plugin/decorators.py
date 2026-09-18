@@ -43,6 +43,9 @@ def plugin(
     deprecated: bool = False,
     has_processing_provider: bool = False,
     server: bool = False,
+    icon: str = None,
+    changelog: str = None,
+    plugin_dependencies: str = None,
     permissions: list = None,
     **extra,
 ):
@@ -75,6 +78,9 @@ def plugin(
             "deprecated": deprecated or getattr(cls, "deprecated", False),
             "has_processing_provider": has_processing_provider or getattr(cls, "has_processing_provider", False),
             "server": server or getattr(cls, "server", False),
+            "icon": icon or getattr(cls, "icon", None),
+            "changelog": changelog or getattr(cls, "changelog", None),
+            "plugin_dependencies": plugin_dependencies or getattr(cls, "plugin_dependencies", None),
             "permissions": permissions or [],
             **extra,
         }

@@ -31,6 +31,7 @@ qgis-cli    = { path = "crates/qgis-cli" }
 qgis-py     = { path = "crates/qgis-py" }
 qgis-sdk    = { path = "crates/qgis-sdk" }
 qgis-node   = { path = "crates/qgis-node" }
+qgis-styles = { path = "crates/qgis-styles" }
 
 # ── python / node ───────────────────────────────────────────────────────────
 pyo3 = { version = "0.22" }

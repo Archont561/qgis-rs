@@ -13,10 +13,26 @@ Now with Rust-native CLI and acceleration:
 from __future__ import annotations
 
 from .algorithm import Algorithm, OutputSpec, ParamSpec, output, parameter
-from .metadata import METADATA_FIELDS, render_metadata, write_metadata
+from .metadata import METADATA_FIELDS, VALID_CATEGORIES, render_metadata, write_metadata, validate_metadata
 from .plugin import ActionSpec, Plugin, action, class_factory, menu, toolbar, plugin, setting, registry, task as plugin_task
 from .plugin import task as task_decorator  # declarative @task
 from .runtime import PyQgisImportError, expected_pythonpath, qgis_core, qgis_gui
+
+# Qt funnel — PyQt6/PySide6 support
+try:
+    from . import _qt as _qt_module  # noqa: F401
+    HAS_QT = True
+except ImportError:
+    HAS_QT = False
+
+# Styles IR — pure Python fallback, Rust when available
+try:
+    from . import styles as _styles_module  # noqa: F401
+    from .styles import StyleSheet, LayerStyle, Renderer as StyleRenderer, Symbol as StyleSymbol, Rgba
+    HAS_STYLES = True
+except ImportError:
+    StyleSheet = LayerStyle = StyleRenderer = StyleSymbol = Rgba = None  # type: ignore
+    HAS_STYLES = False
 
 # New bridge API
 try:
@@ -225,6 +241,7 @@ except ImportError:
 
 __all__ = [
     "METADATA_FIELDS",
+    "VALID_CATEGORIES",
     "ActionSpec",
     "Algorithm",
     "OutputSpec",
@@ -239,7 +256,15 @@ __all__ = [
     "HAS_BRIDGE",
     "HAS_NETWORK",
     "HAS_TASKS",
+    "HAS_QT",
+    "HAS_STYLES",
     "RUST_VERSION",
+    "StyleSheet",
+    "LayerStyle",
+    "StyleRenderer",
+    "StyleSymbol",
+    "Rgba",
+    "validate_metadata",
     "action",
     "class_factory",
     "expected_pythonpath",

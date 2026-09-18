@@ -1,49 +1,7 @@
 """
 qgis_sdk.network — Pythonic wrapper around QgsNetworkAccessManager and QgsNetworkContentFetcher.
 
-QGIS provides QgsNetworkAccessManager.instance() which respects QGIS proxy,
-cache, and authentication infrastructure. Many plugins incorrectly use
-httplib2/requests and bypass QGIS settings. This module provides a wrapper
-that uses QGIS when available and falls back to urllib for testing.
-
-Now with requests-like API and Session support:
-
-    import qgis_sdk.network as requests  # drop-in for simple cases
-    # or
-    from qgis_sdk.network import get, post, Session, fetch_json
-
-    response = get("https://example.com/api", params={"q": "test"})
-    print(response.status_code, response.text)
-    print(response.json())
-
-    # Session — keeps headers, auth_cfg, timeout
-    session = Session(auth_cfg="my_auth", headers={"User-Agent": "MyPlugin/1.0"})
-    response = session.get("https://example.com/secure")
-    response.raise_for_status()
-
-    # QGIS auth support
-    from qgis_sdk.network import NetworkManager, fetch_json
-    data = fetch_json("https://example.com/secure", auth_cfg="my_auth_id")
-
-    # Download with progress
-    from qgis_sdk.network import download
-    download("https://example.com/file.zip", "/tmp/file.zip",
-             progress_callback=lambda p: print(f"{p}%"))
-
-    # Async via ContentFetcher
-    from qgis_sdk.network import ContentFetcher
-    fetcher = ContentFetcher()
-    fetcher.fetch("https://example.com/data.json")
-    fetcher.finished.connect(lambda: print(fetcher.content_as_string()))
-
-Features:
-- requests-like API: get/post/put/delete/patch/head/options/request, Session, Response
-- Blocking and async requests
-- Auth config support (QGIS authcfg)
-- Proxy and cache handling via QgsNetworkAccessManager
-- Content fetching via QgsNetworkContentFetcher
-- Download with progress
-- Fallback to urllib for unit tests without QGIS
+Now uses qgis_sdk._qt funnel for PyQt6/PySide6 support, and run_loop() instead of exec_().
 """
 
 from __future__ import annotations
@@ -59,8 +17,6 @@ from urllib.parse import urlencode, urlparse, parse_qs, urlunparse
 # ── Exceptions (requests-like) ──────────────────────────────────────────────
 
 class RequestException(Exception):
-    """Base exception for network errors — like requests.exceptions.RequestException."""
-
     def __init__(self, message: str, response: Optional["NetworkResponse"] = None, request: Optional[Any] = None):
         super().__init__(message)
         self.response = response
@@ -68,31 +24,28 @@ class RequestException(Exception):
 
 
 class HTTPError(RequestException):
-    """HTTP error — like requests.exceptions.HTTPError."""
+    pass
 
 
 class ConnectionError(RequestException):
-    """Connection error — like requests.exceptions.ConnectionError."""
+    pass
 
 
 class Timeout(RequestException):
-    """Timeout — like requests.exceptions.Timeout."""
+    pass
 
 
 class TooManyRedirects(RequestException):
-    """Too many redirects."""
+    pass
 
 
-# Backwards compat alias
 NetworkError = RequestException
 
 
-# ── Response (requests-like) ────────────────────────────────────────────────
+# ── Response ────────────────────────────────────────────────────────────────
 
 @dataclass
 class NetworkResponse:
-    """Response from network request — requests-like, works with and without QGIS."""
-
     url: str
     status_code: int = 200
     content: bytes = b""
@@ -109,11 +62,6 @@ class NetworkResponse:
     def __post_init__(self):
         if self.reason is None:
             self.reason = _reason_for_status(self.status_code)
-        # Normalize headers to lower for lookup but keep original case dict for display
-        # We store lowercased for simplicity, like requests does case-insensitive
-        if self.headers:
-            # keep as is, but also support case-insensitive get via property
-            pass
 
     @property
     def ok(self) -> bool:
@@ -132,7 +80,6 @@ class NetworkResponse:
 
     @property
     def apparent_encoding(self) -> str:
-        # Simplified — could use chardet if available
         return "utf-8"
 
     def json(self) -> Any:
@@ -175,24 +122,11 @@ class NetworkResponse:
 
 def _reason_for_status(code: int) -> str:
     reasons = {
-        200: "OK",
-        201: "Created",
-        204: "No Content",
-        301: "Moved Permanently",
-        302: "Found",
-        304: "Not Modified",
-        400: "Bad Request",
-        401: "Unauthorized",
-        403: "Forbidden",
-        404: "Not Found",
-        405: "Method Not Allowed",
-        408: "Request Timeout",
-        409: "Conflict",
-        429: "Too Many Requests",
-        500: "Internal Server Error",
-        502: "Bad Gateway",
-        503: "Service Unavailable",
-        504: "Gateway Timeout",
+        200: "OK", 201: "Created", 204: "No Content",
+        301: "Moved Permanently", 302: "Found", 304: "Not Modified",
+        400: "Bad Request", 401: "Unauthorized", 403: "Forbidden", 404: "Not Found",
+        405: "Method Not Allowed", 408: "Request Timeout", 409: "Conflict", 429: "Too Many Requests",
+        500: "Internal Server Error", 502: "Bad Gateway", 503: "Service Unavailable", 504: "Gateway Timeout",
     }
     return reasons.get(code, "")
 
@@ -202,7 +136,6 @@ def _reason_for_status(code: int) -> str:
 def _get_qgis_network_manager():
     try:
         from qgis.core import QgsNetworkAccessManager  # type: ignore
-
         return QgsNetworkAccessManager.instance()
     except ImportError:
         return None
@@ -211,7 +144,6 @@ def _get_qgis_network_manager():
 def _get_qgis_fetcher():
     try:
         from qgis.core import QgsNetworkContentFetcher  # type: ignore
-
         return QgsNetworkContentFetcher
     except ImportError:
         return None
@@ -220,7 +152,6 @@ def _get_qgis_fetcher():
 def _get_qgis_fetcher_task():
     try:
         from qgis.core import QgsNetworkContentFetcherTask  # type: ignore
-
         return QgsNetworkContentFetcherTask
     except ImportError:
         return None
@@ -231,15 +162,12 @@ def _get_qgis_fetcher_task():
 def _build_url(url: str, params: Optional[Dict[str, Any]] = None) -> str:
     if not params:
         return url
-    # If url already has query, merge
     parsed = urlparse(url)
     existing = parse_qs(parsed.query)
-    # Flatten existing (parse_qs gives list values)
     merged: Dict[str, Any] = {}
     for k, v in existing.items():
         merged[k] = v[0] if len(v) == 1 else v
     merged.update(params)
-    # Encode
     query = urlencode(merged, doseq=True)
     return urlunparse(parsed._replace(query=query))
 
@@ -267,8 +195,6 @@ def _prepare_data(
     return req_data, headers
 
 
-# ── Fallback implementation using urllib ────────────────────────────────────
-
 def _fallback_request(
     url: str,
     method: str = "GET",
@@ -278,10 +204,8 @@ def _fallback_request(
     params: Optional[Dict[str, Any]] = None,
     timeout: int = 15000,
 ) -> NetworkResponse:
-    """Fallback request using urllib — for testing without QGIS."""
     import urllib.request
     import urllib.error
-    import urllib.parse
 
     url = _build_url(url, params)
     req_data, headers = _prepare_data(data, json_data, headers)
@@ -312,31 +236,31 @@ def _fallback_request(
         )
     except Exception as e:
         elapsed = time.time() - start
-        # Map timeout
-        if "timed out" in str(e).lower() or "timeout" in str(e).lower():
-            return NetworkResponse(
-                url=url, status_code=0, content=b"", error=str(e), error_code=-1, elapsed=elapsed
-            )
         return NetworkResponse(url=url, status_code=0, content=b"", error=str(e), error_code=-1, elapsed=elapsed)
+
+
+# ── Qt helpers via _qt funnel ───────────────────────────────────────────────
+
+def _get_qt_for_network():
+    """Get Qt classes via _qt funnel, handling both PyQt6 and PySide6."""
+    try:
+        from ._qt import QUrl, QEventLoop, QTimer, QNetworkRequest, QNetworkAccessManager, QNetworkReply, run_loop
+        return {
+            "QUrl": QUrl,
+            "QEventLoop": QEventLoop,
+            "QTimer": QTimer,
+            "QNetworkRequest": QNetworkRequest,
+            "QNetworkAccessManager": QNetworkAccessManager,
+            "QNetworkReply": QNetworkReply,
+            "run_loop": run_loop,
+        }
+    except ImportError:
+        return None
 
 
 # ── ContentFetcher ──────────────────────────────────────────────────────────
 
 class ContentFetcher:
-    """
-    Wrapper around QgsNetworkContentFetcher — fetches content async with signals.
-
-    When QGIS not available, falls back to sync fetch.
-
-    Example:
-        fetcher = ContentFetcher()
-        fetcher.fetch("https://example.com/data.json")
-        fetcher.finished.connect(lambda: print(fetcher.content_as_string()))
-        # or blocking
-        fetcher.fetch_blocking("https://example.com/data.json")
-        print(fetcher.content_as_string())
-    """
-
     def __init__(self, auth_cfg: Optional[str] = None):
         self.auth_cfg = auth_cfg
         self._qgis_fetcher = None
@@ -360,12 +284,14 @@ class ContentFetcher:
                 pass
 
     def fetch(self, url: str, params: Optional[Dict[str, Any]] = None):
-        """Start async fetch (non-blocking)."""
         url = _build_url(url, params)
         if self._qgis_fetcher:
             try:
-                from qgis.PyQt.QtCore import QUrl  # type: ignore
-
+                qt = _get_qt_for_network()
+                QUrl = qt["QUrl"] if qt else None
+                if QUrl is None:
+                    from qgis.PyQt.QtCore import QUrl as QUrlFallback  # type: ignore
+                    QUrl = QUrlFallback
                 self._qgis_fetcher.fetchContent(QUrl(url))
                 return
             except Exception:
@@ -375,12 +301,20 @@ class ContentFetcher:
         self._on_qgis_finished()
 
     def fetch_blocking(self, url: str, params: Optional[Dict[str, Any]] = None, timeout: int = 15000) -> NetworkResponse:
-        """Blocking fetch — uses QEventLoop when QGIS available, else urllib."""
         url = _build_url(url, params)
         if self._qgis_fetcher:
             try:
-                from qgis.PyQt.QtCore import QUrl, QEventLoop, QTimer  # type: ignore
-                from qgis.PyQt.QtNetwork import QNetworkRequest  # type: ignore
+                qt = _get_qt_for_network()
+                if qt:
+                    QUrl = qt["QUrl"]
+                    QEventLoop = qt["QEventLoop"]
+                    QTimer = qt["QTimer"]
+                    QNetworkRequest = qt["QNetworkRequest"]
+                    run_loop = qt["run_loop"]
+                else:
+                    from qgis.PyQt.QtCore import QUrl, QEventLoop, QTimer  # type: ignore
+                    from qgis.PyQt.QtNetwork import QNetworkRequest  # type: ignore
+                    from qgis_sdk._qt import run_loop  # type: ignore
 
                 loop = QEventLoop()
                 self._qgis_fetcher.finished.connect(loop.quit)
@@ -388,7 +322,7 @@ class ContentFetcher:
                     QTimer.singleShot(timeout, loop.quit)
 
                 self._qgis_fetcher.fetchContent(QUrl(url))
-                loop.exec_()
+                run_loop(loop)
 
                 content = b""
                 try:
@@ -406,8 +340,6 @@ class ContentFetcher:
                     if hasattr(self._qgis_fetcher, "reply"):
                         reply = self._qgis_fetcher.reply()
                         if reply and hasattr(reply, "attribute"):
-                            from qgis.PyQt.QtNetwork import QNetworkRequest  # type: ignore
-
                             code = reply.attribute(QNetworkRequest.HttpStatusCodeAttribute)
                             if code:
                                 status = int(code)
@@ -467,27 +399,9 @@ class ContentFetcher:
         return _MockSignal(self)
 
 
-# ── Session (requests-like) ─────────────────────────────────────────────────
+# ── Session ─────────────────────────────────────────────────────────────────
 
 class Session:
-    """
-    Requests-like Session that respects QGIS proxy/cache/auth.
-
-    Example:
-        session = Session(auth_cfg="my_auth", headers={"User-Agent": "MyPlugin/1.0"})
-        response = session.get("https://example.com/api", params={"q": "test"})
-        response.raise_for_status()
-        print(response.json())
-
-        # As context manager
-        with Session() as s:
-            r = s.get("https://example.com")
-
-        # Download
-        session.download("https://example.com/file.zip", "/tmp/file.zip",
-                         progress_callback=lambda p: print(f"{p}%"))
-    """
-
     def __init__(
         self,
         auth_cfg: Optional[str] = None,
@@ -502,7 +416,6 @@ class Session:
         self.params: Dict[str, Any] = dict(params or {})
         self.verify = verify
         self._qgis_nam = _get_qgis_network_manager()
-        # For cookie handling etc — simplified
         self.cookies: Dict[str, str] = {}
 
     def __enter__(self):
@@ -513,21 +426,6 @@ class Session:
 
     def close(self):
         pass
-
-    def _merge_kwargs(self, kwargs: Dict[str, Any]) -> Dict[str, Any]:
-        # Merge session defaults with request kwargs
-        headers = dict(self.headers)
-        headers.update(kwargs.get("headers") or {})
-
-        params = dict(self.params)
-        params.update(kwargs.get("params") or {})
-
-        merged = dict(kwargs)
-        merged["headers"] = headers
-        merged["params"] = params
-        merged.setdefault("auth_cfg", self.auth_cfg)
-        merged.setdefault("timeout", self.timeout)
-        return merged
 
     def request(
         self,
@@ -542,7 +440,6 @@ class Session:
         blocking: bool = True,
         **kwargs,
     ) -> NetworkResponse:
-        # Merge session defaults
         all_headers = dict(self.headers)
         if headers:
             all_headers.update(headers)
@@ -557,10 +454,7 @@ class Session:
         timeout = timeout if timeout is not None else self.timeout
         auth_cfg = auth_cfg or self.auth_cfg
 
-        # Use NetworkManager for actual request to share QGIS handling
         mgr = NetworkManager.instance(auth_cfg=auth_cfg, timeout=timeout)
-        # Directly call its low-level request with prepared data
-        # We pass headers and data already prepared
         return mgr.request(
             url,
             method=method,
@@ -615,31 +509,9 @@ class Session:
         return mgr.download(url, dest_path, progress_callback=progress_callback, auth_cfg=auth_cfg, timeout=timeout)
 
 
-# ── NetworkManager (keeps QGIS pattern, now uses Session helpers) ───────────
+# ── NetworkManager ──────────────────────────────────────────────────────────
 
 class NetworkManager:
-    """
-    Pythonic wrapper around QgsNetworkAccessManager.
-
-    Respects QGIS proxy, cache, and authentication infrastructure when QGIS
-    is available. Falls back to urllib for testing without QGIS.
-
-    Now also provides requests-like API via Session.
-
-    Example:
-        mgr = NetworkManager.instance()
-        response = mgr.get("https://example.com/api")
-        print(response.json())
-
-        # requests-like
-        import qgis_sdk.network as requests
-        response = requests.get("https://example.com/api", params={"q": "test"})
-
-        # Session
-        session = requests.Session(auth_cfg="my_auth")
-        response = session.get("https://example.com/secure")
-    """
-
     _instance: Optional["NetworkManager"] = None
 
     def __init__(self, auth_cfg: Optional[str] = None, timeout: int = 15000, headers: Optional[Dict[str, str]] = None):
@@ -692,23 +564,6 @@ class NetworkManager:
         blocking: bool = True,
         timeout: Optional[int] = None,
     ) -> NetworkResponse:
-        """
-        Make HTTP request — requests-like.
-
-        Args:
-            url: URL to request
-            method: GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS
-            data: request body (bytes, str, or dict for form)
-            json: JSON body (will be encoded, Content-Type: application/json)
-            headers: dict of headers
-            params: dict of query params appended to URL
-            auth_cfg: QGIS auth config ID
-            blocking: if True, wait for reply (uses QEventLoop in QGIS, urllib in fallback)
-            timeout: ms (default self.timeout)
-
-        Returns:
-            NetworkResponse with status_code, content, text, json(), etc.
-        """
         timeout = timeout if timeout is not None else self.timeout
         auth_cfg = auth_cfg or self.auth_cfg
 
@@ -721,8 +576,19 @@ class NetworkManager:
 
         if self._qgis_nam and blocking:
             try:
-                from qgis.PyQt.QtCore import QUrl, QEventLoop, QTimer  # type: ignore
-                from qgis.PyQt.QtNetwork import QNetworkRequest  # type: ignore
+                qt = _get_qt_for_network()
+                if qt:
+                    QUrl = qt["QUrl"]
+                    QEventLoop = qt["QEventLoop"]
+                    QTimer = qt["QTimer"]
+                    QNetworkRequest = qt["QNetworkRequest"]
+                    QNetworkAccessManager = qt["QNetworkAccessManager"]
+                    QNetworkReply = qt["QNetworkReply"]
+                    run_loop = qt["run_loop"]
+                else:
+                    from qgis.PyQt.QtCore import QUrl, QEventLoop, QTimer  # type: ignore
+                    from qgis.PyQt.QtNetwork import QNetworkRequest, QNetworkAccessManager, QNetworkReply  # type: ignore
+                    from qgis_sdk._qt import run_loop  # type: ignore
 
                 req = QNetworkRequest(QUrl(url))
                 for k, v in final_headers.items():
@@ -737,37 +603,29 @@ class NetworkManager:
                 elif method.upper() == "DELETE":
                     reply = self._qgis_nam.deleteResource(req)
                 elif method.upper() == "HEAD":
-                    # QGIS NAM doesn't have head, use custom
-                    from qgis.PyQt.QtNetwork import QNetworkAccessManager as QNAM  # type: ignore
-
-                    reply = self._qgis_nam.createRequest(QNAM.HeadOperation, req)
+                    reply = self._qgis_nam.createRequest(QNetworkAccessManager.HeadOperation, req)
                 elif method.upper() == "PATCH":
-                    from qgis.PyQt.QtNetwork import QNetworkAccessManager as QNAM  # type: ignore
-
-                    reply = self._qgis_nam.createRequest(QNAM.CustomOperation, req, req_data)
-                    # For PATCH, need to set custom verb
+                    reply = self._qgis_nam.createRequest(QNetworkAccessManager.CustomOperation, req, req_data)
                     try:
                         reply.setProperty("custom-verb", b"PATCH")
                     except Exception:
                         pass
                 else:
-                    from qgis.PyQt.QtNetwork import QNetworkAccessManager as QNAM  # type: ignore
-
                     op_map = {
-                        "GET": QNAM.GetOperation,
-                        "POST": QNAM.PostOperation,
-                        "PUT": QNAM.PutOperation,
-                        "DELETE": QNAM.DeleteOperation,
-                        "HEAD": QNAM.HeadOperation,
+                        "GET": QNetworkAccessManager.GetOperation,
+                        "POST": QNetworkAccessManager.PostOperation,
+                        "PUT": QNetworkAccessManager.PutOperation,
+                        "DELETE": QNetworkAccessManager.DeleteOperation,
+                        "HEAD": QNetworkAccessManager.HeadOperation,
                     }
-                    op = op_map.get(method.upper(), QNAM.GetOperation)
+                    op = op_map.get(method.upper(), QNetworkAccessManager.GetOperation)
                     reply = self._qgis_nam.createRequest(op, req, req_data)
 
                 loop = QEventLoop()
                 reply.finished.connect(loop.quit)
                 if timeout > 0:
                     QTimer.singleShot(timeout, loop.quit)
-                loop.exec_()
+                run_loop(loop)
 
                 status = 0
                 error = None
@@ -789,8 +647,6 @@ class NetworkManager:
                     status = 200
 
                 try:
-                    from qgis.PyQt.QtNetwork import QNetworkReply  # type: ignore
-
                     if reply.error() != QNetworkReply.NoError:
                         error = reply.errorString()
                 except Exception:
@@ -817,7 +673,6 @@ class NetworkManager:
 
         return _fallback_request(url, method=method, data=req_data, headers=final_headers, timeout=timeout)
 
-    # requests-like shortcuts
     def get(self, url: str, params=None, headers=None, auth_cfg=None, timeout=None, **kwargs) -> NetworkResponse:
         return self.request(url, method="GET", params=params, headers=headers, auth_cfg=auth_cfg, timeout=timeout, **kwargs)
 
@@ -863,8 +718,17 @@ class NetworkManager:
 
         if self._qgis_nam:
             try:
-                from qgis.PyQt.QtCore import QUrl, QEventLoop, QTimer  # type: ignore
-                from qgis.PyQt.QtNetwork import QNetworkRequest  # type: ignore
+                qt = _get_qt_for_network()
+                if qt:
+                    QUrl = qt["QUrl"]
+                    QEventLoop = qt["QEventLoop"]
+                    QTimer = qt["QTimer"]
+                    QNetworkRequest = qt["QNetworkRequest"]
+                    run_loop = qt["run_loop"]
+                else:
+                    from qgis.PyQt.QtCore import QUrl, QEventLoop, QTimer  # type: ignore
+                    from qgis.PyQt.QtNetwork import QNetworkRequest  # type: ignore
+                    from qgis_sdk._qt import run_loop  # type: ignore
 
                 req = QNetworkRequest(QUrl(url))
                 reply = self._qgis_nam.get(req)
@@ -873,7 +737,6 @@ class NetworkManager:
                 reply.finished.connect(loop.quit)
 
                 if progress_callback and hasattr(reply, "downloadProgress"):
-
                     def on_progress(bytes_received, bytes_total):
                         if bytes_total > 0:
                             pct = int(bytes_received * 100 / bytes_total)
@@ -881,7 +744,6 @@ class NetworkManager:
                                 progress_callback(pct)
                             except Exception:
                                 pass
-
                     reply.downloadProgress.connect(on_progress)
 
                 if timeout and timeout > 0:
@@ -889,7 +751,7 @@ class NetworkManager:
                 elif self.timeout > 0:
                     QTimer.singleShot(self.timeout, loop.quit)
 
-                loop.exec_()
+                run_loop(loop)
 
                 content = bytes(reply.readAll())
                 dest.write_bytes(content)
@@ -916,32 +778,10 @@ class NetworkManager:
         return dest
 
     def session(self, **kwargs) -> Session:
-        """Create a Session with shared settings."""
         return Session(auth_cfg=kwargs.get("auth_cfg", self.auth_cfg), timeout=kwargs.get("timeout", self.timeout), headers=kwargs.get("headers", self.headers))
 
 
-# ── Helper class from QGIS cookbook (NetworkAccessManager) ──────────────────
-
 class NetworkAccessManager:
-    """
-    Helper class from QGIS docs — provides blocking request with auth support.
-
-    Now also supports requests-like API.
-
-    Example:
-        http = NetworkAccessManager(auth_cfg="my_auth", timeout=15000)
-        try:
-            response, content = http.request("https://example.com/api")
-            print(content)
-        except RequestException as e:
-            print(f"Failed: {e}")
-
-        # requests-like
-        response = http.get("https://example.com/api")
-        response.raise_for_status()
-        print(response.json())
-    """
-
     def __init__(self, auth_cfg: Optional[str] = None, timeout: int = 15000, exception_class: Optional[type] = None, headers: Optional[Dict[str, str]] = None):
         self.auth_cfg = auth_cfg
         self.timeout = timeout
@@ -961,15 +801,6 @@ class NetworkAccessManager:
         auth_cfg: Optional[str] = None,
         timeout: Optional[int] = None,
     ) -> Union[Tuple[NetworkResponse, bytes], NetworkResponse]:
-        """
-        Make request and return (response, content) for backwards compat,
-        but if called via new API, returns response only.
-
-        To keep backwards compat with old cookbook pattern, we return tuple.
-        New code should use .get() etc which return NetworkResponse.
-        """
-        # For backwards compat, we need to detect if user expects tuple
-        # We'll return tuple if they call request directly as before
         response = self._nam.request(
             url,
             method=method,
@@ -984,11 +815,9 @@ class NetworkAccessManager:
         if not response.ok:
             raise self.exception_class(f"Request failed {url}: {response.error or response.status_code}", response)
 
-        # Old API returned tuple
         return response, response.content
 
     def get(self, url: str, params=None, headers=None, auth_cfg=None, **kwargs) -> NetworkResponse:
-        # New requests-like API — returns response only
         return self._session.get(url, params=params, headers=headers, auth_cfg=auth_cfg or self.auth_cfg, timeout=kwargs.get("timeout", self.timeout))
 
     def post(self, url: str, data=None, json=None, headers=None, params=None, auth_cfg=None, **kwargs) -> NetworkResponse:
@@ -1020,17 +849,14 @@ def _get_default_session() -> Session:
 
 
 def request(method: str, url: str, **kwargs) -> NetworkResponse:
-    """Top-level request — like requests.request."""
     return _get_default_session().request(method, url, **kwargs)
 
 
 def get(url: str, params=None, **kwargs) -> NetworkResponse:
-    """Top-level GET — like requests.get."""
     return _get_default_session().get(url, params=params, **kwargs)
 
 
 def post(url: str, data=None, json=None, **kwargs) -> NetworkResponse:
-    """Top-level POST — like requests.post."""
     return _get_default_session().post(url, data=data, json=json, **kwargs)
 
 
@@ -1054,29 +880,23 @@ def options(url: str, **kwargs) -> NetworkResponse:
     return _get_default_session().options(url, **kwargs)
 
 
-# ── Convenience functions (backwards compat) ─────────────────────────────────
-
 def fetch(url: str, method: str = "GET", **kwargs) -> NetworkResponse:
-    """Convenience: fetch URL via NetworkManager.instance()."""
     return NetworkManager.instance().request(url, method=method, **kwargs)
 
 
 def fetch_json(url: str, **kwargs) -> Any:
-    """Fetch URL and parse as JSON."""
     response = fetch(url, **kwargs)
     response.raise_for_status()
     return response.json()
 
 
 def fetch_text(url: str, **kwargs) -> str:
-    """Fetch URL and return text."""
     response = fetch(url, **kwargs)
     response.raise_for_status()
     return response.text
 
 
 def download(url: str, dest: Union[str, Path], **kwargs) -> Path:
-    """Download file via NetworkManager.instance()."""
     return NetworkManager.instance().download(url, dest, **kwargs)
 
 
