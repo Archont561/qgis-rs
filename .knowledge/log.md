@@ -171,6 +171,20 @@
   crates.io and conda are unreachable, so the napi change is reasoned from the
   napi 2.16.9 sources rather than compiled.
 
+* **Fix**: two CI-shape bugs the split left behind, found from the step results on
+  PR #4 rather than from logs (which stay unreachable here). `node --test
+  "tests/**/*.test.js"` is Node >= 21 syntax while node.yml pins the Node 20 LTS, so
+  the package's new tests never ran there — `package.json` now names the file, which
+  also avoids the bare `node --test` form walking out of the package into the
+  bridge's TypeScript tests. After that fix CI's
+  "Install deps and test fallback" step passes, `cargo check --workspace` passes (the
+  napi `i64` boundary compiles), and only clippy and rust-check's own commit step
+  stayed red. The latter failed on every pull request because it guarded
+  `github.ref_name != 'main'` and then ran `git push origin HEAD:$GITHUB_REF_NAME` —
+  on a PR that ref is `N/merge`, which GitHub owns — so it is now limited to push
+  events, and its `format` step gained the three binding crates that became workspace
+  members under `crates/` and had no rustfmt check at all.
+
 ## 2026-09-17
 
 * **Initialization**: Created OKF v0.2 knowledge bundle with 21 concept documents.
