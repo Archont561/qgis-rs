@@ -36,12 +36,10 @@ fn render(args: RenderArgs) -> Result<()> {
     let mut settings = RenderSettings::new(&args.output)
         .with_context(|| format!("cannot use {} as output", args.output.display()))?;
 
-    match (args.width, args.height) {
-        (Some(width), Some(height)) => settings = settings.with_size(width, height),
-        (Some(width), None) => settings = settings.with_size(width, settings.height),
-        (None, Some(height)) => settings = settings.with_size(settings.width, height),
-        (None, None) => {}
-    }
+    // Read the current size before consuming `settings`.
+    let width = args.width.unwrap_or(settings.width);
+    let height = args.height.unwrap_or(settings.height);
+    settings = settings.with_size(width, height);
     if let Some(dpi) = args.dpi {
         settings = settings.with_dpi(dpi);
     }

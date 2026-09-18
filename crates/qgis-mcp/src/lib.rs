@@ -327,12 +327,10 @@ impl QgisMcpServer {
     ) -> Result<(Project, RenderSettings), ErrorData> {
         let project = Project::open(&params.project).map_err(invalid_params)?;
         let mut settings = RenderSettings::new(&params.output).map_err(invalid_params)?;
-        match (params.width, params.height) {
-            (Some(width), Some(height)) => settings = settings.with_size(width, height),
-            (Some(width), None) => settings = settings.with_size(width, settings.height),
-            (None, Some(height)) => settings = settings.with_size(settings.width, height),
-            (None, None) => {}
-        }
+        // Read the current size before consuming `settings`.
+        let width = params.width.unwrap_or(settings.width);
+        let height = params.height.unwrap_or(settings.height);
+        settings = settings.with_size(width, height);
         if let Some(dpi) = params.dpi {
             settings = settings.with_dpi(dpi);
         }

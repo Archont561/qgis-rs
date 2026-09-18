@@ -6,7 +6,8 @@ pub struct AppHandle {
 
 impl AppHandle {
     pub fn new() -> Self {
-        let prefix = std::env::var("CONDA_PREFIX").unwrap_or_default();
+        let prefix =
+            std::env::var("CONDA_PREFIX").unwrap_or_default();
         let mut inner = app_ffi::application_new(&prefix);
         assert!(!inner.is_null(), "application_new returned null");
         app_ffi::application_init_qgis(inner.pin_mut());
