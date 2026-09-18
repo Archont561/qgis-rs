@@ -38,9 +38,12 @@ jobs:
         run: |
           set -o pipefail
           # Scoped to the backend-agnostic crates: qgis-sys is owned by ci.yml.
-          cargo fmt -p qgis-render -p qgis-server -p qgis-mcp -p qgis-cli 2>&1 | tee /tmp/fmt.log
-          cargo fmt -p qgis-render -p qgis-server -p qgis-mcp -p qgis-cli -- --check 2>&1 |
-            tee /tmp/fmt-check.log
+          # The PyO3 / NAPI crates count as backend-agnostic since the layout split
+          # put them in crates/ — they are workspace members, so leaving them out of
+          # this list would let rustfmt drift go unnoticed.
+          FMT="-p qgis-render -p qgis-server -p qgis-mcp -p qgis-cli -p qgis-py -p qgis-sdk -p qgis-node"
+          cargo fmt $FMT 2>&1 | tee /tmp/fmt.log
+          cargo fmt $FMT -- --check 2>&1 | tee /tmp/fmt-check.log
 
       - name: check
         run: |
@@ -79,11 +82,16 @@ jobs:
       - name: commit the lockfile and rustfmt output
         # Never let CI write to main; on a working branch it saves a round trip
         # for developers who do not have cargo locally.
-        if: always() && github.ref_name != 'main'
+        #
+        # Push events only: on a pull_request the ref is `N/merge`, so
+        # `git push origin HEAD:$GITHUB_REF_NAME` used to target a GitHub-owned ref
+        # and the step failed on every PR. The author pushes instead.
+        if: always() && github.event_name == 'push' && github.ref_name != 'main'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add Cargo.lock crates/qgis-render crates/qgis-server crates/qgis-mcp crates/qgis-cli
+          # Whole `crates` tree: any workspace member may be reformatted above.
+          git add Cargo.lock crates
           if ! git diff --cached --quiet; then
             git commit -m "chore: refresh Cargo.lock and apply rustfmt [skip ci]"
             git push origin "HEAD:${GITHUB_REF_NAME}"
