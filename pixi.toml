@@ -60,7 +60,7 @@ bun = { workspace = true }
 [feature.docs.tasks]
 docs-install = { cmd = "bun install --frozen-lockfile", cwd = "apps/docs", description = "Install the docs workspace dependencies" }
 docs-dev = { cmd = "bun run dev", cwd = "apps/docs", depends-on = ["docs-install"] }
-docs-build = { cmd = "bun run build", cwd = "apps/docs", default-environment = "docs", depends-on = ["docs-install"] }
+docs-build = { cmd = "bun run build", cwd = "apps/docs", depends-on = ["docs-install"] }
 docs-preview = { cmd = "bun run preview", cwd = "apps/docs", depends-on = ["docs-build"] }
 
 # ── qgis-rs (Python bindings + Rust CLI) ──────────────────────────────────────
