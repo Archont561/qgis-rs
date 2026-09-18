@@ -1,0 +1,40 @@
+# packages/qgis-sdk/pixi.toml — the `qgis-sdk` workspace package.
+#
+# This manifest only carries the `[package]` section: the workspace-level
+# settings (channels, platforms, preview flags) live in the root pixi.toml.
+# It is pulled into an environment as a source dependency, e.g.
+#
+#     [feature.sdk.dependencies]
+#     qgis-sdk = { path = "./packages/qgis-sdk" }
+#
+# See .knowledge/pixi.md and https://pixi.prefix.dev/latest/build/workspace/
+
+[package]
+name        = "qgis-sdk"
+version     = "0.1.0"
+description = "Python SDK for building QGIS plugins on top of PyQGIS"
+# QGIS plugins must be GPL-compatible, matching crates/* (Cargo workspace).
+license = "GPL-2.0-or-later"
+
+# pixi-build-python turns the PEP 517 package described by pyproject.toml into
+# a conda package. It is a preview feature, enabled by `preview = ["pixi-build"]`
+# in the root [workspace] table.
+[package.build]
+backend = { name = "pixi-build-python", version = "*" }
+channels = [
+  "https://prefix.dev/pixi-build-backends",
+  "https://prefix.dev/conda-forge",
+]
+
+[package.host-dependencies]
+# Build backend named in pyproject.toml [build-system]. The pixi-build-python
+# backend always adds `python` and `uv` here itself.
+hatchling = "*"
+
+[package.run-dependencies]
+# `qgis` is the whole point: the conda-forge package ships the PyQGIS bindings
+# under $CONDA_PREFIX/share/qgis/python *and* depends on the Python interpreter
+# they were built against, so `python` is deliberately not declared here — it
+# arrives as part of the QGIS environment and can never drift out of sync with
+# the bindings.
+qgis = ">=3.44.9,<4"

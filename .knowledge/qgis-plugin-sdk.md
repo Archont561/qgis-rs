@@ -908,3 +908,39 @@ qgis-rs/
 | Cross-platform | Build per OS | No support | `--all-targets` |
 | Processing GUI | Manual param defs | Same | Declarative decorators |
 | Learning curve | Steep | Medium | Low |
+
+---
+
+## 12. Implementation Status
+
+The SDK lives at **`packages/qgis-sdk/`** as a pixi workspace package
+(`pixi.toml` with a `[package]` section + `pyproject.toml` with hatchling).
+See [pixi.md](/pixi.md) for how the workspace and the PyQGIS import paths are
+wired up.
+
+| Spec section | Module | Status |
+|--------------|--------|--------|
+| 1.1 Plugin definition, decorators | `qgis_sdk.plugin` — `Plugin`, `@action`, `@toolbar`, `@menu`, `class_factory` | Implemented, unit-tested |
+| 1.1 `metadata.txt` generation | `qgis_sdk.metadata` — `render_metadata`, `write_metadata` | Implemented, unit-tested |
+| 1.2 Processing algorithms | `qgis_sdk.algorithm` — `Algorithm`, `parameter.*`, `output.*` | Declarative model implemented, unit-tested |
+| 1.2 QGIS Processing bridge | `qgis_sdk.processing_bridge` — `build_algorithm`, `_ContextAdapter` | Written against PyQGIS; **not yet run against a QGIS environment** |
+| Toolbar/menu widgets | `qgis_sdk.qt` — `make_action` | Written against `qgis.PyQt`; **not yet run against a QGIS environment** |
+| 1.3 Cleaner PyQGIS wrappers (`iface`, `layers`, `crs`, …) | — | Not started |
+| 1.4 Expression engine wrappers | — | Not started |
+| 1.5 Geometry wrappers | — | Not started |
+| 2 Rust acceleration (`@rust_accelerated`) | — | Not started |
+| 5 CLI (`qgis-plugin scaffold/test/package/publish`) | — | Not started |
+| 7 Testing story | `tests/` — 35 tests, fake interface + fake action factory | Implemented; runs without QGIS |
+
+### Why nothing imports `qgis` at module scope
+
+Section 7 promises unit tests that do not need QGIS. To keep that promise,
+every PyQGIS access goes through `qgis_sdk.runtime` (`qgis_core()`,
+`qgis_gui()`, `require_qgis()`), called from inside functions. The test-suite
+injects a fake interface and an `action_factory`, so plugin and algorithm logic
+is exercised on a machine with no QGIS at all:
+
+```bash
+pixi run -e sdk sdk-test      # 35 tests, no QGIS required
+pixi run -e sdk sdk-doctor    # proves import qgis.core resolves in the env
+```
