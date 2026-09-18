@@ -1,11 +1,11 @@
 ---
 title: Plugin Development
-description: Build QGIS plugins with Python and optional Rust acceleration
+description: Build QGIS plugins with Python, UI dialogs, WebEngine HTML, and optional Rust acceleration
 ---
 
 # Plugin Development
 
-The qgis-sdk provides a Python framework for building QGIS plugins with optional Rust acceleration.
+The qgis-sdk provides a Python framework for building QGIS plugins with UI dialogs, WebEngine HTML/CSS/JS, and optional Rust acceleration.
 
 ## Installation
 
@@ -41,6 +41,93 @@ class BufferAdvanced(Algorithm):
         return {self.output_layer: sink}
 ```
 
+## UI Dialogs (Qt Designer .ui)
+
+Scaffold with UI:
+
+```bash
+qgis-plugin new my_plugin --web
+```
+
+Generated:
+
+- `ui/main_dialog.ui` — Qt Designer Dialog with Buttons Bottom, promoted `QgsMapLayerComboBox`
+- `dialogs/main_dialog.py` — loads via `uic.loadUiType`, `WA_DeleteOnClose`, `QSettings` persistence
+
+```python
+from qgis.PyQt import QtWidgets, uic
+from qgis.PyQt.QtCore import QSettings, Qt
+import os
+
+FORM_CLASS, _ = uic.loadUiType(os.path.join(os.path.dirname(__file__), "..", "ui", "main_dialog.ui"))
+
+class MainDialog(QtWidgets.QDialog, FORM_CLASS):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setupUi(self)
+        self.setAttribute(Qt.WA_DeleteOnClose)
+```
+
+### Declarative fallback (testable without QGIS)
+
+```python
+from qgis_sdk.ui import Dialog, field, layout, Button
+
+dlg = Dialog(
+    title="My Tool",
+    layout=layout.vertical(
+        field.layer("input_layer", label="Input layer"),
+        field.spin("threshold", label="Threshold", default=0.5),
+        layout.buttons(Button.ok(), Button.cancel())
+    ),
+    persist=True
+)
+if dlg.exec() == Dialog.Accepted:
+    print(dlg.get("input_layer"))
+```
+
+## WebEngine HTML + QWebChannel
+
+```bash
+qgis-plugin new my_plugin --web
+# or add to existing
+qgis-plugin ui add-web ./my_plugin
+```
+
+Generated:
+
+- `web/map.html` — Leaflet + `qrc:///qtwebchannel/qwebchannel.js`
+- `dialogs/web_dialog.py` — `WebDialog` + `QWebChannel` bridge
+
+```python
+from qgis_sdk.ui import WebDialog, web_bridge
+from pathlib import Path
+
+dlg = WebDialog.from_file(Path("web/map.html"), title="Map View")
+
+@web_bridge(dlg)
+class Bridge:
+    def get_layer(self):
+        return {"name": "buildings", "count": 100}
+
+dlg.exec()
+```
+
+```html
+<script src="qrc:///qtwebchannel/qwebchannel.js"></script>
+<script>
+new QWebChannel(qt.webChannelTransport, function(channel) {
+    bridge = channel.objects.bridge;
+    bridge.get_layer(function(data) { console.log(data); });
+});
+</script>
+```
+
+- JS → Python: `@pyqtSlot(result=QVariant)` + `channel.registerObject("bridge", obj)`
+- Python → JS: `web_view.page().runJavaScript("updateFromPython({message: 'hello'})")`
+
+**Important:** `from qgis.PyQt.QtWebEngineWidgets import QWebEngineView` must be imported **before** `QApplication` (QGIS issue #49512).
+
 ## Rust Acceleration
 
 ```python
@@ -59,19 +146,91 @@ class BufferFast(Algorithm):
 ## CLI
 
 ```bash
-# Scaffold a new plugin
-qgis-plugin new my-plugin
+# Scaffold with UI + Web
+qgis-plugin new my-plugin --web
+qgis-plugin new my-plugin --no-ui
+
+# UI helpers
+qgis-plugin ui add-dialog ./my_plugin --name custom_dialog
+qgis-plugin ui add-web ./my_plugin
 
 # Development mode
 qgis-plugin dev
 
-# Build and package
+# Build and package (includes ui/*.ui, web/*.html, icons/*)
 qgis-plugin build
+qgis-plugin package -o dist/
 
 # Publish to QGIS Plugin Repository
 qgis-plugin publish
 ```
 
+## Packaging
+
+`qgis-plugin package` includes `ui/`, `web/`, `icons/`, `dialogs/` automatically:
+
+```toml
+[tool.hatch.build.targets.wheel]
+include = [
+    "my_plugin/ui/*.ui",
+    "my_plugin/web/*.html",
+    "my_plugin/icons/*",
+]
+```
+
+## Typed Bridge with @qgis-sdk/bridge
+
+Generate TypeScript types from Python bridge classes:
+
+```bash
+qgis-plugin bridge generate --bridge my_plugin.dialogs.web_dialog:Bridge --output web/bridge.d.ts
+qgis-plugin bridge generate --bridge my_plugin.dialogs.web_dialog:Bridge --output web/ --package
+```
+
+Python → TS with Promise API:
+
+```typescript
+import { createBridge } from '@qgis-sdk/bridge';
+import type { Bridge } from './web/bridge.d.ts';
+
+const bridge = await createBridge<Bridge>(); // auto-injects qrc:///qtwebchannel/qwebchannel.js
+const layer = await bridge.get_layer(); // typed!
+```
+
+- React: `import { useQgisBridge } from '@qgis-sdk/bridge/react'`
+- Vue: `import { useQgisBridge } from '@qgis-sdk/bridge/vue'`
+- Web Components: `<qgis-bridge>` + `import '@qgis-sdk/bridge/webcomponents'`
+
+See [Typed Bridge Guide](/guides/typed-bridge) and [Web Frameworks Guide](/guides/web-frameworks) for full details.
+
+## Testing without QGIS
+
+`qgis_sdk.testing` provides fakes and pytest fixtures:
+
+```python
+# tests/conftest.py
+pytest_plugins = ["qgis_sdk.testing"]
+
+# tests/test_plugin.py
+def test_toolbar(fake_iface, fake_action_factory):
+    from my_plugin import MyPlugin
+    MyPlugin.action_factory = staticmethod(fake_action_factory)
+    plugin = MyPlugin(fake_iface)
+    plugin.init_gui()
+    assert len(fake_iface.toolbar_icons) == 1
+    fake_iface.toolbar_icons[0].trigger()
+
+def test_bridge(fake_bridge):
+    assert fake_bridge.get_layer()["name"] == "test_layer"
+```
+
+Fakes: `FakeIface`, `FakeAction`, `FakeContext`, `FakeSink`, `FakeFeature`, `FakeDialog`, `FakeWebView`, `FakeBridge`, `mock_features()`, `mock_source()`.
+
+See [Testing Fixtures Guide](/guides/testing-fixtures).
+
 ## Next Steps
 
-See the [qgis-plugin-sdk](https://github.com/yourusername/qgis-rs/blob/main/.knowledge/qgis-plugin-sdk.md) design document for the complete SDK specification.
+- [Typed Bridge Guide](/guides/typed-bridge) — generate TS types, Promise API, auto-inject
+- [Web Frameworks Guide](/guides/web-frameworks) — React/Vue/Web Components in QWebEngine
+- [Testing Fixtures Guide](/guides/testing-fixtures) — test without QGIS
+- [qgis-plugin-sdk](https://github.com/Archont561/qgis-rs/blob/main/.knowledge/qgis-plugin-sdk.md) and [qgis-plugin-ui](https://github.com/Archont561/qgis-rs/blob/main/.knowledge/qgis-plugin-ui.md) design docs

@@ -1,0 +1,76 @@
+{
+  "name": "@qgis-sdk/bridge",
+  "version": "0.1.0",
+  "description": "Typed QWebChannel bridge for QGIS plugins — auto-injects qrc:///qtwebchannel/qwebchannel.js, provides Promise API, React/Vue/Web Components adapters, with auto-generated TS types from Python bridge",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "module": "dist/index.js",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./react": {
+      "types": "./dist/react.d.ts",
+      "import": "./dist/react.js"
+    },
+    "./vue": {
+      "types": "./dist/vue.d.ts",
+      "import": "./dist/vue.js"
+    },
+    "./webcomponents": {
+      "types": "./dist/webcomponents.d.ts",
+      "import": "./dist/webcomponents.js"
+    },
+    "./loader": {
+      "types": "./dist/loader.d.ts",
+      "import": "./dist/loader.js"
+    }
+  },
+  "files": [
+    "dist/",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "qgis",
+    "qwebchannel",
+    "qgis-plugin",
+    "pyqt",
+    "webengine",
+    "typescript",
+    "react",
+    "vue",
+    "web-components",
+    "bridge"
+  ],
+  "author": "qgis-rs contributors",
+  "license": "GPL-2.0-or-later",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Archont561/qgis-rs"
+  },
+  "homepage": "https://archont561.github.io/qgis-rs/",
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.4.5"
+  },
+  "peerDependencies": {
+    "react": ">=18.0.0",
+    "vue": ">=3.0.0"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    },
+    "vue": {
+      "optional": true
+    }
+  }
+}

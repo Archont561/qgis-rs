@@ -61,6 +61,10 @@ export default defineConfig({
             { label: 'Rendering Projects', link: '/guides/rendering-projects' },
             { label: 'Working with Layers', link: '/guides/working-with-layers' },
             { label: 'Plugin Development', link: '/guides/plugin-development' },
+            { label: 'Typed QWebChannel Bridge', link: '/guides/typed-bridge' },
+            { label: 'Web Frameworks in QGIS', link: '/guides/web-frameworks' },
+            { label: 'Testing Fixtures', link: '/guides/testing-fixtures' },
+            { label: 'Network & Tasks', link: '/guides/network-tasks' },
           ],
         },
         {

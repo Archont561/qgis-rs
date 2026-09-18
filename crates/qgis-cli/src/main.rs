@@ -11,19 +11,6 @@
 
 use std::process::ExitCode;
 
-use clap::Parser;
-
-mod cli;
-mod commands;
-
 fn main() -> ExitCode {
-    let cli = cli::Cli::parse();
-    match commands::run(cli.command) {
-        Ok(()) => ExitCode::SUCCESS,
-        Err(error) => {
-            // Errors go to stderr and print the whole cause chain.
-            eprintln!("qgis-cli: {error:#}");
-            ExitCode::FAILURE
-        }
-    }
+    qgis_cli::main_entry()
 }

@@ -9,6 +9,8 @@ okf_version: "0.2"
 * [Project Context](/CONTEXT.md) — Orientation file for AI agents and contributors working on qgis-rs.
 * [Roadmap](/ROADMAP.md) — Ordered plan: architectural decisions first, then incremental type binding.
 * [Update Log](/log.md) — Chronological history of bundle changes.
+* [QGIS Plugin SDK](/qgis-plugin-sdk.md) — Python framework for building QGIS plugins with declarative APIs, Rust acceleration, and CLI tooling.
+* [QGIS Plugin UI](/qgis-plugin-ui.md) — Dialogs via PyQt/Qt Designer (.ui) and WebEngine with HTML/CSS/JS + QWebChannel bridge (new).
 
 # Architecture
 

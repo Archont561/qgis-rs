@@ -929,8 +929,11 @@ wired up.
 | 1.4 Expression engine wrappers | — | Not started |
 | 1.5 Geometry wrappers | — | Not started |
 | 2 Rust acceleration (`@rust_accelerated`) | — | Not started |
-| 5 CLI (`qgis-plugin scaffold/test/package/publish`) | — | Not started |
-| 7 Testing story | `tests/` — 35 tests, fake interface + fake action factory | Implemented; runs without QGIS |
+| 1.1 UI dialogs (Qt Designer .ui + declarative) | `qgis_sdk.ui` — `Dialog`, `field`, `layout`, `Button`, `@dialog`, `make_dialog` | Implemented, unit-tested (17 tests) |
+| 1.1 WebEngine HTML + QWebChannel | `qgis_sdk.ui` — `WebDialog`, `@web_bridge`, `make_web_view` | Implemented, unit-tested |
+| 5 CLI (`qgis-plugin scaffold/test/package/publish`) | `qgis_sdk.cli` + Rust binary `qgis-plugin` (native speed) | Implemented, with `--web` and `ui add-dialog/add-web` subcommands |
+| 5 UI scaffolding | `qgis-plugin new --web`, `ui/*.ui`, `web/map.html` (Leaflet + qrc:///qtwebchannel/qwebchannel.js) | Implemented |
+| 7 Testing story | `tests/` — 60 tests (35 original + 17 UI + 8 CLI), fake interface + fake action factory | Implemented; runs without QGIS |
 
 ### Why nothing imports `qgis` at module scope
 

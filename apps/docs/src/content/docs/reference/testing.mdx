@@ -1,0 +1,282 @@
+---
+title: Testing Fixtures
+description: Reference for qgis_sdk.testing fakes and pytest fixtures
+---
+
+# Testing Fixtures — qgis_sdk.testing
+
+Test QGIS plugins without QGIS or Qt.
+
+## Installation
+
+```bash
+pip install qgis-sdk pytest
+```
+
+## Setup
+
+```python
+# tests/conftest.py
+pytest_plugins = ["qgis_sdk.testing"]
+```
+
+Entry point `pytest11` in `pyproject.toml` also auto-discovers:
+
+```toml
+[project.entry-points.pytest11]
+qgis_sdk = "qgis_sdk.testing"
+```
+
+## Fake Classes
+
+### FakeNetworkResponse, FakeNetworkManager, FakeContentFetcher
+
+```python
+from qgis_sdk.testing import FakeNetworkResponse, FakeNetworkManager, FakeContentFetcher
+
+resp = FakeNetworkResponse(url="https://example.com", status_code=200,
+                           content=b'{"ok": true}', headers={"content-type": "application/json"})
+resp.ok # True
+resp.text # '{"ok": true}'
+resp.json() # {"ok": true}
+resp.raise_for_status()
+
+mgr = FakeNetworkManager(responses={
+    "example.com/api": FakeNetworkResponse(url="https://example.com/api", content=b'{"data": 1}'),
+})
+resp = mgr.get("https://example.com/api")
+mgr.requests # [("GET", "https://example.com/api", ...)]
+mgr.download("https://example.com/file.zip", "/tmp/file.zip")
+mgr.fetch("https://example.com/api")
+mgr.fetch_blocking("https://example.com/api")
+
+fetcher = FakeContentFetcher(url="https://example.com", response=resp)
+fetcher.content_as_string()
+fetcher.content_as_bytes()
+fetcher.finished.connect(lambda: print("done")) # calls immediately if response set
+```
+
+### FakeTask, FakeTaskManager
+
+```python
+from qgis_sdk.testing import FakeTask, FakeTaskManager, fake_task_manager_factory
+
+def work(task, wait_time=0):
+    task.set_progress(100)
+    return 42
+
+task = FakeTask("Test", work, wait_time=0, on_finished=lambda e, r: print(r))
+task.description
+task.can_cancel()
+task.set_progress(50)
+task.progress() # 50
+task.is_canceled()
+task.cancel()
+task._execute() # runs work
+task.is_finished()
+task.result()
+
+mgr = FakeTaskManager()
+t = mgr.add_task(work, description="Test") # executes synchronously
+mgr.count() # 0 after sync execution
+mgr.added_tasks # history
+mgr.tasks()
+mgr.cancel_all()
+
+mgr = fake_task_manager_factory()
+```
+
+### FakeIface
+
+```python
+from qgis_sdk.testing import FakeIface
+
+iface = FakeIface()
+iface.addToolBarIcon(widget)
+iface.addPluginToMenu("Plugins/My Plugin", widget)
+iface.removeToolBarIcon(widget)
+iface.removePluginMenu("Plugins/My Plugin", widget)
+iface.messageBar().pushMessage("hello")
+iface.messages # ["hello"]
+iface.toolbar_icons # List[FakeAction]
+iface.menu_entries # List[Tuple[str, FakeAction]]
+iface.mainWindow() # None by default
+iface.activeLayer() # None
+```
+
+### FakeAction
+
+```python
+from qgis_sdk.testing import FakeAction, fake_action_factory
+
+action = FakeAction(spec, callback)
+action = fake_action_factory(spec, callback)
+
+action.trigger() # calls callback
+action.triggered # int count
+action.tooltip
+action.objectName
+action.setObjectName("name")
+```
+
+### FakeContext, FakeSink, FakeFeature, FakeGeometry, FakeFields
+
+```python
+from qgis_sdk.testing import FakeContext, FakeSink, FakeFeature, FakeGeometry
+
+ctx = FakeContext(values={"input": "test.gpkg"})
+ctx.get("input")
+ctx.get("missing", "default")
+ctx.set_progress(0.5)
+ctx.progress # [0.5]
+ctx.is_canceled # False
+ctx.create_sink(None) # FakeSink
+ctx.source_path(param)
+ctx.sink_path(param)
+
+sink = FakeSink()
+sink.add_feature(FakeFeature(fid=1))
+sink.feature_count
+list(sink.features())
+sink.dissolve()
+
+feature = FakeFeature(fid=0, attributes={"name": "a"}, geometry=FakeGeometry())
+feature["name"]
+feature.geometry
+feature.clone()
+
+geom = FakeGeometry(wkt="POINT(0 0)", area=1.0)
+geom.area
+geom.buffer(10)
+geom.to_wkt()
+```
+
+### mock_features, mock_source, mock_context
+
+```python
+from qgis_sdk.testing import mock_features, mock_source, mock_context
+
+features = mock_features(count=10, geometry_type="Point")
+source = mock_source(feature_count=3)
+source.feature_count
+list(source.features(limit=5))
+source.fields
+source.geometry_type
+
+ctx = mock_context(values={"a": 1})
+ctx.get("a")
+```
+
+### FakeDialog
+
+```python
+from qgis_sdk.testing import FakeDialog, FakeDialogWidget
+
+dlg = FakeDialog(values={"name": "test"})
+dlg.get("name")
+dlg.exec() # 1 Accepted, 0 Rejected
+dlg.accept()
+dlg.reject()
+
+widget = FakeDialogWidget(value=42, text="42")
+widget.text()
+widget.setText("hi")
+widget.value()
+widget.setValue(10)
+widget.isChecked()
+widget.currentText()
+widget.currentLayer()
+```
+
+### FakeWebView, FakeWebPage, FakeWebChannel, FakeBridge
+
+```python
+from qgis_sdk.testing import FakeWebView, FakeWebPage, FakeWebChannel, FakeBridge
+
+view = FakeWebView()
+view.page() # FakeWebPage
+view.setHtml("<html>...</html>")
+view.setUrl("https://example.com")
+
+page = FakeWebPage()
+page.runJavaScript("console.log('hi')", callback=lambda r: print(r))
+page.js_calls
+page.setWebChannel(channel)
+
+channel = FakeWebChannel()
+channel.registerObject("bridge", FakeBridge())
+channel.objects
+
+bridge = FakeBridge()
+bridge.get_layer() # {"name": "test_layer", "count": 42}
+bridge.get_extent()
+bridge.log("msg")
+bridge.process('{"action": "buffer"}')
+```
+
+## Pytest Fixtures
+
+| Fixture | Returns | Description |
+|---------|---------|-------------|
+| `fake_iface` | `FakeIface` | Fake QgisInterface |
+| `fake_action_factory` | `Callable` | `spec, callback → FakeAction` |
+| `fake_context` | `FakeContext` | Fake processing context |
+| `fake_dialog_factory` | `Callable` | `values → FakeDialog` |
+| `fake_dialog` | `FakeDialog` | Empty dialog |
+| `fake_webview_factory` | `Callable` | `html → FakeWebView` |
+| `fake_webview` | `FakeWebView` | Empty webview |
+| `fake_bridge` | `FakeBridge` | Fake bridge |
+| `fake_network_response` | `FakeNetworkResponse` | Mock network response |
+| `fake_network_manager` | `FakeNetworkManager` | Fake QgsNetworkAccessManager |
+| `fake_content_fetcher` | `FakeContentFetcher` | Fake QgsNetworkContentFetcher |
+| `fake_task` | `FakeTask` | Fake QgsTask |
+| `fake_task_manager` | `FakeTaskManager` | Fake QgsTaskManager |
+| `mock_features` | `Callable` | `count → List[FakeFeature]` |
+| `mock_source` | `Callable` | `feature_count → FakeSource` |
+| `mock_context` | `Callable` | `values → FakeContext` |
+
+Aliases: `mock_features_fixture`, `mock_source_fixture`, `mock_context_fixture`.
+Markers: `network`, `tasks`, `qgis`, `webengine`.
+
+### Usage
+
+```python
+def test_toolbar(fake_iface, fake_action_factory):
+    from my_plugin import MyPlugin
+    MyPlugin.action_factory = staticmethod(fake_action_factory)
+    plugin = MyPlugin(fake_iface)
+    plugin.init_gui()
+    assert len(fake_iface.toolbar_icons) == 1
+
+def test_bridge(fake_bridge):
+    assert fake_bridge.get_layer()["name"] == "test_layer"
+```
+
+### Markers
+
+```python
+@pytest.mark.qgis
+def test_needs_qgis(): ...
+
+@pytest.mark.webengine
+def test_needs_webengine(): ...
+```
+
+## Scaffold
+
+`qgis-plugin new` generates:
+
+```
+my_plugin/tests/conftest.py -> pytest_plugins = ["qgis_sdk.testing"]
+my_plugin/tests/test_dialog.py -> uses fake_iface, fake_bridge
+```
+
+```bash
+pytest # no QGIS needed
+```
+
+## See Also
+
+- [Testing Fixtures Guide](/guides/testing-fixtures)
+- [Typed Bridge Guide](/guides/typed-bridge)
+- [Plugin Development](/guides/plugin-development)

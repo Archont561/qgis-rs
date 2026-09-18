@@ -22,7 +22,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
-from .metadata import render_metadata, write_metadata
+from ..metadata import render_metadata, write_metadata
 
 __all__ = [
     "ActionSpec",
@@ -219,7 +219,7 @@ class Plugin:
         """
         if self.action_factory is not None:
             return self.action_factory(spec, self._invoke(spec))
-        from qgis_sdk.qt import make_action  # imported lazily: needs Qt
+        from ..qt import make_action  # imported lazily: needs Qt
 
         return make_action(spec, self._invoke(spec), parent=self.iface)
 

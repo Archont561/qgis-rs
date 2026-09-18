@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/*"]
+members = ["crates/*", "packages/qgis-rs", "packages/qgis-sdk", "packages/qgis-node"]
 
 [workspace.package]
 version  = "0.1.0"
@@ -22,6 +22,15 @@ qgis-sys = { path = "crates/qgis-sys" }
 qgis-render = { path = "crates/qgis-render" }
 qgis-server = { path = "crates/qgis-server" }
 qgis-mcp    = { path = "crates/qgis-mcp" }
+qgis-cli    = { path = "crates/qgis-cli" }
+qgis-rs     = { path = "packages/qgis-rs" }
+qgis-sdk    = { path = "packages/qgis-sdk" }
+qgis-node   = { path = "packages/qgis-node" }
+
+# ── python / node ───────────────────────────────────────────────────────────
+pyo3 = { version = "0.22" }
+napi = { version = "2.16", features = ["napi4"] }
+napi-derive = "2.16"
 
 # ── third-party ───────────────────────────────────────────────────────────────
 clap = { version = "4.6", features = ["derive"] }
