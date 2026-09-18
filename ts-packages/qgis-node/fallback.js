@@ -258,4 +258,8 @@ module.exports = {
   version,
   getMaxLatitude,
   getMaxZoom,
+  // Same names index.js re-exports, so the fallback object is a drop-in for the
+  // addon from either side.
+  MAX_LATITUDE,
+  MAX_ZOOM,
 };

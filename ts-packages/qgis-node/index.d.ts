@@ -5,6 +5,10 @@
 export const MAX_LATITUDE: number;
 export const MAX_ZOOM: number;
 
+/** Accessor form of the two constants above (the addon exposes getters). */
+export function getMaxLatitude(): number;
+export function getMaxZoom(): number;
+
 export class Extent {
   constructor(minX: number, minY: number, maxX: number, maxY: number);
   constructor(extentString: string);

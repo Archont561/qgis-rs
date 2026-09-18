@@ -12,7 +12,7 @@
   "scripts": {
     "build": "napi build --platform --release --manifest-path ../../crates/qgis-node/Cargo.toml -o .",
     "build:debug": "napi build --platform --manifest-path ../../crates/qgis-node/Cargo.toml -o .",
-    "test": "jest",
+    "test": "node --test \"tests/**/*.test.js\"",
     "prepublishOnly": "napi prepublish -t npm --manifest-path ../../crates/qgis-node/Cargo.toml",
     "artifacts": "napi artifacts --manifest-path ../../crates/qgis-node/Cargo.toml",
     "version": "napi version --manifest-path ../../crates/qgis-node/Cargo.toml"
@@ -53,13 +53,12 @@
   },
   "devDependencies": {
     "@napi-rs/cli": "^2.18",
-    "jest": "^29.0",
     "@types/node": "^20.0",
     "typescript": "^5.0"
   },
   "dependencies": {},
   "engines": {
-    "node": ">= 14"
+    "node": ">= 18"
   },
   "files": [
     "index.js",

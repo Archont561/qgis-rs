@@ -281,6 +281,12 @@ function version() {
 const MAX_LATITUDE = binding.getMaxLatitude ? binding.getMaxLatitude() : 85.0511287798066;
 const MAX_ZOOM = binding.getMaxZoom ? binding.getMaxZoom() : 22;
 
+// Accessor form, kept as the addon exposes `get_max_latitude` / `get_max_zoom`
+// (napi generates no constants from Rust `pub const`s). Both spellings resolve
+// through here so the fallback and the native addon agree.
+function getMaxLatitude() { return MAX_LATITUDE; }
+function getMaxZoom() { return MAX_ZOOM; }
+
 module.exports = {
   Extent,
   Crs,
@@ -293,6 +299,8 @@ module.exports = {
   version,
   MAX_LATITUDE,
   MAX_ZOOM,
+  getMaxLatitude,
+  getMaxZoom,
   // Raw binding for advanced use
   _binding: binding,
   _hasNative: !loadError,

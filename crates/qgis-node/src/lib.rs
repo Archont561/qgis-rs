@@ -308,8 +308,8 @@ impl ZoomLevelPlanWrapper {
     }
 
     #[napi]
-    pub fn tile_count(&self) -> u64 {
-        self.inner.tile_count()
+    pub fn tile_count(&self) -> i64 {
+        self.inner.tile_count() as i64
     }
 }
 
@@ -361,8 +361,8 @@ impl TilePlanWrapper {
     }
 
     #[napi]
-    pub fn tile_count(&self) -> u64 {
-        self.inner.tile_count()
+    pub fn tile_count(&self) -> i64 {
+        self.inner.tile_count() as i64
     }
 
     #[napi]
@@ -456,8 +456,8 @@ impl ProjectInfoWrapper {
         self.inner.format.extension().to_string()
     }
     #[napi(getter)]
-    pub fn size_bytes(&self) -> u64 {
-        self.inner.size_bytes
+    pub fn size_bytes(&self) -> i64 {
+        self.inner.size_bytes as i64
     }
     #[napi(getter)]
     pub fn crs(&self) -> Option<CrsWrapper> {
@@ -491,8 +491,8 @@ impl RenderedMapWrapper {
         self.inner.path.display().to_string()
     }
     #[napi(getter)]
-    pub fn bytes(&self) -> u64 {
-        self.inner.bytes
+    pub fn bytes(&self) -> i64 {
+        self.inner.bytes as i64
     }
 }
 
@@ -503,7 +503,7 @@ pub fn plan_tiles(bounds: String, zoom: String) -> napi::Result<TilePlanResult> 
     let extent = Extent::parse(&bounds).map_err(|e| napi::Error::from_reason(e.to_string()))?;
     let zooms = ZoomRange::parse(&zoom).map_err(|e| napi::Error::from_reason(e.to_string()))?;
     let plan = TilePlan::new(extent, zooms).map_err(|e| napi::Error::from_reason(e.to_string()))?;
-    let total = plan.tile_count();
+    let total = plan.tile_count() as i64;
     let levels = plan
         .levels()
         .into_iter()
@@ -513,12 +513,26 @@ pub fn plan_tiles(bounds: String, zoom: String) -> napi::Result<TilePlanResult> 
             x_max: l.x_max,
             y_min: l.y_min,
             y_max: l.y_max,
-            tile_count: l.tile_count(),
+            tile_count: l.tile_count() as i64,
         })
         .collect();
     Ok(TilePlanResult { total, levels })
 }
 
+// Tile and byte counts cross the boundary as `i64`, not `u64`.
+//
+// napi 2.16 implements `ToNapiValue`/`FromNapiValue` for `i64` through
+// `napi_create_int64`/`napi_get_value_int64` (available since N-API 1), but
+// `u64` only exists on the BigInt path in `js_values/bigint.rs` — a *one-way*
+// `impl ToNapiValue for u64`, with no `FromNapiValue` at all and no
+// `bigint64` feature in this major version. A `#[napi(object)]` field needs
+// both directions, which is exactly the six E0277s (`u64: ToNapiValue` /
+// `u64: FromNapiValue`) this file used to fail with.
+//
+// `i64` is also what the shipped contract promises: `index.d.ts` declares these
+// as `number`, and `fallback.js` computes plain numbers — returning BigInt
+// would split the pure-JS fallback from the native addon. Counts of tiles and
+// file sizes never approach 2^63, so the narrowing is lossless in practice.
 #[napi(object)]
 pub struct ZoomLevelInfo {
     pub zoom: u32,
@@ -526,12 +540,12 @@ pub struct ZoomLevelInfo {
     pub x_max: u32,
     pub y_min: u32,
     pub y_max: u32,
-    pub tile_count: u64,
+    pub tile_count: i64,
 }
 
 #[napi(object)]
 pub struct TilePlanResult {
-    pub total: u64,
+    pub total: i64,
     pub levels: Vec<ZoomLevelInfo>,
 }
 

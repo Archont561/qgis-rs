@@ -374,7 +374,7 @@ my_plugin/
 ## 5. Testing UI without QGIS
 
 - **Dialogs**: inject fake `QDialog` factory via `action_factory` and `dialog_factory`; test logic without Qt.
-- **WebEngine**: mock `QWebEngineView` with `setHtml` capture; test bridge methods as plain Python; JS tests via `jest` + `jsdom`.
+- **WebEngine**: mock `QWebEngineView` with `setHtml` capture; test bridge methods as plain Python; bridge JS tests via `bun test` (ts-packages/qgis-sdk-bridge) and the npm package's contract tests via `node --test` (ts-packages/qgis-node/tests) — no jest/jsdom in either package.
 
 ```python
 def test_dialog_logic():
