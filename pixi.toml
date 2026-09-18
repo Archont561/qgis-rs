@@ -14,7 +14,8 @@ convco       = ">=0.6.4,<0.7"
 qgis = ">=3.44.9,<4"
 
 [feature.docs.dependencies]
-bun = ">=1.0.0,<2"
+# 1.2+ is required to read the text-format apps/docs/bun.lock.
+bun = ">=1.2.0,<2"
 
 [feature.docs.tasks]
 docs-dev = { cmd = "bun run dev", cwd = "apps/docs" }

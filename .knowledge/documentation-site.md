@@ -20,20 +20,24 @@ The qgis-rs documentation site is built with [Astro Starlight](https://starlight
 
 ```
 apps/docs/
-├── astro.config.mjs           # Starlight config (sidebar, social, logo)
+├── astro.config.mjs           # Starlight config (site, base, sidebar, social, logo)
+├── remark-base-links.mjs       # Prefix in-content links with the configured base
 ├── package.json                # Astro + Starlight + sharp + TypeScript
 ├── tsconfig.json               # Strict TypeScript
 ├── src/
 │   ├── assets/logo.svg         # QGIS + Rust gear logo
 │   ├── styles/custom.css       # Theme overrides
-│   └── content/docs/           # MDX documentation pages
-│       ├── getting-started/
-│       ├── concepts/
-│       ├── guides/
-│       ├── reference/
-│       ├── cli/
-│       └── server/
-└── public/                     # Static assets
+│   └── content/
+│       ├── config.ts           # `docs` collection schema (Starlight frontmatter)
+│       └── docs/               # MDX documentation pages
+│           ├── index.mdx       # Landing page (site root)
+│           ├── getting-started/
+│           ├── concepts/
+│           ├── guides/
+│           ├── reference/
+│           ├── cli/
+│           └── server/
+└── public/                     # Static assets (favicon.svg)
 ```
 
 ## Pixi Integration
@@ -43,7 +47,7 @@ The docs site has its own Pixi environment:
 ```toml
 # pixi.toml
 [feature.docs.dependencies]
-bun = ">=1.0.0,<2"
+bun = ">=1.2.0,<2"   # 1.2+ reads the text-format apps/docs/bun.lock
 
 [feature.docs.tasks]
 docs-dev = { cmd = "bun run dev", cwd = "apps/docs" }
@@ -53,6 +57,9 @@ docs-preview = { cmd = "bun run preview", cwd = "apps/docs" }
 [environments]
 docs = { features = ["docs"] }
 ```
+
+JavaScript dependencies are pinned by `apps/docs/bun.lock`; CI installs with
+`bun install --frozen-lockfile`.
 
 ### Running
 
@@ -132,14 +139,72 @@ Pages in these directories appear automatically in sidebar order.
 
 ## Deployment
 
-Build output goes to `apps/docs/dist/`. Deploy to any static hosting:
+The site is published to **GitHub Pages** at
+<https://archont561.github.io/qgis-rs/> by `.github/workflows/pages.yml`:
+
+```
+push to main (apps/docs/**, pixi.toml, pixi.lock, pages.yml)  ──┐
+workflow_dispatch  ────────────────────────────────────────────┤
+                                                               ▼
+                              build job (ubuntu-latest)
+                                actions/configure-pages
+                                pixi install -e docs
+                                pixi run -e docs bun install / bun run build
+                                actions/upload-pages-artifact (apps/docs/dist)
+                                                               ▼
+                              deploy job
+                                actions/deploy-pages
+                                → https://archont561.github.io/qgis-rs/
+```
+
+All actions are pinned by commit SHA, matching `ci.yml` and `env.yml`. The
+workflow needs `pages: write` and `id-token: write`; `contents` stays
+read-only. `concurrency: { group: pages, cancel-in-progress: false }` keeps
+deployments ordered.
+
+**One-time admin step**: *Settings → Pages → Source: GitHub Actions*. The
+repository starts with Pages disabled, and the default workflow token cannot
+enable it, so the `deploy` job fails until this is set.
+
+`ci.yml` still builds the site on every PR (`build-docs` job) to catch breakage
+before it reaches `main`; `pages.yml` only publishes.
+
+### Subpath (`base`)
+
+GitHub Pages project sites are served from `/<repo>`, so `astro.config.mjs`
+sets `site: 'https://archont561.github.io'` and `base: '/qgis-rs'`. Starlight
+prefixes the links it generates (sidebar, logo, edit links), but **markdown
+links written in content are emitted verbatim** — `remark-base-links.mjs`
+prefixes them instead, so authors keep writing `/getting-started/quick-start`.
+`base` also applies to `astro dev` (`http://localhost:4321/qgis-rs`).
+
+## Build Gotchas
+
+Two failures hide until the site is built for production, i.e. only in CI or on
+the Pages deploy — `astro dev` never exercises them:
+
+1. **`src/content/config.ts` is required.** Starlight 0.29 does not inject a
+   content-collection schema; Astro 4 reads it from `src/content/config.ts`.
+   Without it the `docs` collection has no schema, `data.draft` is `undefined`,
+   and Starlight's production filter (`data.draft === false`) drops every page:
+   the build "succeeds" with 1 page (the 404) and no `index.html`.
+2. **`@astrojs/sitemap` is pinned to 3.6.0** via `overrides`/`resolutions` in
+   `apps/docs/package.json`. 3.7+ populates its route list in the
+   `astro:routes:resolved` hook, which only exists in Astro 5, so on Astro 4 it
+   crashes `astro:build:done` with *"Cannot read properties of undefined
+   (reading 'reduce')"*. The crash only surfaces once `site` is set — without
+   `site` the integration warns and returns early.
+
+## Other hosting
+
+The build output in `apps/docs/dist/` is plain static files, so any static host
+works — keep `site`/`base` in sync with the URL it is served from:
 
 | Platform | Command |
 |----------|---------|
 | Netlify | Drag & drop `dist/` |
 | Vercel | `vercel --prod` |
-| GitHub Pages | Upload `dist/` to `gh-pages` branch |
-| Cloudflare Pages | Connect repo, build `npm run build`, output `dist/` |
+| Cloudflare Pages | Connect repo, build `bun run build`, output `dist/` |
 
 ## Technologies
 

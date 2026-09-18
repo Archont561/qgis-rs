@@ -5,6 +5,7 @@
 ### Safe, idiomatic Rust bindings for [QGIS](https://qgis.org/) — the world's most popular open-source GIS platform
 
 [![CI](https://github.com/Archont561/qgis-rs/actions/workflows/ci.yml/badge.svg)](https://github.com/Archont561/qgis-rs/actions/workflows/ci.yml)
+[![Pages](https://github.com/Archont561/qgis-rs/actions/workflows/pages.yml/badge.svg)](https://github.com/Archont561/qgis-rs/actions/workflows/pages.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![QGIS](https://img.shields.io/badge/QGIS-3.44.9+-green.svg)](https://qgis.org/)
 [![Rust](https://img.shields.io/badge/Rust-1.96+-orange.svg)](https://www.rust-lang.org/)
@@ -351,12 +352,17 @@ pixi run fmt
 # Activate docs environment
 pixi shell -e docs
 
-# Start dev server
+# Start dev server (serves at http://localhost:4321/qgis-rs)
 pixi run docs-dev
 
 # Build for production
 pixi run docs-build
 ```
+
+The site is published to [archont561.github.io/qgis-rs](https://archont561.github.io/qgis-rs/)
+by [`pages.yml`](.github/workflows/pages.yml) on every push to `main` that
+touches `apps/docs/`. See [`apps/docs/README.md`](apps/docs/README.md) for the
+one-time Pages setup.
 
 ## License
 

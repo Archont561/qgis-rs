@@ -2,6 +2,13 @@
 
 ## 2026-09-18
 
+* **Creation**: Established [.github/workflows/pages.yml](/../.github/workflows/pages.yml) — builds `apps/docs` with the Pixi `docs` environment and publishes it to GitHub Pages at https://archont561.github.io/qgis-rs/ (build + deploy jobs, SHA-pinned actions, `pages: write` + `id-token: write`).
+* **Update**: Updated [documentation-site.md](/documentation-site.md) — GitHub Pages deployment flow, subpath (`base`) handling, and the two production-only build gotchas.
+* **Update**: Configured `site` and `base: '/qgis-rs'` in `apps/docs/astro.config.mjs` for the Pages subpath; added `apps/docs/remark-base-links.mjs` so in-content links are prefixed too.
+* **Addition**: Created `apps/docs/src/content/config.ts` — without the `docs` collection schema, Starlight's `draft === false` production filter dropped every page and the build emitted only a 404.
+* **Addition**: Created `apps/docs/src/content/docs/index.mdx` (splash landing page) and `apps/docs/public/favicon.svg`.
+* **Update**: Pinned `@astrojs/sitemap` to 3.6.0 via `overrides`/`resolutions` in `apps/docs/package.json` — 3.7+ needs the Astro 5-only `astro:routes:resolved` hook and crashes `astro:build:done` on Astro 4.
+* **Addition**: Committed `apps/docs/bun.lock`; CI and the Pages workflow now install with `bun install --frozen-lockfile` (Pixi `bun` constraint raised to `>=1.2.0,<2` so it can read the lockfile).
 * **Creation**: Established [api-design.md](/api-design.md) — complete public API surface for qgis-render, qgis-cli, qgis-server, and language bindings.
 * **Creation**: Established [qgis-plugin-sdk.md](/qgis-plugin-sdk.md) — Python-first plugin framework with optional Rust acceleration.
 * **Creation**: Established [documentation-site.md](/documentation-site.md) — Astro Starlight documentation site in apps/docs/ with Bun runtime.

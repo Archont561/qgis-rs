@@ -1,10 +1,25 @@
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
 
+import remarkBaseLinks from './remark-base-links.mjs';
+
+// Deployed to GitHub Pages as a project site, so the site lives under the
+// /qgis-rs subpath: https://archont561.github.io/qgis-rs/
+// See .github/workflows/pages.yml for the deployment.
+const site = 'https://archont561.github.io';
+const base = '/qgis-rs';
+
 // https://astro.build/config
 export default defineConfig({
+  site,
+  base,
   server: {
     allowedHosts: 'all',
+  },
+  // Content links such as `[Quick Start](/getting-started/quick-start)` are
+  // emitted verbatim by the markdown pipeline, so prefix them with `base`.
+  markdown: {
+    remarkPlugins: [remarkBaseLinks(base)],
   },
   integrations: [
     starlight({
@@ -14,7 +29,10 @@ export default defineConfig({
         src: './src/assets/logo.svg',
       },
       social: {
-        github: 'https://github.com/yourusername/qgis-rs',
+        github: 'https://github.com/Archont561/qgis-rs',
+      },
+      editLink: {
+        baseUrl: 'https://github.com/Archont561/qgis-rs/edit/main/apps/docs/',
       },
       sidebar: [
         {
