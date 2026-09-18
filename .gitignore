@@ -37,6 +37,9 @@ dist/
 
 # docs app (Node.js / Astro)
 apps/docs/node_modules/
+# The Bun workspace at the root owns JS resolution; a root npm lock is a mistake
+# (member locks, e.g. ts-packages/qgis-node/package-lock.json, stay tracked).
+/package-lock.json
 apps/docs/dist/
 apps/docs/.astro/
 

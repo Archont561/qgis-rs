@@ -13,14 +13,8 @@ pub mod ffi {
 
         fn vector_layer_is_valid(handle: &QgsVectorLayerHandle) -> bool;
         fn vector_layer_name(handle: &QgsVectorLayerHandle) -> String;
-        fn vector_layer_feature_count(
-            handle: &QgsVectorLayerHandle,
-        ) -> i64;
-        fn vector_layer_crs_authid(
-            handle: &QgsVectorLayerHandle,
-        ) -> String;
-        fn vector_layer_geometry_type_name(
-            handle: &QgsVectorLayerHandle,
-        ) -> String;
+        fn vector_layer_feature_count(handle: &QgsVectorLayerHandle) -> i64;
+        fn vector_layer_crs_authid(handle: &QgsVectorLayerHandle) -> String;
+        fn vector_layer_geometry_type_name(handle: &QgsVectorLayerHandle) -> String;
     }
 }
