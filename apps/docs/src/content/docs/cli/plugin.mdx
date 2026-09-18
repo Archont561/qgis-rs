@@ -1,0 +1,167 @@
+---
+title: qgis-plugin
+description: CLI for scaffolding, building, testing, and publishing QGIS plugins
+---
+
+# qgis-plugin CLI
+
+`qgis-plugin` is the CLI for QGIS plugin development — scaffold, build, test, package, publish at native Rust speed (with Python fallback).
+
+Installed via `pip install qgis-sdk` → binary `qgis-plugin` on PATH + `python -m qgis_sdk.cli`.
+
+## Commands
+
+| Command | Description |
+|---------|-------------|
+| `new` | Scaffold new plugin |
+| `build` | Build plugin |
+| `test` | Run tests |
+| `install` | Install into local QGIS |
+| `dev` | Watch mode |
+| `package` | Create .zip for QGIS Plugin Repository |
+| `publish` | Upload to QGIS Plugin Repository |
+| `validate` | Check structure and metadata |
+| `info` | Show plugin info |
+| `version` | Print version |
+| `rust init` | Add Rust acceleration |
+| `rust build` | Build Rust module |
+| `ui add-dialog` | Add UI dialog scaffolding |
+| `ui add-web` | Add WebEngine scaffolding |
+| `bridge generate` | Generate TS types from Python bridge |
+
+## new
+
+```bash
+qgis-plugin new my_plugin --type processing --rust
+qgis-plugin new my_plugin --web --framework react --author "Name" --email "a@b.com"
+qgis-plugin new my_plugin --no-ui -o /tmp
+```
+
+Options:
+- `name` — plugin name (e.g. `my_plugin`)
+- `--rust` — include Rust acceleration
+- `--web` — include WebEngine HTML + QWebChannel (vanilla + React + Vue + WebComponents)
+- `--framework` — `vanilla`, `react`, `vue`, `webcomponents` (default `vanilla`)
+- `--ui` / `--no-ui` — include UI dialogs (default true)
+- `--type` — `general`, `processing`, `provider`, `server` (default `general`)
+- `-o, --output` — output directory
+- `--author`, `--email`
+
+Generated with `--web`:
+
+```
+my_plugin/
+├── my_plugin/
+│   ├── web/
+│   │   ├── map.html (Leaflet)
+│   │   ├── react.html (React 18 hook)
+│   │   ├── vue.html (Vue 3 Composition)
+│   │   ├── components.html (Web Components)
+│   │   ├── bridge.d.ts (typed interface)
+│   │   └── bridge.ts (usage examples)
+│   ├── frontend/ (for react/vue)
+│   │   ├── package.json (with @qgis-sdk/bridge)
+│   │   └── src/App.tsx (typed useQgisBridge<Bridge>)
+│   ├── dialogs/
+│   └── ui/
+```
+
+With `--framework react`:
+- `web/index.html` = React version
+- `frontend/` Vite template with `react`, `react-dom`, `@qgis-sdk/bridge`
+
+## bridge generate
+
+Generate TypeScript types from Python bridge class.
+
+```bash
+qgis-plugin bridge generate --bridge my_plugin.dialogs.web_dialog:Bridge --output web/bridge.d.ts
+qgis-plugin bridge generate --bridge my_plugin.dialogs.web_dialog:Bridge --output web/ --package
+qgis-plugin bridge generate --bridge my_plugin.dialogs.web_dialog.Bridge --output web/bridge.js --name MyBridge --object-name bridge --framework react
+```
+
+Options:
+- `--bridge` (required) — dotted path `module:Class` or `module.Class`, e.g. `my_plugin.dialogs.web_dialog:Bridge`
+- `-o, --output` — file or dir (default `web/bridge.d.ts`)
+- `--name` — TS interface name (default Python class name)
+- `--object-name` — QWebChannel object name (default `bridge`)
+- `--framework` — hint for README: `vanilla`, `react`, `vue`, `webcomponents`
+- `--package` — generate full package `bridge.d.ts` + `bridge.js` + `react.ts` + `vue.ts` + `webcomponents.ts` + `README`
+
+Inspects Python signatures + type hints → TS:
+
+```typescript
+export interface Bridge {
+  get_layer(callback: (result: Record<string, any>) => void): void;
+  get_layer(): Promise<Record<string, any>>;
+  log(msg: string): Promise<string>;
+}
+```
+
+Usage with `@qgis-sdk/bridge`:
+
+```typescript
+import { createBridge } from '@qgis-sdk/bridge';
+import type { Bridge } from './web/bridge.d.ts';
+const bridge = await createBridge<Bridge>();
+```
+
+## ui
+
+```bash
+qgis-plugin ui add-dialog ./my_plugin --name custom_dialog
+# Adds dialogs/custom_dialog.py + ui/custom_dialog.ui (uic.loadUiType + WA_DeleteOnClose + QSettings)
+
+qgis-plugin ui add-web ./my_plugin
+# Adds web/map.html (Leaflet + qrc:///qtwebchannel/qwebchannel.js) + dialogs/web_dialog.py
+```
+
+## build, test, install, dev, package, publish
+
+```bash
+qgis-plugin build -o dist/
+qgis-plugin test
+qgis-plugin install --profile ~/.local/share/QGIS/QGIS3/profiles/default/python/plugins
+qgis-plugin dev --rust --launch
+qgis-plugin package -o dist/
+qgis-plugin publish --zip dist/my_plugin-0.1.0.zip --dry-run
+```
+
+## validate, info, version
+
+```bash
+qgis-plugin validate ./my_plugin
+qgis-plugin info ./my_plugin
+qgis-plugin info --json
+qgis-plugin version
+```
+
+Validation checks:
+- `metadata.txt` exists
+- If Rust core: checks HTML references `qwebchannel.js`
+
+## rust
+
+```bash
+qgis-plugin rust init ./my_plugin
+# Creates Cargo.toml + src/lib.rs
+
+qgis-plugin rust build --release
+```
+
+## Python Module
+
+Same CLI via Python (uses Rust extension if available):
+
+```bash
+python -m qgis_sdk.cli new my_plugin --web --framework react
+python -m qgis_sdk.cli bridge generate --bridge my_plugin.dialogs.web_dialog:Bridge --output web/bridge.d.ts
+python -m qgis_sdk.cli validate
+```
+
+## See Also
+
+- [Plugin Development Guide](/guides/plugin-development)
+- [Typed Bridge Guide](/guides/typed-bridge)
+- [Testing Fixtures Guide](/guides/testing-fixtures)
+- [Web Frameworks Guide](/guides/web-frameworks)

@@ -1,0 +1,42 @@
+[package]
+name = "qgis-sdk"
+description = "Python SDK for building QGIS plugins on top of PyQGIS — with Rust-native CLI and acceleration"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+readme = "README.md"
+keywords = ["qgis", "gis", "plugin", "pyqgis", "cli", "rust"]
+categories = ["science::geo", "development-tools"]
+
+[lib]
+name = "_core"
+crate-type = ["cdylib"]
+path = "src_rs/lib.rs"
+
+[[bin]]
+name = "qgis-plugin"
+path = "src_rs/bin/qgis-plugin.rs"
+
+[[bin]]
+name = "qgis-sdk"
+path = "src_rs/bin/qgis-sdk.rs"
+
+[dependencies]
+anyhow = { workspace = true }
+clap = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+qgis-render = { workspace = true }
+qgis-cli = { workspace = true }
+
+pyo3 = { version = "0.22", features = ["extension-module"] }
+
+[features]
+default = ["python"]
+python = ["pyo3/extension-module"]
+
+[package.metadata.maturin]
+python-source = "src"
+module-name = "qgis_sdk._core"
+requires-dist = []

@@ -5,7 +5,13 @@ _*
 # …but Python packages need their underscore-prefixed modules committed,
 # otherwise hatchling (which honours VCS ignore files) drops them from wheels.
 !__init__.py
+!__init__.pyi
 !__main__.py
+!_fallback.py
+!_fallback_cli.py
+!_core.pyi
+!_core.py
+!_native.py
 
 # git / github
 !.git*
@@ -33,3 +39,19 @@ dist/
 apps/docs/node_modules/
 apps/docs/dist/
 apps/docs/.astro/
+
+# node / napi
+packages/qgis-node/node_modules/
+packages/qgis-node/*.node
+packages/qgis-node/dist/
+packages/qgis-sdk-bridge/node_modules/
+packages/qgis-sdk-bridge/dist/
+apps/docs/dist/
+apps/docs/.astro/
+
+# bun / node - new layout
+node_modules/
+packages-bun/*/node_modules/
+packages-bun/*/dist/
+apps/*/node_modules/
+apps/*/dist/

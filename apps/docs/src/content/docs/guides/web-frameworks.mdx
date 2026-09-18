@@ -1,0 +1,425 @@
+---
+title: Web Frameworks in QGIS
+description: Use React, Vue, or Web Components inside QWebEngineView with @qgis-sdk/bridge
+---
+
+# Web Frameworks in QGIS
+
+`QWebEngineView` is Chromium (Qt 6.8+ = Chromium 122+), so modern frontends work out of the box. `qgis-sdk` provides templates and typed bridge adapters.
+
+## Why Web Frameworks?
+
+| Approach | Pros | Cons |
+|----------|------|------|
+| **Vanilla + Leaflet** | No build, smallest, offline | Manual DOM, no state mgmt |
+| **React** | Ecosystem, hooks, typed bridge | Build step, bundle size |
+| **Vue 3** | Light, Composition API, easy | Build step |
+| **Web Components** | Native, Shadow DOM, no build, offline best | Less ecosystem |
+
+For QGIS plugins, **Web Components** is often best (small, offline, no CDN). React/Vue are great for complex UIs — use Vite build to `web/dist/`.
+
+## Scaffold
+
+```bash
+# Vanilla (Leaflet + all examples)
+qgis-plugin new my_plugin --web
+
+# React
+qgis-plugin new my_plugin --web --framework react
+# Creates web/react.html (CDN demo) + web/map.html + web/bridge.d.ts + frontend/ (Vite + React + @qgis-sdk/bridge)
+
+# Vue
+qgis-plugin new my_plugin --web --framework vue
+
+# Web Components
+qgis-plugin new my_plugin --web --framework webcomponents
+```
+
+Generated structure:
+
+```
+my_plugin/
+├── my_plugin/
+│   ├── web/
+│   │   ├── map.html          # Leaflet vanilla
+│   │   ├── react.html        # React CDN demo (useQgisBridge)
+│   │   ├── vue.html          # Vue CDN demo (ref/onMounted)
+│   │   ├── components.html   # Web Components (customElements)
+│   │   ├── index.html        # = framework choice (react/vue/components)
+│   │   ├── bridge.d.ts       # Typed interface (auto-generated)
+│   │   └── bridge.ts         # Usage examples
+│   ├── frontend/             # Vite (only for react/vue)
+│   │   ├── package.json      # with @qgis-sdk/bridge
+│   │   ├── vite.config.js
+│   │   ├── tsconfig.json
+│   │   ├── index.html
+│   │   └── src/
+│   │       ├── App.tsx       # React: useQgisBridge<Bridge>
+│   │       └── main.tsx
+│   ├── dialogs/
+│   │   ├── main_dialog.py
+│   │   └── web_dialog.py     # MapBridge with typed methods
+│   └── ui/
+│       └── main_dialog.ui
+```
+
+## Vanilla + Leaflet
+
+`web/map.html` (scaffolded):
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="qrc:///qtwebchannel/qwebchannel.js"></script>
+</head>
+<body>
+<div id="map"></div>
+<script type="module">
+  // Modern with @qgis-sdk/bridge
+  // import { createBridge } from '@qgis-sdk/bridge';
+  // import type { Bridge } from './bridge.d.ts';
+  // const bridge = await createBridge<Bridge>();
+
+  // Legacy (works without npm)
+  var bridge = null;
+  var map = L.map('map').setView([51.5, -0.09], 13);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+  new QWebChannel(qt.webChannelTransport, ch => {
+    bridge = ch.objects.bridge;
+    bridge.get_layer(data => {
+      const d = typeof data === 'string' ? JSON.parse(data) : data;
+      document.getElementById('layer-name').innerText = d.name;
+    });
+  });
+
+  // Python -> JS
+  window.addEventListener('qgis-message', e => {
+    if (e.detail.center) map.setView(e.detail.center, e.detail.zoom);
+  });
+  window.updateFromPython = data => {
+    window.dispatchEvent(new CustomEvent('qgis-message', {detail: data}));
+  };
+</script>
+</body>
+</html>
+```
+
+Python:
+
+```python
+from qgis_sdk.ui import WebDialog
+dlg = WebDialog.from_file("web/map.html", title="Map View")
+dlg.set_bridge(MapBridge())
+dlg.exec()
+```
+
+## React
+
+### CDN Demo (no build)
+
+`web/react.html` (scaffolded, works offline if you bundle React):
+
+```html
+<script src="qrc:///qtwebchannel/qwebchannel.js"></script>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script type="text/babel">
+const { useState, useEffect } = React;
+function useQgisBridge() {
+  const [bridge, setBridge] = useState(null);
+  useEffect(() => {
+    new QWebChannel(qt.webChannelTransport, ch => setBridge(ch.objects.bridge));
+  }, []);
+  return bridge;
+}
+function App() {
+  const bridge = useQgisBridge();
+  // ...
+}
+</script>
+```
+
+### Production (Vite + @qgis-sdk/bridge)
+
+`frontend/src/App.tsx` (scaffolded):
+
+```tsx
+import { useEffect, useState } from 'react';
+import { useQgisBridge } from '@qgis-sdk/bridge/react';
+import type { Bridge } from '../../web/bridge.d.ts';
+
+export default function App() {
+  const { bridge, ready, error } = useQgisBridge<Bridge>();
+  const [layer, setLayer] = useState<any>(null);
+
+  useEffect(() => {
+    if (ready && bridge) {
+      bridge.get_layer().then(setLayer);
+    }
+  }, [ready, bridge]);
+
+  if (error) return <div>Error: {error.message}</div>;
+  if (!ready) return <div>Connecting to QGIS... (auto-injects qrc:///qtwebchannel/qwebchannel.js)</div>;
+
+  return (
+    <div style={{ padding: 16 }}>
+      <h2>My Plugin — React + @qgis-sdk/bridge</h2>
+      <p>Layer: {layer?.name} ({layer?.count})</p>
+      <button onClick={() => bridge?.log("hello from React")}>Send to Python</button>
+    </div>
+  );
+}
+```
+
+`frontend/package.json`:
+
+```json
+{
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "@qgis-sdk/bridge": "^0.1.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.2.0",
+    "vite": "^5.0.0",
+    "typescript": "^5.4.0"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build --outDir ../my_plugin/web/dist"
+  }
+}
+```
+
+Build:
+
+```bash
+cd my_plugin/frontend
+npm install
+npm run build # -> my_plugin/web/dist/
+```
+
+Python:
+
+```python
+from qgis_sdk.ui import WebDialog
+dlg = WebDialog.from_file("web/dist/index.html", title="My App")
+dlg.exec()
+```
+
+## Vue 3
+
+### CDN Demo
+
+`web/vue.html`:
+
+```html
+<script src="qrc:///qtwebchannel/qwebchannel.js"></script>
+<script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+<div id="app">
+  <p>Layer: {{ layer?.name }}</p>
+  <button @click="sendToPython">Send</button>
+</div>
+<script>
+const { createApp, ref, onMounted } = Vue;
+createApp({
+  setup() {
+    const bridge = ref(null);
+    const layer = ref(null);
+    onMounted(() => {
+      new QWebChannel(qt.webChannelTransport, ch => {
+        bridge.value = ch.objects.bridge;
+        bridge.value.get_layer(r => layer.value = JSON.parse(r));
+      });
+    });
+    return { bridge, layer };
+  }
+}).mount('#app');
+</script>
+```
+
+### Production (Vite + @qgis-sdk/bridge)
+
+`frontend/src/App.vue`:
+
+```vue
+<script setup lang="ts">
+import { ref, watch } from 'vue';
+import { useQgisBridge } from '@qgis-sdk/bridge/vue';
+import type { Bridge } from '../../web/bridge.d.ts';
+
+const { bridge, ready } = useQgisBridge<Bridge>();
+const layer = ref<any>(null);
+
+watch(ready, async (r) => {
+  if (r && bridge.value) {
+    layer.value = await bridge.value.get_layer();
+  }
+});
+</script>
+
+<template>
+  <div style="padding:16px">
+    <h2>My Plugin — Vue + @qgis-sdk/bridge</h2>
+    <div v-if="!ready">Connecting to QGIS... (auto-injects qrc:///qtwebchannel/qwebchannel.js)</div>
+    <div v-else>
+      <p>Layer: {{ layer?.name }} ({{ layer?.count }})</p>
+      <button @click="bridge?.value?.log('hello from Vue')">Send</button>
+    </div>
+  </div>
+</template>
+```
+
+## Web Components
+
+No build step, best for offline QGIS, smallest bundle.
+
+`web/components.html`:
+
+```html
+<script src="qrc:///qtwebchannel/qwebchannel.js"></script>
+<qgis-layer-card id="layerCard"></qgis-layer-card>
+<qgis-toolbar id="toolbar"></qgis-toolbar>
+<script>
+class QgisLayerCard extends HTMLElement {
+  constructor() {
+    super();
+    this.attachShadow({mode: 'open'});
+    this.shadowRoot.innerHTML = `<div class="card"><h3>Layer</h3><span id="name"></span></div>`;
+  }
+  setBridge(b) { this.bridge = b; this.load(); }
+  load() {
+    this.bridge.get_layer(r => {
+      const d = typeof r === 'string' ? JSON.parse(r) : r;
+      this.shadowRoot.getElementById('name').textContent = d.name;
+    });
+  }
+}
+customElements.define('qgis-layer-card', QgisLayerCard);
+
+new QWebChannel(qt.webChannelTransport, ch => {
+  const bridge = ch.objects.bridge;
+  document.getElementById('layerCard').setBridge(bridge);
+});
+</script>
+```
+
+### With @qgis-sdk/bridge
+
+```html
+<qgis-bridge object-name="bridge" id="qgisBridge"></qgis-bridge>
+<script type="module">
+import '@qgis-sdk/bridge/webcomponents';
+const el = document.getElementById('qgisBridge');
+el.addEventListener('qgis-bridge-ready', async (e) => {
+  const layer = await e.detail.bridge.get_layer();
+  console.log(layer);
+});
+el.addEventListener('qgis-message', e => console.log(e.detail));
+</script>
+```
+
+Mixin:
+
+```typescript
+import { withQgisBridge } from '@qgis-sdk/bridge/webcomponents';
+
+class MyMap extends withQgisBridge(HTMLElement) {
+  onBridgeReady(bridge) {
+    bridge.get_layer().then(layer => this.render(layer));
+  }
+  onQgisMessage(data) {
+    console.log('from Python', data);
+  }
+}
+customElements.define('my-map', MyMap);
+```
+
+## Python → JS Communication
+
+All frameworks listen via same mechanism:
+
+Python:
+
+```python
+import json
+web_view.page().runJavaScript(f"window.qgisBridge.onMessage({json.dumps(data)})")
+# or
+web_view.page().runJavaScript(f"window.dispatchEvent(new CustomEvent('qgis-message', {{detail: {json.dumps(data)}}}}))")
+```
+
+JS (any framework):
+
+```typescript
+// Via @qgis-sdk/bridge helper
+import { onQgisMessage } from '@qgis-sdk/bridge';
+onQgisMessage(data => console.log(data));
+
+// Via CustomEvent
+window.addEventListener('qgis-message', (e: CustomEvent) => {
+  console.log(e.detail);
+});
+
+// Legacy globals (for compatibility)
+window.updateFromPython = data => console.log(data);
+window.updateFromReact = data => window.dispatchEvent(new CustomEvent('qgis-message', {detail: data}));
+window.updateFromVue = /* same */;
+window.updateFromWC = /* same */;
+```
+
+## Offline QGIS Considerations
+
+- **Qt provides** `qrc:///qtwebchannel/qwebchannel.js` — no need to bundle
+- **Avoid CDN** in production: bundle React/Vue via Vite, or use Web Components
+- **Web Components smallest**: no framework, Shadow DOM, native
+- **Vite build** with `base: './'` so `web/dist/index.html` loads relative assets
+- **Include** `web/dist/*` in `pyproject.toml`:
+
+```toml
+[tool.hatch.build.targets.wheel]
+include = [
+  "my_plugin/web/dist/*",
+]
+```
+
+## Testing Web Frameworks
+
+Use `FakeWebView` + `FakeBridge` — no Qt needed:
+
+```python
+def test_react_bridge(fake_bridge):
+    assert fake_bridge.get_layer()["name"] == "test_layer"
+
+def test_webview(fake_webview_factory):
+    view = fake_webview_factory("<html>test</html>")
+    view.page().runJavaScript("console.log('hi')")
+    assert len(view.page().js_calls) == 1
+```
+
+For JS, use `vitest` + `jsdom`:
+
+```typescript
+import { describe, it, expect, vi } from 'vitest';
+import { createBridge } from '@qgis-sdk/bridge';
+
+// Mock QWebChannel
+global.QWebChannel = vi.fn((transport, cb) => {
+  cb({ objects: { bridge: { get_layer: (cb) => cb({name: "test"}) } } });
+});
+global.qt = { webChannelTransport: {} };
+
+it('creates bridge', async () => {
+  const bridge = await createBridge();
+  expect(bridge).toBeDefined();
+});
+```
+
+## Next Steps
+
+- [Typed Bridge Guide](/guides/typed-bridge) — generate types, Promise API, loader
+- [Testing Fixtures Guide](/guides/testing-fixtures) — fake iface, dialogs, webviews
+- [Plugin Development](/guides/plugin-development) — full workflow

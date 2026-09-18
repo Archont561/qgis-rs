@@ -79,13 +79,90 @@ Deploy as a standalone executable. No JVM, no Python environment, no system depe
 
 ## Installation
 
-### Prerequisites
+### Python (pip / conda-forge) + TypeScript (npm) — API + CLI at native Rust speed
+
+The easiest way — no Rust or QGIS needed for many operations. Three packages:
+
+- **`qgis-rs`** (Python) — rendering, tiling, server (native Rust)
+- **`qgis-sdk`** (Python) — plugin development SDK (Python + Rust-native CLI)
+- **`qgis-rs`** (npm) — same rendering/tiling + plugin tools for Node.js/TypeScript
+
+```bash
+# Python — From PyPI (pip) — includes Rust binaries + Python API
+pip install qgis-rs qgis-sdk
+
+# Python — From conda-forge — same, with QGIS backend for full rendering
+conda install -c conda-forge qgis-rs qgis-sdk
+# or
+pixi add qgis-rs qgis-sdk
+
+# TypeScript — From npm — includes NAPI addon + Rust binaries
+npm install qgis-rs
+
+# Test rendering tools (Python)
+python -c "import qgis_rs; print(qgis_rs.__version__)"
+qgis-cli --help
+qgis-cli info map.qgs --json
+qgis-cli tiles map.qgs -z 10-14 -b 14,50,15,51 --dry-run
+
+# Test plugin SDK (Python)
+python -c "import qgis_sdk; print(qgis_sdk.__version__, qgis_sdk.HAS_RUST)"
+qgis-plugin --help
+qgis-plugin new my_plugin --type processing --rust
+
+# Test TypeScript API
+node -e "const { TilePlan, Extent, ZoomRange } = require('qgis-rs'); console.log(new TilePlan(Extent.parse('14,50,15,51'), ZoomRange.parse('10-14')).tileCount())"
+npx qgis-cli --help
+npx qgis-plugin --help
+```
+
+Python API — rendering:
+
+```python
+from qgis_rs import Project, Extent, TilePlan, ZoomRange
+
+project = Project.open("map.qgs")
+extent = Extent.parse("14,50,15,51")
+plan = TilePlan(extent, ZoomRange.parse("10-14"))
+print(f"Would render {plan.tile_count()} tiles")  # 4568, pure Rust, no QGIS
+```
+
+TypeScript API — same, native speed via NAPI:
+
+```typescript
+import { Project, Extent, TilePlan, ZoomRange } from 'qgis-rs';
+
+const extent = Extent.parse('14,50,15,51');
+const plan = new TilePlan(extent, ZoomRange.parse('10-14'));
+console.log(plan.tileCount()); // 4568
+```
+
+Python API — plugin SDK:
+
+```python
+from qgis_sdk import Plugin, action, toolbar
+
+class MyPlugin(Plugin):
+    name = "My Plugin"
+    version = "0.1.0"
+
+    @toolbar("My Toolbar")
+    @action(tooltip="Run my tool")
+    def run_tool(self, iface):
+        print("Hello from plugin!")
+```
+
+See [Python docs](https://archont561.github.io/qgis-rs/getting-started/python/) and [TypeScript docs](https://archont561.github.io/qgis-rs/getting-started/typescript/) for full API.
+
+### Rust (Cargo)
+
+#### Prerequisites
 
 - **Rust** ≥ 1.96.0
-- **QGIS** ≥ 3.44.9 (libqgis_core)
+- **QGIS** ≥ 3.44.9 (libqgis_core) for full rendering
 - **Pixi** (recommended) or manual setup
 
-### Using Pixi (Recommended)
+#### Using Pixi (Recommended)
 
 ```bash
 # Clone and enter the repository
@@ -100,7 +177,7 @@ cargo build
 cargo test
 ```
 
-### Using Cargo
+#### Using Cargo
 
 Add to your `Cargo.toml`:
 
@@ -110,7 +187,7 @@ qgis-render = "0.1"
 ```
 
 > [!IMPORTANT]
-> You must have QGIS development libraries installed on your system. See [Installation Guide](https://archont561.github.io/qgis-rs/getting-started/installation/) for platform-specific instructions.
+> You must have QGIS development libraries installed on your system for full rendering. Pure-Rust ops (tile planning, extent parsing) work without QGIS. See [Installation Guide](https://archont561.github.io/qgis-rs/getting-started/installation/) for platform-specific instructions.
 
 ## Quick Start
 
@@ -212,16 +289,18 @@ graph TB
     C --> E
 ```
 
-### Crate Structure
+### Crate / Package Structure
 
-| Crate | Purpose | Status |
-|-------|---------|--------|
+| Crate / Package | Purpose | Status |
+|-----------------|---------|--------|
 | `qgis-sys` | Low-level CXX bindings | ✅ Active |
 | `qgis-render` | High-level rendering API | 🔨 Scaffolded (pure geometry works; QGIS backend pending) |
 | `qgis-server` | HTTP server (WMS/WFS/OGC) | 🔨 Scaffolded (routing works; listener pending) |
 | `qgis-mcp` | Model Context Protocol server | ✅ Active (bundled into `qgis-cli mcp`) |
-| `qgis-cli` | Command-line tool | 🔨 Scaffolded (`mcp`, `info`, `tiles --dry-run` work) |
-| `qgis-sdk` | Plugin development SDK (Python, `packages/qgis-sdk`) | ✅ Active |
+| `qgis-cli` | Command-line tool (Rust binary + lib) | 🔨 Scaffolded (`mcp`, `info`, `tiles --dry-run` work) |
+| `qgis-sdk` | Plugin development SDK (Python + Rust-native CLI `qgis-plugin`, `packages/qgis-sdk`) — pip/conda-forge, native speed | ✅ Active (Python API + Rust binaries `qgis-plugin`/`qgis-sdk`) |
+| `qgis-rs` (Python) | Python bindings + CLI (PyO3 + Rust binary `qgis-cli`, `packages/qgis-rs`) — pip/conda-forge | ✅ Active (pure-Rust ops work; QGIS backend optional) |
+| `qgis-rs` (npm) | TypeScript/Node.js bindings + CLI (NAPI-RS + Rust binaries `qgis-cli`/`qgis-plugin`, `packages/qgis-node`) — npm | ✅ Active (pure-Rust ops work; QGIS backend optional, JS fallback) |
 
 ## Documentation
 

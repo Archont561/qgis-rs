@@ -1,0 +1,42 @@
+[package]
+name = "qgis-rs"
+description = "Python bindings and CLI for qgis-rs — native-speed QGIS rendering, tiling, and server tools"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+readme = "README.md"
+keywords = ["qgis", "gis", "rendering", "tiles", "pyo3", "cli"]
+categories = ["science::geo", "api-bindings"]
+
+[lib]
+name = "_core"
+crate-type = ["cdylib"]
+path = "src/lib.rs"
+
+[[bin]]
+name = "qgis-cli"
+path = "src/bin/qgis-cli.rs"
+
+[dependencies]
+qgis-render = { workspace = true }
+qgis-server = { workspace = true }
+qgis-cli = { workspace = true }
+qgis-mcp = { workspace = true, optional = true }
+anyhow = { workspace = true }
+clap = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true, optional = true }
+
+pyo3 = { version = "0.22", features = ["extension-module"] }
+
+[features]
+default = ["mcp", "python"]
+mcp = ["dep:qgis-mcp", "dep:tokio", "qgis-cli/mcp"]
+python = ["pyo3/extension-module"]
+
+[package.metadata.maturin]
+# maturin will look for python package in python/
+python-source = "python"
+module-name = "qgis_rs._core"
+requires-dist = []

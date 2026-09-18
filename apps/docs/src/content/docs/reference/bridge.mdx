@@ -1,0 +1,179 @@
+---
+title: Typed Bridge (@qgis-sdk/bridge)
+description: Reference for Python bridge generation and TypeScript runtime @qgis-sdk/bridge
+---
+
+# Typed Bridge — @qgis-sdk/bridge
+
+Typed QWebChannel bridge with auto-generated TypeScript types from Python.
+
+## Python API — qgis_sdk.bridge
+
+### generate_ts_bridge
+
+```python
+from qgis_sdk.bridge import generate_ts_bridge
+
+ts_code = generate_ts_bridge(BridgeClass, name="Bridge", with_promise=True, with_callback=True)
+```
+
+- `bridge_cls`: Python class with methods
+- `name`: TS interface name (default class name)
+- `with_promise`: generate Promise overloads (default True)
+- `with_callback`: generate callback overloads (default True)
+- Returns TS code string with `export interface Bridge { ... }`
+
+Type mapping: `str→string`, `int/float→number`, `bool→boolean`, `dict→Record<string,any>`, `list→any[]`, `Optional[X]→X|null`, `None→void`.
+
+### generate_js_wrapper
+
+```python
+from qgis_sdk.bridge import generate_js_wrapper
+
+js_code = generate_js_wrapper(BridgeClass, name="Bridge", object_name="bridge")
+```
+
+Generates standalone JS that:
+- `loadQWebChannel()` tries `qrc:///qtwebchannel/qwebchannel.js`, `./qwebchannel.js`, CDN
+- `promisifyBridge()` converts callback to Promise with JSON parse
+- `createBridge(objectName)` returns Promise
+
+### generate_package
+
+```python
+from qgis_sdk.bridge import generate_package
+
+generate_package(BridgeClass, output_dir="web/", name="Bridge", object_name="bridge")
+# Creates bridge.d.ts, bridge.js, index.ts, react.ts, vue.ts, webcomponents.ts, README.md
+```
+
+### load_bridge_class
+
+```python
+from qgis_sdk.bridge import load_bridge_class
+
+cls = load_bridge_class("my_plugin.dialogs.web_dialog:Bridge")
+cls = load_bridge_class("my_plugin.dialogs.web_dialog.Bridge") # dot notation also
+```
+
+Supports `module:Class` and `module.Class`.
+
+### CLI
+
+```bash
+qgis-plugin bridge generate --bridge my_plugin.dialogs.web_dialog:Bridge --output web/bridge.d.ts
+qgis-plugin bridge generate --bridge my_plugin.dialogs.web_dialog:Bridge --output web/ --package --framework react --name Bridge --object-name bridge
+```
+
+## TypeScript API — @qgis-sdk/bridge
+
+### Installation
+
+```bash
+npm install @qgis-sdk/bridge
+```
+
+### Loader
+
+```typescript
+import { loadQWebChannel, isQWebChannelAvailable, QWEBCHANNEL_SOURCES } from '@qgis-sdk/bridge/loader';
+
+await loadQWebChannel(); // tries qrc:///..., ./qwebchannel.js, CDN
+isQWebChannelAvailable(); // boolean
+```
+
+Sources tried in order:
+1. Global `QWebChannel` already present
+2. `qrc:///qtwebchannel/qwebchannel.js` (Qt built-in)
+3. `./qwebchannel.js`, `./web/qwebchannel.js`, `/qwebchannel.js`
+4. CDN `jsdelivr.net`, `unpkg`
+
+### Core
+
+```typescript
+import { createBridge, onQgisMessage } from '@qgis-sdk/bridge';
+import type { Bridge } from './web/bridge.d.ts';
+
+const bridge = await createBridge<Bridge>();
+// or
+const bridge = await createBridge<Bridge>({ objectName: 'bridge', timeout: 10000, qwebchannelSources: [...] });
+
+const layer = await bridge.get_layer(); // typed!
+await bridge.log("hello");
+
+// Python -> JS
+const unsub = onQgisMessage(data => console.log(data));
+window.addEventListener('qgis-message', (e: CustomEvent) => console.log(e.detail));
+```
+
+`createBridge` options:
+- `objectName`: default `'bridge'`, must match Python `channel.registerObject`
+- `qwebchannelSources`: custom string[]
+- `timeout`: ms (default 10000)
+
+### React
+
+```typescript
+import { useQgisBridge } from '@qgis-sdk/bridge/react';
+import type { Bridge } from './bridge.d.ts';
+
+function App() {
+  const { bridge, ready, error } = useQgisBridge<Bridge>();
+  // bridge: Bridge | null, ready: boolean, error: Error | null
+}
+
+import { createReactHook } from '@qgis-sdk/bridge/react';
+const useQgisBridge = createReactHook<Bridge>({ useState, useEffect });
+```
+
+### Vue
+
+```typescript
+import { useQgisBridge } from '@qgis-sdk/bridge/vue';
+
+const { bridge, ready, error } = useQgisBridge<Bridge>();
+// bridge: Ref<Bridge | null>, ready: Ref<boolean>
+
+import { createVueComposable } from '@qgis-sdk/bridge/vue';
+const useQgisBridge = createVueComposable<Bridge>({ ref, onMounted });
+```
+
+### Web Components
+
+```typescript
+import { QgisBridgeElement, withQgisBridge } from '@qgis-sdk/bridge/webcomponents';
+
+// Element
+// <qgis-bridge object-name="bridge"></qgis-bridge>
+const el = document.querySelector('qgis-bridge');
+el.addEventListener('qgis-bridge-ready', e => e.detail.bridge.get_layer().then(...));
+
+// Mixin
+class MyMap extends withQgisBridge(HTMLElement) {
+  onBridgeReady(bridge) {}
+  onQgisMessage(data) {}
+}
+```
+
+## QRC Reference
+
+Qt provides `qwebchannel.js` at `qrc:///qtwebchannel/qwebchannel.js`:
+
+```html
+<script src="qrc:///qtwebchannel/qwebchannel.js"></script>
+```
+
+No need to bundle. For offline dev outside QGIS, copy from Qt install:
+
+```bash
+find /usr -name qwebchannel.js
+cp /path/to/qwebchannel.js ./web/
+```
+
+`@qgis-sdk/bridge` auto-tries local `./qwebchannel.js` before CDN.
+
+## See Also
+
+- [Typed Bridge Guide](/guides/typed-bridge)
+- [Web Frameworks Guide](/guides/web-frameworks)
+- [Testing Fixtures](/guides/testing-fixtures)

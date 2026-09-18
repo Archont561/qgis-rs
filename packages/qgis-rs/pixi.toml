@@ -1,0 +1,43 @@
+# packages/qgis-rs/pixi.toml — the `qgis-rs` Python package with Rust extension.
+#
+# This manifest carries the [package] section for the pixi workspace.
+# It is pulled into an environment as a source dependency and built with
+# pixi-build-python (maturin backend).
+#
+# The package provides:
+# - Python API `import qgis_rs` at native Rust speed (PyO3)
+# - CLI binary `qgis-cli` (Rust) installed to $PREFIX/bin
+# - Console scripts `qgis-cli` and `qgis-rs` via Python
+
+[package]
+name = "qgis-rs"
+version = "0.1.0"
+description = "Python bindings and CLI for qgis-rs — native-speed QGIS rendering, tiling, and server tools"
+license = "GPL-2.0-or-later"
+
+[package.build]
+backend = { name = "pixi-build-python", version = "*" }
+channels = [
+  "https://prefix.dev/pixi-build-backends",
+  "https://prefix.dev/conda-forge",
+]
+
+[package.host-dependencies]
+# Build backend + Rust toolchain + maturin
+hatchling = "*"
+maturin = ">=1.7,<2"
+rust = ">=1.96.0,<1.97"
+
+[package.run-dependencies]
+# Python >=3.9, no QGIS required for pure-Rust ops (tiles --dry-run, info, etc.)
+# QGIS is optional but recommended for full rendering.
+python = ">=3.9"
+
+# For full backend, user can install qgis via conda-forge separately.
+# We do NOT hard-depend on qgis here to keep pure-Rust install lightweight,
+# but conda-forge recipe will add it as optional.
+# qgis = ">=3.44.9,<4"  # uncomment for full backend
+
+[package.build.config]
+# Use maturin as build backend — pyproject.toml already declares it.
+# pixi-build-python will call `maturin build` via hatchling.

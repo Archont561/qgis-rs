@@ -1,15 +1,19 @@
-"""Qt helpers, imported lazily so the SDK works without Qt installed."""
+"""Qt helpers, imported lazily so the SDK works without Qt installed.
+
+Includes helpers for QDialog via .ui files and QWebEngineView.
+"""
 
 from __future__ import annotations
 
 import os
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Any
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Union
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from .plugin import ActionSpec
 
-__all__ = ["make_action"]
+__all__ = ["make_action", "make_dialog", "make_web_view"]
 
 
 def _icon(icon: str | None, parent: Any = None) -> Any:
@@ -35,3 +39,68 @@ def make_action(spec: ActionSpec, callback: Callable[[], None], parent: Any = No
     widget.setObjectName(f"qgis_sdk_{spec.func_name}")
     widget.triggered.connect(lambda _checked=False: callback())
     return widget
+
+
+def make_dialog(ui_file: Union[str, Path], parent: Any = None, title: str | None = None) -> Any:
+    """Load .ui file and return QDialog instance.
+
+    Uses uic.loadUiType (recommended over pyuic5) — runtime loading.
+    Sets WA_DeleteOnClose to avoid QGIS crashes.
+    """
+    ui_path = Path(ui_file)
+    if not ui_path.exists():
+        raise FileNotFoundError(f"UI file not found: {ui_file}")
+
+    from qgis.PyQt import QtWidgets, uic  # type: ignore
+    from qgis.PyQt.QtCore import Qt  # type: ignore
+
+    FORM_CLASS, _ = uic.loadUiType(str(ui_path))
+
+    class UiDialog(QtWidgets.QDialog, FORM_CLASS):
+        def __init__(self, parent=None):
+            super().__init__(parent)
+            self.setupUi(self)
+            if title:
+                self.setWindowTitle(title)
+            self.setAttribute(Qt.WA_DeleteOnClose)
+
+    if parent is None:
+        try:
+            from qgis.utils import iface  # type: ignore
+            if iface and hasattr(iface, "mainWindow"):
+                parent = iface.mainWindow()
+        except Exception:
+            parent = None
+
+    return UiDialog(parent)
+
+
+def make_web_view(html: str = "", url: str | None = None, parent: Any = None) -> Any:
+    """Create QWebEngineView with HTML or URL.
+
+    IMPORTANT: QWebEngineView must be imported BEFORE QApplication
+    (QGIS issue #49512, Reddit r/QGIS).
+
+    For QWebChannel bridge, see qgis_sdk.ui.WebDialog.
+    """
+    try:
+        from qgis.PyQt.QtWebEngineWidgets import QWebEngineView  # type: ignore
+    except ImportError:
+        try:
+            from PyQt5.QtWebEngineWidgets import QWebEngineView  # type: ignore
+        except ImportError:
+            from PyQt6.QtWebEngineWidgets import QWebEngineView  # type: ignore
+
+    view = QWebEngineView(parent)
+    if url:
+        try:
+            from qgis.PyQt.QtCore import QUrl  # type: ignore
+        except ImportError:
+            try:
+                from PyQt5.QtCore import QUrl  # type: ignore
+            except ImportError:
+                from PyQt6.QtCore import QUrl  # type: ignore
+        view.setUrl(QUrl(url))
+    else:
+        view.setHtml(html)
+    return view

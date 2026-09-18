@@ -1137,12 +1137,11 @@ def task(
     """
 
     def decorator(func: Callable) -> TaskWrapper:
-        # If description is actually function (when used as @task without parens)
-        # Handle that case
+        # Resolve description: if _func is str, it was passed as description positional
         desc = description
-        if callable(desc) and not isinstance(desc, str):
-            # This case shouldn't happen here, but handle
-            pass
+        # If _func is a string, it is the description (e.g. @task("My task"))
+        if _func is not None and isinstance(_func, str):
+            desc = _func
 
         # Determine bind automatically if not specified and first param is task-like
         use_bind = bind
@@ -1151,7 +1150,6 @@ def task(
                 sig = inspect.signature(func)
                 params = list(sig.parameters.values())
                 if params and params[0].name in ("task", "self", "celery_task", "qgis_task", "bind_task"):
-                    # Auto-bind if first param looks like task
                     use_bind = True
             except Exception:
                 pass
@@ -1165,11 +1163,25 @@ def task(
             flags=flags,
             base=base,
         )
+        # Also register in plugin registry for qgis.tasks.run discovery
+        try:
+            from .plugin.registry import registry as plugin_registry
+            plugin_registry.register_task(wrapper, func=func, description=desc if isinstance(desc, str) else getattr(func, "__name__", "Task"))
+        except Exception:
+            pass
         return wrapper
 
     if _func is not None and callable(_func):
         # Used as @task without parentheses
         return decorator(_func)
+
+    # If _func is str, it's description passed positionally: @task("My task")
+    # In that case, we need to return decorator that will use _func as desc
+    # The decorator closure already captures _func via outer scope, so we handle inside
+    # But we also need to ensure decorator will be called with func
+    # So if _func is str, return decorator (which will use _func as desc)
+    if _func is not None and isinstance(_func, str):
+        return decorator
 
     return decorator
 
