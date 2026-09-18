@@ -1495,3 +1495,624 @@ fn _native(m: &Bound<'_, PyModule>) -> PyResult<()> {
         )
 
     return str(base)
+# ── New declarative + self-installing + QGIS Web API templates (bun) ───────
+
+import pathlib as _pathlib
+
+def _load_bootstrap_template():
+    p = _pathlib.Path(__file__).parent / "bootstrap.py"
+    if p.exists():
+        return p.read_text(encoding="utf-8")
+    return ""
+
+try:
+    BOOTSTRAP_PY_TEMPLATE
+except NameError:
+    BOOTSTRAP_PY_TEMPLATE = _load_bootstrap_template()
+
+DECLARATIVE_INIT_PY = '''"""{name} — QGIS plugin with declarative API, self-installing, QGIS Web API via bun.
+
+- Self-bootstrapping: tries extlibs/vendor/bootstrap.py
+- Declarative: @plugin, @toolbar, @action, @task, @bridge, @setting
+- Webview with complete QGIS API: qgis.layers.addVector, qgis.tasks.run, qgis.network.fetch, qgis.message.info
+- Built with bun: bun install, bun run build, bun test
+"""
+
+
+def _bootstrap():
+    import sys, pathlib
+    plugin_dir = pathlib.Path(__file__).parent
+    extlibs = plugin_dir / "extlibs"
+    if extlibs.exists() and str(extlibs) not in sys.path:
+        sys.path.insert(0, str(extlibs))
+    vendor = plugin_dir / "vendor"
+    if vendor.exists() and str(vendor) not in sys.path:
+        sys.path.insert(0, str(vendor))
+    try:
+        import qgis_sdk
+        return qgis_sdk
+    except ImportError:
+        pass
+    try:
+        from .bootstrap import ensure_qgis_sdk
+        if ensure_qgis_sdk(auto_install=True, ask_user=True):
+            import qgis_sdk
+            return qgis_sdk
+    except Exception as e:
+        print(f"[{name}] bootstrap failed: {{e}}")
+    return None
+
+_qgis_sdk = _bootstrap()
+
+if _qgis_sdk is None:
+    def classFactory(iface):
+        try:
+            from qgis.PyQt.QtWidgets import QMessageBox
+            QMessageBox.warning(None, "{name}", "qgis-sdk not installed and auto-install failed.\\n\\nPlease install manually:\\npip install qgis-sdk\\nor\\nconda install -c conda-forge qgis-sdk")
+        except Exception:
+            print("qgis-sdk not installed")
+        return None
+else:
+    from qgis_sdk import plugin, toolbar, action, task, setting
+    from qgis_sdk.bridge import bridge, method, signal
+    from qgis_sdk.network import Session
+    from qgis_sdk.tasks import chain
+
+    @plugin(
+        name="{name}",
+        version="0.1.0",
+        description="Does useful things declaratively, with JS QGIS API",
+        author="{author}",
+        email="{email}",
+        qgis_min_version="3.28",
+        category="Vector",
+        permissions=["layers", "project", "tasks", "network", "message", "settings", "iface", "processing"]
+    )
+    class {class_name}Plugin:
+        @setting(default=10.0, persist=True)
+        def distance(self): return 10.0
+
+        @toolbar("{name} Toolbar")
+        @action(tooltip="Run buffer", icon="icons/buffer.svg")
+        def run_buffer(self, iface, distance: float = 10.0):
+            session = Session(headers={{"User-Agent": "MyPlugin/1.0"}})
+            try:
+                resp = session.get("https://example.com/api", params={{"distance": distance}})
+                resp.raise_for_status()
+            except Exception as e:
+                iface.messageBar().pushMessage(f"Network: {{e}}")
+            result = self.buffer_task.delay(distance)
+            iface.messageBar().pushMessage(f"Task {{result.id}} started, state={{result.state}}")
+
+        @task("Buffer task", bind=True, can_cancel=True)
+        def buffer_task(self, distance: float):
+            self.set_progress(0)
+            import time
+            for i in range(100):
+                self.set_progress(i)
+                if self.is_canceled():
+                    return None
+                time.sleep(0.01)
+            return {{"distance": distance}}
+
+        @bridge(name="my_bridge")
+        class Bridge:
+            @method(return_type=dict)
+            def get_layer(self, layer_id: str) -> dict:
+                return {{"name": layer_id, "count": 42}}
+
+            @method()
+            def log(self, msg: str) -> str:
+                print(f"[JS] {{msg}}")
+                return "ok"
+
+            @signal()
+            def layer_changed(self, layer_id: str):
+                pass
+
+        @toolbar("{name} Toolbar")
+        @action(tooltip="Open webview with full QGIS API")
+        def open_webview(self, iface):
+            try:
+                from qgis_sdk.ui import WebView
+                from qgis.PyQt.QtCore import QUrl
+                import pathlib
+                webview = WebView(
+                    bridge=self.Bridge(),
+                    enable_qgis_api=True,
+                    iface=iface,
+                    permissions=self._qgis_sdk_metadata.get("permissions")
+                )
+                html_path = pathlib.Path(__file__).parent / "web" / "dist" / "index.html"
+                if not html_path.exists():
+                    html_path = pathlib.Path(__file__).parent / "web" / "index.html"
+                webview.load(QUrl.fromLocalFile(str(html_path)))
+                webview.show()
+            except Exception as e:
+                iface.messageBar().pushMessage(f"Webview error: {{e}}")
+
+    def classFactory(iface):
+        return {class_name}Plugin(iface)
+'''
+
+
+WEB_BUN_INDEX_HTML = """<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>{name} — QGIS WebView with complete QGIS API</title>
+<style>
+  html, body { margin:0; padding:0; font-family: sans-serif; height:100%; }
+  #app { padding:16px; }
+  button { margin:4px; padding:8px 16px; background:#0078d4; color:white; border:none; border-radius:4px; cursor:pointer; }
+  .card { border:1px solid #ddd; border-radius:8px; padding:12px; margin:8px 0; }
+  code { background:#eee; padding:2px 4px; border-radius:3px; }
+</style>
+</head>
+<body>
+<div id="app">
+  <h2>{name} — QGIS + Bun + Complete QGIS API</h2>
+  <p><small>Using <code>window.qgis</code> global — no custom bridge needed for layers, tasks, network, message</small></p>
+  <div class="card">
+    <h3>Layers</h3>
+    <div id="layers">Loading...</div>
+    <button id="btn-add-vector">Add Vector Layer</button>
+    <button id="btn-list-layers">List Layers</button>
+  </div>
+  <div class="card">
+    <h3>Tasks</h3>
+    <button id="btn-run-task">Run Buffer Task</button>
+    <div id="task-status"></div>
+    <div id="progress"></div>
+  </div>
+  <div class="card">
+    <h3>Messages</h3>
+    <button id="btn-message">Show Message in QGIS</button>
+  </div>
+  <div class="card">
+    <h3>Network (via QGIS)</h3>
+    <button id="btn-fetch">Fetch via QGIS NAM</button>
+    <pre id="fetch-result"></pre>
+  </div>
+  <div class="card">
+    <h3>Custom Bridge</h3>
+    <button id="btn-custom">Call custom bridge.get_layer</button>
+    <pre id="custom-result"></pre>
+  </div>
+</div>
+<script type="module">
+  let qgis, bridge;
+  try {
+    const mod = await import('./qgis-bridge.js');
+    const res = await mod.createQgisBridge();
+    qgis = res.qgis;
+    bridge = res.bridge;
+  } catch (e) {
+    console.log('Trying global qgis', e);
+    if (window.qgis) {
+      qgis = window.qgis;
+      bridge = window.qgisBridge;
+    } else {
+      try {
+        const { createQgisBridge } = await import('@qgis-sdk/bridge');
+        const res = await createQgisBridge();
+        qgis = res.qgis;
+        bridge = res.bridge;
+      } catch (e2) {
+        console.error('Failed to create bridge', e2);
+        document.getElementById('layers').textContent = 'Bridge not available (run inside QGIS)';
+      }
+    }
+  }
+
+  if (qgis) {
+    console.log('QGIS API ready', qgis);
+    async function listLayers() {
+      const layers = await qgis.layers.list();
+      document.getElementById('layers').innerHTML = layers.map(l => `<div>${l.name} (${l.type}) — ${l.id}</div>`).join('') || 'No layers';
+    }
+    await listLayers();
+    document.getElementById('btn-list-layers').onclick = listLayers;
+    document.getElementById('btn-add-vector').onclick = async () => {
+      const path = prompt('Vector path:', '/data/roads.shp');
+      if (path) {
+        try {
+          const layer = await qgis.layers.addVector(path, 'Roads');
+          alert('Added ' + layer.id);
+          await listLayers();
+        } catch (e) { alert('Failed: ' + e); }
+      }
+    };
+
+    document.getElementById('btn-run-task').onclick = async () => {
+      const task = await qgis.tasks.run('buffer_task', {distance: 10});
+      document.getElementById('task-status').textContent = `Task ${task.task_id} started`;
+      task.onProgress(p => document.getElementById('progress').textContent = p + '%');
+      task.onFinished(result => document.getElementById('task-status').textContent = 'Finished: ' + JSON.stringify(result));
+    };
+
+    document.getElementById('btn-message').onclick = async () => {
+      await qgis.message.info('My Plugin', 'Hello from JS webview!', 5);
+    };
+
+    document.getElementById('btn-fetch').onclick = async () => {
+      try {
+        const resp = await qgis.network.fetch('https://example.com/api');
+        const json = await resp.json();
+        document.getElementById('fetch-result').textContent = JSON.stringify(json, null, 2);
+      } catch (e) {
+        document.getElementById('fetch-result').textContent = 'Error: ' + e;
+      }
+    };
+
+    document.getElementById('btn-custom').onclick = async () => {
+      try {
+        const layer = await bridge.get_layer('my_layer');
+        document.getElementById('custom-result').textContent = JSON.stringify(layer, null, 2);
+      } catch (e) {
+        document.getElementById('custom-result').textContent = 'Error: ' + e;
+      }
+    };
+
+    qgis.addEventListener('layer_added', (e) => console.log('layer added', e.detail));
+    bridge.addEventListener('layer_changed', (e) => console.log('layer changed', e.detail));
+  }
+</script>
+</body>
+</html>
+"""
+
+WEB_BUN_APP_TS = """// {name} web app — using complete QGIS API via bun, no custom bridge boilerplate
+import { createQgisBridge, QgisBridge } from '@qgis-sdk/bridge';
+
+const { bridge, qgis } = await createQgisBridge();
+
+await qgis.message.info("My Plugin", "Webview ready!", 3);
+
+const layers = await qgis.layers.list();
+console.log("Layers", layers);
+
+const addVectorBtn = document.getElementById("btn-add-vector");
+addVectorBtn?.addEventListener("click", async () => {
+  const layer = await qgis.layers.addVector("/data/roads.shp", "Roads");
+  console.log("Added", layer.id);
+  await qgis.layers.zoomTo(layer.id);
+});
+
+const runTaskBtn = document.getElementById("btn-run-task");
+runTaskBtn?.addEventListener("click", async () => {
+  const task = await qgis.tasks.run("buffer_task", {distance: 10});
+  task.onProgress(p => {
+    const el = document.getElementById("progress");
+    if (el) el.textContent = `${p}%`;
+  });
+  task.onFinished(result => {
+    console.log("Task finished", result);
+    qgis.message.success("Task", `Done: ${JSON.stringify(result)}`);
+  });
+});
+
+const fetchBtn = document.getElementById("btn-fetch");
+fetchBtn?.addEventListener("click", async () => {
+  const resp = await qgis.network.fetch("https://example.com/api", {authCfg: "my_auth"});
+  const data = await resp.json();
+  console.log(data);
+});
+
+bridge.addEventListener("open", () => console.log("bridge open, state:", bridge.readyState));
+const customBtn = document.getElementById("btn-custom");
+customBtn?.addEventListener("click", async () => {
+  const layer = await bridge.get_layer("my_layer");
+  console.log(layer);
+});
+
+console.log(bridge.readyState === QgisBridge.OPEN);
+"""
+
+WEB_BUN_PACKAGE_JSON = """{
+  "name": "{name}-web",
+  "type": "module",
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "bun --bun vite",
+    "build": "bun build src/app.ts --outdir dist --target browser --minify --sourcemap external && cp src/index.html dist/index.html",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@qgis-sdk/bridge": "workspace:*"
+  },
+  "devDependencies": {
+    "vite": "^5.0.0"
+  }
+}
+"""
+
+BUN_ROOT_PACKAGE_JSON = """{
+  "name": "{name}",
+  "private": true,
+  "type": "module",
+  "workspaces": ["web"],
+  "scripts": {
+    "build": "bun run --filter '*' build",
+    "test": "bun test",
+    "dev": "bun --bun vite --cwd web"
+  },
+  "packageManager": "bun@1.2.0"
+}
+"""
+
+def _write_declarative_plugin(base, name, class_name, author, email):
+    from pathlib import Path as _Path
+    (base / name / "__init__.py").write_text(
+        DECLARATIVE_INIT_PY.format(name=name, class_name=class_name, author=author, email=email),
+        encoding="utf-8"
+    )
+    # bootstrap
+    try:
+        src_boot = _Path(__file__).parent / "bootstrap.py"
+        if src_boot.exists():
+            (base / name / "bootstrap.py").write_text(src_boot.read_text(encoding="utf-8"), encoding="utf-8")
+        else:
+            (base / name / "bootstrap.py").write_text(BOOTSTRAP_PY_TEMPLATE, encoding="utf-8")
+    except Exception:
+        (base / name / "bootstrap.py").write_text(BOOTSTRAP_PY_TEMPLATE, encoding="utf-8")
+    (base / ".gitignore").write_text("extlibs/\nwheels/\n__pycache__/\n*.pyc\nnode_modules/\nweb/dist/\nweb/node_modules/\n", encoding="utf-8")
+    (base / name / "icons").mkdir(exist_ok=True)
+    (base / name / "icons" / ".gitkeep").write_text("", encoding="utf-8")
+    web_dir = base / name / "web"
+    web_dir.mkdir(parents=True, exist_ok=True)
+    (web_dir / "index.html").write_text(WEB_BUN_INDEX_HTML.replace("{name}", name), encoding="utf-8")
+    src_dir = web_dir / "src"
+    src_dir.mkdir(exist_ok=True)
+    (src_dir / "app.ts").write_text(WEB_BUN_APP_TS.replace("{name}", name), encoding="utf-8")
+    (web_dir / "package.json").write_text(WEB_BUN_PACKAGE_JSON.replace("{name}", name), encoding="utf-8")
+    (base / "package.json").write_text(BUN_ROOT_PACKAGE_JSON.replace("{name}", name), encoding="utf-8")
+    (web_dir / "tsconfig.json").write_text('{\n  "compilerOptions": {\n    "target": "ES2022",\n    "module": "ESNext",\n    "moduleResolution": "bundler",\n    "strict": true,\n    "esModuleInterop": true\n  }\n}\n', encoding="utf-8")
+    (web_dir / "bridge.json").write_text('{\n  "name": "my_bridge",\n  "methods": [\n    {"name": "get_layer", "args": [{"name": "layer_id", "type": "string"}], "return_type": "object"},\n    {"name": "log", "args": [{"name": "msg", "type": "string"}], "return_type": "string"}\n  ],\n  "signals": [{"name": "layer_changed", "args": [{"name": "layer_id", "type": "string"}]}]\n}\n', encoding="utf-8")
+    services_dir = base / name / "services"
+    services_dir.mkdir(exist_ok=True)
+    (services_dir / "__init__.py").write_text("", encoding="utf-8")
+    try:
+        (services_dir / "network.py").write_text(SERVICES_NETWORK_PY, encoding="utf-8")
+        (services_dir / "tasks.py").write_text(SERVICES_TASKS_PY, encoding="utf-8")
+    except NameError:
+        pass
+
+def scaffold_plugin_declarative(
+    name: str,
+    path: str,
+    author: str | None = None,
+    email: str | None = None,
+    with_bundle: bool = False,
+    offline_wheel: str | None = None,
+) -> str:
+    from pathlib import Path
+    base = Path(path) / name
+    if base.exists():
+        raise ValueError(f"directory already exists: {base}")
+    base.mkdir(parents=True)
+    (base / name).mkdir()
+    class_name = to_pascal_case(name)
+    author = author or "Your Name"
+    email = email or "you@example.com"
+
+    _write_declarative_plugin(base, name, class_name, author, email)
+
+    metadata = f"""[general]
+name={name}
+qgisMinimumVersion=3.28
+description=Does useful things declaratively with QGIS Web API
+about=Does useful things
+version=0.1.0
+author={author}
+email={email}
+category=Vector
+hasProcessingProvider=False
+"""
+    (base / "metadata.txt").write_text(metadata, encoding="utf-8")
+
+    pyproject = f"""[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "{name}"
+version = "0.1.0"
+description = "QGIS plugin {name}"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = ["qgis-sdk"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["{name}"]
+include = [
+    "{name}/bootstrap.py",
+    "{name}/web/*.html",
+    "{name}/web/*.json",
+    "{name}/web/dist/*",
+    "{name}/icons/*",
+    "{name}/web/src/*",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+"""
+    (base / "pyproject.toml").write_text(pyproject, encoding="utf-8")
+
+    readme = f"""# {name}
+
+Declarative QGIS plugin with self-installing runtime and complete QGIS Web API via bun.
+
+## Features
+
+- **Self-installing**: `bootstrap.py` vendored (<300 LOC), auto-installs `qgis-sdk` to `extlibs/` via pip, fallback to `wheels/` or PyPI. No CLI needed.
+- **Declarative**: `@plugin(permissions=[...])`, `@toolbar`, `@action`, `@task`, `@bridge`, `@setting`
+- **Complete QGIS API in JS**: `window.qgis` with `layers.addVector/list/zoom`, `project.crs/setCrs`, `message.info/warning`, `tasks.run`, `network.fetch` (via QgsNetworkAccessManager), `iface`, `settings`, `processing`
+- **Bun**: `bun install`, `bun run build`, `bun test` — uses `@qgis-sdk/bridge` with EventTarget/WebSocket-like API
+
+## Quick start
+
+```bash
+cd {name}
+bun install
+bun run build
+python -m pytest
+```
+
+## Self-install helper
+
+Plugin zip contains `bootstrap.py` + `extlibs/` gitignored. On first load in QGIS:
+
+1. Try `extlibs/` and `vendor/`
+2. Try `wheels/qgis_sdk*.whl` offline
+3. Try pip install to `extlibs/`
+4. Ask user via QMessageBox: auto-install or manual instructions
+
+To vendor offline wheel:
+
+```bash
+qgis-plugin vendor --output {name}/wheels
+# or
+qgis-plugin package --bundle --offline-wheel dist/qgis_sdk-0.1.0-py3-none-any.whl
+```
+
+## JS QGIS API
+
+```js
+import {{ createQgisBridge }} from '@qgis-sdk/bridge';
+const {{ qgis, bridge }} = await createQgisBridge();
+
+// Layers
+const layers = await qgis.layers.list();
+const layer = await qgis.layers.addVector("/data/roads.shp", "Roads");
+await qgis.layers.zoomTo(layer.id);
+
+// Tasks
+const task = await qgis.tasks.run("buffer_task", {{distance: 10}});
+task.onProgress(p => console.log(p + "%"));
+task.onFinished(r => qgis.message.success("Done", JSON.stringify(r)));
+
+// Network via QGIS (no CORS, respects proxy/auth)
+const resp = await qgis.network.fetch("https://example.com/api", {{authCfg: "my_auth"}});
+const data = await resp.json();
+
+// Messages
+await qgis.message.info("My Plugin", "Hello from JS!");
+
+// Custom bridge still works
+const custom = await bridge.get_layer("my_layer");
+```
+
+## Permissions
+
+Declared via `@plugin(permissions=[...])`. JS `qgis` only exposes allowed namespaces. Default all allowed, but you can restrict.
+
+## Bridge description (no codegen)
+
+Python `Bridge` decorated with `@bridge` + `@method` + `@signal` generates JSON description via `BridgeDescription.from_class`. Runtime loads JSON, not codegen.
+
+```python
+from qgis_sdk.bridge import BridgeDescription
+desc = BridgeDescription.from_class(MyPlugin.Bridge, name="my_bridge")
+print(desc.to_json())
+```
+
+JS side auto-loads `window.__QGIS_BRIDGE_DESCRIPTION__` injected by Python `BridgeRuntime`.
+
+## Testing
+
+```python
+pytest_plugins = ["qgis_sdk.testing"]
+
+def test_plugin(fake_iface, fake_action_factory):
+    from {name} import {class_name}Plugin
+    plugin = {class_name}Plugin(fake_iface)
+    assert plugin._qgis_sdk_metadata["permissions"]
+```
+
+```bash
+bun test  # JS tests via bun:test
+```
+
+## Packaging
+
+```bash
+qgis-plugin package --bundle --offline-wheel dist/qgis_sdk-*.whl
+# produces zip with extlibs empty, wheels/ contains wheel, bootstrap.py vendored
+```
+"""
+
+    (base / "README.md").write_text(readme, encoding="utf-8")
+
+    tests_dir = base / "tests"
+    tests_dir.mkdir()
+    (tests_dir / "__init__.py").write_text("", encoding="utf-8")
+    (tests_dir / "conftest.py").write_text('pytest_plugins = ["qgis_sdk.testing"]\n', encoding="utf-8")
+    (tests_dir / "test_plugin.py").write_text(f'''"""Test declarative plugin + QGIS API + self-install."""
+
+def test_plugin_meta():
+    from {name} import {class_name}Plugin
+    assert hasattr({class_name}Plugin, "_qgis_sdk_metadata")
+    meta = {class_name}Plugin._qgis_sdk_metadata
+    assert meta["name"] == "{name}"
+    assert "layers" in meta["permissions"]
+
+def test_bridge_description():
+    from {name} import {class_name}Plugin
+    from qgis_sdk.bridge import BridgeDescription
+    desc = BridgeDescription.from_class({class_name}Plugin.Bridge, name="my_bridge")
+    assert "get_layer" in [m.name for m in desc.methods]
+    json_str = desc.to_json()
+    assert "my_bridge" in json_str
+
+def test_qgis_api_description():
+    from qgis_sdk.bridge.qgis_api import QgisApi
+    api = QgisApi(permissions=["layers", "message"])
+    desc = api.description
+    names = [m.name for m in desc]
+    assert "layers_list" in names
+    assert "message_info" in names
+    assert "tasks_run" not in names
+
+def test_bootstrap_exists():
+    from pathlib import Path
+    import {name}.bootstrap as bs
+    assert hasattr(bs, "ensure_qgis_sdk")
+    assert Path(__file__).parent.parent / "{name}" / "bootstrap.py"
+
+def test_fake_bridge_qgis_api(fake_qgis_api):
+    layers = fake_qgis_api.layers.list()
+    assert isinstance(layers, list)
+''', encoding="utf-8")
+
+    if with_bundle:
+        wheels_dir = base / "wheels"
+        wheels_dir.mkdir(exist_ok=True)
+        if offline_wheel:
+            import shutil
+            shutil.copy(offline_wheel, wheels_dir / _pathlib.Path(offline_wheel).name)
+        (wheels_dir / ".gitkeep").write_text("", encoding="utf-8")
+
+    return str(base)
+
+_original_scaffold_plugin = scaffold_plugin
+
+def scaffold_plugin(
+    name: str,
+    path: str,
+    plugin_type: str = "general",
+    with_rust: bool = False,
+    with_web: bool = False,
+    with_ui: bool = True,
+    web_framework: str = "vanilla",
+    author: str | None = None,
+    email: str | None = None,
+    declarative: bool = False,
+    with_bundle: bool = False,
+    offline_wheel: str | None = None,
+    **kwargs,
+) -> str:
+    if declarative or web_framework == "bun":
+        return scaffold_plugin_declarative(name, path, author=author, email=email, with_bundle=with_bundle, offline_wheel=offline_wheel)
+    return _original_scaffold_plugin(name, path, plugin_type, with_rust, with_web, with_ui, web_framework, author, email)

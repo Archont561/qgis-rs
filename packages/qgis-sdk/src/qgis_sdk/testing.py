@@ -1093,6 +1093,253 @@ def fake_task_factory(description="Task", function=None, *args, **kwargs):
     return FakeTask(description, function, *args, **kwargs)
 
 
+
+# ── Fake QGIS Web API (window.qgis) ───────────────────────────────────────
+
+class FakeLayersAPI:
+    def __init__(self):
+        self._layers = [
+            {"id": "layer1", "name": "Roads", "type": "vector", "crs": "EPSG:4326"},
+            {"id": "layer2", "name": "Buildings", "type": "vector", "crs": "EPSG:4326"},
+        ]
+
+    def list(self):
+        return list(self._layers)
+
+    def active(self):
+        return self._layers[0] if self._layers else None
+
+    def addVector(self, path, name=None, provider="ogr"):
+        layer = {"id": f"layer_{len(self._layers)+1}", "name": name or Path(path).stem, "type": "vector", "path": path, "provider": provider}
+        self._layers.append(layer)
+        return layer
+
+    def addRaster(self, path, name=None, provider="gdal"):
+        layer = {"id": f"layer_{len(self._layers)+1}", "name": name or Path(path).stem, "type": "raster", "path": path, "provider": provider}
+        self._layers.append(layer)
+        return layer
+
+    def remove(self, layer_id):
+        self._layers = [l for l in self._layers if l["id"] != layer_id]
+        return True
+
+    def zoomTo(self, layer_id):
+        return True
+
+    def get(self, layer_id):
+        for l in self._layers:
+            if l["id"] == layer_id:
+                return l
+        return None
+
+
+class FakeProjectAPI:
+    def __init__(self):
+        self._crs = "EPSG:4326"
+        self._path = "/tmp/project.qgz"
+
+    def info(self):
+        return {"crs": self._crs, "path": self._path, "title": "Test Project"}
+
+    def write(self):
+        return True
+
+    def crs(self):
+        return self._crs
+
+    def setCrs(self, crs):
+        self._crs = crs
+        return True
+
+    def path(self):
+        return self._path
+
+
+class FakeMessageAPI:
+    def __init__(self):
+        self.messages = []
+
+    def info(self, title, text, duration=5):
+        self.messages.append({"level": "info", "title": title, "text": text, "duration": duration})
+        return True
+
+    def warning(self, title, text, duration=5):
+        self.messages.append({"level": "warning", "title": title, "text": text, "duration": duration})
+        return True
+
+    def critical(self, title, text, duration=5):
+        self.messages.append({"level": "critical", "title": title, "text": text, "duration": duration})
+        return True
+
+    def success(self, title, text, duration=5):
+        self.messages.append({"level": "success", "title": title, "text": text, "duration": duration})
+        return True
+
+
+class FakeTasksAPI:
+    def __init__(self, task_manager=None):
+        self._tm = task_manager or FakeTaskManager()
+        self._tasks = {}
+
+    def run(self, name, params=None):
+        t = FakeTask(description=name, function=lambda task, **kw: {"name": name, "params": params})
+        async_res = FakeAsyncResult(t)
+        task_id = t.id
+        self._tasks[task_id] = async_res
+
+        class TaskHandle:
+            def __init__(self, task_id, async_res):
+                self.task_id = task_id
+                self._async_res = async_res
+                self._progress_cbs = []
+                self._finished_cbs = []
+
+            def onProgress(self, cb):
+                self._progress_cbs.append(cb)
+                for p in [0, 50, 100]:
+                    try:
+                        cb(p)
+                    except Exception:
+                        pass
+                return self
+
+            def onFinished(self, cb):
+                self._finished_cbs.append(cb)
+                try:
+                    cb(self._async_res.get())
+                except Exception:
+                    pass
+                return self
+
+            def cancel(self):
+                self._async_res._task.cancel()
+
+        return TaskHandle(task_id, async_res)
+
+    def list(self):
+        return list(self._tasks.keys())
+
+    def cancel(self, task_id):
+        if task_id in self._tasks:
+            self._tasks[task_id]._task.cancel()
+            return True
+        return False
+
+
+class FakeNetworkAPI:
+    def __init__(self, network_manager=None):
+        self._nm = network_manager or FakeNetworkManager()
+
+    def fetch(self, url, options=None):
+        resp = self._nm.get(url)
+        class FakeResp:
+            def __init__(self, resp):
+                self._resp = resp
+                self.ok = resp.ok
+                self.status = resp.status_code
+                self.url = resp.url
+
+            def json(self):
+                return self._resp.json()
+
+            def text(self):
+                return self._resp.text
+
+            def arrayBuffer(self):
+                return self._resp.content
+
+        return FakeResp(resp)
+
+    def get(self, url, options=None):
+        return self.fetch(url, options)
+
+    def post(self, url, data=None, options=None):
+        resp = self._nm.post(url, data=data)
+        class FakeResp:
+            def __init__(self, resp):
+                self._resp = resp
+                self.ok = resp.ok
+                self.status = resp.status_code
+
+            def json(self):
+                return self._resp.json()
+
+            def text(self):
+                return self._resp.text
+
+        return FakeResp(resp)
+
+
+class FakeIfaceAPI:
+    def __init__(self, iface=None):
+        self._iface = iface or FakeIface()
+        self._active_layer = {"id": "layer1", "name": "Roads"}
+
+    def zoomToLayer(self, layer_id):
+        return True
+
+    def showMessage(self, title, text, level=0, duration=5):
+        self._iface.pushMessage(f"{title}: {text}")
+        return True
+
+    def activeLayer(self):
+        return self._active_layer
+
+
+class FakeSettingsAPI:
+    def __init__(self):
+        self._store = {}
+
+    def get(self, key, default=None):
+        return self._store.get(key, default)
+
+    def set(self, key, value):
+        self._store[key] = value
+        return True
+
+
+class FakeProcessingAPI:
+    def run(self, alg_id, params=None):
+        return {"alg": alg_id, "params": params, "result": "ok"}
+
+
+class FakeQgisAPI:
+    """Fake window.qgis — complete QGIS Web API for testing."""
+    def __init__(self, iface=None, network_manager=None, task_manager=None):
+        self.layers = FakeLayersAPI()
+        self.project = FakeProjectAPI()
+        self.message = FakeMessageAPI()
+        self.messageBar = self.message
+        self.tasks = FakeTasksAPI(task_manager=task_manager)
+        self.network = FakeNetworkAPI(network_manager=network_manager)
+        self.iface = FakeIfaceAPI(iface=iface)
+        self.settings = FakeSettingsAPI()
+        self.processing = FakeProcessingAPI()
+        self._event_listeners = {}
+
+    def addEventListener(self, event, cb):
+        self._event_listeners.setdefault(event, []).append(cb)
+
+    def removeEventListener(self, event, cb):
+        if event in self._event_listeners:
+            try:
+                self._event_listeners[event].remove(cb)
+            except ValueError:
+                pass
+
+    def dispatchEvent(self, event, detail=None):
+        for cb in self._event_listeners.get(event, []):
+            try:
+                cb(type("obj", (), {"detail": detail})())
+            except Exception:
+                pass
+
+
+def fake_qgis_api_factory(iface=None, network_manager=None, task_manager=None):
+    return FakeQgisAPI(iface=iface, network_manager=network_manager, task_manager=task_manager)
+
+
+
 # ── Pytest fixtures ─────────────────────────────────────────────────────────
 
 try:
@@ -1190,6 +1437,32 @@ try:
 
         return FakeTaskWrapper(my_func, description="Test task")
 
+
+    @pytest.fixture(name="fake_qgis_api")
+    def _fixture_fake_qgis_api(fake_iface, fake_network_manager, fake_task_manager):
+        return FakeQgisAPI(iface=fake_iface, network_manager=fake_network_manager, task_manager=fake_task_manager)
+
+    @pytest.fixture(name="fake_layers_api")
+    def _fixture_fake_layers_api():
+        return FakeLayersAPI()
+
+    @pytest.fixture(name="fake_project_api")
+    def _fixture_fake_project_api():
+        return FakeProjectAPI()
+
+    @pytest.fixture(name="fake_message_api")
+    def _fixture_fake_message_api():
+        return FakeMessageAPI()
+
+    @pytest.fixture(name="fake_tasks_api")
+    def _fixture_fake_tasks_api(fake_task_manager):
+        return FakeTasksAPI(task_manager=fake_task_manager)
+
+    @pytest.fixture(name="fake_network_api")
+    def _fixture_fake_network_api(fake_network_manager):
+        return FakeNetworkAPI(network_manager=fake_network_manager)
+
+
 except ImportError:
     pass
 
@@ -1205,6 +1478,17 @@ def pytest_configure(config):
 
 
 __all__ = [
+    "FakeLayersAPI",
+    "FakeProjectAPI",
+    "FakeMessageAPI",
+    "FakeTasksAPI",
+    "FakeNetworkAPI",
+    "FakeIfaceAPI",
+    "FakeSettingsAPI",
+    "FakeProcessingAPI",
+    "FakeQgisAPI",
+    "fake_qgis_api_factory",
+
     "FakeAction",
     "FakeIface",
     "FakeContext",

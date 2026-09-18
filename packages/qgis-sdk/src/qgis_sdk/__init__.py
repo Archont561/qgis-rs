@@ -14,8 +14,34 @@ from __future__ import annotations
 
 from .algorithm import Algorithm, OutputSpec, ParamSpec, output, parameter
 from .metadata import METADATA_FIELDS, render_metadata, write_metadata
-from .plugin import ActionSpec, Plugin, action, class_factory, menu, toolbar
+from .plugin import ActionSpec, Plugin, action, class_factory, menu, toolbar, plugin, setting, registry, task as plugin_task
+from .plugin import task as task_decorator  # declarative @task
 from .runtime import PyQgisImportError, expected_pythonpath, qgis_core, qgis_gui
+
+# New bridge API
+try:
+    from .bridge import (
+        BridgeDescription,
+        MethodDescription,
+        BridgeRuntime,
+        BridgeWindow,
+        QgisApi,
+        bridge as bridge_decorator,
+        method,
+        signal,
+        slot,
+        load_bridge_description,
+    )
+except ImportError:
+    BridgeDescription = MethodDescription = BridgeRuntime = BridgeWindow = QgisApi = None
+    bridge_decorator = method = signal = slot = load_bridge_description = None
+
+# Bootstrap / installer
+try:
+    from .bootstrap import ensure_qgis_sdk, is_qgis_sdk_installed, bootstrap_plugin
+    from .installer import Installer
+except ImportError:
+    ensure_qgis_sdk = is_qgis_sdk_installed = bootstrap_plugin = Installer = None
 
 # Try Rust extension for native speed
 try:
@@ -184,11 +210,18 @@ try:
         group,
         run_task,
         shared_task,
-        task,
+        task as celery_task_decorator,
     )
+    # Keep celery task available as shared_task/celery_task, but top-level `task` is declarative
+    task = task_decorator  # declarative @task from plugin
 except ImportError:
     ProcessingAlgRunnerTask = Task = TaskManager = TaskWrapper = AsyncResult = Signature = Chain = None  # type: ignore
-    add_task = cancel_all = run_task = task = shared_task = celery_task = app = celery_app = chain = group = None  # type: ignore
+    add_task = cancel_all = run_task = shared_task = celery_task = app = celery_app = chain = group = celery_task_decorator = None  # type: ignore
+    # task stays as declarative if available
+    try:
+        task = task_decorator
+    except NameError:
+        task = None  # type: ignore
 
 __all__ = [
     "METADATA_FIELDS",
@@ -218,6 +251,26 @@ __all__ = [
     "render_metadata",
     "toolbar",
     "write_metadata",
+    # new declarative
+    "plugin",
+    "setting",
+    "registry",
+    # bridge new API
+    "BridgeDescription",
+    "MethodDescription",
+    "BridgeRuntime",
+    "BridgeWindow",
+    "QgisApi",
+    "bridge_decorator",
+    "method",
+    "signal",
+    "slot",
+    "load_bridge_description",
+    # bootstrap / installer
+    "ensure_qgis_sdk",
+    "is_qgis_sdk_installed",
+    "bootstrap_plugin",
+    "Installer",
     # ui
     "Dialog",
     "WebDialog",
