@@ -117,7 +117,8 @@ fn batch(args: BatchArgs) -> Result<()> {
 
 /// Parse a `name,minx,miny,maxx,maxy` CSV, as accepted by `batch --extents`.
 ///
-/// Blank lines and `#` comments are skipped, as is a `name,...` header row.
+/// Blank lines and `#` comments are skipped, as is a `name,...` header row
+/// wherever it appears.
 ///
 /// # Errors
 ///
@@ -131,7 +132,7 @@ pub fn parse_extent_rows(text: &str) -> Result<Vec<(String, Extent)>> {
         }
         let mut fields = line.split(',').map(str::trim);
         let name = fields.next().unwrap_or_default().to_string();
-        if index == 0 && name.eq_ignore_ascii_case("name") {
+        if name.eq_ignore_ascii_case("name") {
             continue;
         }
         let mut values = [0.0f64; 4];

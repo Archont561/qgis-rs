@@ -2,6 +2,11 @@
 
 ## 2026-09-18
 
+* **Creation**: Added `crates/qgis-mcp` — a Model Context Protocol server on the official [rmcp](https://github.com/modelcontextprotocol/rust-sdk) SDK (3.4), bundled into the `qgis-cli` binary as `qgis-cli mcp`. Six tools mirror the subcommands (`capabilities`, `crs_info`, `plan_tiles`, `project_info`, `render_map`, `export_features`); `crates/qgis-cli/tests/mcp_stdio.rs` spawns the real binary and drives it through `initialize` → `tools/list` → `tools/call`.
+* **Creation**: Scaffolded the crates [api-design.md](/api-design.md) specifies — `qgis-render` (engine types), `qgis-server` (OGC routing), `qgis-mcp`, `qgis-cli` (clap). The pure geometry is implemented and tested; operations needing `libqgis_core` return a typed `Error::Unimplemented` naming what is missing.
+* **Update**: Updated [api-design.md](/api-design.md) with §2.8 `mcp`, [architecture.md](/architecture.md) crate table, and the project tree in `CONTEXT.md`.
+* **Addition**: Added `.github/workflows/rust-check.yml` — a QGIS-free `cargo fmt/check/clippy/test` job that posts its logs to the commit, so the workspace has a fast Rust signal that does not need the pixi environment.
+* **Fix**: `settings.with_size(width, settings.height)` moved `settings` in the receiver and read it in the argument (E0382) in both `qgis-mcp` and `qgis-cli`; and `parse_extent_rows` only skipped a `name,...` header when it was the very first line, so a comment line above it broke `batch --extents`.
 * **Creation**: Established `packages/qgis-sdk/` — the `qgis-sdk` pixi workspace package (`[package]` manifest + hatchling `pyproject.toml` + `src/qgis_sdk/` + 35 unit tests). Implements the plugin/algorithm declaration layer of [qgis-plugin-sdk.md](/qgis-plugin-sdk.md); PyQGIS is reached lazily through `qgis_sdk.runtime` so the tests run without QGIS.
 * **Update**: Updated [pixi.md](/pixi.md) — `preview = ["pixi-build"]` workspace flag, the `sdk` feature and environment, workspace-package layout, and how `import qgis` resolves (`$CONDA_PREFIX/share/qgis/python{,/plugins}` via the conda-forge activation script, repeated in `activation.env`).
 * **Update**: Python is deliberately *not* a declared dependency — the conda-forge `qgis` package pulls in the interpreter its bindings were built against (CPython 3.14 for QGIS 3.44.9), so a separate `python` pin could only drift.

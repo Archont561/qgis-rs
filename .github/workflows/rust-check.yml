@@ -54,7 +54,7 @@ jobs:
       - name: test
         run: |
           set -o pipefail
-          cargo test --workspace --exclude qgis-sys 2>&1 | tee /tmp/test.log
+          cargo test --workspace --exclude qgis-sys --no-fail-fast 2>&1 | tee /tmp/test.log
 
       - name: report
         if: always()
