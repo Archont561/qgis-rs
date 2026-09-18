@@ -9,7 +9,7 @@ pre-commit:
       glob: "*.{cpp,h}"
       run: clang-format --dry-run --Werror {staged_files}
 
-    lint-rs:
+    clippy:
       glob: "*.rs"
       run: cargo clippy --workspace --all-targets -- -D warnings
 

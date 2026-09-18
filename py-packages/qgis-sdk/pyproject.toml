@@ -1,0 +1,62 @@
+[build-system]
+requires = ["maturin>=1.7,<2"]
+build-backend = "maturin"
+
+[project]
+name = "qgis-sdk"
+version = "0.1.0"
+description = "Python SDK for building QGIS plugins on top of PyQGIS — with Rust-native CLI and acceleration"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "GPL-2.0-or-later" }
+keywords = ["qgis", "gis", "plugin", "pyqgis", "rust", "cli"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: GNU General Public License v2 or later (GPLv2+)",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Rust",
+    "Topic :: Scientific/Engineering :: GIS",
+]
+# No hard PyPI deps — QGIS comes from conda-forge qgis package for full backend,
+# but pure-Python SDK works without QGIS for testing.
+dependencies = []
+
+[project.optional-dependencies]
+test = ["pytest>=8"]
+dev = ["pytest>=8", "maturin>=1.7"]
+
+[project.urls]
+Homepage = "https://github.com/Archont561/qgis-rs"
+Repository = "https://github.com/Archont561/qgis-rs"
+Issues = "https://github.com/Archont561/qgis-rs/issues"
+Documentation = "https://archont561.github.io/qgis-rs/"
+
+[project.scripts]
+qgis-plugin = "qgis_sdk.cli:main"
+qgis-sdk = "qgis_sdk.cli:main"
+# Keep qgis-cli also available when qgis-sdk is installed, for convenience
+qgis-cli = "qgis_sdk.cli:qgis_cli_main"
+
+[project.entry-points.pytest11]
+qgis_sdk = "qgis_sdk.testing"
+
+[tool.maturin]
+features = ["pyo3/extension-module", "python"]
+# The Rust core lives in the Cargo workspace, not here. `python-source` stays
+# relative to this directory, so `maturin develop` still puts `qgis_sdk` and
+# the compiled `qgis_sdk._core` next to each other.
+manifest-path = "../../crates/qgis-sdk/Cargo.toml"
+module-name = "qgis_sdk._core"
+python-source = "src"
+bindings = "pyo3"
+strip = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"

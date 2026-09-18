@@ -99,10 +99,18 @@ qgis-rs/
 │   ├── qgis-render/           # Rendering engine: projects, extents, CRS, tiles
 │   ├── qgis-server/           # HTTP server: WMS, WFS, XYZ tiles, OGC API
 │   ├── qgis-mcp/              # Model Context Protocol server (rmcp)
-│   └── qgis-cli/              # Command-line binary, bundles the MCP server
+│   ├── qgis-cli/              # Command-line binary, bundles the MCP server
+│   ├── qgis-py/               # Rust core of the qgis-rs Python wheel (PyO3 + qgis-cli bin)
+│   ├── qgis-sdk/              # Rust core of the qgis-sdk Python wheel (PyO3 + CLIs)
+│   └── qgis-node/             # Rust core of the qgis-rs npm package (NAPI + CLIs)
 │
-├── packages/
-│   └── qgis-sdk/              # Python plugin SDK (pixi workspace package)
+├── py-packages/
+│   ├── qgis-rs/               # Python dist: pyproject.toml (maturin), python/qgis_rs/, tests/
+│   └── qgis-sdk/              # Python dist: pyproject.toml, src/qgis_sdk/, tests/, pixi [package]
+│
+├── ts-packages/
+│   ├── qgis-node/             # npm dist: package.json, index.js, fallback.js, bin/ wrappers
+│   └── qgis-sdk-bridge/       # @qgis-sdk/bridge — Bun workspace, TypeScript sources + bun:test
 │
 ├── apps/
 │   └── docs/                  # Documentation site (Astro Starlight)

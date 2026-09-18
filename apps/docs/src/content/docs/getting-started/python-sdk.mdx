@@ -32,8 +32,8 @@ From source:
 git clone https://github.com/Archont561/qgis-rs
 cd qgis-rs
 pip install maturin
-maturin develop --manifest-path packages/qgis-sdk/Cargo.toml
-python -m pytest packages/qgis-sdk/tests -v
+(cd py-packages/qgis-sdk && maturin develop)
+python -m pytest py-packages/qgis-sdk/tests -v
 ```
 
 ## Python API
@@ -153,7 +153,8 @@ qgis-sdk wheel
     └── qgis-sdk          → alias binary
 ```
 
-- Rust crate: `packages/qgis-sdk/Cargo.toml` — lib `_core` + bins `qgis-plugin`, `qgis-sdk`
+- Rust crate: `crates/qgis-sdk/Cargo.toml` — lib `_core` + bins `qgis-plugin`, `qgis-sdk`,
+  reached from `py-packages/qgis-sdk/pyproject.toml` via `[tool.maturin].manifest-path`
 - Python: `src/qgis_sdk/` with `pyproject.toml` using maturin
 - Conda: `conda-recipe/meta.yaml` builds Rust binaries + Python wheel
 
@@ -209,14 +210,14 @@ def test_bridge(fake_bridge):
 Fakes: `FakeIface`, `FakeAction`, `FakeDialog`, `FakeWebView`, `FakeBridge`, `mock_features()`, `mock_source()`.
 
 ```bash
-python -m pytest packages/qgis-sdk/tests -q  # 84 tests, no QGIS
+python -m pytest py-packages/qgis-sdk/tests -q  # 112 tests, no QGIS
 ```
 
 See [Testing Fixtures Guide](/guides/testing-fixtures/).
 
 ## Conda-forge
 
-See `packages/qgis-sdk/conda-recipe/meta.yaml`. It builds Rust binaries and Python extension and installs both.
+See `py-packages/qgis-sdk/conda-recipe/meta.yaml`. It builds Rust binaries and Python extension and installs both.
 
 To publish:
 

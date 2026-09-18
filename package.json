@@ -4,23 +4,26 @@
   "version": "0.2.0",
   "description": "QGIS SDK \u2014 Python + Rust + Bun JS bridge with complete QGIS Web API",
   "workspaces": [
-    "packages-bun/*",
+    "ts-packages/*",
     "apps/*"
   ],
   "scripts": {
     "build": "bun run --filter '*' build",
     "test": "bun test",
-    "test:py": "pytest packages/qgis-sdk/tests -v",
+    "test:py": "pytest py-packages/qgis-sdk/tests -v",
     "dev": "bun --bun astro dev --filter docs",
     "lint": "bunx biome check .",
     "format": "bunx biome format --write .",
     "docs:dev": "bun --cwd apps/docs dev",
     "docs:build": "bun --cwd apps/docs build"
   },
-  "packageManager": "bun@1.2.0",
+  "packageManager": "bun@1.3.11",
   "devDependencies": {
     "@types/bun": "latest",
     "typescript": "^5.4.5",
     "@biomejs/biome": "latest"
+  },
+  "overrides": {
+    "@astrojs/sitemap": "3.6.0"
   }
 }

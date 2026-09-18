@@ -10,7 +10,7 @@
  */
 
 import { Project, Extent, TilePlan, ZoomRange, Crs, planTiles, version, MAX_LATITUDE, MAX_ZOOM } from 'qgis-rs';
-// For local dev: import from '../packages/qgis-node'
+// For local dev: import from '../ts-packages/qgis-node'
 
 console.log(`qgis-rs version: ${version()}`);
 console.log(`MAX_LATITUDE: ${MAX_LATITUDE}, MAX_ZOOM: ${MAX_ZOOM}`);

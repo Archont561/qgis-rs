@@ -1,0 +1,90 @@
+{% set name = "qgis-sdk" %}
+{% set version = "0.1.0" %}
+
+package:
+  name: {{ name|lower }}
+  version: {{ version }}
+
+source:
+  path: ../../..
+
+build:
+  number: 0
+  script:
+    # Build Rust binaries (qgis-plugin, qgis-sdk) and Python extension via maturin
+    - cargo build --release --manifest-path crates/qgis-sdk/Cargo.toml --bins
+    - mkdir -p $PREFIX/bin
+    - cp target/release/qgis-plugin $PREFIX/bin/qgis-plugin
+    - cp target/release/qgis-sdk $PREFIX/bin/qgis-sdk
+    - chmod +x $PREFIX/bin/qgis-plugin $PREFIX/bin/qgis-sdk
+    # Also include qgis-cli for convenience (from qgis-rs crate)
+    - cargo build --release --manifest-path crates/qgis-py/Cargo.toml --bin qgis-cli
+    - cp target/release/qgis-cli $PREFIX/bin/qgis-cli || true
+    - chmod +x $PREFIX/bin/qgis-cli || true
+    # Build Python wheel with maturin
+    - (cd py-packages/qgis-sdk && maturin build --release --strip -o ../../dist --interpreter python)
+    - pip install dist/qgis_sdk-*.whl --no-deps -vv
+  entry_points:
+    - qgis-plugin = qgis_sdk.cli:main
+    - qgis-sdk = qgis_sdk.cli:main
+    - qgis-cli = qgis_sdk.cli:qgis_cli_main
+
+requirements:
+  build:
+    - {{ compiler('rust') }}
+    - {{ compiler('c') }}
+    - {{ compiler('cxx') }}
+    - python
+    - pip
+    - maturin >=1.7
+  host:
+    - python
+    - pip
+    - maturin >=1.7
+    - qgis >=3.44.9,<4
+  run:
+    - python
+    - qgis >=3.44.9,<4
+    # Optional: qgis-rs for rendering tools
+    # - qgis-rs
+
+test:
+  imports:
+    - qgis_sdk
+    - qgis_sdk.cli
+    - qgis_sdk.scaffold
+  commands:
+    - qgis-plugin --help
+    - qgis-plugin version
+    - qgis-sdk --help
+    - qgis-sdk version
+    - qgis-plugin new test_plugin --type general -o /tmp
+    - qgis-plugin validate /tmp/test_plugin
+    - python -m qgis_sdk.cli --help
+    - python -c "import qgis_sdk; print(qgis_sdk.__version__, qgis_sdk.HAS_RUST)"
+    - python -c "from qgis_sdk import Plugin, action, toolbar; print('Plugin SDK OK')"
+  requires:
+    - pip
+
+about:
+  home: https://github.com/Archont561/qgis-rs
+  license: GPL-2.0-or-later
+  license_family: GPL
+  summary: Python SDK for building QGIS plugins on top of PyQGIS — with Rust-native CLI and acceleration
+  description: |
+    qgis-sdk is a Python framework for building QGIS plugins — in Python, Rust, or both.
+
+    Features:
+    - `pip install qgis-sdk` or `conda install -c conda-forge qgis-sdk`
+    - `import qgis_sdk` — Python SDK with declarative Plugin, Algorithm APIs
+    - `qgis-plugin` binary (Rust) — scaffold, build, test, package, publish plugins at native speed
+    - `qgis-sdk` binary — alias for qgis-plugin
+    - `qgis-cli` — also included for rendering/tiling when qgis-rs is installed
+    - Rust acceleration optional via `qgis-plugin rust init`
+    - Pure-Python fallback when Rust extension not built — tests work without cargo
+  doc_url: https://archont561.github.io/qgis-rs/
+  dev_url: https://github.com/Archont561/qgis-rs
+
+extra:
+  recipe-maintainers:
+    - Archont561

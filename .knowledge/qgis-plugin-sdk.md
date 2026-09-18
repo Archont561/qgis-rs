@@ -913,7 +913,8 @@ qgis-rs/
 
 ## 12. Implementation Status
 
-The SDK lives at **`packages/qgis-sdk/`** as a pixi workspace package
+The SDK lives at **`py-packages/qgis-sdk/`** as a pixi workspace package, with its
+Rust core in **`crates/qgis-sdk/`**
 (`pixi.toml` with a `[package]` section + `pyproject.toml` with hatchling).
 See [pixi.md](/pixi.md) for how the workspace and the PyQGIS import paths are
 wired up.

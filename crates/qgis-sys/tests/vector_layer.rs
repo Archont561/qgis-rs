@@ -3,10 +3,7 @@ mod helpers;
 use qgis_sys::vector_layer_ffi as layer_ffi;
 
 fn test_data_path() -> String {
-    format!(
-        "{}/tests/fixtures/points.gpkg",
-        env!("CARGO_MANIFEST_DIR")
-    )
+    format!("{}/tests/fixtures/points.gpkg", env!("CARGO_MANIFEST_DIR"))
 }
 
 fn open_test_layer() -> cxx::UniquePtr<layer_ffi::QgsVectorLayerHandle> {
@@ -41,10 +38,7 @@ fn layer_feature_count() {
 fn layer_crs() {
     let _app = helpers::AppHandle::new();
     let layer = open_test_layer();
-    assert_eq!(
-        layer_ffi::vector_layer_crs_authid(&layer),
-        "EPSG:4326"
-    );
+    assert_eq!(layer_ffi::vector_layer_crs_authid(&layer), "EPSG:4326");
 }
 
 #[test]
@@ -52,9 +46,5 @@ fn layer_geometry_type() {
     let _app = helpers::AppHandle::new();
     let layer = open_test_layer();
     let geom = layer_ffi::vector_layer_geometry_type_name(&layer);
-    assert!(
-        geom.contains("Point"),
-        "expected Point, got: {}",
-        geom
-    );
+    assert!(geom.contains("Point"), "expected Point, got: {}", geom);
 }

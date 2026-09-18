@@ -1,0 +1,47 @@
+# crates/qgis-sdk — the Rust core of the `qgis-sdk` Python distribution.
+#
+# Provides the `qgis_sdk._core` PyO3 extension (plugin metadata, validation and
+# scaffolding at native speed) plus the `qgis-plugin` / `qgis-sdk` CLI binaries
+# that the wheel installs onto PATH. The Python sources, tests, conda recipe
+# and the pixi `[package]` manifest live in ../../py-packages/qgis-sdk/.
+#
+# Paths below are relative to this crate, so `cargo build -p qgis-sdk` works
+# without maturin; `python-source` in the pyproject keeps `import qgis_sdk`
+# resolvable from the Python tree during `maturin develop`.
+
+[package]
+name = "qgis-sdk"
+description = "Rust core of the qgis-sdk Python SDK — native-speed plugin metadata, validation and scaffolding"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+keywords = ["qgis", "gis", "plugin", "pyqgis", "cli", "rust"]
+categories = ["science::geo", "development-tools"]
+
+[lib]
+name = "_core"
+crate-type = ["cdylib"]
+path = "src/lib.rs"
+
+[[bin]]
+name = "qgis-plugin"
+path = "src/bin/qgis-plugin.rs"
+
+[[bin]]
+name = "qgis-sdk"
+path = "src/bin/qgis-sdk.rs"
+
+[dependencies]
+anyhow = { workspace = true }
+clap = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+qgis-render = { workspace = true }
+qgis-cli = { workspace = true }
+
+pyo3 = { version = "0.22", features = ["extension-module"] }
+
+[features]
+default = ["python"]
+python = ["pyo3/extension-module"]

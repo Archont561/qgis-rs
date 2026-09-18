@@ -47,7 +47,7 @@ The docs site has its own Pixi environment:
 ```toml
 # pixi.toml
 [feature.docs.dependencies]
-bun = ">=1.2.0,<2"   # 1.2+ reads the text-format apps/docs/bun.lock
+bun = ">=1.2.0,<2"   # reads the text-format root bun.lock
 
 [feature.docs.tasks]
 docs-dev = { cmd = "bun run dev", cwd = "apps/docs" }
@@ -58,7 +58,13 @@ docs-preview = { cmd = "bun run preview", cwd = "apps/docs" }
 docs = { features = ["docs"] }
 ```
 
-JavaScript dependencies are pinned by `apps/docs/bun.lock`; CI installs with
+JavaScript dependencies are pinned by the **root** `bun.lock` — `apps/docs` is a
+member of the root Bun workspace (`package.json → workspaces`), and a nested lock
+there is not consulted for resolution. (A nested `apps/docs/bun.lock` used to exist
+and quietly disagreed with the root resolution: a root install then pulled
+`@astrojs/sitemap` 3.7.4 while the nested lock pinned 3.6.0, and the docs build died
+in `astro:build:done`. The pin now lives in the root `overrides` for that reason.)
+CI installs with
 `bun install --frozen-lockfile`.
 
 ### Running
@@ -89,7 +95,7 @@ bun run dev
 bun run build
 ```
 
-npm/npx are deliberately not used: `bun.lock` is the lockfile CI installs
+npm/npx are deliberately not used: the root `bun.lock` is the lockfile CI installs
 from, and an npm install would resolve a separate dependency tree (and write a
 `package-lock.json`) that nothing checks.
 

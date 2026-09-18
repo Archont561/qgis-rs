@@ -4,6 +4,18 @@
 **Branch:** `arena/01a0b44f-qgis-rs`
 **Goal:** Make repo maintainable, language-separated, declarative, testable, with bridge that feels like native browser APIs (EventSource/WebSocket/window) and exposes **complete QGIS API to JS** so webview can trigger jobs, show messages, do network via QGIS, load layers without user writing bridge boilerplate each time. Use **bun** instead of node/npm for all JS tooling.
 
+> **Status (2026-09-18, delivered):** the layout split landed, with one correction to
+> the plan below — the language packages are named `py-packages/` and `ts-packages/`
+> (not `packages-py/`/`packages-bun/`), and *all* Rust moved to `crates/`:
+> `crates/qgis-py` (python bindings), `crates/qgis-sdk` (the sdk's Rust core, kept as
+> a crate because `crates/qgis-node` depends on it) and `crates/qgis-node`.
+> `packages-bun/qgis-node` was deleted in favour of `ts-packages/qgis-node`;
+> `packages-bun/qgis-sdk-bridge` became `ts-packages/qgis-sdk-bridge` and the sdk's TS
+> sources live in `py-packages/qgis-sdk/ts/`. maturin reaches the crates through
+> `[tool.maturin].manifest-path`, so the py-packages hold no Rust. Import names
+> (`qgis_rs`, `qgis_sdk`, `qgis_rs._core`) and the npm package name `qgis-node` are
+> unchanged. See [.knowledge/log.md](./.knowledge/log.md).
+
 ---
 
 ## 0. Current State Pain Points

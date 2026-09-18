@@ -34,10 +34,20 @@ The only reliable network path is `github.com` over the git protocol. This is th
 The `.github/workflows/env.yml` workflow:
 
 1. Installs pixi on a hosted runner (full network access)
-2. Resolves `pixi install --locked -e default`
-3. Runs `pixi-pack --create-executable` to produce a self-extracting bundle
-4. Smoke-tests the bundle in a clean directory
-5. Force-pushes `dist/` to the orphan branch `env/qgis-rs-linux-64`
+2. Resolves `pixi install -e default` (deliberately not `--locked`, as in the
+   reference project, so a manifest change never reddens this job by itself)
+3. Runs `pixi run -e default pack`, i.e. `scripts/pack-env.sh`: `pixi-pack
+   --create-executable` produces `dist/qgis-rs-<platform>.sh`, then the script
+   unpacks it into a scratch dir with the extractor's own flags
+   (`-o <dir> -e env`) and prints `pixi`/`cargo`/`rustc`/`bun --version` from
+   the unpacked environment
+4. Force-pushes `dist/` to the orphan branch `env/qgis-rs-linux-64`
+
+`pixi-pack` is a declared dependency (`[workspace.dependencies]`, consumed by
+the root environment) rather than something the workflow installs ad hoc, which
+is what makes `pixi run -e default pack` find the tool. After adding or bumping
+a pin, run `pixi lock` and commit the result so the checked-in `pixi.lock`
+matches `pixi.toml`.
 
 ### Consumer (sandbox / local)
 

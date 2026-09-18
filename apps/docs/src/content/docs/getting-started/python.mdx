@@ -48,14 +48,14 @@ cd qgis-rs
 
 # Python dev with maturin
 pip install maturin
-maturin develop --manifest-path packages/qgis-rs/Cargo.toml
+(cd py-packages/qgis-rs && maturin develop)
 
 # Or via pixi (conda env with QGIS)
 pixi install -e py
 pixi run -e py py-test
 
 # Test
-python -m pytest packages/qgis-rs/tests -q
+python -m pytest py-packages/qgis-rs/tests -q
 qgis-cli --help
 ```
 
@@ -137,16 +137,17 @@ qgis-rs wheel
 
 - `crates/qgis-render` — pure Rust, no QGIS needed
 - `crates/qgis-cli` — CLI library + binary (reused by Python package)
-- `packages/qgis-rs` — PyO3 bindings + binary, built by maturin
+- `py-packages/qgis-rs` — the Python distribution (wrappers, tests, maturin config)
+- `crates/qgis-py` — the PyO3 bindings + `qgis-cli` binary it compiles
 
 ## Conda-forge
 
-See `packages/qgis-rs/conda-recipe/` for the recipe. It builds the Rust binary and Python extension and installs both to `$PREFIX/bin` and site-packages.
+See `py-packages/qgis-rs/conda-recipe/` for the recipe. It builds the Rust binary and Python extension and installs both to `$PREFIX/bin` and site-packages.
 
 To publish to conda-forge:
 
 1. Fork https://github.com/conda-forge/staged-recipes
-2. Copy `packages/qgis-rs/conda-recipe/` to `recipes/qgis-rs/`
+2. Copy `py-packages/qgis-rs/conda-recipe/` to `recipes/qgis-rs/`
 3. Open PR
 
 ## Performance

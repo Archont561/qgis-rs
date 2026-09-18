@@ -30,5 +30,8 @@ pub use crate::project::{LayerSummary, Project, ProjectFormat, ProjectInfo};
 pub use crate::render::{ImageFormat, RenderSettings, RenderedMap};
 pub use crate::tiles::{Tile, TilePlan, ZoomLevelPlan, ZoomRange, MAX_LATITUDE, MAX_ZOOM};
 
+// Re-export styles for convenience — qgis-render is the engine that uses them
+pub use qgis_styles::{self as styles, LayerStyle, StyleSheet, Renderer, Symbol, Rgba, Color};
+
 /// The crate version, also reported by `qgis-cli --version`.
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");

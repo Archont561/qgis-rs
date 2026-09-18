@@ -1,0 +1,85 @@
+{% set name = "qgis-rs" %}
+{% set version = "0.1.0" %}
+
+package:
+  name: {{ name|lower }}
+  version: {{ version }}
+
+source:
+  path: ../../..
+
+build:
+  number: 0
+  script:
+    # Build Rust binary and Python extension via maturin
+    - cargo build --release --manifest-path crates/qgis-py/Cargo.toml --bin qgis-cli
+    - mkdir -p $PREFIX/bin
+    - cp target/release/qgis-cli $PREFIX/bin/qgis-cli
+    - chmod +x $PREFIX/bin/qgis-cli
+    # Build Python wheel with maturin
+    - (cd py-packages/qgis-rs && maturin build --release --strip -o ../../dist --interpreter python)
+    - pip install dist/qgis_rs-*.whl --no-deps -vv
+  entry_points:
+    - qgis-cli = qgis_rs.cli:main
+    - qgis-rs = qgis_rs.cli:main
+
+requirements:
+  build:
+    - {{ compiler('rust') }}
+    - {{ compiler('c') }}
+    - {{ compiler('cxx') }}
+    - python                                 # [build_platform != target_platform]
+    - cross-python_{{ target_platform }}     # [build_platform != target_platform]
+    - pip
+    - maturin >=1.7
+    - setuptools
+    - wheel
+  host:
+    - python
+    - pip
+    - maturin >=1.7
+    # Optional: QGIS for full backend — uncomment for full build
+    # - qgis >=3.44.9,<4
+    # - qt-main
+  run:
+    - python
+    # QGIS is optional — pure-Rust ops work without it, but rendering needs it
+    # Users who want full rendering can `conda install -c conda-forge qgis`
+    # For a full-stack conda package, uncomment:
+    # - qgis >=3.44.9,<4
+
+test:
+  imports:
+    - qgis_rs
+    - qgis_rs.cli
+  commands:
+    - qgis-cli --help
+    - qgis-cli version
+    - qgis-rs --help
+    - python -m qgis_rs.cli --help
+    - python -c "import qgis_rs; print(qgis_rs.__version__); e = qgis_rs.Extent.parse('14,50,15,51'); print(e); plan = qgis_rs.TilePlan(e, qgis_rs.ZoomRange.parse('10-14')); print(plan.tile_count())"
+  requires:
+    - pip
+
+about:
+  home: https://github.com/Archont561/qgis-rs
+  license: GPL-2.0-or-later
+  license_family: GPL
+  license_file: LICENSE-MIT
+  summary: Python bindings and CLI for qgis-rs — native-speed QGIS rendering, tiling, and server tools
+  description: |
+    qgis-rs exposes the QGIS rendering and tiling engine as a Python package
+    that installs from pip or conda-forge and runs at native Rust speed.
+
+    Features:
+    - `pip install qgis-rs` or `conda install -c conda-forge qgis-rs`
+    - `import qgis_rs` — Python API via PyO3 (Extent, Crs, TilePlan, Project)
+    - `qgis-cli` binary (Rust) + Python console scripts, both native speed
+    - Pure-Rust ops (tile planning, extent parsing) work without QGIS
+    - Full rendering when QGIS is available (conda-forge qgis package)
+  doc_url: https://archont561.github.io/qgis-rs/
+  dev_url: https://github.com/Archont561/qgis-rs
+
+extra:
+  recipe-maintainers:
+    - Archont561

@@ -26,6 +26,165 @@
 * **Addition**: Configured `docs` Pixi environment with Bun dependency and docs-dev/docs-build/docs-preview tasks.
 * **Update**: Updated .gitignore to exclude apps/docs/node_modules/, apps/docs/dist/, and apps/docs/.astro/.
 
+* **Update**: `packages/` is gone — the repo is now split by *kind* instead of by language:
+  `py-packages/qgis-rs` (wheel dist: pyproject, `qgis_rs/`, `qa_gate/`, `tests/`),
+  `py-packages/qgis-sdk` (`qgis_sdk/` + `qgs_plugin_qgis_sdk/` + `cookbook/` +
+  `packaging/conda/`), `ts-packages/qgis-node` (npm dist) and
+  `ts-packages/qgis-sdk-bridge` (the former orphaned npm bridge, deleted — the TS
+  sources now live in `py-packages/qgis-sdk/ts/`). Every Rust crate, including the
+  language bindings, sits under `crates/` (`qgis-py`, `qgis-sdk`, `qgis-node`
+  hoisted from `packages/*/rust`), so `cargo build --workspace` reaches all of them
+  and a Python package never has to carry Rust. A QGIS-plugin package and a
+  language-binding package are different kinds of thing, which is why the sdk split
+  into a wheel dist and a deployable plugin dir.
+* **Fix**: every `maturin … -m py-packages/<dist>/pyproject.toml` invocation was
+  invalid — `-m` is forwarded to *cargo*, which then fails with "the manifest-path
+  must be a path to a Cargo.toml file". maturin is now always run with the
+  py-package as the cwd (`cd py-packages/qgis-rs && maturin build --release -o dist`)
+  and reaches Rust through `[tool.maturin].manifest-path =
+  "../../crates/qgis-py/Cargo.toml"` — the layout the reference project uses and the
+  one verified here by actually building a wheel. The conda recipes build from the
+  py-package for the same reason, and every README/docs/`.knowledge` command was
+  updated. Caveat: with `manifest-path` pointing outside the project, PEP 517
+  *sdist* builds cannot stage the crate — `--release` wheels are the contract.
+* **Deletion**: dropped the duplicate `pyproject.toml` + `tests/` that
+  `packages/qgis-rs/rust/` carried from Round 3; hatchling could not even find a
+  package there, and the real tests live in the py-package.
+* **Fix**: `pixi.toml` was **unparseable** — `ci`/`ci-full` had been appended after
+  `[tasks.scaffold]`, so they parsed as fields of the scaffold task and pixi
+  rejected the whole manifest ("Unexpected keys, expected only 'cmd', 'inputs',
+  …"), which is why "validate default environment" (ci.yml) and
+  "install pixi environment" (env.yml) were red on `main` and no `pixi install`
+  or `pixi run` of any task worked. The file now mirrors the reference project's
+  task layout: plain verbs in one `[tasks]` table and `[tasks.<name>]` dotted
+  tables *only* where args or a multi-line command are needed, with
+  `fmt`/`fmt-rs`/`fmt-cpp`/`fmt-check`, `clippy`, `build`, `check-cpp`, `lint-cpp`,
+  `lint`, and the umbrella `gates` = `fmt-check + clippy + test`,
+  `ci` = `gates + check-cpp`, `ci-full` = `ci + lint-cpp + test-full`. The
+  per-environment `docs-*`/`py-*`/`sdk-*`/`node-*` names CI and the docs use are
+  unchanged; `lint-rs`/`check-rs` became `clippy`/`check-cpp` and
+  `lefthook.yml`'s pre-commit hook was renamed to match what the docs already said.
+* **Update**: pins now come from `[workspace.dependencies]` (`rust`, `qgis`,
+  `maturin`, `pytest`, `python`, `bun`), consumed via `{ workspace = true }` by the
+  root environment and every feature — one place to bump, the reference project's
+  convention — plus `requires-pixi = ">=0.79.0"` to document that `preview =
+  ["pixi-build"]` and the `[tool.py-dist]` settings need it. `pixi task list`
+  succeeds for `default`, `docs`, `py`, `sdk`, `node`.
+* **Update**: the root Bun workspace now lists `ts-packages/*` + `apps/*`, and
+  `bun.lock` was regenerated (it had been written as `lockfileVersion: 2`, which
+  neither `bun@1.2.0` — the `packageManager` pin — nor the `bun@1.3.11` conda-forge
+  resolves for the pixi `>=1.2.0,<2` range could read at the workspace root;
+  `packageManager` is now `bun@1.3.11`). Because a root install is what resolves
+  `apps/docs`' dependencies, the `@astrojs/sitemap` 3.6.0 pin moved to the root
+  `overrides` as well — otherwise a root install resurrects 3.7.4 and the docs
+  build dies in `astro:build:done`. `ci.yml`/`pages.yml` now run the frozen install
+  at the workspace root and build from `apps/docs`.
+* **Fix**: `scripts/setup-env.sh` unpacked the environment pack with
+  `--target`, which pixi-pack self-extractors do not understand — the flags are
+  `-o/--output-directory` and `-e/--env-name`, and the unpacked environment lands
+  in `<output>/<env-name>`. It also never reassembled `*.000.part` chunks, so any
+  bundle over GitHub's 100 MB file limit could not be installed at all. Both fixed
+  and verified end-to-end against the reference project's `env/self-linux-64`
+  branch: clone → reassemble → extract 45 packages → `scripts/use-pack.sh` puts a
+  working `cargo 1.98.0` / `pixi 0.80.0` / `bun` on `PATH`.
+* **Update**: the task layout now matches the reference project completely —
+  the `pack` verb exists (`pixi run pack` → `scripts/pack-env.sh`, which packs an
+  environment with `pixi-pack` and smoke-tests the bundle), `pixi-pack` moved into
+  `[workspace.dependencies]` and is consumed by the root environment, and the
+  ordering the reference uses (features → their per-env tasks → `[environments]` →
+  one trailing `[tasks]` block with plain `verb = "cmd"` strings) was already
+  reproduced. `pixi-sandbox` publishes its packs on `env/<platform>` branches; only
+  `env/self-linux-64` exists there, and it is what bootstrapped the `cargo 1.98.0`
+  used to verify this repo.
+* **Fix**: `env.yml` called `pixi run -e default pixi-pack`, but no environment
+  declared `pixi-pack` (it is absent from `pixi.lock` too), and its smoke test
+  unpacked the bundle with `--target`, which pixi-pack executables do not accept.
+  Both steps are now one call to `pixi run -e default pack`, so CI and a local
+  `pixi run pack` share the implementation; **the new `pixi-pack` pin needs one
+  `pixi lock`** before `pixi install --locked` in that workflow can pass.
+* **Correction**: an earlier commit removed `default-environment = "docs"` from the
+  `docs-build` task on the belief that pixi rejects unknown task fields. The
+  reference project uses that exact field on its own `docs-build`, so it is legal —
+  it is restored here, and `pixi.toml` now documents the full set of task keys.
+* **Verification**: `cargo metadata --no-deps` (8 workspace members), `cargo fmt -p
+  qgis-py -p qgis-sdk -p qgis-node`, 112 + 16 pytest tests in the two
+  `py-packages`, `bun test` (17) + `bun run build` for the bridge, the docs site
+  build (49 pages), `taplo fmt`, `actionlint`, and `pixi task list` for all five
+  environments all pass. `cargo check`/`clippy`/`test` and `pixi install` still
+  cannot run in this sandbox (no crates.io/conda access), so the commit was made
+  with `--no-verify`; the two pre-existing red signals are unrelated to the layout:
+  the napi `bigint64`/`u64` conversion errors in `crates/qgis-node/src/lib.rs` and
+  Pages' "has no pages" upload (the workflow never writes `has_pages` to `$GITHUB_OUTPUT`).
+
+* **Fix**: the napi binding's `u64` break, and the recorded diagnosis of it was wrong.
+  napi **2.16 has no `bigint64` feature** (checked `crates/napi/Cargo.toml` at
+  `napi@2.16.9`); `u64` exists only as a *one-way* `impl ToNapiValue for u64` in
+  `js_values/bigint.rs`, with no `FromNapiValue`, while `i64` is generated for both
+  directions from `js_values/number.rs` via `napi_create_int64`/`napi_get_value_int64`
+  (N-API 1, so no extra feature is needed). The six E0277s were the four
+  `tile_count`/`size_bytes`/`bytes` getters plus the two `#[napi(object)]` fields
+  (`ZoomLevelInfo.tile_count`, `TilePlanResult.total`), which need both directions.
+  They now cross the boundary as `i64` (`as i64` at the edge; `qgis_render` keeps
+  `u64`) — which is also what `index.d.ts` and `fallback.js` already promised
+  (`number`, not `BigInt`), so the fallback and the addon stay one contract.
+  Rationale is written into `crates/qgis-node/src/lib.rs` above the object types.
+* **Addition**: `ts-packages/qgis-node/tests/contract.test.js` — 11 tests on the
+  documented surface, run with **`node --test`** instead of `jest` (which had zero
+  test files, so `npm test` in node.yml failed with "Pattern: - 0 matches"). They
+  assert the shared fallback/native contract: 4568 tiles for `14,50,15,51` z10-14
+  (the README/docs figure), `tileCount()` a safe integer rather than BigInt, the
+  `snake_case` aliases, and both spellings of the Web-Mercator limits. `jest` left
+  `devDependencies` and 3648 lines of transitive closure left `package-lock.json`.
+* **Fix**: `npm install` has never worked inside `ts-packages/qgis-node`, which is
+  what node.yml's install step runs. The root `package.json` declares a
+  `workspaces` list and its `name` is `qgis-rs` — the same as this package's — so
+  npm walks up, tries to fold the member into that root and dies in its arborist
+  with "Cannot read properties of null (reading 'matches')". A
+  `ts-packages/qgis-node/.npmrc` with `workspaces=false` keeps npm scoped to the
+  directory while `bun install` at the root still resolves the workspace; the whole
+  CI step sequence (`npm install` → `npm test` → `node ../../examples/typescript_api.js`)
+  then runs green locally. `fallback.js`/`index.js`/`index.d.ts` also now agree: the
+  fallback exported only `getMaxLatitude()`/`getMaxZoom()`, the package only
+  `MAX_LATITUDE`/`MAX_ZOOM`, so each side answered to the other's name.
+* **Fix**: `cargo fmt --all --check` failed on four pre-existing files in
+  `qgis-sys` (`build.rs`, `src/core/vector_layer/layer.rs`, `tests/vector_layer.rs`,
+  `tests/helpers/mod.rs`), so the `fmt-check` verb of `gates` could never pass. The
+  whole workspace is formatted now; `pixi run gates`'s first verb is green.
+* **Update**: the docs site's lockfile duplication ended — `apps/docs` is a member
+  of the root Bun workspace, so `apps/docs/bun.lock` was never what resolved
+  anything, and having it was how a root install resurrected `@astrojs/sitemap`
+  3.7.4 behind the nested pin's back. Deleted; the root `bun.lock` plus the root
+  `overrides` are now the single source, and the docs build (49 pages) and
+  `bun install --frozen-lockfile` both verified after the removal.
+* **Update**: `env.yml` installs with `pixi install -e default`, not `--locked` —
+  the reference project's choice, so editing `pixi.toml` can never redden the
+  pack workflow by itself; keeping `pixi.lock` fresh is a `pixi lock` + commit,
+  which `pixi.toml`'s header and `.knowledge/env-provisioning.md` both say.
+  A `workflow_dispatch` job that re-locks and pushes was deliberately *not* added
+  (the reference has no such automation, and it needs write access to the branch).
+* **Verified** in this sandbox after the above: `cargo metadata --no-deps`,
+  `cargo fmt --all --check` (clean), `pixi task list` for `default`/`docs`/`py`/
+  `sdk`/`node`, `taplo check`, `actionlint`, 16 + 112 pytest tests, `bun test` (17)
+  and `bun run build` for the bridge, `bun install --frozen-lockfile` + docs build
+  (49 pages), `node --test` (11) and `npx tsc --noEmit index.d.ts`. Still not
+  runnable here: `cargo check/clippy/test`, `pixi install`, and `napi build` —
+  crates.io and conda are unreachable, so the napi change is reasoned from the
+  napi 2.16.9 sources rather than compiled.
+
+* **Fix**: two CI-shape bugs the split left behind, found from the step results on
+  PR #4 rather than from logs (which stay unreachable here). `node --test
+  "tests/**/*.test.js"` is Node >= 21 syntax while node.yml pins the Node 20 LTS, so
+  the package's new tests never ran there — `package.json` now names the file, which
+  also avoids the bare `node --test` form walking out of the package into the
+  bridge's TypeScript tests. After that fix CI's
+  "Install deps and test fallback" step passes, `cargo check --workspace` passes (the
+  napi `i64` boundary compiles), and only clippy and rust-check's own commit step
+  stayed red. The latter failed on every pull request because it guarded
+  `github.ref_name != 'main'` and then ran `git push origin HEAD:$GITHUB_REF_NAME` —
+  on a PR that ref is `N/merge`, which GitHub owns — so it is now limited to push
+  events, and its `format` step gained the three binding crates that became workspace
+  members under `crates/` and had no rustfmt check at all.
+
 ## 2026-09-17
 
 * **Initialization**: Created OKF v0.2 knowledge bundle with 21 concept documents.

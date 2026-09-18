@@ -12,6 +12,9 @@ _*
 !_core.pyi
 !_core.py
 !_native.py
+!_qt.py
+!_runtime.py
+!_vendor.py
 
 # git / github
 !.git*
@@ -37,21 +40,21 @@ dist/
 
 # docs app (Node.js / Astro)
 apps/docs/node_modules/
+# The Bun workspace at the root owns JS resolution; a root npm lock is a mistake
+# (member locks, e.g. ts-packages/qgis-node/package-lock.json, stay tracked).
+/package-lock.json
 apps/docs/dist/
 apps/docs/.astro/
 
-# node / napi
-packages/qgis-node/node_modules/
-packages/qgis-node/*.node
-packages/qgis-node/dist/
-packages/qgis-sdk-bridge/node_modules/
-packages/qgis-sdk-bridge/dist/
-apps/docs/dist/
-apps/docs/.astro/
-
-# bun / node - new layout
+# bun / node / napi — every JS package lives in ts-packages/
 node_modules/
-packages-bun/*/node_modules/
-packages-bun/*/dist/
+ts-packages/*/dist/
 apps/*/node_modules/
 apps/*/dist/
+apps/docs/.astro/
+# the compiled addon napi build drops next to the package.json
+ts-packages/qgis-node/*.node
+
+# python — wheels and editable installs built from py-packages/<name>
+py-packages/*/*.egg-info/
+py-packages/*/.pytest_cache/

@@ -5,7 +5,7 @@ Example: using qgis-rs Python API at native Rust speed.
 Install:
     pip install qgis-rs
     # or for dev:
-    # pip install maturin && maturin develop --manifest-path packages/qgis-rs/Cargo.toml
+    # pip install maturin && (cd py-packages/qgis-rs && maturin develop)
 
 Run:
     python examples/python_api.py

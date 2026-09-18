@@ -91,6 +91,12 @@ pub struct RenderSettings {
     pub layers: Vec<String>,
     /// Print layout to render instead of the map canvas.
     pub layout: Option<String>,
+    /// Style overrides — from qgis-styles IR.
+    #[serde(default)]
+    pub style: Option<qgis_styles::StyleSheet>,
+    /// Per-layer style overrides.
+    #[serde(default)]
+    pub layer_styles: std::collections::HashMap<String, qgis_styles::LayerStyle>,
 }
 
 impl RenderSettings {
@@ -121,6 +127,8 @@ impl RenderSettings {
             extent: None,
             layers: Vec::new(),
             layout: None,
+            style: None,
+            layer_styles: std::collections::HashMap::new(),
         })
     }
 
@@ -164,6 +172,20 @@ impl RenderSettings {
     #[must_use]
     pub fn with_layout(mut self, layout: impl Into<String>) -> Self {
         self.layout = Some(layout.into());
+        self
+    }
+
+    /// Set style overrides.
+    #[must_use]
+    pub fn with_style(mut self, style: qgis_styles::StyleSheet) -> Self {
+        self.style = Some(style);
+        self
+    }
+
+    /// Set per-layer style.
+    #[must_use]
+    pub fn with_layer_style(mut self, layer: impl Into<String>, style: qgis_styles::LayerStyle) -> Self {
+        self.layer_styles.insert(layer.into(), style);
         self
     }
 }

@@ -1,0 +1,11 @@
+[package]
+name = "qgis-styles"
+description = "Style IR for qgis-rs: symbols, renderers, labeling, layouts — pure serde, no QGIS dep"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }

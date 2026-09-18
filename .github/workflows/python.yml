@@ -4,11 +4,10 @@ on:
   pull_request:
     branches: [main]
     paths:
-      - "packages/qgis-rs/**"
-      - "packages/qgis-sdk/**"
-      - "packages/qgis-node/**"
-      - "crates/qgis-render/**"
-      - "crates/qgis-cli/**"
+      - "py-packages/**"
+      - "ts-packages/**"
+      - "crates/**"
+      - "Cargo.toml"
       - ".github/workflows/python.yml"
   push:
     branches: [main]
@@ -33,6 +32,14 @@ jobs:
         with:
           python-version: "3.11"
 
+      # `maturin develop` installs into the active virtualenv, and setup-python
+      # alone is not one; create it and keep it first on PATH for later steps.
+      - name: Create virtualenv
+        run: |
+          python -m venv .venv
+          echo "VIRTUAL_ENV=$PWD/.venv" >> "$GITHUB_ENV"
+          echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
+
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
@@ -45,13 +52,17 @@ jobs:
         run: pip install maturin pytest
 
       - name: Build and install qgis-rs with maturin develop
-        working-directory: packages/qgis-rs
+        # The pyproject owns the build: [tool.maturin].manifest-path points at
+        # crates/qgis-py, so maturin is driven from the Python package.
+        working-directory: py-packages/qgis-rs
         run: |
-          maturin develop --manifest-path Cargo.toml
+          # maturin reads ./pyproject.toml, whose [tool.maturin].manifest-path
+          # points at ../../crates/qgis-py.
+          maturin develop
 
       - name: Test qgis-rs API (Python)
         run: |
-          python -m pytest packages/qgis-rs/tests -v
+          python -m pytest py-packages/qgis-rs/tests -v
           python -c "import qgis_rs; print(qgis_rs.__version__); e = qgis_rs.Extent.parse('14,50,15,51'); print(e); print(qgis_rs.TilePlan(e, qgis_rs.ZoomRange.parse('10-14')).tile_count())"
 
       - name: Test qgis-rs CLI via Python
@@ -67,13 +78,13 @@ jobs:
           qgis-cli tiles $tmp/map.qgs -z 10-14 -b 14,50,15,51 -o $tmp/tiles --dry-run
 
       - name: Build and install qgis-sdk with maturin develop
-        working-directory: packages/qgis-sdk
+        working-directory: py-packages/qgis-sdk
         run: |
-          maturin develop --manifest-path Cargo.toml
+          maturin develop
 
       - name: Test qgis-sdk API and CLI
         run: |
-          python -m pytest packages/qgis-sdk/tests -v
+          python -m pytest py-packages/qgis-sdk/tests -v
           python -m qgis_sdk.cli --help
           python -m qgis_sdk.cli version
           qgis-plugin --help
@@ -84,13 +95,13 @@ jobs:
           qgis-plugin info $tmp/test_plugin
 
       - name: Test qgis-node (TypeScript) with fallback and NAPI build
-        working-directory: packages/qgis-node
+        working-directory: ts-packages/qgis-node
         run: |
           npm install
           npm test
           node ../../examples/typescript_api.js
           # Build NAPI addon and test again with native
-          npx napi build --platform --release --manifest-path Cargo.toml -o .
+          npx napi build --platform --release --manifest-path ../../crates/qgis-node/Cargo.toml -o .
           npm test
           node -e "const { TilePlan, Extent, ZoomRange } = require('./index.js'); console.log('native tileCount', new TilePlan(Extent.parse('14,50,15,51'), ZoomRange.parse('10-14')).tileCount())"
 
@@ -100,7 +111,11 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        package: [qgis-rs, qgis-sdk]
+        include:
+          - package: qgis-rs
+            project: py-packages/qgis-rs
+          - package: qgis-sdk
+            project: py-packages/qgis-sdk
       fail-fast: false
     steps:
       - uses: actions/checkout@v4
@@ -114,14 +129,18 @@ jobs:
         uses: PyO3/maturin-action@v1
         with:
           command: build
-          args: --release --manifest-path packages/${{ matrix.package }}/Cargo.toml -o dist --strip
+          # maturin must be run *inside* the distribution directory: its -m flag
+          # only accepts a Cargo.toml, so the pyproject -> crate hop is resolved
+          # from the working directory instead.
+          working-directory: ${{ matrix.project }}
+          args: --release -o ../../dist --strip
           manylinux: auto
 
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
           name: wheels-${{ matrix.os }}-${{ matrix.package }}
-          path: dist
+          path: dist/*.whl
 
   publish-pypi:
     name: Publish to PyPI
