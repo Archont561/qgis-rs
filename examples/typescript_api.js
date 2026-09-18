@@ -5,7 +5,7 @@
  * Install:
  *   npm install qgis-rs
  *   # or for dev:
- *   # cd packages/qgis-node && npm install && npm run build
+ *   # cd ts-packages/qgis-node && npm install && npm run build
  *
  * Run:
  *   node examples/typescript_api.js
@@ -21,9 +21,9 @@ try {
   qgisRs = require('qgis-rs');
 } catch (_) {
   try {
-    qgisRs = require('../packages/qgis-node/index.js');
+    qgisRs = require('../ts-packages/qgis-node/index.js');
   } catch (e) {
-    console.error('qgis-rs not found. Install with: npm install qgis-rs or cd packages/qgis-node && npm install');
+    console.error('qgis-rs not found. Install with: npm install qgis-rs or cd ts-packages/qgis-node && npm install');
     process.exit(1);
   }
 }

@@ -35,7 +35,7 @@ The long-term goal is a safe, idiomatic Rust API that exposes QGIS's vector/rast
 | Lint        | `cargo clippy --workspace --all-targets -- -D warnings` | Rust lint (C++: `clang-tidy`)      |
 | Test        | `pixi run test`                    | Runs integration tests (requires `setup` symlink)  |
 | Test (full) | `pixi run test-full`               | Includes vector_layer + application_lifecycle      |
-| CI          | `pixi run ci`                      | check-rs + check-cpp + lint-rs + test              |
+| CI          | `pixi run gates`                   | fmt-check + clippy + test (`ci` adds the C++ format check) |
 | Scaffold    | `pixi run scaffold <layer> <concept> <class> <short>` | Generates header + bridge + cpp + mod.rs |
 
 > **When pixi is unavailable** (sandboxed environments), bootstrap via

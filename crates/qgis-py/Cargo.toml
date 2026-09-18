@@ -1,0 +1,48 @@
+# crates/qgis-py — the Rust core of the `qgis-rs` Python distribution.
+#
+# Built two ways from one source:
+#   * as a PyO3 extension module, imported by Python as `qgis_rs._core`
+#     (built by maturin, driven from ../../py-packages/qgis-rs/pyproject.toml)
+#   * as the standalone `qgis-cli` binary, shipped on PATH by that same wheel
+#
+# The Python package itself — `qgis_rs/__init__.py`, the `_fallback` module,
+# tests, conda recipe and pixi `[package]` manifest — lives in
+# ../../py-packages/qgis-rs/.
+
+[package]
+name = "qgis-py"
+description = "PyO3 extension module and qgis-cli binary behind the `qgis-rs` Python package"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+keywords = ["qgis", "gis", "rendering", "tiles", "pyo3", "cli"]
+categories = ["science::geo", "api-bindings"]
+
+[lib]
+# Import name inside the wheel: `qgis_rs._core` (see [tool.maturin] in the
+# Python package's pyproject.toml).
+name = "_core"
+crate-type = ["cdylib"]
+path = "src/lib.rs"
+
+[[bin]]
+name = "qgis-cli"
+path = "src/bin/qgis-cli.rs"
+
+[dependencies]
+qgis-render = { workspace = true }
+qgis-server = { workspace = true }
+qgis-cli = { workspace = true }
+qgis-mcp = { workspace = true, optional = true }
+anyhow = { workspace = true }
+clap = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true, optional = true }
+
+pyo3 = { version = "0.22", features = ["extension-module"] }
+
+[features]
+default = ["mcp", "python"]
+mcp = ["dep:qgis-mcp", "dep:tokio", "qgis-cli/mcp"]
+python = ["pyo3/extension-module"]

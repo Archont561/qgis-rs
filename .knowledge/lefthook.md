@@ -19,7 +19,7 @@ Lefthook manages Git hooks to enforce code quality before commits.
 |----------|----------------|--------------------------------------------------|
 | `fmt-rs` | `*.rs`         | `cargo fmt --all --check`                        |
 | `fmt-cpp`| `*.{cpp,h}`    | `clang-format --dry-run --Werror {staged_files}` |
-| `lint-rs`| `*.rs`         | `cargo clippy --workspace --all-targets -- -D warnings` |
+| `clippy` | `*.rs`         | `cargo clippy --workspace --all-targets -- -D warnings` |
 
 All run in parallel for speed.
 
@@ -46,8 +46,10 @@ This creates the hook scripts in `.git/hooks/` that call lefthook.
 
 ## CI Alignment
 
-The `ci` task in `pixi.toml` runs the same checks as the hooks, ensuring local and CI parity:
+The `gates`/`ci` tasks in `pixi.toml` run the same checks as the hooks, ensuring local
+and CI parity:
 
 ```
-ci = check-rs + check-cpp + lint-rs + test
+gates = fmt-check + clippy + test
+ci    = gates + check-cpp
 ```

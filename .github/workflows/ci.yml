@@ -89,8 +89,9 @@ jobs:
       - name: install docs environment
         run: pixi install -e docs
 
+      # apps/docs is a member of the root Bun workspace, so the frozen install
+      # runs at the workspace root against the committed bun.lock.
       - name: install dependencies
-        working-directory: apps/docs
         run: pixi run -e docs bun install --frozen-lockfile
 
       - name: build documentation

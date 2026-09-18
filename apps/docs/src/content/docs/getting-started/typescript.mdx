@@ -28,7 +28,7 @@ From source:
 
 ```bash
 git clone https://github.com/Archont561/qgis-rs
-cd qgis-rs/packages/qgis-node
+cd qgis-rs/ts-packages/qgis-node
 npm install
 npm run build
 npm test
@@ -120,8 +120,8 @@ qgis-rs npm package
     └── qgis-plugin.js       → same for plugin SDK
 ```
 
-- Rust: `crates/qgis-render` (pure Rust), `crates/qgis-cli`, `packages/qgis-sdk`
-- Node: `packages/qgis-node/` — NAPI bindings + JS wrappers
+- Rust: `crates/qgis-render` (pure Rust), `crates/qgis-cli`, `crates/qgis-node` (NAPI addon), `crates/qgis-sdk`
+- Node: `ts-packages/qgis-node/` — npm package (JS wrappers + fallback); the addon is built from `crates/qgis-node/`
 
 ## Conda-forge
 

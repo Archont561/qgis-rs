@@ -69,14 +69,29 @@ for es_f in "$es_clone"/pixi-sandbox-*.sh "$es_clone"/qgis-rs-*.sh; do
   [ -f "$es_f" ] && { es_installer="$es_f"; break; }
 done
 
-if [ -z "$es_installer" ]; then
+# GitHub rejects files over 100 MB, so a large bundle is stored as
+# <name>.000.part, <name>.001.part, … and must be reassembled first.
+if [ ! -f "$es_installer" ]; then
+  if [ -f reassemble.sh ] || ls "$es_clone"/*.000.part >/dev/null 2>&1; then
+    echo "setup-env: reassembling chunked bundle"
+    ( cd "$es_clone" && [ -f reassemble.sh ] && bash ./reassemble.sh )
+    for es_f in "$es_clone"/pixi-sandbox-*.sh "$es_clone"/qgis-rs-*.sh; do
+      [ -f "$es_f" ] && { es_installer="$es_f"; break; }
+    done
+  fi
+fi
+
+if [ ! -f "$es_installer" ]; then
   echo "setup-env: no self-extracting bundle found in branch" >&2
   exit 4
 fi
 
 echo "setup-env: running $(basename "$es_installer")"
+# pixi-pack's executable takes -o/--output-directory and writes the environment
+# into a named subdirectory of it (-e/--env-name, default "env"), so pointing it
+# at $es_home with env-name "env" lands exactly where use-pack.sh looks.
 es_env_dir="$es_home/env"
-bash "$es_installer" --target "$es_env_dir"
+bash "$es_installer" -o "$es_home" -e env
 
 # --- write receipt -----------------------------------------------------------
 es_now="$(date -u +%Y-%m-%dT%H:%M:%SZ)"

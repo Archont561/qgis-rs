@@ -429,7 +429,7 @@ def test_dialog_logic():
 - `my_vue_plugin/web/vue.html` contains Vue + `ref` + `qrc:///qtwebchannel/qwebchannel.js`
 - `my_vue_plugin/frontend/src/App.vue` uses `import { useQgisBridge } from '@qgis-sdk/bridge/vue'`
 - `my_wc_plugin/web/components.html` contains `customElements.define` + Shadow DOM
-- `packages/qgis-sdk-bridge` provides `@qgis-sdk/bridge` with loader auto-injecting qrc + CDN fallbacks
+- `ts-packages/qgis-sdk-bridge` provides `@qgis-sdk/bridge` with loader auto-injecting qrc + CDN fallbacks
 
 ### 7.2 Typed bridge with @qgis-sdk/bridge (new)
 
@@ -499,7 +499,7 @@ el.addEventListener('qgis-message', e => console.log(e.detail));
 
 **Python → JS messages:** `web_view.page().runJavaScript("window.qgisBridge.onMessage({message: 'hi'})")` dispatches `CustomEvent('qgis-message')` for any framework.
 
-**NPM package:** `packages/qgis-sdk-bridge` → `@qgis-sdk/bridge` with `src/index.ts`, `loader.ts`, `react.ts`, `vue.ts`, `webcomponents.ts`, built via `tsc` to `dist/`.
+**npm package:** `ts-packages/qgis-sdk-bridge` → `@qgis-sdk/bridge` with `src/index.ts`, `loader.ts`, `window.ts`, `qgis.ts`, `description.ts`, `react.ts`, `vue.ts`, `svelte.ts`, `webcomponents.ts`, built via `bun build` to `dist/`.
 
 ### 7.3 Testing fixtures (new)
 

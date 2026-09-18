@@ -40,18 +40,15 @@ apps/docs/node_modules/
 apps/docs/dist/
 apps/docs/.astro/
 
-# node / napi
-packages/qgis-node/node_modules/
-packages/qgis-node/*.node
-packages/qgis-node/dist/
-packages/qgis-sdk-bridge/node_modules/
-packages/qgis-sdk-bridge/dist/
-apps/docs/dist/
-apps/docs/.astro/
-
-# bun / node - new layout
+# bun / node / napi — every JS package lives in ts-packages/
 node_modules/
-packages-bun/*/node_modules/
-packages-bun/*/dist/
+ts-packages/*/dist/
 apps/*/node_modules/
 apps/*/dist/
+apps/docs/.astro/
+# the compiled addon napi build drops next to the package.json
+ts-packages/qgis-node/*.node
+
+# python — wheels and editable installs built from py-packages/<name>
+py-packages/*/*.egg-info/
+py-packages/*/.pytest_cache/

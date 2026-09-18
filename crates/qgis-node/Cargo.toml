@@ -1,0 +1,54 @@
+# crates/qgis-node — the Rust core of the `qgis-rs` npm package.
+#
+# Builds the NAPI addon plus the `qgis-cli` / `qgis-plugin` binaries that the
+# npm package shells out to. The JS side — package.json, index.js, the pure-JS
+# fallback, the .d.ts and the CLI wrappers — lives in
+# ../../ts-packages/qgis-node/, and drives this crate with:
+#
+#   napi build --platform --release \
+#     --manifest-path ../../crates/qgis-node/Cargo.toml -o .
+#
+# `-o .` puts the compiled .node and the regenerated index.d.ts next to the
+# package.json, so npm users never see this directory.
+
+[package]
+name = "qgis-node"
+description = "NAPI addon and CLI binaries behind the `qgis-rs` npm package"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+keywords = ["qgis", "gis", "rendering", "tiles", "napi", "cli", "typescript"]
+categories = ["science::geo", "api-bindings"]
+
+[lib]
+name = "qgis_node"
+crate-type = ["cdylib"]
+path = "src/lib.rs"
+
+[[bin]]
+name = "qgis-cli"
+path = "src/bin/qgis-cli.rs"
+
+[[bin]]
+name = "qgis-plugin"
+path = "src/bin/qgis-plugin.rs"
+
+[dependencies]
+qgis-render = { workspace = true }
+qgis-server = { workspace = true }
+qgis-cli = { workspace = true }
+qgis-sdk = { workspace = true }
+anyhow = { workspace = true }
+clap = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+
+napi = { version = "2.16", features = ["napi4"] }
+napi-derive = "2.16"
+
+[build-dependencies]
+napi-build = "2.1"
+
+[features]
+default = []

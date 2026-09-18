@@ -298,9 +298,13 @@ graph TB
 | `qgis-server` | HTTP server (WMS/WFS/OGC) | 🔨 Scaffolded (routing works; listener pending) |
 | `qgis-mcp` | Model Context Protocol server | ✅ Active (bundled into `qgis-cli mcp`) |
 | `qgis-cli` | Command-line tool (Rust binary + lib) | 🔨 Scaffolded (`mcp`, `info`, `tiles --dry-run` work) |
-| `qgis-sdk` | Plugin development SDK (Python + Rust-native CLI `qgis-plugin`, `packages/qgis-sdk`) — pip/conda-forge, native speed | ✅ Active (Python API + Rust binaries `qgis-plugin`/`qgis-sdk`) |
-| `qgis-rs` (Python) | Python bindings + CLI (PyO3 + Rust binary `qgis-cli`, `packages/qgis-rs`) — pip/conda-forge | ✅ Active (pure-Rust ops work; QGIS backend optional) |
-| `qgis-rs` (npm) | TypeScript/Node.js bindings + CLI (NAPI-RS + Rust binaries `qgis-cli`/`qgis-plugin`, `packages/qgis-node`) — npm | ✅ Active (pure-Rust ops work; QGIS backend optional, JS fallback) |
+| `qgis-sdk` (Rust core) | Native helpers behind the Python SDK: `qgis_sdk._core` + the `qgis-plugin`/`qgis-sdk` CLIs (`crates/qgis-sdk`) | ✅ Active |
+| `qgis-py` (Rust core) | PyO3 module `qgis_rs._core` + the `qgis-cli` binary shipped by the Python wheel (`crates/qgis-py`) | ✅ Active |
+| `qgis-node` (Rust core) | NAPI addon + CLI binaries shipped by the npm package (`crates/qgis-node`) | ✅ Active |
+| `qgis-sdk` (Python) | Plugin development SDK — dist at `py-packages/qgis-sdk`, pip/conda-forge | ✅ Active (Python API + Rust CLIs) |
+| `qgis-rs` (Python) | Python bindings + CLI — dist at `py-packages/qgis-rs`, pip/conda-forge | ✅ Active (pure-Rust ops work; QGIS backend optional) |
+| `qgis-rs` (npm) | TypeScript/Node.js bindings + CLI — dist at `ts-packages/qgis-node`, npm | ✅ Active (pure-Rust ops work; QGIS backend optional, JS fallback) |
+| `@qgis-sdk/bridge` | QWebChannel bridge for plugin webviews — window-like `EventTarget`, built-in `qgis.*` API, React/Vue/Svelte/Web-Components adapters (`ts-packages/qgis-sdk-bridge`, Bun workspace) | ✅ Active |
 
 ## Documentation
 

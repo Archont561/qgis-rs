@@ -1,0 +1,27 @@
+# crates/qgis-node/pixi.toml — the Rust core of the `qgis-rs` npm package.
+#
+# The JS half (package.json, index.js, bin/ wrappers) is ts-packages/qgis-node/.
+
+[package]
+name = "qgis-node"
+version = "0.1.0"
+description = "Node.js / TypeScript bindings and CLI for qgis-rs — native-speed QGIS rendering, tiling, and plugin tools"
+license = "GPL-2.0-or-later"
+
+[package.build]
+backend = { name = "pixi-build-rust", version = "*" }
+channels = [
+  "https://prefix.dev/pixi-build-backends",
+  "https://prefix.dev/conda-forge",
+]
+
+[package.host-dependencies]
+rust = ">=1.96.0,<1.97"
+nodejs = ">=20,<23"
+
+[package.run-dependencies]
+nodejs = ">=20,<23"
+
+[package.build.config]
+# Build Rust NAPI addon + binaries
+targets = ["x86_64-unknown-linux-gnu"]

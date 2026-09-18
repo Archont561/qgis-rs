@@ -75,7 +75,7 @@ pixi run test-full
 # Specific package
 pixi run test qgis-sys
 
-# Python plugin SDK (packages/qgis-sdk — runs without QGIS)
+# Python plugin SDK (py-packages/qgis-sdk — runs without QGIS)
 pixi run -e sdk sdk-test
 ```
 
