@@ -116,6 +116,61 @@
   the napi `bigint64`/`u64` conversion errors in `crates/qgis-node/src/lib.rs` and
   Pages' "has no pages" upload (the workflow never writes `has_pages` to `$GITHUB_OUTPUT`).
 
+* **Fix**: the napi binding's `u64` break, and the recorded diagnosis of it was wrong.
+  napi **2.16 has no `bigint64` feature** (checked `crates/napi/Cargo.toml` at
+  `napi@2.16.9`); `u64` exists only as a *one-way* `impl ToNapiValue for u64` in
+  `js_values/bigint.rs`, with no `FromNapiValue`, while `i64` is generated for both
+  directions from `js_values/number.rs` via `napi_create_int64`/`napi_get_value_int64`
+  (N-API 1, so no extra feature is needed). The six E0277s were the four
+  `tile_count`/`size_bytes`/`bytes` getters plus the two `#[napi(object)]` fields
+  (`ZoomLevelInfo.tile_count`, `TilePlanResult.total`), which need both directions.
+  They now cross the boundary as `i64` (`as i64` at the edge; `qgis_render` keeps
+  `u64`) — which is also what `index.d.ts` and `fallback.js` already promised
+  (`number`, not `BigInt`), so the fallback and the addon stay one contract.
+  Rationale is written into `crates/qgis-node/src/lib.rs` above the object types.
+* **Addition**: `ts-packages/qgis-node/tests/contract.test.js` — 11 tests on the
+  documented surface, run with **`node --test`** instead of `jest` (which had zero
+  test files, so `npm test` in node.yml failed with "Pattern: - 0 matches"). They
+  assert the shared fallback/native contract: 4568 tiles for `14,50,15,51` z10-14
+  (the README/docs figure), `tileCount()` a safe integer rather than BigInt, the
+  `snake_case` aliases, and both spellings of the Web-Mercator limits. `jest` left
+  `devDependencies` and 3648 lines of transitive closure left `package-lock.json`.
+* **Fix**: `npm install` has never worked inside `ts-packages/qgis-node`, which is
+  what node.yml's install step runs. The root `package.json` declares a
+  `workspaces` list and its `name` is `qgis-rs` — the same as this package's — so
+  npm walks up, tries to fold the member into that root and dies in its arborist
+  with "Cannot read properties of null (reading 'matches')". A
+  `ts-packages/qgis-node/.npmrc` with `workspaces=false` keeps npm scoped to the
+  directory while `bun install` at the root still resolves the workspace; the whole
+  CI step sequence (`npm install` → `npm test` → `node ../../examples/typescript_api.js`)
+  then runs green locally. `fallback.js`/`index.js`/`index.d.ts` also now agree: the
+  fallback exported only `getMaxLatitude()`/`getMaxZoom()`, the package only
+  `MAX_LATITUDE`/`MAX_ZOOM`, so each side answered to the other's name.
+* **Fix**: `cargo fmt --all --check` failed on four pre-existing files in
+  `qgis-sys` (`build.rs`, `src/core/vector_layer/layer.rs`, `tests/vector_layer.rs`,
+  `tests/helpers/mod.rs`), so the `fmt-check` verb of `gates` could never pass. The
+  whole workspace is formatted now; `pixi run gates`'s first verb is green.
+* **Update**: the docs site's lockfile duplication ended — `apps/docs` is a member
+  of the root Bun workspace, so `apps/docs/bun.lock` was never what resolved
+  anything, and having it was how a root install resurrected `@astrojs/sitemap`
+  3.7.4 behind the nested pin's back. Deleted; the root `bun.lock` plus the root
+  `overrides` are now the single source, and the docs build (49 pages) and
+  `bun install --frozen-lockfile` both verified after the removal.
+* **Update**: `env.yml` installs with `pixi install -e default`, not `--locked` —
+  the reference project's choice, so editing `pixi.toml` can never redden the
+  pack workflow by itself; keeping `pixi.lock` fresh is a `pixi lock` + commit,
+  which `pixi.toml`'s header and `.knowledge/env-provisioning.md` both say.
+  A `workflow_dispatch` job that re-locks and pushes was deliberately *not* added
+  (the reference has no such automation, and it needs write access to the branch).
+* **Verified** in this sandbox after the above: `cargo metadata --no-deps`,
+  `cargo fmt --all --check` (clean), `pixi task list` for `default`/`docs`/`py`/
+  `sdk`/`node`, `taplo check`, `actionlint`, 16 + 112 pytest tests, `bun test` (17)
+  and `bun run build` for the bridge, `bun install --frozen-lockfile` + docs build
+  (49 pages), `node --test` (11) and `npx tsc --noEmit index.d.ts`. Still not
+  runnable here: `cargo check/clippy/test`, `pixi install`, and `napi build` —
+  crates.io and conda are unreachable, so the napi change is reasoned from the
+  napi 2.16.9 sources rather than compiled.
+
 ## 2026-09-17
 
 * **Initialization**: Created OKF v0.2 knowledge bundle with 21 concept documents.
