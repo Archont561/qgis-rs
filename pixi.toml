@@ -16,7 +16,9 @@
 #   py-qgis    the qgis-rs Python wheel, with QGIS
 #   node       the qgis-rs npm package (napi addon), no QGIS
 #
-# Pins (verified 2026-09-18): rust 1.96.x, QGIS >=3.44.9, clang-tools 22.x.
+# Pins (verified 2026-09-18): rust 1.96.x, QGIS >=3.44.9, clang-tools 22.x,
+# pixi-pack 0.7.x (conda-forge). Adding a pin means one `pixi lock` to refresh
+# pixi.lock — CI's `--locked` installs fail until that lands.
 # `pixi-build` is a PREVIEW feature — the `[package]` table shape may change
 # between pixi minors, so `requires-pixi` and the workflows' pixi-version move
 # together. Python is deliberately NOT declared as a dependency of the QGIS
@@ -36,15 +38,17 @@ requires-pixi = ">=0.79.0"
 
 # One place to bump a version; the tables below opt in with { workspace = true }.
 [workspace.dependencies]
-rust    = ">=1.96.0,<1.97"
-qgis    = ">=3.44.9,<4"
-maturin = ">=1.7,<2"
-pytest  = ">=8,<9"
-python  = ">=3.11,<3.15"
-bun     = ">=1.2.0,<2"
+rust      = ">=1.96.0,<1.97"
+pixi-pack = ">=0.7,<0.8"   # `pixi run pack` / scripts/pack-env.sh
+qgis      = ">=3.44.9,<4"
+maturin   = ">=1.7,<2"
+pytest    = ">=8,<9"
+python    = ">=3.11,<3.15"
+bun       = ">=1.2.0,<2"
 
 [dependencies]
 rust         = { workspace = true }
+pixi-pack    = { workspace = true }
 cxx-compiler = ">=1.11.0,<2"
 clang-tools  = ">=22.1.8,<23"
 lefthook     = ">=2.1.9,<3"
@@ -60,7 +64,7 @@ bun = { workspace = true }
 [feature.docs.tasks]
 docs-install = { cmd = "bun install --frozen-lockfile", cwd = "apps/docs", description = "Install the docs workspace dependencies" }
 docs-dev = { cmd = "bun run dev", cwd = "apps/docs", depends-on = ["docs-install"] }
-docs-build = { cmd = "bun run build", cwd = "apps/docs", depends-on = ["docs-install"] }
+docs-build = { cmd = "bun run build", cwd = "apps/docs", default-environment = "docs", depends-on = ["docs-install"] }
 docs-preview = { cmd = "bun run preview", cwd = "apps/docs", depends-on = ["docs-build"] }
 
 # ── qgis-rs (Python bindings + Rust CLI) ──────────────────────────────────────
@@ -181,6 +185,13 @@ lint-cpp = { cmd = """bash -c '
 
 # `lint` is the full-codebase gate: Rust lints plus clang-tidy over the shims.
 lint = { depends-on = ["clippy", "lint-cpp"] }
+
+# ── packaging ─────────────────────────────────────────────────────────────────
+# One implementation for both `pixi run pack` and env.yml: scripts/pack-env.sh
+# packs the environment with pixi-pack and then unpacks the result to prove the
+# toolchain works. Needs `pixi lock` after changing the pack tooling, since
+# pixi-pack is declared in [workspace.dependencies] rather than installed ad hoc.
+pack = { cmd = "bash scripts/pack-env.sh", description = "Bundle an environment into a self-extracting pack under dist/ and smoke-test it" }
 
 # ── tests ─────────────────────────────────────────────────────────────────────
 [tasks.test]

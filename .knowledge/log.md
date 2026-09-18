@@ -87,6 +87,25 @@
   and verified end-to-end against the reference project's `env/self-linux-64`
   branch: clone → reassemble → extract 45 packages → `scripts/use-pack.sh` puts a
   working `cargo 1.98.0` / `pixi 0.80.0` / `bun` on `PATH`.
+* **Update**: the task layout now matches the reference project completely —
+  the `pack` verb exists (`pixi run pack` → `scripts/pack-env.sh`, which packs an
+  environment with `pixi-pack` and smoke-tests the bundle), `pixi-pack` moved into
+  `[workspace.dependencies]` and is consumed by the root environment, and the
+  ordering the reference uses (features → their per-env tasks → `[environments]` →
+  one trailing `[tasks]` block with plain `verb = "cmd"` strings) was already
+  reproduced. `pixi-sandbox` publishes its packs on `env/<platform>` branches; only
+  `env/self-linux-64` exists there, and it is what bootstrapped the `cargo 1.98.0`
+  used to verify this repo.
+* **Fix**: `env.yml` called `pixi run -e default pixi-pack`, but no environment
+  declared `pixi-pack` (it is absent from `pixi.lock` too), and its smoke test
+  unpacked the bundle with `--target`, which pixi-pack executables do not accept.
+  Both steps are now one call to `pixi run -e default pack`, so CI and a local
+  `pixi run pack` share the implementation; **the new `pixi-pack` pin needs one
+  `pixi lock`** before `pixi install --locked` in that workflow can pass.
+* **Correction**: an earlier commit removed `default-environment = "docs"` from the
+  `docs-build` task on the belief that pixi rejects unknown task fields. The
+  reference project uses that exact field on its own `docs-build`, so it is legal —
+  it is restored here, and `pixi.toml` now documents the full set of task keys.
 * **Verification**: `cargo metadata --no-deps` (8 workspace members), `cargo fmt -p
   qgis-py -p qgis-sdk -p qgis-node`, 112 + 16 pytest tests in the two
   `py-packages`, `bun test` (17) + `bun run build` for the bridge, the docs site

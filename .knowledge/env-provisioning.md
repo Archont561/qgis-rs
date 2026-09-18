@@ -35,9 +35,18 @@ The `.github/workflows/env.yml` workflow:
 
 1. Installs pixi on a hosted runner (full network access)
 2. Resolves `pixi install --locked -e default`
-3. Runs `pixi-pack --create-executable` to produce a self-extracting bundle
-4. Smoke-tests the bundle in a clean directory
-5. Force-pushes `dist/` to the orphan branch `env/qgis-rs-linux-64`
+3. Runs `pixi run -e default pack`, i.e. `scripts/pack-env.sh`: `pixi-pack
+   --create-executable` produces `dist/qgis-rs-<platform>.sh`, then the script
+   unpacks it into a scratch dir with the extractor's own flags
+   (`-o <dir> -e env`) and prints `pixi`/`cargo`/`rustc`/`bun --version` from
+   the unpacked environment
+4. Force-pushes `dist/` to the orphan branch `env/qgis-rs-linux-64`
+
+`pixi-pack` is a declared dependency (`[workspace.dependencies]`, consumed by
+the root environment) rather than something the workflow installs ad hoc, which
+is what makes `pixi run -e default pack` find the tool. Adding or bumping that
+pin requires one `pixi lock` so `pixi.lock` carries it — `--locked` installs
+fail until it does.
 
 ### Consumer (sandbox / local)
 

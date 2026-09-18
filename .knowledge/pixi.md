@@ -173,6 +173,11 @@ Consumers add it as a source dependency (`qgis-sdk = { path = "..." }`);
 > hatchling honours VCS ignore files — the built wheel silently became an empty
 > namespace package. `.gitignore` now negates `__init__.py` and `__main__.py`.
 
+> **Task fields:** `cmd`, `args`, `depends-on`, `cwd`, `env`, `input`, `output`,
+> `description` and `default-environment` (the environment to run in when the task
+> is invoked without `-e`, e.g. `docs-build`) — copied from the reference project,
+> and anything else is rejected.
+
 > **Gotcha:** a task table written as `[tasks.<name>]` swallows every `key = value`
 > line that follows it, so an umbrella task appended at the end of the file is
 > parsed as a *field of* that task and pixi rejects the whole manifest
@@ -199,6 +204,10 @@ umbrella task is what CI is expected to reproduce locally.
 
 ### Build & gates
 - `build` — `cargo build --release`
+- `pack` — `scripts/pack-env.sh`: bundle an environment with `pixi-pack` and
+  unpack the result to prove the toolchain works; env.yml runs the same task, so
+  a local `pixi run pack` produces exactly the bundle CI publishes (`--no-smoke`
+  skips the verification, `-e docs` packs another environment)
 - `gates` — `fmt-check` + `clippy` + `test`; the "CI will be green" check
 - `ci` — `gates` + `check-cpp`
 - `ci-full` — `ci` + `lint-cpp` + `test-full` (needs the `default` env installed)
