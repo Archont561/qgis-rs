@@ -77,16 +77,21 @@ pixi run docs-build
 pixi run docs-preview
 ```
 
-### Fallback (npm)
+### Fallback (Bun without Pixi)
 
-If Bun is unavailable, npm works identically:
+Pixi is the supported path — it is what CI uses and it pins the Bun version.
+With Bun ≥ 1.2 already on `PATH`, the same commands work directly:
 
 ```bash
 cd apps/docs
-npm install
-npm run dev
-npm run build
+bun install --frozen-lockfile
+bun run dev
+bun run build
 ```
+
+npm/npx are deliberately not used: `bun.lock` is the lockfile CI installs
+from, and an npm install would resolve a separate dependency tree (and write a
+`package-lock.json`) that nothing checks.
 
 ## Content Structure
 
@@ -213,7 +218,7 @@ works — keep `site`/`base` in sync with the URL it is served from:
 | Astro | ^4.16 | Static site generator |
 | Starlight | ^0.29 | Documentation theme |
 | TypeScript | ^5.6 | Type safety |
-| Bun | ≥1.0 | JavaScript runtime (via Pixi) |
+| Bun | ≥1.2 | JavaScript runtime + package manager (via the Pixi `docs` environment) |
 | sharp | ^0.33 | Image processing |
 
 ## .gitignore

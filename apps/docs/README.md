@@ -20,20 +20,23 @@ pixi run docs-build
 pixi run docs-preview
 ```
 
-### Using npm directly
+### Using Bun directly (without Pixi)
+
+Pixi is the supported path — it is what CI uses and it pins the toolchain. If
+you already have Bun ≥ 1.2 on your `PATH`, the same tasks work without it:
 
 ```bash
 # Install dependencies
-npm install
+bun install --frozen-lockfile
 
 # Start dev server
-npm run dev
+bun run dev
 
 # Build for production
-npm run build
+bun run build
 
 # Preview production build
-npm run preview
+bun run preview
 ```
 
 ### Lockfile
@@ -118,9 +121,11 @@ Until then the `deploy` job fails with *"Get Pages site failed"*.
 ### Building locally
 
 ```bash
-npm run build     # output in dist/
-npm run preview   # serve dist/ at http://localhost:4321/qgis-rs
+pixi run -e docs docs-build     # output in apps/docs/dist/
+pixi run -e docs docs-preview   # serve dist/ at http://localhost:4321/qgis-rs
 ```
+
+Or with Bun directly: `bun run build` / `bun run preview`.
 
 The output in `dist/` is plain static files, so it can equally be uploaded to
 Netlify, Vercel, or Cloudflare Pages — just keep `site`/`base` in
@@ -130,5 +135,6 @@ Netlify, Vercel, or Cloudflare Pages — just keep `site`/`base` in
 
 - [Astro](https://astro.build/) — Static site generator
 - [Starlight](https://starlight.astro.build/) — Documentation theme
+- [Bun](https://bun.sh/) — JavaScript runtime and package manager (installed by the Pixi `docs` environment)
 - [TypeScript](https://www.typescriptlang.org/) — Type safety
 - [MDX](https://mdxjs.com/) — Markdown + JSX
