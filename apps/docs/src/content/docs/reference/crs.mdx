@@ -1,0 +1,77 @@
+---
+title: crs
+description: The qgis_render::crs module — coordinate reference systems and coordinate transforms.
+---
+
+# `qgis_render::crs`
+
+Coordinate reference systems and the transforms between them, backed by PROJ
+through QGIS.
+
+```rust
+use qgis_render::crs::*;
+```
+
+## Contents
+
+| Item | Description |
+|------|-------------|
+| [`Crs`](/reference/render/crs) | A coordinate reference system. |
+| `CoordTransform` | A reusable transform between two CRS. |
+| `CrsError` | Failure type, surfaced as `QgisError::CrsError`. |
+
+## `CoordTransform`
+
+Build once, use many times — construction resolves a PROJ pipeline, which costs
+far more than an individual transform.
+
+```rust
+let wgs84 = Crs::from_epsg(4326)?;
+let mercator = Crs::from_epsg(3857)?;
+let transform = CoordTransform::new(&wgs84, &mercator)?;
+
+let (x, y) = transform.transform(14.0, 50.0)?;
+
+let many = transform.transform_batch(&[
+    (14.0, 50.0),
+    (15.0, 51.0),
+    (16.0, 52.0),
+])?;
+```
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `new(&Crs, &Crs)` | `Result<CoordTransform, QgisError>` | Resolve the pipeline between two CRS. |
+| `transform(x, y)` | `Result<(f64, f64), QgisError>` | Transform one coordinate. |
+| `transform_batch(&[(f64, f64)])` | `Result<Vec<(f64, f64)>, QgisError>` | Transform many at once. |
+| `transform_z(x, y, z)` | `Result<(f64, f64, f64), QgisError>` | Transform with elevation, when the pipeline is 3D. |
+| `source()` / `target()` | `&Crs` | The two ends of the transform. |
+
+## Transforming geometries
+
+For anything more than single coordinates, transform the geometry — it handles
+every vertex and densifies where a straight line in one CRS is curved in the
+other.
+
+```rust
+let reprojected = geom.transform(&wgs84, &mercator)?;
+```
+
+## Axis order
+
+QGIS and PROJ use `x, y` (longitude, latitude) internally regardless of the
+CRS's declared axis order. WMS 1.3 `GetMap` requests, in contrast, use
+latitude/longitude for geographic CRS — the [`wms`](/reference/wms) module
+handles that translation for you.
+
+:::caution
+EPSG:4326 coordinates are degrees. Areas and distances computed in that CRS are
+in square degrees and degrees — reproject to a projected CRS such as
+EPSG:3857 or a UTM zone before measuring.
+:::
+
+## See also
+
+- [`Crs`](/reference/render/crs) — the CRS type
+- [`Geometry::transform`](/reference/render/geometry#reprojection)
+- [QGIS Integration](/concepts/qgis-integration) — how QGIS models CRS

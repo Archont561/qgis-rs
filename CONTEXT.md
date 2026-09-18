@@ -92,10 +92,17 @@ qgis-rs provides **safe Rust bindings** to QGIS's C++ core library, enabling:
 ```
 qgis-rs/
 ├── crates/
-│   └── qgis-sys/              # Low-level CXX bindings
-│       ├── src/               # Rust bridge code
-│       ├── include/           # C++ headers
-│       └── build.rs           # Build script (cxx-build)
+│   ├── qgis-sys/              # Low-level CXX bindings
+│   │   ├── src/               # Rust bridge code
+│   │   ├── include/           # C++ headers
+│   │   └── build.rs           # Build script (cxx-build)
+│   ├── qgis-render/           # Rendering engine: projects, extents, CRS, tiles
+│   ├── qgis-server/           # HTTP server: WMS, WFS, XYZ tiles, OGC API
+│   ├── qgis-mcp/              # Model Context Protocol server (rmcp)
+│   └── qgis-cli/              # Command-line binary, bundles the MCP server
+│
+├── packages/
+│   └── qgis-sdk/              # Python plugin SDK (pixi workspace package)
 │
 ├── apps/
 │   └── docs/                  # Documentation site (Astro Starlight)

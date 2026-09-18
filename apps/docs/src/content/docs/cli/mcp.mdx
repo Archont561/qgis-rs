@@ -1,0 +1,172 @@
+---
+title: mcp
+description: Run qgis-rs as a Model Context Protocol server so AI assistants can drive it
+---
+
+# qgis-cli mcp
+
+```bash
+qgis-cli mcp
+```
+
+`mcp` starts a [Model Context Protocol](https://modelcontextprotocol.io) server
+on stdin/stdout. Any MCP client — Claude Desktop, Claude Code, Cursor, the MCP
+inspector — can then discover the qgis-rs tools and call them.
+
+The server is **bundled into the `qgis-cli` binary**: there is nothing else to
+install, no Node runtime, no virtual environment. The implementation lives in
+the [`qgis-mcp`](#how-it-is-built) crate and speaks MCP over the standard
+newline-delimited JSON-RPC stdio transport.
+
+## Quick start
+
+```bash
+# See what the server offers without starting a session
+qgis-cli mcp --list-tools
+```
+
+```text
+capabilities     List the qgis-rs tools and say which ones need the QGIS backend…
+crs_info         Describe a coordinate reference system: its name, units and…
+plan_tiles       Count and enumerate the XYZ tiles that cover an EPSG:4326 area…
+project_info     Describe a QGIS project file: its format, size and where to…
+render_map       [needs QGIS] Render a QGIS project to an image. Needs the QGIS…
+export_features  [needs QGIS] Export a layer's features to GeoJSON or CSV. Needs…
+```
+
+Register it with Claude Desktop (`claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "qgis": {
+      "command": "/path/to/qgis-cli",
+      "args": ["mcp"]
+    }
+  }
+}
+```
+
+Or with Claude Code:
+
+```bash
+claude mcp add --transport stdio qgis -- /path/to/qgis-cli mcp
+```
+
+## Tools
+
+| Tool | Arguments | Status |
+|------|-----------|--------|
+| `capabilities` | — | Live |
+| `crs_info` | `auth_id` | Live |
+| `plan_tiles` | `bounds`, `zoom` | Live |
+| `project_info` | `project` | Live |
+| `render_map` | `project`, `output`, `extent`, `width`, `height`, `crs`, `dpi`, `layers`, `layout` | Needs the QGIS backend |
+| `export_features` | `project`, `layer`, `output`, `filter`, `bbox`, `fields` | Needs the QGIS backend |
+
+Coordinates are EPSG:4326 (`longitude,latitude`) unless a tool says otherwise.
+
+Call `capabilities` first: it returns the same catalogue as `--list-tools`,
+with a `needs_qgis_backend` flag per tool, so a client can tell a working tool
+from one that will answer with an error.
+
+### crs_info
+
+```json
+{ "auth_id": "EPSG:3857" }
+```
+
+```json
+{
+  "auth_id": "EPSG:3857",
+  "name": "WGS 84 / Pseudo-Mercator",
+  "units": "meters",
+  "geographic": false
+}
+```
+
+### plan_tiles
+
+Counts a tile pyramid without rendering it — the same arithmetic
+[`tiles --dry-run`](/cli/tiles) uses.
+
+```json
+{ "bounds": "14,50,15,51", "zoom": "10-14" }
+```
+
+```json
+{
+  "bounds": "14,50,15,51",
+  "zoom": "10-14",
+  "total_tiles": 4568,
+  "levels": [
+    { "zoom": 10, "x_min": 551, "x_max": 554, "y_min": 342, "y_max": 347, "tiles": 24 }
+  ]
+}
+```
+
+### project_info
+
+```json
+{ "project": "/maps/warsaw.qgz" }
+```
+
+```json
+{
+  "path": "/maps/warsaw.qgz",
+  "format": "qgz",
+  "size_bytes": 48120,
+  "crs": null,
+  "layer_count": null,
+  "note": "CRS, layer count and extent need the QGIS backend, which is not wired up yet"
+}
+```
+
+### render_map and export_features
+
+Both validate their arguments — the project path, the output format, the
+extent, the CRS — and then return a JSON-RPC error explaining that rendering
+needs the QGIS backend. They are published now so clients can be written
+against the final shape.
+
+## Talking to it by hand
+
+The transport is newline-delimited JSON-RPC, so `nc`-style experimentation
+works:
+
+```bash
+{
+  echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"shell","version":"0"}}}'
+  echo '{"jsonrpc":"2.0","method":"notifications/initialized"}'
+  echo '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}'
+  sleep 1
+} | qgis-cli mcp
+```
+
+:::caution[stdout belongs to the protocol]
+Anything the server prints on stdout corrupts the session. Diagnostics go to
+stderr; set `RUST_LOG` only if you have attached a tracing subscriber.
+:::
+
+## How it is built
+
+```text
+crates/qgis-mcp        the server: tool definitions, schemas, handlers
+crates/qgis-cli        `qgis-cli mcp` starts it inside a Tokio runtime
+```
+
+- [rmcp](https://github.com/modelcontextprotocol/rust-sdk) — the official Rust
+  MCP SDK — provides the protocol, the stdio transport and the `#[tool]`
+  macros that generate each tool's JSON Schema from its Rust argument struct.
+- Each tool is a thin wrapper over a pure `*_report` function in `qgis-mcp`,
+  which is what the unit tests call. The tool layer only serialises.
+- `crates/qgis-cli/tests/mcp_stdio.rs` spawns the real binary and drives it
+  through `initialize`, `tools/list` and `tools/call`, so the handshake is
+  covered end to end.
+
+Disable it at build time with `--no-default-features`, which drops `rmcp` and
+Tokio from the binary:
+
+```bash
+cargo build --release -p qgis-cli --no-default-features
+```

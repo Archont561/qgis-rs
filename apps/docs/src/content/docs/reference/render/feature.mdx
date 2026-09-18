@@ -1,0 +1,91 @@
+---
+title: Feature
+description: The qgis_render Feature type — attributes, geometry, and filtered iteration.
+---
+
+# `Feature`
+
+```rust
+use qgis_render::Feature;
+```
+
+One row of a vector layer: an id, a set of attributes, and usually a geometry.
+Features come from a `VectorLayer` iterator, so they are cheap to stream and
+never require the whole layer in memory.
+
+## Reading a feature
+
+```rust
+for feature in buildings.features() {
+    let id = feature.id();
+    let name: String = feature.get("name")?;
+    let height: f64 = feature.get("height")?;
+    let geom = feature.geometry();
+
+    println!("{id}: {name} ({height} m) {:?}", geom.geometry_type());
+}
+```
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `id()` | `i64` | Feature id. |
+| `get(name)` | `Result<Value, QgisError>` | Attribute by field name, converted to the target type. |
+| `try_get(name)` | `Option<Result<Value, QgisError>>` | `None` when the field does not exist. |
+| `attributes()` | `&[Value]` | Raw attribute values in field order. |
+| `geometry()` | `Option<&Geometry>` | `None` for tables without geometry. |
+| `is_valid()` | `bool` | Whether the feature passed provider validation. |
+
+## Filtered iteration
+
+Fetching only what you need is the single biggest performance win with large
+layers — the filter is pushed down to the provider.
+
+```rust
+use qgis_render::features::{FeatureRequest, Filter};
+
+let request = FeatureRequest::new()
+    .filter(Filter::gt("height", 50))
+    .bounding_box(Extent::new(14.0, 50.0, 15.0, 51.0))
+    .select(["name", "height", "geometry"])
+    .limit(1000);
+
+for feature in buildings.features_with(request) {
+    println!("{}: {}m", feature.get::<String>("name")?, feature.get::<f64>("height")?);
+}
+```
+
+## Single features and counts
+
+```rust
+let feature = buildings.feature(42)?;
+
+let tall = buildings.count_with(
+    FeatureRequest::new().filter(Filter::gt("height", 50))
+)?;
+```
+
+## Spatial queries
+
+```rust
+let request = FeatureRequest::new()
+    .intersects(&some_polygon)
+    .select_all();
+
+for feature in buildings.features_with(request) {
+    // ...
+}
+```
+
+:::note
+`Feature` borrows from the iterator that produced it. Collect the values you
+need (`id`, attribute values, a cloned geometry) if the feature has to outlive
+the iteration.
+:::
+
+## See also
+
+- [`features`](/reference/features) — `FeatureRequest` and `Filter`
+- [`Geometry`](/reference/render/geometry) — the geometry type
+- [`Layer`](/reference/render/layer) — where iterators come from
+- [`expr`](/reference/expr) — expression-based filters
+- [Working with Layers](/guides/working-with-layers) — practical iteration

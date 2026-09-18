@@ -5,6 +5,7 @@
 ### Safe, idiomatic Rust bindings for [QGIS](https://qgis.org/) — the world's most popular open-source GIS platform
 
 [![CI](https://github.com/Archont561/qgis-rs/actions/workflows/ci.yml/badge.svg)](https://github.com/Archont561/qgis-rs/actions/workflows/ci.yml)
+[![Pages](https://github.com/Archont561/qgis-rs/actions/workflows/pages.yml/badge.svg)](https://github.com/Archont561/qgis-rs/actions/workflows/pages.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![QGIS](https://img.shields.io/badge/QGIS-3.44.9+-green.svg)](https://qgis.org/)
 [![Rust](https://img.shields.io/badge/Rust-1.96+-orange.svg)](https://www.rust-lang.org/)
@@ -180,6 +181,9 @@ qgis-cli serve map.qgs --port 8080
 
 # Inspect a project
 qgis-cli info map.qgs
+
+# Serve the same capabilities to an AI assistant over the Model Context Protocol
+qgis-cli mcp
 ```
 
 See [CLI Documentation](https://archont561.github.io/qgis-rs/cli/) for all commands.
@@ -213,10 +217,11 @@ graph TB
 | Crate | Purpose | Status |
 |-------|---------|--------|
 | `qgis-sys` | Low-level CXX bindings | ✅ Active |
-| `qgis-render` | High-level rendering API | 🔨 Planned |
-| `qgis-server` | HTTP server (WMS/WFS/OGC) | 📋 Design |
-| `qgis-cli` | Command-line tool | 📋 Design |
-| `qgis-sdk` | Plugin development SDK | 📋 Design |
+| `qgis-render` | High-level rendering API | 🔨 Scaffolded (pure geometry works; QGIS backend pending) |
+| `qgis-server` | HTTP server (WMS/WFS/OGC) | 🔨 Scaffolded (routing works; listener pending) |
+| `qgis-mcp` | Model Context Protocol server | ✅ Active (bundled into `qgis-cli mcp`) |
+| `qgis-cli` | Command-line tool | 🔨 Scaffolded (`mcp`, `info`, `tiles --dry-run` work) |
+| `qgis-sdk` | Plugin development SDK (Python, `packages/qgis-sdk`) | ✅ Active |
 
 ## Documentation
 
@@ -351,12 +356,17 @@ pixi run fmt
 # Activate docs environment
 pixi shell -e docs
 
-# Start dev server
+# Start dev server (serves at http://localhost:4321/qgis-rs)
 pixi run docs-dev
 
 # Build for production
 pixi run docs-build
 ```
+
+The site is published to [archont561.github.io/qgis-rs](https://archont561.github.io/qgis-rs/)
+by [`pages.yml`](.github/workflows/pages.yml) on every push to `main` that
+touches `apps/docs/`. See [`apps/docs/README.md`](apps/docs/README.md) for the
+one-time Pages setup.
 
 ## License
 

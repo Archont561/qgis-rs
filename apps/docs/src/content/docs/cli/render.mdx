@@ -1,0 +1,80 @@
+---
+title: render
+description: Render a QGIS project to an image with qgis-cli render.
+---
+
+# `qgis-cli render`
+
+Renders a QGIS project to a raster or vector image, honouring the project's
+symbology, labels, and print layouts.
+
+## Synopsis
+
+```bash
+qgis-cli render <PROJECT> [OPTIONS]
+```
+
+`<PROJECT>` is a `.qgs` or `.qgz` file.
+
+## Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `-o, --output <FILE>` | — | Output file. The format is derived from the extension, or `-` for stdout. |
+| `--width <PX>` | `1024` | Output width in pixels. |
+| `--height <PX>` | `768` | Output height in pixels. |
+| `--extent <MINX,MINY,MAXX,MAXY>` | project extent | Area to render, in the CRS given by `--crs`. |
+| `--crs <AUTH:CODE>` | project CRS | Output CRS, e.g. `EPSG:3857`. |
+| `--dpi <DPI>` | `96` | Resolution. Raise it for print-quality output. |
+| `--layers <A,B,C>` | all visible | Comma-separated layer names to render. |
+| `--layout <NAME>` | — | Render a print layout instead of the map canvas. |
+| `--background <COLOR>` | transparent | Background color, e.g. `#ffffff` or `rgba(0,0,0,0)`. |
+
+## Output formats
+
+| Extension | Format |
+|-----------|--------|
+| `.png` | PNG (lossless, alpha preserved) |
+| `.jpg` / `.jpeg` | JPEG |
+| `.webp` | WebP |
+| `.svg` | SVG (vector output) |
+| `.pdf` | PDF (vector output) |
+
+## Examples
+
+```bash
+# Render the full project extent at 1024x768
+qgis-cli render map.qgs -o map.png
+
+# A specific extent at print resolution
+qgis-cli render map.qgs --extent 14,50,15,51 --dpi 300 -o map.png
+
+# Web Mercator output for a web map
+qgis-cli render map.qgs --crs EPSG:3857 --width 2048 --height 1536 -o map.png
+
+# Only some layers
+qgis-cli render map.qgs --layers buildings,roads,labels -o map.png
+
+# A print layout
+qgis-cli render map.qgs --layout "A4 Landscape" -o print.pdf
+
+# Pipe to another program
+qgis-cli render map.qgs -o - | pngquant > map.png
+```
+
+## Exit codes
+
+| Code | Meaning |
+|------|---------|
+| `0` | Rendered successfully. |
+| `1` | The project could not be opened or parsed (`QgisError::FileNotFound`, `QgisError::InvalidProject`). |
+| `2` | A layer could not be read (`QgisError::BadLayer`). |
+| `3` | Rendering failed (`QgisError::RenderError`). |
+| `4` | The output format is unsupported (`QgisError::UnsupportedFormat`). |
+
+## See also
+
+- [`qgis-cli batch`](/cli/batch) — render many extents in one run
+- [`qgis-cli tiles`](/cli/tiles) — render a tile pyramid
+- [`render` module](/reference/render) — the same capability from Rust
+- [Rendering Projects](/guides/rendering-projects) — worked examples

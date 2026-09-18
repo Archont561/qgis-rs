@@ -1,0 +1,75 @@
+---
+title: Crs
+description: The qgis_render Crs type — coordinate reference systems and coordinate transforms.
+---
+
+# `Crs`
+
+```rust
+use qgis_render::crs::*;
+```
+
+A coordinate reference system: how coordinates map onto the earth. Every
+[`Project`](/reference/render/project), [`Layer`](/reference/render/layer), and
+render has one, and mismatches between them are resolved by transforming.
+
+## Construction
+
+```rust
+let wgs84 = Crs::from_epsg(4326)?;         // WGS 84, geographic
+let mercator = Crs::from_epsg(3857)?;      // Web Mercator, projected
+let utm34 = Crs::from_proj4("+proj=utm +zone=34 +datum=WGS84")?;
+let custom = Crs::from_wkt("GEOGCS[\"WGS 84\", ...]")?;
+```
+
+All constructors return `Result<Crs, QgisError>` and fail with
+`QgisError::CrsError` when PROJ cannot resolve the definition.
+
+## Properties
+
+| Method | Returns |
+|--------|---------|
+| `is_geographic()` | `bool` — lat/lon units |
+| `is_projected()` | `bool` — metre units |
+| `epsg()` | `Option<u32>` |
+| `to_wkt()` | `String` |
+| `to_proj4()` | `String` |
+
+## Transforming coordinates
+
+```rust
+let transform = CoordTransform::new(&Crs::from_epsg(4326)?, &Crs::from_epsg(3857)?)?;
+
+let (x, y) = transform.transform(14.0, 50.0)?;      // lon/lat → metres
+let batch = transform.transform_batch(&[(14.0, 50.0), (15.0, 51.0)])?;
+```
+
+Build a `CoordTransform` once and reuse it — constructing one resolves a PROJ
+pipeline, which is far more expensive than a single transform call.
+
+## Transforming geometries
+
+```rust
+let reprojected = geom.transform(&wgs84, &mercator)?;
+```
+
+## Common choices
+
+| EPSG | Name | Typical use |
+|------|------|-------------|
+| `4326` | WGS 84 | Data exchange, GeoJSON, WFS output. |
+| `3857` | Web Mercator | XYZ tiles and web maps. |
+| `25832`–`25835` | ETRS89 / UTM | Metric work in Europe. |
+| `2180` | PL-1992 | National grid for Poland. |
+
+:::note
+Render output CRS and project CRS do not have to match — pass the CRS you want
+to [`RenderSettings`](/reference/render/settings) and let the renderer
+reproject.
+:::
+
+## See also
+
+- [`crs` module](/reference/crs) — module-level helpers and `CoordTransform`
+- [`Geometry`](/reference/render/geometry) — `transform` on geometries
+- [QGIS Integration](/concepts/qgis-integration) — how QGIS models CRS

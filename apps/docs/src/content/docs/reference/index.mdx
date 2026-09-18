@@ -7,6 +7,13 @@ description: Complete API documentation for qgis-rs crates
 
 Complete API documentation for the qgis-rs crates.
 
+:::note
+This reference documents the public API surface defined in
+[`.knowledge/api-design.md`](https://github.com/Archont561/qgis-rs/blob/main/.knowledge/api-design.md).
+Only `qgis-sys` is in the tree today; the `qgis-render`, `qgis-server`, and
+`qgis-cli` pages describe the API those crates are landing against.
+:::
+
 ## Crates
 
 ### qgis-render
@@ -31,15 +38,16 @@ This is an internal crate. Use `qgis-render` instead.
 
 ### qgis-server
 
-HTTP server for WMS/WFS/OGC APIs.
+HTTP server for WMS/WFS/OGC APIs. See the [`server`](/reference/server) module
+and the [Server Overview](/server/).
 
 ### qgis-cli
 
-Command-line interface.
+Command-line interface. See the [CLI reference](/cli/).
 
 ### qgis-sdk
 
-Plugin development SDK (Python).
+Plugin development SDK (Python). See [Plugin Development](/guides/plugin-development).
 
 ## Modules
 

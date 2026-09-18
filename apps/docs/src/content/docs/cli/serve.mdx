@@ -1,0 +1,95 @@
+---
+title: serve
+description: Start an HTTP map server for a QGIS project with qgis-cli serve.
+---
+
+# `qgis-cli serve`
+
+Starts an HTTP server that exposes a project over WMS, WFS, OGC API, and XYZ
+tiles. The project is loaded once and shared by the worker pool.
+
+## Synopsis
+
+```bash
+qgis-cli serve <PROJECT> [OPTIONS]
+qgis-cli serve --projects-dir <DIR> [OPTIONS]
+```
+
+## Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--port <PORT>` | `8080` | Port to listen on. |
+| `--host <ADDR>` | `127.0.0.1` | Bind address. Use `0.0.0.0` to accept external connections. |
+| `--workers <N>` | number of CPUs | Render workers. QGIS is single-threaded per worker. |
+| `--cache <SIZE>` | `256mb` | Tile cache size, e.g. `512mb`. Add `--cache-dir` for a disk tier. |
+| `--cache-dir <DIR>` | — | Disk-backed second tier for the tile cache. |
+| `--cache-ttl <SECS>` | `3600` | Cache entry lifetime. |
+| `--auth-key <KEY>` | — | Require this API key. Repeatable. |
+| `--anonymous` | off | Allow unauthenticated reads alongside API keys. |
+| `--rate-limit <N>` | unlimited | Requests per minute per key. |
+| `--projects-dir <DIR>` | — | Serve every project in a directory, routed by name. |
+
+## Endpoints
+
+```text
+GET  /                                        Landing page (JSON)
+GET  /health                                  Health check
+
+GET  /wms?SERVICE=WMS&REQUEST=GetCapabilities WMS 1.3
+GET  /wms?SERVICE=WMS&REQUEST=GetMap&...      WMS 1.3 map image
+GET  /wms?SERVICE=WMS&REQUEST=GetFeatureInfo  WMS 1.3 attribute query
+
+GET  /wfs?SERVICE=WFS&REQUEST=GetCapabilities WFS 1.1
+GET  /wfs?SERVICE=WFS&REQUEST=GetFeature&...  WFS 1.1 features
+
+GET  /tiles/{z}/{x}/{y}.png                   XYZ tile
+GET  /tiles/{z}/{x}/{y}@2x.png                Retina tile (512px)
+
+GET  /collections                             OGC API Features
+GET  /collections/{id}/items                  GeoJSON features
+GET  /map                                     OGC API Maps
+```
+
+## Examples
+
+```bash
+# Single project
+qgis-cli serve map.qgs --port 8080
+
+# Production-ish settings
+qgis-cli serve map.qgs --host 0.0.0.0 --port 8080 \
+    --workers 4 --cache 512mb --cache-dir ./cache/ \
+    --auth-key my-secret-key --rate-limit 100
+
+# Every project in a directory
+qgis-cli serve --projects-dir ./maps/ --port 8080
+```
+
+With `--projects-dir`, each project is mounted under its file name:
+`/berlin/wms`, `/berlin/tiles/{z}/{x}/{y}.png`, `/paris/collections`, and so on.
+
+## Try it
+
+```bash
+# Capabilities
+curl 'http://localhost:8080/wms?SERVICE=WMS&REQUEST=GetCapabilities'
+
+# A 512x512 map image
+curl -o map.png 'http://localhost:8080/map?bbox=13.3,52.4,13.5,52.6&width=512&height=512'
+
+# GeoJSON features
+curl 'http://localhost:8080/collections/buildings/items?limit=2'
+```
+
+:::caution
+The server binds to `127.0.0.1` by default. Passing `--host 0.0.0.0` exposes it
+to the network — set `--auth-key` when you do.
+:::
+
+## See also
+
+- [Server Overview](/server/) — architecture and protocol coverage
+- [`server` module](/reference/server) — embed the server in your own binary
+- [`wms`](/reference/wms) and [`wfs`](/reference/wfs) — protocol details
+- [`qgis-cli tiles`](/cli/tiles) — pre-render instead of rendering on request

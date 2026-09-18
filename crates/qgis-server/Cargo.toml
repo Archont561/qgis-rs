@@ -1,0 +1,10 @@
+[package]
+name        = "qgis-server"
+description = "HTTP server for qgis-rs: WMS, WFS, XYZ tiles and OGC API Features"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+qgis-render = { workspace = true }
+serde       = { workspace = true }

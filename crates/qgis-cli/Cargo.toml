@@ -1,0 +1,25 @@
+[package]
+name        = "qgis-cli"
+description = "Command-line interface for qgis-rs: render, tiles, batch, info, serve, export, mcp"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "qgis-cli"
+path = "src/main.rs"
+
+[dependencies]
+qgis-render = { workspace = true }
+qgis-server = { workspace = true }
+anyhow      = { workspace = true }
+clap        = { workspace = true }
+serde_json  = { workspace = true }
+
+# The MCP server, bundled into the binary so `qgis-cli mcp` needs nothing else.
+qgis-mcp = { workspace = true, optional = true }
+tokio    = { workspace = true, optional = true }
+
+[features]
+default = ["mcp"]
+mcp     = ["dep:qgis-mcp", "dep:tokio"]

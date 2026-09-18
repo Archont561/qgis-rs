@@ -1,0 +1,94 @@
+---
+title: tiles
+description: The qgis_render::tiles module — tile coordinates, tile plans, and pyramid rendering.
+---
+
+# `qgis_render::tiles`
+
+Pre-rendered XYZ tile pyramids: single tiles on demand, or whole pyramids to a
+directory, MBTiles, or PMTiles.
+
+```rust
+use qgis_render::tiles::*;
+```
+
+## Single tile
+
+```rust
+let tile = project.render_tile(
+    TileCoord { z: 12, x: 2190, y: 1362 },
+    TileOptions::new(256, 256)
+        .crs(Crs::from_epsg(3857)?),
+)?;
+
+let bytes = tile.png_bytes();
+```
+
+| `TileOptions` method | Default | Description |
+|----------------------|---------|-------------|
+| `.crs(Crs)` | `EPSG:3857` | Tile CRS. XYZ pyramids are normally Web Mercator. |
+| `.format(TileFormat)` | `Png` | `Png`, `Jpeg`, or `WebP`. |
+| `.dpi(u32)` | `96` | Raise for retina tiles. |
+
+## Tile plans
+
+A `TilePlan` describes the pyramid: which zoom levels, which area, how big the
+tiles are.
+
+```rust
+let plan = TilePlan::new()
+    .zoom_range(10..=14)
+    .bounds(Extent::new(14.0, 50.0, 15.0, 51.0))
+    .tile_size(256)
+    .crs(Crs::from_epsg(3857)?);
+
+println!("{} tiles", plan.tile_count());
+```
+
+## Rendering a plan
+
+```rust
+// Loose {z}/{x}/{y}.png files
+plan.render_to_dir(&project, "./tiles/", RenderOptions::new()
+    .parallel(8)
+    .progress(|done, total| println!("{done}/{total}"))
+)?;
+
+// MBTiles
+plan.render_to_mbtiles(&project, "output.mbtiles", RenderOptions::new()
+    .parallel(8)
+    .format(TileFormat::Png)
+)?;
+
+// PMTiles
+plan.render_to_pmtiles(&project, "output.pmtiles", RenderOptions::new()
+    .parallel(8)
+    .format(TileFormat::WebP)
+)?;
+```
+
+| `RenderOptions` method | Default | Description |
+|------------------------|---------|-------------|
+| `.parallel(usize)` | CPU count | Worker threads; each owns a QGIS instance. |
+| `.format(TileFormat)` | `Png` | Output encoding. |
+| `.progress(f)` | none | Called after each tile with `(done, total)`. |
+
+:::caution
+QGIS is single-threaded per instance. `.parallel(n)` creates `n` independent
+QGIS instances rather than sharing one, so memory grows with the worker count.
+:::
+
+## Choosing an output
+
+| Target | Good for |
+|--------|----------|
+| Directory | Debugging, serving through any static file server or CDN. |
+| MBTiles | Single portable file, well supported by tooling. |
+| PMTiles | Single file served over HTTP range requests, no tile server needed. |
+
+## See also
+
+- [`render`](/reference/render) — `render_to_tile` for one-off tiles
+- [`qgis-cli tiles`](/cli/tiles) — pyramids from the command line
+- [`qgis-cli serve`](/cli/serve) — render tiles on demand instead
+- [Rendering Projects](/guides/rendering-projects#tile-rendering)

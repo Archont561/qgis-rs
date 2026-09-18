@@ -2,6 +2,11 @@
 .*
 _*
 
+# …but Python packages need their underscore-prefixed modules committed,
+# otherwise hatchling (which honours VCS ignore files) drops them from wheels.
+!__init__.py
+!__main__.py
+
 # git / github
 !.git*
 

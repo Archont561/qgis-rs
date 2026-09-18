@@ -16,7 +16,16 @@ The workspace follows the standard Rust `-sys` crate pattern:
 | Crate        | Purpose                                                  |
 |--------------|----------------------------------------------------------|
 | `qgis-sys`   | Low-level FFI bindings — opaque handles, C++ shims, CXX bridges |
+| `qgis-render`| Backend-agnostic engine: `Project`, `Extent`, `Crs`, `TilePlan`, `RenderSettings` |
+| `qgis-server`| HTTP surface — WMS, WFS, XYZ tiles, OGC API Features routing |
+| `qgis-mcp`   | Model Context Protocol server exposing the engine as tools (rmcp) |
+| `qgis-cli`   | Command-line binary; bundles `qgis-mcp` behind the `mcp` subcommand |
 | *(future)* `qgis` | Safe, idiomatic Rust wrappers on top of `qgis-sys`  |
+
+`qgis-render` is the crate the others build on, and it does not depend on
+`qgis-sys` yet: the geometry that needs no QGIS is implemented in pure Rust,
+while QGIS-backed operations return `Error::Unimplemented`. That keeps
+`cargo test --workspace --exclude qgis-sys` runnable without QGIS installed.
 
 ## Layer Organization
 

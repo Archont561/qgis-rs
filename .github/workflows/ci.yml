@@ -4,6 +4,9 @@
 # 1. Pixi environments are valid (default + docs)
 # 2. Rust code compiles and tests pass
 # 3. Documentation site builds
+#
+# This workflow only validates. Publishing the docs site to GitHub Pages lives
+# in pages.yml.
 
 name: CI
 
@@ -66,6 +69,8 @@ jobs:
       - name: run tests
         run: pixi run -e default cargo test --workspace
 
+  # Mirrors the build half of pages.yml, so a PR catches a broken Pages
+  # deployment before it can reach main.
   build-docs:
     name: Build documentation site
     runs-on: ubuntu-latest
@@ -86,7 +91,7 @@ jobs:
 
       - name: install dependencies
         working-directory: apps/docs
-        run: pixi run -e docs bun install
+        run: pixi run -e docs bun install --frozen-lockfile
 
       - name: build documentation
         working-directory: apps/docs

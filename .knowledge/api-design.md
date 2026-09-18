@@ -423,6 +423,7 @@ Commands:
   info      Inspect a project (layers, CRS, extent)
   serve     Start an HTTP tile/map server
   export    Export features from a layer
+  mcp       Serve the same capabilities as an MCP server on stdio
   version   Print version information
 ```
 
@@ -574,6 +575,56 @@ qgis-cli export map.qgs --layer buildings -o buildings.fgb      # FlatGeobuf
 qgis-cli export map.qgs --layer buildings -o buildings.csv      # CSV (WKT geometry)
 qgis-cli export map.qgs --layer buildings -o buildings.geojsonl  # GeoJSON Lines
 ```
+
+### 2.8 `mcp`
+
+```bash
+# Serve the Model Context Protocol on stdin/stdout
+qgis-cli mcp
+
+# Print the tool catalogue and exit
+qgis-cli mcp --list-tools
+```
+
+The MCP server is bundled into the `qgis-cli` binary — no separate install, no
+Node runtime. It is implemented in `crates/qgis-mcp` on top of
+[rmcp](https://github.com/modelcontextprotocol/rust-sdk), the official Rust MCP
+SDK, and started inside a Tokio runtime by `qgis-cli`. Building with
+`--no-default-features` drops it (and rmcp + Tokio) from the binary.
+
+Tools mirror the subcommands, so a client and a shell script can do the same
+things:
+
+| Tool | Mirrors | Arguments |
+|------|---------|-----------|
+| `capabilities` | — | — |
+| `crs_info` | — | `auth_id` |
+| `plan_tiles` | `tiles --dry-run` | `bounds`, `zoom` |
+| `project_info` | `info` | `project` |
+| `render_map` | `render` | `project`, `output`, `extent`, `width`, `height`, `crs`, `dpi`, `layers`, `layout` |
+| `export_features` | `export` | `project`, `layer`, `output`, `filter`, `bbox`, `fields` |
+
+Rules the server follows:
+
+* **stdout belongs to the protocol.** Diagnostics go to stderr.
+* **Validate before refusing.** `render_map` and `export_features` check the
+  project path, output format, extent and CRS, and only then report that the
+  operation needs the QGIS backend — so clients can be written against the
+  final shape today.
+* **Say what is live.** `capabilities` returns the catalogue with a
+  `needs_qgis_backend` flag per tool, generated from the router itself so it
+  cannot drift from the registered tools.
+* **Errors are JSON-RPC errors**, with the `qgis-render` message as the detail.
+
+Client configuration (Claude Desktop):
+
+```json
+{ "mcpServers": { "qgis": { "command": "/path/to/qgis-cli", "args": ["mcp"] } } }
+```
+
+`crates/qgis-cli/tests/mcp_stdio.rs` spawns the real binary and drives it
+through `initialize` → `notifications/initialized` → `tools/list` →
+`tools/call`, so the handshake is covered end to end rather than mocked.
 
 ---
 

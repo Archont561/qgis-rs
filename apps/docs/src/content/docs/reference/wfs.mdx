@@ -1,0 +1,97 @@
+---
+title: wfs
+description: WFS 1.1 support in qgis-rs — GetCapabilities, DescribeFeatureType, and GetFeature.
+---
+
+# WFS 1.1
+
+Web Feature Service support: feature-level access to vector layers as GML or
+GeoJSON. Parsing and response generation live in `qgis_render::server::wfs`;
+the [`server` module](/reference/server) drives it.
+
+```rust
+use qgis_render::server::{Server, WfsRequest};
+
+let response = server.handle_wfs(WfsRequest::parse(query_string)?)?;
+// response.content_type == "application/json"
+```
+
+## Requests
+
+| `REQUEST` | Purpose | Response |
+|-----------|---------|----------|
+| `GetCapabilities` | Describe the service and the published feature types. | XML |
+| `DescribeFeatureType` | Field names and types for one feature type. | XML schema |
+| `GetFeature` | Return features, optionally filtered. | GML 3 or GeoJSON |
+
+## GetFeature parameters
+
+| Parameter | Example | Description |
+|-----------|---------|-------------|
+| `TYPENAME` | `buildings` | Feature type, as advertised in capabilities. |
+| `OUTPUTFORMAT` | `application/json` | `application/json` or `text/xml; subtype=gml/3.1.1`. |
+| `MAXFEATURES` | `100` | Cap on the number of features returned. |
+| `STARTINDEX` | `200` | Skip the first N features (paging). |
+| `BBOX` | `14,50,15,51` | Spatial filter in the type's CRS. |
+| `FILTER` | OGC XML filter | Attribute and spatial filter. |
+| `PROPERTYNAME` | `name,height` | Restrict the returned fields. |
+| `RESULTTYPE` | `hits` | Return only `numberMatched` instead of features. |
+
+```bash
+curl 'http://localhost:8080/wfs?SERVICE=WFS&VERSION=1.1.0&REQUEST=GetFeature&TYPENAME=buildings&OUTPUTFORMAT=application/json&MAXFEATURES=2'
+```
+
+The GeoJSON response carries paging metadata:
+
+```json
+{
+  "type": "FeatureCollection",
+  "features": [],
+  "numberMatched": 48392,
+  "numberReturned": 2,
+  "links": [
+    { "href": "/wfs?...&STARTINDEX=0", "rel": "self" },
+    { "href": "/wfs?...&STARTINDEX=2", "rel": "next" }
+  ]
+}
+```
+
+## Filtering
+
+```bash
+# Bounding box
+curl 'http://localhost:8080/wfs?SERVICE=WFS&REQUEST=GetFeature&TYPENAME=buildings&BBOX=14,50,15,51&OUTPUTFORMAT=application/json'
+
+# Attribute filter (OGC XML)
+curl 'http://localhost:8080/wfs?SERVICE=WFS&REQUEST=GetFeature&TYPENAME=buildings&OUTPUTFORMAT=application/json' \
+  --data-urlencode 'FILTER=<Filter><PropertyIsGreaterThan><PropertyName>height</PropertyName><Literal>50</Literal></PropertyIsGreaterThan></Filter>'
+```
+
+The XML filter is translated into a [`FeatureRequest`](/reference/features) and
+pushed down to the provider, so it filters in the database rather than in
+memory where the layer allows it.
+
+## Counting without transferring
+
+```bash
+curl 'http://localhost:8080/wfs?SERVICE=WFS&REQUEST=GetFeature&TYPENAME=buildings&RESULTTYPE=hits&FILTER=...'
+```
+
+## Errors
+
+Malformed requests return an OGC `ExceptionReport`:
+
+```xml
+<ExceptionReport version="1.1.0">
+  <Exception exceptionCode="InvalidParameterValue" locator="TYPENAME">
+    Unknown feature type: roads
+  </Exception>
+</ExceptionReport>
+```
+
+## See also
+
+- [`server`](/reference/server) — request dispatch and configuration
+- [`features`](/reference/features) — the request model filters are translated to
+- [`wms`](/reference/wms) — map images rather than features
+- [Server Overview](/server/) — OGC API Features, the modern alternative
