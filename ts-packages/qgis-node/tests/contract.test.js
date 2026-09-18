@@ -8,8 +8,15 @@
 //
 // Run with: npm test            (node's built-in test runner, no jest)
 //           bun test tests/     (same files, Bun's runner)
-//           BQGIS_NODE_FORCE_FALLBACK=1 is not a thing; delete the .node file
-//           locally to force the fallback.
+//
+// `package.json` names this file explicitly rather than using a glob or a bare
+// `node --test`: glob patterns are Node >= 21 only (CI runs the Node 20 LTS) and
+// the no-argument form recurses out of the package and picks up the bridge's
+// TypeScript tests. Add a second file here when there is a second file.
+//
+// To exercise the native path locally, build the addon (`npm run build`) and the
+// same assertions run against it instead of the fallback; delete the .node file
+// to force the fallback again.
 
 const test = require("node:test");
 const assert = require("node:assert/strict");

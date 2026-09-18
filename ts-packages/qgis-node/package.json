@@ -12,7 +12,7 @@
   "scripts": {
     "build": "napi build --platform --release --manifest-path ../../crates/qgis-node/Cargo.toml -o .",
     "build:debug": "napi build --platform --manifest-path ../../crates/qgis-node/Cargo.toml -o .",
-    "test": "node --test \"tests/**/*.test.js\"",
+    "test": "node --test tests/contract.test.js",
     "prepublishOnly": "napi prepublish -t npm --manifest-path ../../crates/qgis-node/Cargo.toml",
     "artifacts": "napi artifacts --manifest-path ../../crates/qgis-node/Cargo.toml",
     "version": "napi version --manifest-path ../../crates/qgis-node/Cargo.toml"
