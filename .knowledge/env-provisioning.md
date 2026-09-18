@@ -34,7 +34,8 @@ The only reliable network path is `github.com` over the git protocol. This is th
 The `.github/workflows/env.yml` workflow:
 
 1. Installs pixi on a hosted runner (full network access)
-2. Resolves `pixi install --locked -e default`
+2. Resolves `pixi install -e default` (deliberately not `--locked`, as in the
+   reference project, so a manifest change never reddens this job by itself)
 3. Runs `pixi run -e default pack`, i.e. `scripts/pack-env.sh`: `pixi-pack
    --create-executable` produces `dist/qgis-rs-<platform>.sh`, then the script
    unpacks it into a scratch dir with the extractor's own flags
@@ -44,9 +45,9 @@ The `.github/workflows/env.yml` workflow:
 
 `pixi-pack` is a declared dependency (`[workspace.dependencies]`, consumed by
 the root environment) rather than something the workflow installs ad hoc, which
-is what makes `pixi run -e default pack` find the tool. Adding or bumping that
-pin requires one `pixi lock` so `pixi.lock` carries it — `--locked` installs
-fail until it does.
+is what makes `pixi run -e default pack` find the tool. After adding or bumping
+a pin, run `pixi lock` and commit the result so the checked-in `pixi.lock`
+matches `pixi.toml`.
 
 ### Consumer (sandbox / local)
 
