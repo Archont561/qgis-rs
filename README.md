@@ -181,6 +181,9 @@ qgis-cli serve map.qgs --port 8080
 
 # Inspect a project
 qgis-cli info map.qgs
+
+# Serve the same capabilities to an AI assistant over the Model Context Protocol
+qgis-cli mcp
 ```
 
 See [CLI Documentation](https://archont561.github.io/qgis-rs/cli/) for all commands.
@@ -214,10 +217,11 @@ graph TB
 | Crate | Purpose | Status |
 |-------|---------|--------|
 | `qgis-sys` | Low-level CXX bindings | ✅ Active |
-| `qgis-render` | High-level rendering API | 🔨 Planned |
-| `qgis-server` | HTTP server (WMS/WFS/OGC) | 📋 Design |
-| `qgis-cli` | Command-line tool | 📋 Design |
-| `qgis-sdk` | Plugin development SDK | 📋 Design |
+| `qgis-render` | High-level rendering API | 🔨 Scaffolded (pure geometry works; QGIS backend pending) |
+| `qgis-server` | HTTP server (WMS/WFS/OGC) | 🔨 Scaffolded (routing works; listener pending) |
+| `qgis-mcp` | Model Context Protocol server | ✅ Active (bundled into `qgis-cli mcp`) |
+| `qgis-cli` | Command-line tool | 🔨 Scaffolded (`mcp`, `info`, `tiles --dry-run` work) |
+| `qgis-sdk` | Plugin development SDK (Python, `packages/qgis-sdk`) | ✅ Active |
 
 ## Documentation
 
