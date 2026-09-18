@@ -1,0 +1,97 @@
+---
+title: Layer
+description: The qgis_render Layer type — metadata, visibility, styling, and vector or raster data access.
+---
+
+# `Layer`
+
+```rust
+use qgis_render::Layer;
+```
+
+A single map layer, obtained from a [`Project`](/reference/render/project).
+`Layer` covers metadata and styling for every layer kind, and narrows to
+`VectorLayer` or `RasterLayer` for data access.
+
+## Metadata
+
+| Method | Returns |
+|--------|---------|
+| `name()` | `&str` |
+| `id()` | `&str` |
+| `layer_type()` | `LayerType` |
+| `crs()` | [`Crs`](/reference/render/crs) |
+| `extent()` | [`Extent`](/reference/geometry) |
+| `feature_count()` | `u64` |
+
+`LayerType` is `Vector`, `Raster`, `Mesh`, `PointCloud`, or `Annotation`.
+
+## Data source
+
+| Method | Returns |
+|--------|---------|
+| `data_source()` | `&DataSource` |
+| `provider()` | `&str` — `ogr`, `postgres`, `gdal`, `wms`, … |
+
+## Visibility and styling
+
+```rust
+layer.set_visible(false);
+layer.set_opacity(0.8);
+println!("{:?}", layer.blend_mode());
+println!("{:?}", layer.renderer());
+```
+
+| Method | Description |
+|--------|-------------|
+| `is_visible()` / `set_visible(bool)` | Layer visibility. |
+| `opacity()` / `set_opacity(f64)` | `0.0` (transparent) to `1.0` (opaque). |
+| `blend_mode()` | Compositing mode used when drawing. |
+| `renderer()` | The symbology that decides how features are drawn. |
+
+## Vector data
+
+```rust
+let vector = layer.as_vector().unwrap();
+
+println!("{:?}", vector.fields());
+
+for feature in vector.features() {
+    println!("{} {:?}", feature.id(), feature.geometry());
+}
+```
+
+| Method | Returns |
+|--------|---------|
+| `as_vector()` | `Option<&VectorLayer>` |
+| `VectorLayer::fields()` | `&[Field]` |
+| `VectorLayer::features()` | `FeatureIterator` |
+| `VectorLayer::features_with(request)` | `FeatureIterator` — see [`features`](/reference/features) |
+| `VectorLayer::feature(id)` | `Result<Feature, QgisError>` |
+| `VectorLayer::count_with(request)` | `Result<u64, QgisError>` |
+
+## Raster data
+
+```rust
+let raster = layer.as_raster().unwrap();
+let block = raster.read_block(1, extent, 512, 512)?;
+```
+
+| Method | Returns |
+|--------|---------|
+| `as_raster()` | `Option<&RasterLayer>` |
+| `RasterLayer::band_count()` | `usize` |
+| `RasterLayer::width()` / `height()` | `u32` |
+| `RasterLayer::read_block(band, extent, w, h)` | `Result<RasterBlock, QgisError>` |
+
+:::note
+`feature_count()` is metadata: providers may report an estimate or `0` for
+streaming sources. Use `count_with(FeatureRequest::new())` when you need an
+exact number.
+:::
+
+## See also
+
+- [`Feature`](/reference/render/feature) — what iteration yields
+- [`features`](/reference/features) — requests, filters, and selection
+- [Working with Layers](/guides/working-with-layers) — practical examples

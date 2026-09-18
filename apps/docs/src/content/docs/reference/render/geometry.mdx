@@ -1,0 +1,79 @@
+---
+title: Geometry
+description: The qgis_render Geometry type — construction, measurement, predicates, and serialization.
+---
+
+# `Geometry`
+
+```rust
+use qgis_render::geometry::*;
+```
+
+A vector geometry: point, line, polygon, or a multi- or collection variant of
+those. Backed by GEOS through QGIS, so predicates and overlays are the same
+ones QGIS itself uses.
+
+## Construction
+
+```rust
+let geom = Geometry::from_wkt("POLYGON((0 0, 1 0, 1 1, 0 1, 0 0))")?;
+let geom = Geometry::from_wkb(&bytes)?;
+let geom = Geometry::from_geojson(json_value)?;
+```
+
+## Inspection
+
+| Method | Returns |
+|--------|---------|
+| `geometry_type()` | `GeometryType` |
+| `is_empty()` | `bool` |
+| `is_valid()` | `bool` |
+| `area()` | `f64` |
+| `length()` | `f64` |
+| `centroid()` | `Option<Point>` |
+| `bounding_box()` | `Extent` |
+
+`GeometryType` covers `Point`, `LineString`, `Polygon`, `MultiPoint`,
+`MultiLineString`, `MultiPolygon`, `GeometryCollection`, and `CircularString`.
+
+## Serialization
+
+| Method | Returns |
+|--------|---------|
+| `to_wkt()` | `String` |
+| `to_wkb()` | `Vec<u8>` |
+| `to_geojson()` | `serde_json::Value` |
+
+## Operations
+
+```rust
+let buffered = geom.buffer(10.0);
+let overlap = geom.intersection(&other);
+let merged = geom.union(&other);
+let generalised = geom.simplify(0.01);   // Douglas-Peucker
+
+let inside = geom.contains(&point);
+let touching = geom.intersects(&other);
+let apart = geom.distance(&other);
+```
+
+## Reprojection
+
+```rust
+let source = Crs::from_epsg(4326)?;
+let target = Crs::from_epsg(3857)?;
+let reprojected = geom.transform(&source, &target)?;
+```
+
+:::caution
+`area()`, `length()`, and `distance()` are in the units of the geometry's CRS —
+degrees for a geographic CRS such as EPSG:4326. Reproject to a projected CRS
+first when you need metres.
+:::
+
+## See also
+
+- [`geometry` module](/reference/geometry) — `Extent`, `Point`, and helpers
+- [`Crs`](/reference/render/crs) — coordinate reference systems
+- [`Feature`](/reference/render/feature) — where geometries usually come from
+- [Working with Layers](/guides/working-with-layers#geometry-operations)

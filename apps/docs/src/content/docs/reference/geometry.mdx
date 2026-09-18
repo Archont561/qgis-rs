@@ -1,0 +1,77 @@
+---
+title: geometry
+description: The qgis_render::geometry module — geometry types, extents, points, and helpers.
+---
+
+# `qgis_render::geometry`
+
+The geometry vocabulary used across the library: the
+[`Geometry`](/reference/render/geometry) type plus the supporting value types.
+
+```rust
+use qgis_render::geometry::*;
+```
+
+## Contents
+
+| Item | Description |
+|------|-------------|
+| `Geometry` | Vector geometry with GEOS-backed operations. |
+| `GeometryType` | `Point`, `LineString`, `Polygon`, multi- variants, `GeometryCollection`, `CircularString`. |
+| `Point` | A single `x`, `y`, optional `z` and `m`. |
+| `Extent` | Axis-aligned bounding box. |
+| `Vertex` | Iterator over the vertices of a geometry. |
+
+## `Extent`
+
+`Extent` is the bounding box that appears in project, layer, feature, and
+render APIs.
+
+```rust
+let extent = Extent::new(14.0, 50.0, 15.0, 51.0);   // minx, miny, maxx, maxy
+
+extent.width()               // 1.0
+extent.height()              // 1.0
+extent.center()              // Point
+extent.contains(&point)      // bool
+extent.intersects(&other)    // bool
+extent.combine_with(&other)  // union of two boxes
+extent.scale(1.1)            // grow around the center
+```
+
+Parse one from the `minx,miny,maxx,maxy` form used by the CLI:
+
+```rust
+let extent = Extent::from_str("14,50,15,51")?;
+```
+
+## `Point`
+
+```rust
+let p = Point::new(14.0, 50.0);
+let p3d = Point::new_z(14.0, 50.0, 320.0);
+
+p.x();  p.y();  p.z();       // z() -> Option<f64>
+```
+
+## Iterating vertices
+
+```rust
+for vertex in geom.vertices() {
+    println!("{} {}", vertex.x, vertex.y);
+}
+```
+
+## Conversions
+
+| Function | Description |
+|----------|-------------|
+| `Geometry::from_wkt` / `to_wkt` | Well-known text. |
+| `Geometry::from_wkb` / `to_wkb` | Well-known binary. |
+| `Geometry::from_geojson` / `to_geojson` | GeoJSON via `serde_json::Value`. |
+
+## See also
+
+- [`Geometry`](/reference/render/geometry) — the geometry type in detail
+- [`Crs`](/reference/render/crs) — units and reprojection
+- [`features`](/reference/features) — `bounding_box` and `intersects` filters

@@ -2,6 +2,7 @@
 
 ## 2026-09-18
 
+* **Addition**: Filled in the 22 documentation pages that `cli/index.mdx` and `reference/index.mdx` linked to but that did not exist — six `qgis-cli` subcommand pages (`render`, `tiles`, `batch`, `info`, `serve`, `export`) and sixteen API reference pages (`render`, `tiles`, `layout`, `features`, `geometry`, `crs`, `server`, `wms`, `wfs`, `expr`, plus `render/{project,layer,feature,geometry,settings,crs}`). Content follows the public API surface in [api-design.md](/api-design.md). The docs site now builds 36 pages with zero broken internal links or anchors.
 * **Creation**: Established [.github/workflows/pages.yml](/../.github/workflows/pages.yml) — builds `apps/docs` with the Pixi `docs` environment and publishes it to GitHub Pages at https://archont561.github.io/qgis-rs/ (build + deploy jobs, SHA-pinned actions, `pages: write` + `id-token: write`).
 * **Update**: Updated [documentation-site.md](/documentation-site.md) — GitHub Pages deployment flow, subpath (`base`) handling, and the two production-only build gotchas.
 * **Update**: Configured `site` and `base: '/qgis-rs'` in `apps/docs/astro.config.mjs` for the Pages subpath; added `apps/docs/remark-base-links.mjs` so in-content links are prefixed too.

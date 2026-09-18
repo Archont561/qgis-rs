@@ -1,0 +1,93 @@
+---
+title: render
+description: The qgis_render::render module — map settings and render entry points.
+---
+
+# `qgis_render::render`
+
+The rendering entry points. Everything here turns a [`Project`](/reference/render/project)
+plus a [`MapSettings`](#mapsettings) into pixels.
+
+```rust
+use qgis_render::render::*;
+```
+
+## Functions and methods
+
+Rendering is driven from `Project`:
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `render(&settings)` | `Result<Image, QgisError>` | Render to an in-memory image. |
+| `render_to_image(RenderSettings)` | `Result<Image, QgisError>` | Shorthand for a simple render. |
+| `render_to_file(&settings, path)` | `Result<(), QgisError>` | Render and encode to a file. |
+| `render_to_writer(&settings, &mut W)` | `Result<(), QgisError>` | Render into any `std::io::Write`. |
+| `render_to_tile(&settings, z, x, y)` | `Result<Image, QgisError>` | Render one XYZ tile. |
+| `render_async(&settings)` | `Future<Result<Image>>` | Render on the blocking pool; await it from async code. |
+
+## `MapSettings`
+
+Full control over a single render.
+
+```rust
+let settings = MapSettings::new(2048, 2048)
+    .extent(Extent::new(14.0, 50.0, 15.0, 51.0))
+    .crs(Crs::from_epsg(4326)?)
+    .dpi(150)
+    .background(Color::rgba(240, 240, 240, 255))
+    .layers(&["buildings", "roads", "labels"])
+    .layer_filter("buildings", Filter::gt("height", 10))
+    .antialiasing(true);
+
+let image = project.render(&settings)?;
+```
+
+| Builder method | Default | Description |
+|----------------|---------|-------------|
+| `.extent(Extent)` | project extent | Area to render. |
+| `.crs(Crs)` | project CRS | Output CRS. |
+| `.dpi(u32)` | `96` | Resolution, used for labels and symbol scaling. |
+| `.background(Color)` | transparent | Background fill. |
+| `.layers(&[&str])` | all visible layers | Restrict the render to these layers. |
+| `.layer_filter(&str, Filter)` | — | Override a layer's filter for this render only. |
+| `.antialiasing(bool)` | `true` | Edge smoothing. |
+
+For the common case, [`RenderSettings`](/reference/render/settings) is the
+lighter-weight builder.
+
+## `Image`
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `save(path)` | `Result<(), QgisError>` | Encode by extension: `.png`, `.jpg`, `.webp`. |
+| `to_png_bytes()` | `Result<Vec<u8>, QgisError>` | PNG in memory. |
+| `width()` / `height()` | `u32` | Pixel dimensions. |
+| `pixel(x, y)` | `Color` | Sample one pixel. |
+
+## Examples
+
+```rust
+// Quick render
+let image = project.render_to_image(RenderSettings::new(1024, 768))?;
+image.save("map.png")?;
+
+// Stream into an HTTP response
+project.render_to_writer(&settings, &mut response.body)?;
+
+// From async code (for example inside an axum handler)
+let image = project.render_async(&settings).await?;
+```
+
+:::caution
+QGIS objects are `!Send` and `!Sync`. Render from a single thread, or give each
+worker thread its own `Project`. `render_async` moves the work onto a dedicated
+blocking thread for you.
+:::
+
+## See also
+
+- [`RenderSettings`](/reference/render/settings) — the simple builder
+- [`Project`](/reference/render/project) — what you render
+- [`tiles`](/reference/tiles) — pyramid rendering
+- [`layout`](/reference/layout) — print layout rendering
+- [Rendering Projects](/guides/rendering-projects) — worked examples

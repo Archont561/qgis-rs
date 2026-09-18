@@ -1,0 +1,72 @@
+---
+title: RenderSettings
+description: The qgis_render RenderSettings builder — size, extent, CRS, DPI, and background for a render.
+---
+
+# `RenderSettings`
+
+```rust
+use qgis_render::RenderSettings;
+```
+
+The lightweight builder for a render. It answers "how big, which area, which
+CRS" and leaves everything else at a sensible default. Reach for
+[`MapSettings`](/reference/render#mapsettings) when you also need per-layer
+selection or filter overrides.
+
+## Construction
+
+```rust
+let settings = RenderSettings::new(1024, 768)
+    .extent(project.extent())
+    .crs(Crs::from_epsg(3857)?)
+    .dpi(96)
+    .background(Color::WHITE);
+
+let image = project.render_to_image(settings)?;
+image.save("map.png")?;
+```
+
+`RenderSettings::new(width, height)` takes the output size in pixels.
+
+## Builder methods
+
+| Method | Default | Description |
+|--------|---------|-------------|
+| `.extent(Extent)` | project extent | Area to render. |
+| `.crs(Crs)` | project CRS | Output CRS. Reprojection is automatic. |
+| `.dpi(u32)` | `96` | Drives label sizes and symbol scaling. |
+| `.background(Color)` | `Color::TRANSPARENT` | Background fill. |
+
+## Aspect ratio
+
+The extent and the pixel size are independent: a non-matching ratio stretches
+the map. Compute one from the other when the output has to be undistorted.
+
+```rust
+let extent = project.extent();
+let ratio = extent.width() / extent.height();
+let (w, h) = (2048, (2048.0 / ratio) as u32);
+
+let image = project.render_to_image(
+    RenderSettings::new(w, h).extent(extent)
+)?;
+```
+
+## Choosing a DPI
+
+| DPI | Use |
+|-----|-----|
+| `72`–`96` | Screen and web maps. |
+| `150` | Presentations and reports. |
+| `300` | Print. |
+
+DPI scales labels and marker symbols, so a 300 DPI render of the same extent is
+legible when printed rather than tiny.
+
+## See also
+
+- [`render`](/reference/render) — the render entry points and `MapSettings`
+- [`Crs`](/reference/render/crs) — output coordinate systems
+- [`layout`](/reference/layout) — print layouts, which carry their own scale
+- [Rendering Projects](/guides/rendering-projects) — worked examples

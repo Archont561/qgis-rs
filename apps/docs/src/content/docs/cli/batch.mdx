@@ -1,0 +1,72 @@
+---
+title: batch
+description: Render many extents from one QGIS project in parallel with qgis-cli batch.
+---
+
+# `qgis-cli batch`
+
+Renders the same project for many extents in a single run, reusing the loaded
+project and spreading the work over several workers.
+
+## Synopsis
+
+```bash
+qgis-cli batch <PROJECT> --extents <FILE> --output <DIR> [OPTIONS]
+```
+
+## Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--extents <FILE>` | — | CSV or GeoJSON file describing the areas to render. |
+| `-o, --output <DIR>` | — | Output directory. One image per extent. |
+| `--size <WxH>` | `1024x768` | Image size for every render. |
+| `--dpi <DPI>` | `96` | Resolution. |
+| `--crs <AUTH:CODE>` | project CRS | Output CRS. |
+| `--format <FORMAT>` | `png` | Image format: `png`, `jpeg`, `webp`. |
+| `--parallel <N>` | number of CPUs | Worker threads. |
+| `--prefix <STR>` | empty | Prefix added to every output file name. |
+
+## Extent sources
+
+### CSV
+
+The first row is a header; `name` names the output file and the remaining
+columns are the bounding box.
+
+```csv
+name,minx,miny,maxx,maxy
+berlin,13.08,52.33,13.76,52.68
+paris,2.22,48.81,2.47,48.91
+```
+
+### GeoJSON
+
+Each feature's bounding box becomes an extent. The output file is named after
+the `name` property, falling back to `region-<index>` when it is missing.
+
+## Examples
+
+```bash
+# Render every city in a CSV
+qgis-cli batch map.qgs --extents extents.csv -o ./renders/ --size 2048x1536 --parallel 4
+
+# Render GeoJSON regions at print quality
+qgis-cli batch map.qgs --extents regions.geojson -o ./renders/ --size 4096x3072 --dpi 150
+
+# WebP output with a prefix
+qgis-cli batch map.qgs --extents extents.csv -o ./renders/ --format webp --prefix map_
+```
+
+The run above writes `./renders/berlin.png`, `./renders/paris.png`, and so on.
+
+## Failure handling
+
+A failing extent is reported and skipped; the run continues and exits non-zero
+if any extent failed, so batch jobs are safe to retry.
+
+## See also
+
+- [`qgis-cli render`](/cli/render) — render a single extent
+- [Rendering Projects](/guides/rendering-projects) — batch rendering from Rust
+- [`render` module](/reference/render) — `MapSettings` and friends

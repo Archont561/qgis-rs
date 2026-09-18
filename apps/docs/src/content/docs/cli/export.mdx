@@ -1,0 +1,72 @@
+---
+title: export
+description: Export features from a QGIS project layer with qgis-cli export.
+---
+
+# `qgis-cli export`
+
+Reads features from one layer of a project and writes them to a geospatial data
+format. Filtering, bounding boxes, and column selection happen in the provider,
+so only the rows you ask for are read.
+
+## Synopsis
+
+```bash
+qgis-cli export <PROJECT> --layer <NAME> [OPTIONS]
+```
+
+## Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--layer <NAME>` | — | Layer to export, as listed by [`qgis-cli info`](/cli/info). |
+| `-o, --output <FILE>` | — | Output file. The format follows the extension. |
+| `--filter <EXPR>` | — | QGIS expression filter, e.g. `"height" > 50`. |
+| `--bbox <MINX,MINY,MAXX,MAXY>` | — | Restrict to a bounding box in the layer CRS. |
+| `--select <A,B,C>` | all fields | Fields to include. `geometry` selects the geometry column. |
+| `--crs <AUTH:CODE>` | layer CRS | Reproject the output. |
+| `--limit <N>` | unlimited | Stop after N features. |
+
+## Output formats
+
+| Extension | Format |
+|-----------|--------|
+| `.geojson` | GeoJSON `FeatureCollection` |
+| `.geojsonl` | GeoJSON Lines (one feature per line) |
+| `.gpkg` | GeoPackage |
+| `.fgb` | FlatGeobuf |
+| `.csv` | CSV with WKT geometry |
+
+## Examples
+
+```bash
+# Whole layer to GeoJSON
+qgis-cli export map.qgs --layer buildings -o buildings.geojson
+
+# Only tall buildings
+qgis-cli export map.qgs --layer buildings --filter "\"height\" > 50" -o tall.geojson
+
+# Only what intersects an area, two columns plus geometry
+qgis-cli export map.qgs --layer buildings \
+    --bbox 14.0,50.0,15.0,51.0 \
+    --select name,height,geometry \
+    -o buildings.geojson
+
+# Reprojected GeoPackage
+qgis-cli export map.qgs --layer buildings --crs EPSG:3857 -o buildings.gpkg
+
+# Stream the first thousand features as GeoJSON Lines
+qgis-cli export map.qgs --layer buildings --limit 1000 -o buildings.geojsonl
+```
+
+:::note
+`--filter` takes a QGIS expression, not SQL. Quote field names with double
+quotes and string literals with single quotes: `"type" = 'residential'`.
+See the [`expr` module](/reference/expr).
+:::
+
+## See also
+
+- [`features` module](/reference/features) — `FeatureRequest` and `Filter` in Rust
+- [`expr` module](/reference/expr) — expression syntax and evaluation
+- [`qgis-cli info`](/cli/info) — find layer names and field lists

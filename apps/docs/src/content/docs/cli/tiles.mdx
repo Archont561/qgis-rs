@@ -1,0 +1,67 @@
+---
+title: tiles
+description: Render a tile pyramid from a QGIS project with qgis-cli tiles.
+---
+
+# `qgis-cli tiles`
+
+Renders an XYZ tile pyramid for a project, writing loose files, an MBTiles
+database, or a PMTiles archive.
+
+## Synopsis
+
+```bash
+qgis-cli tiles <PROJECT> --zoom <MIN-MAX> --bounds <MINX,MINY,MAXX,MAXY> [OPTIONS]
+```
+
+## Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `-z, --zoom <MIN-MAX>` | — | Zoom levels to render, e.g. `10-14`. |
+| `-b, --bounds <MINX,MINY,MAXX,MAXY>` | project extent | Area to cover, in `--crs`. |
+| `-o, --output <PATH>` | — | Directory, `.mbtiles`, or `.pmtiles` file. |
+| `--tile-size <PX>` | `256` | Tile edge length in pixels. |
+| `--format <FORMAT>` | `png` | Tile image format: `png`, `jpeg`, or `webp`. |
+| `--crs <AUTH:CODE>` | `EPSG:3857` | Tile CRS. XYZ pyramids are normally Web Mercator. |
+| `--parallel <N>` | number of CPUs | Worker threads. Each holds its own QGIS instance. |
+| `--dry-run` | off | Count the tiles that would be rendered and exit. |
+
+## Examples
+
+```bash
+# Loose z/x/y.png files
+qgis-cli tiles map.qgs -z 10-14 -b 14,50,15,51 -o ./tiles/ --parallel 8
+
+# MBTiles
+qgis-cli tiles map.qgs -z 10-14 -b 14,50,15,51 -o output.mbtiles
+
+# PMTiles with WebP tiles
+qgis-cli tiles map.qgs -z 0-12 -o output.pmtiles --format webp
+
+# 512px retina tiles
+qgis-cli tiles map.qgs -z 10-14 -o ./tiles/ --tile-size 512
+
+# How much work is this?
+qgis-cli tiles map.qgs -z 10-14 -b 14,50,15,51 --dry-run
+# → Would render 12,847 tiles across zoom levels 10-14
+```
+
+:::note
+Tile counts grow by roughly 4x per zoom level. Run `--dry-run` before
+committing to a deep pyramid at high resolution.
+:::
+
+## Output layout
+
+| `--output` | Result |
+|------------|--------|
+| `./tiles/` | `./tiles/{z}/{x}/{y}.png` |
+| `out.mbtiles` | SQLite database with a `tiles` table |
+| `out.pmtiles` | Single-file PMTiles archive, HTTP-range readable |
+
+## See also
+
+- [`tiles` module](/reference/tiles) — `TilePlan`, `TileCoord`, and `RenderOptions`
+- [`qgis-cli serve`](/cli/serve) — serve tiles on demand instead of pre-rendering
+- [`qgis-cli render`](/cli/render) — single-image rendering

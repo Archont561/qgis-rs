@@ -1,0 +1,96 @@
+---
+title: Project
+description: The qgis_render Project type — open a QGIS project and reach its layers, CRS, layouts, and renderer.
+---
+
+# `Project`
+
+```rust
+use qgis_render::Project;
+```
+
+The central object of the library. A `Project` owns a parsed `.qgs`/`.qgz`
+document and gives access to its layers, CRS, extent, print layouts, and the
+renderer.
+
+## Opening a project
+
+```rust
+// From a file
+let project = Project::open("map.qgs")?;
+let project = Project::open("map.qgz")?;
+
+// From bytes, for example an upload
+let project = Project::from_bytes(&xml_bytes)?;
+
+// With options
+let project = Project::open_with("map.qgs", OpenOptions::new()
+    .trust_layer_metadata(true)
+    .skip_invalid_layers(true)
+    .bad_layer_handler(|uri| {
+        eprintln!("bad layer: {uri}");
+        None // or Some(replacement_uri)
+    })
+)?;
+```
+
+| `OpenOptions` method | Default | Description |
+|----------------------|---------|-------------|
+| `.trust_layer_metadata(bool)` | `false` | Skip recomputing extents and CRS per layer. Faster for large projects. |
+| `.skip_invalid_layers(bool)` | `false` | Keep going when a layer cannot be read. |
+| `.bad_layer_handler(f)` | fail | Callback for missing data sources; return a replacement URI or `None`. |
+
+## Metadata
+
+| Method | Returns |
+|--------|---------|
+| `title()` | `Option<&str>` |
+| `crs()` | [`Crs`](/reference/render/crs) |
+| `extent()` | [`Extent`](/reference/geometry) |
+| `path()` | `Option<&Path>` |
+
+## Layers
+
+| Method | Returns |
+|--------|---------|
+| `layers()` | `Vec<&Layer>` |
+| `layer(name)` | `Option<&Layer>` |
+| `layer_by_id(id)` | `Option<&Layer>` |
+| `layer_tree()` | `&LayerTree` |
+| `layouts()` | `Vec<&PrintLayout>` |
+| `layout(name)` | `Result<&PrintLayout, QgisError>` |
+
+```rust
+let buildings = project.layer("buildings").unwrap();
+println!("{} features", buildings.feature_count());
+
+for group in project.layer_tree().groups() {
+    println!("{}: {:?}", group.name(), group.layers());
+}
+```
+
+## Rendering
+
+See the [`render` module](/reference/render) for the full surface:
+
+```rust
+let image = project.render_to_image(RenderSettings::new(1024, 768))?;
+image.save("map.png")?;
+```
+
+## Errors
+
+`Project::open` and friends return `Result<T, QgisError>`:
+
+| Variant | Cause |
+|---------|-------|
+| `FileNotFound(path)` | The file does not exist. |
+| `InvalidProject { message }` | The document could not be parsed. |
+| `BadLayer { name, uri }` | A data source is missing and no handler replaced it. |
+
+## See also
+
+- [`Layer`](/reference/render/layer) — the objects `layers()` returns
+- [`render`](/reference/render) — rendering entry points
+- [Working with Layers](/guides/working-with-layers) — practical layer access
+- [Architecture](/concepts/architecture) — where `Project` sits in the stack

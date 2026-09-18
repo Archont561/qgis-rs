@@ -1,0 +1,111 @@
+---
+title: expr
+description: The qgis_render::expr module — parse, compile, and evaluate QGIS expressions.
+---
+
+# `qgis_render::expr`
+
+The QGIS expression engine: the same language used for rule-based symbology,
+labels, and field calculators, available from Rust.
+
+```rust
+use qgis_render::expr::*;
+```
+
+## Parsing and evaluating
+
+```rust
+let expr = Expression::parse("\"height\" > 50 AND \"type\" = 'residential'")?;
+
+let result = expr.evaluate(&feature, &context)?;
+let matched = result.as_bool();
+```
+
+`evaluate` returns a `Value`, which converts to Rust types:
+
+| Method | Returns |
+|--------|---------|
+| `as_bool()` | `bool` |
+| `as_f64()` | `f64` |
+| `as_i64()` | `i64` |
+| `as_string()` | `String` |
+| `as_geometry()` | `Option<Geometry>` |
+| `is_null()` | `bool` |
+
+## Supported syntax
+
+```rust
+Expression::parse("length($geometry)")?;
+Expression::parse("concat(\"name\", ' (', \"height\", 'm)')")?;
+Expression::parse("CASE WHEN \"pop\" > 1000 THEN 'big' ELSE 'small' END")?;
+Expression::parse("color_ramp_interpolate('RdYlGn', \"value\", 0, 100)")?;
+```
+
+Field names are double-quoted, string literals single-quoted. `$geometry`,
+`$id`, and `$area` refer to the current feature.
+
+## Building expressions programmatically
+
+```rust
+let expr = Expression::gt(
+    Expression::field("height"),
+    Expression::literal(50),
+);
+```
+
+| Constructor | Description |
+|-------------|-------------|
+| `Expression::parse(&str)` | Parse expression text. |
+| `Expression::field(&str)` | A field reference. |
+| `Expression::literal(v)` | A constant. |
+| `Expression::gt` / `lt` / `gte` / `lte` / `eq` / `ne` | Comparisons. |
+| `Expression::and` / `or` / `not` | Boolean logic. |
+| `Expression::function(name, args)` | Any registered QGIS function. |
+
+## Compiling for repeated evaluation
+
+Parsing is the expensive part. Compile once against a layer's fields, then
+evaluate per feature:
+
+```rust
+let compiled = expr.compile(&layer.fields())?;
+
+for feature in layer.features() {
+    if compiled.evaluate_bool(&feature)? {
+        // ...
+    }
+}
+```
+
+## Using expressions as filters
+
+[`Filter::expr`](/reference/features) wraps an expression so it can be pushed
+into a `FeatureRequest`:
+
+```rust
+use qgis_render::features::{FeatureRequest, Filter};
+
+let request = FeatureRequest::new()
+    .filter(Filter::expr("\"height\" > 50 AND \"type\" = 'residential'"));
+
+for feature in layer.features_with(request) {
+    // ...
+}
+```
+
+:::note
+Providers can only push down what they understand. Simple comparisons usually
+become SQL; complex expressions fall back to evaluation in Rust, which still
+avoids materialising rejected features but reads more rows.
+:::
+
+## Errors
+
+`Expression::parse` and `evaluate` return `QgisError::ExpressionError { expr, message }`
+with the offending expression and the parser's diagnostic.
+
+## See also
+
+- [`features`](/reference/features) — filters built on expressions
+- [`Feature`](/reference/render/feature) — the evaluation context
+- [`qgis-cli export`](/cli/export) — `--filter` on the command line

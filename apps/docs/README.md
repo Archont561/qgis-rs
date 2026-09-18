@@ -60,8 +60,9 @@ apps/docs/
 │   │       ├── getting-started/
 │   │       ├── concepts/
 │   │       ├── guides/
-│   │       ├── reference/
-│   │       ├── cli/
+│   │       ├── reference/        # API reference: one page per module, plus
+│   │       │   └── render/       #   one page per core type
+│   │       ├── cli/              # one page per qgis-cli subcommand
 │   │       └── server/
 │   └── styles/           # Custom CSS
 ├── public/               # Static assets (favicon.svg, …)

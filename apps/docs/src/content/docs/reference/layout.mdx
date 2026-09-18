@@ -1,0 +1,82 @@
+---
+title: layout
+description: The qgis_render::layout module — render QGIS print layouts to images, PDF, and SVG.
+---
+
+# `qgis_render::layout`
+
+QGIS print layouts — a map frame plus legend, scale bar, north arrow, and
+labels — rendered exactly as designed in QGIS.
+
+```rust
+use qgis_render::layout::*;
+```
+
+## Getting a layout
+
+```rust
+for layout in project.layouts() {
+    println!("{}", layout.name());
+}
+
+let layout = project.layout("A4 Landscape")?;
+```
+
+## Rendering
+
+```rust
+// Raster
+let image = layout.render_to_image(LayoutRenderSettings::new().dpi(300))?;
+image.save("map_a4.png")?;
+
+// Vector
+layout.render_to_pdf("map_a4.pdf", LayoutRenderSettings::new().dpi(300))?;
+layout.render_to_svg("map_a4.svg")?;
+```
+
+| `LayoutRenderSettings` method | Default | Description |
+|-------------------------------|---------|-------------|
+| `.dpi(u32)` | `300` | Rasterisation resolution for images; vector output uses it for raster items only. |
+| `.map_extent(Extent)` | layout default | Override the map frame extent. |
+| `.map_crs(Crs)` | layout default | Override the map frame CRS. |
+| `.force_vector(bool)` | `false` | Keep symbols vector in SVG/PDF where possible. |
+
+## Overriding the map frame
+
+The same layout can be reused for many areas — useful for a series of printed
+sheets or an atlas.
+
+```rust
+let image = layout.render_to_image(LayoutRenderSettings::new()
+    .dpi(300)
+    .map_extent(Extent::new(14.0, 50.0, 15.0, 51.0))
+)?;
+```
+
+## Inspecting items
+
+```rust
+for item in layout.items() {
+    println!("{}: {} at ({}, {})",
+        item.id(),
+        item.item_type(),      // MapFrame, Legend, ScaleBar, Label, ...
+        item.position().x,
+        item.position().y,
+    );
+}
+```
+
+`ItemType` covers `MapFrame`, `Legend`, `ScaleBar`, `NorthArrow`, `Label`,
+`Picture`, `Table`, and `Shape`.
+
+:::note
+Layouts render at their designed page size. `LayoutRenderSettings::dpi` scales
+the raster output; asking for 600 DPI on an A0 layout produces a very large
+image.
+:::
+
+## See also
+
+- [`Project::layouts`](/reference/render/project#layers) — where layouts come from
+- [`render`](/reference/render) — plain map rendering
+- [`qgis-cli render`](/cli/render) — `--layout` on the command line

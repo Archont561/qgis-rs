@@ -1,0 +1,96 @@
+---
+title: wms
+description: WMS 1.3 support in qgis-rs — GetCapabilities, GetMap, and GetFeatureInfo.
+---
+
+# WMS 1.3
+
+Web Map Service support: capabilities documents, map images, and attribute
+queries. Parsing and response generation live in `qgis_render::server::wms`;
+the [`server` module](/reference/server) drives it.
+
+```rust
+use qgis_render::server::{Server, WmsRequest};
+
+let response = server.handle_wms(WmsRequest::parse(query_string)?)?;
+```
+
+## Requests
+
+| `REQUEST` | Purpose | Response |
+|-----------|---------|----------|
+| `GetCapabilities` | Describe the service, layers, CRS, and bounding boxes. | XML |
+| `GetMap` | Render a map image for a bounding box. | `image/png`, `image/jpeg`, `image/svg+xml` |
+| `GetFeatureInfo` | Return attributes at a clicked pixel. | JSON, XML, or HTML |
+
+## GetMap parameters
+
+| Parameter | Example | Description |
+|-----------|---------|-------------|
+| `LAYERS` | `buildings,roads` | Comma-separated layer names. |
+| `STYLES` | `,` | One entry per layer; empty means default styling. |
+| `CRS` | `EPSG:3857` | Output CRS. |
+| `BBOX` | `14,50,15,51` | Extent in the requested CRS. |
+| `WIDTH` / `HEIGHT` | `1024` / `768` | Image size in pixels. |
+| `FORMAT` | `image/png` | Output encoding. |
+| `TRANSPARENT` | `TRUE` | Preserve alpha. |
+| `BGCOLOR` | `0xFFFFFF` | Background colour when not transparent. |
+| `DPI` | `96` | Label and symbol scaling. |
+
+```bash
+curl -o map.png 'http://localhost:8080/wms?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap' \
+  --data-urlencode 'LAYERS=buildings,roads' \
+  --data-urlencode 'STYLES=,' \
+  --data-urlencode 'CRS=EPSG:3857' \
+  --data-urlencode 'BBOX=6300000,6400000,1600000,1700000' \
+  --data-urlencode 'WIDTH=1024' --data-urlencode 'HEIGHT=768' \
+  --data-urlencode 'FORMAT=image/png' \
+  -G
+```
+
+## GetFeatureInfo
+
+```bash
+curl -G 'http://localhost:8080/wms' \
+  --data-urlencode 'SERVICE=WMS' --data-urlencode 'VERSION=1.3.0' \
+  --data-urlencode 'REQUEST=GetFeatureInfo' \
+  --data-urlencode 'LAYERS=buildings' --data-urlencode 'QUERY_LAYERS=buildings' \
+  --data-urlencode 'CRS=EPSG:3857' \
+  --data-urlencode 'BBOX=6300000,6400000,1600000,1700000' \
+  --data-urlencode 'WIDTH=1024' --data-urlencode 'HEIGHT=768' \
+  --data-urlencode 'I=512' --data-urlencode 'J=384' \
+  --data-urlencode 'INFO_FORMAT=application/json'
+```
+
+`I` and `J` are the pixel to query. The response lists every feature whose
+rendered geometry covers that pixel, with the fields the layer exposes.
+
+## Axis order
+
+:::caution
+WMS 1.3 uses the CRS's declared axis order: for geographic CRS such as
+EPSG:4326 the `BBOX` is `miny,minx,maxy,maxx` (latitude first). WMS 1.1.1 and
+projected CRS use `minx,miny,maxx,maxy`. The parser accepts both and normalises
+internally.
+:::
+
+## Errors
+
+Service exceptions come back as `200` with an XML `ServiceExceptionReport`,
+which is what the specification requires:
+
+```xml
+<ServiceExceptionReport version="1.3.0">
+  <ServiceException code="LayerNotDefined">Unknown layer: roads</ServiceException>
+</ServiceExceptionReport>
+```
+
+`WmsRequest::parse` returns `Err(QgisError::...)` only for malformed query
+strings.
+
+## See also
+
+- [`server`](/reference/server) — the module that dispatches requests
+- [`wfs`](/reference/wfs) — feature-level access
+- [Server Overview](/server/) — full endpoint list
+- [`qgis-cli serve`](/cli/serve) — run it from the command line

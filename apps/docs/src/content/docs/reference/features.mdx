@@ -1,0 +1,87 @@
+---
+title: features
+description: The qgis_render::features module — feature requests, filters, and lazy iteration.
+---
+
+# `qgis_render::features`
+
+How you ask a layer for data. Requests are pushed down to the provider, so
+filtering, bounding boxes, and column selection avoid reading rows you will
+throw away.
+
+```rust
+use qgis_render::features::*;
+```
+
+## `FeatureRequest`
+
+```rust
+let request = FeatureRequest::new()
+    .filter(Filter::gt("height", 50))
+    .bounding_box(Extent::new(14.0, 50.0, 15.0, 51.0))
+    .select(["name", "height", "geometry"])
+    .limit(1000);
+
+for feature in layer.features_with(request) {
+    // ...
+}
+```
+
+| Method | Description |
+|--------|-------------|
+| `.filter(Filter)` | Attribute predicate, pushed to the provider where possible. |
+| `.bounding_box(Extent)` | Spatial filter on the layer index. |
+| `.intersects(&Geometry)` | Spatial filter against an arbitrary geometry. |
+| `.select([...])` | Only these fields; include `"geometry"` to keep the geometry. |
+| `.select_all()` | Every field, the default. |
+| `.limit(usize)` | Stop after N features. |
+| `.offset(usize)` | Skip the first N features. |
+| `.no_geometry()` | Skip geometry entirely — much faster for statistics. |
+| `.order_by(&str, bool)` | Sort by a field, ascending or descending. |
+
+## `Filter`
+
+```rust
+Filter::eq("type", "residential")
+Filter::gt("height", 50)
+Filter::lt("height", 100)
+Filter::gte("height", 50)
+Filter::lte("height", 100)
+Filter::ne("type", "industrial")
+Filter::is_null("name")
+Filter::in_list("type", ["a", "b"])
+Filter::and(f1, f2)
+Filter::or(f1, f2)
+Filter::not(f)
+Filter::expr("\"height\" > 50 AND \"type\" = 'residential'")
+```
+
+`Filter::expr` takes a full QGIS expression — see [`expr`](/reference/expr).
+
+## Iteration
+
+`FeatureIterator` is lazy: features are fetched in provider-sized batches as
+you consume them, and nothing is buffered beyond the current batch.
+
+```rust
+// Counts without touching attributes
+let total = layer.count_with(FeatureRequest::new())?;
+
+// Statistics without geometry
+let mut tallest = 0.0;
+for feature in layer.features_with(FeatureRequest::new().no_geometry()) {
+    tallest = tallest.max(feature.get::<f64>("height")?);
+}
+```
+
+:::note
+Iteration borrows the layer. Hold the `FeatureIterator` in the same scope as
+the layer it came from, or collect the values you need.
+:::
+
+## See also
+
+- [`Feature`](/reference/render/feature) — what iteration yields
+- [`Layer`](/reference/render/layer) — `features` and `features_with`
+- [`expr`](/reference/expr) — expression syntax behind `Filter::expr`
+- [Working with Layers](/guides/working-with-layers#filtering)

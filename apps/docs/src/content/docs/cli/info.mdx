@@ -1,0 +1,76 @@
+---
+title: info
+description: Inspect the layers, CRS, extent, and layouts of a QGIS project.
+---
+
+# `qgis-cli info`
+
+Prints a summary of a project: its CRS, full extent, every layer with its
+provider and feature count, and any print layouts.
+
+## Synopsis
+
+```bash
+qgis-cli info <PROJECT> [OPTIONS]
+```
+
+## Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--format <FORMAT>` | `text` | `text`, `json`, or `yaml`. |
+| `--layers` | off | Print one line per layer only, no project summary. |
+| `--fields <LAYER>` | off | List the attribute fields of one layer. |
+
+## Example
+
+```bash
+$ qgis-cli info map.qgs
+
+Project: Berlin Transit Map
+CRS:     EPSG:4326 (WGS 84)
+Extent:  13.082, 52.338, 13.761, 52.675
+Layers:  5
+
+  Name              Type     Provider   CRS       Features
+  ────────────────  ───────  ────────   ────────  ────────
+  transit_stops     Vector   GeoPackage EPSG:4326   1,247
+  rail_lines        Vector   GeoPackage EPSG:4326      89
+  buildings         Vector   PostGIS    EPSG:25833  48,392
+  terrain           Raster   GeoTIFF    EPSG:4326   —
+  labels            Vector   GeoPackage EPSG:4326   3,102
+
+Print Layouts: 2
+  A4 Portrait (210×297mm)
+  A3 Landscape (420×297mm)
+```
+
+## Machine-readable output
+
+```bash
+$ qgis-cli info map.qgs --format json
+{
+  "title": "Berlin Transit Map",
+  "crs": { "epsg": 4326, "wkt": "GEOGCS[\"WGS 84\", ...]" },
+  "extent": { "minx": 13.082, "miny": 52.338, "maxx": 13.761, "maxy": 52.675 },
+  "layers": [
+    {
+      "name": "buildings",
+      "type": "vector",
+      "provider": "postgres",
+      "crs": "EPSG:25833",
+      "feature_count": 48392
+    }
+  ],
+  "layouts": [{ "name": "A4 Portrait", "width_mm": 210, "height_mm": 297 }]
+}
+```
+
+This is the quickest way to check layer names before passing them to
+`--layers`, `--layer`, or `--extents` on the other subcommands.
+
+## See also
+
+- [`Project`](/reference/render/project) — the same information from Rust
+- [`Layer`](/reference/render/layer) — layer metadata and data access
+- [`qgis-cli export`](/cli/export) — extract the data `info` lists

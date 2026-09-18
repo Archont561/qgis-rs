@@ -1,0 +1,103 @@
+---
+title: server
+description: The qgis_render::server module — embed a WMS/WFS/OGC API map server in your own binary.
+---
+
+# `qgis_render::server`
+
+The HTTP server as a library. The [`qgis-server`](/server/) crate and
+[`qgis-cli serve`](/cli/serve) are thin wrappers around this module, so
+embedding it gives you the same endpoints with your own routing, auth, and
+metrics.
+
+```rust
+use qgis_render::server::*;
+```
+
+## Building a server
+
+```rust
+let server = Server::new(Project::open("map.qgs")?)
+    .workers(4)
+    .tile_cache(CacheConfig::new()
+        .memory_mb(512)
+        .disk_path("./cache/")
+        .ttl(Duration::from_secs(3600)))
+    .auth(AuthConfig::new()
+        .api_keys(vec!["key-abc123"])
+        .anonymous_access(true)
+        .rate_limit(100));
+```
+
+| `Server` method | Default | Description |
+|-----------------|---------|-------------|
+| `.workers(usize)` | CPU count | Render workers. QGIS is single-threaded per worker. |
+| `.tile_cache(CacheConfig)` | none | LRU memory cache with an optional disk tier. |
+| `.auth(AuthConfig)` | open | API keys, anonymous access, rate limits. |
+| `.max_image_pixels(u64)` | `67_108_864` | Reject `GetMap` requests larger than this. |
+| `.request_timeout(Duration)` | `30s` | Abort renders that run too long. |
+
+## Handling requests
+
+The handlers are framework-agnostic: they take a parsed request and return a
+content type plus a body, which you map onto axum, actix-web, or anything else.
+
+```rust
+// WMS
+let response = server.handle_wms(WmsRequest::parse(query_string)?)?;
+// response.content_type == "image/png"
+
+// WFS
+let response = server.handle_wfs(WfsRequest::parse(query_string)?)?;
+// response.content_type == "application/json"
+
+// OGC API Features
+let response = server.handle_ogcapi(OgcApiRequest {
+    path: "/collections/buildings/items",
+    query: "limit=10&bbox=14,50,15,51",
+})?;
+```
+
+| Method | Protocol | See |
+|--------|----------|-----|
+| `handle_wms(WmsRequest)` | WMS 1.3 | [`wms`](/reference/wms) |
+| `handle_wfs(WfsRequest)` | WFS 1.1 | [`wfs`](/reference/wfs) |
+| `handle_ogcapi(OgcApiRequest)` | OGC API Features / Maps / Tiles | — |
+| `handle_tile(z, x, y, opts)` | XYZ tiles | — |
+
+## Caching
+
+```rust
+CacheConfig::new()
+    .memory_mb(512)               // LRU size in RAM
+    .disk_path("./cache/")        // optional second tier
+    .ttl(Duration::from_secs(3600))
+```
+
+Cache keys include the project, layer set, extent, size, and DPI, so different
+requests never collide. Invalidate by dropping the server or clearing the disk
+directory.
+
+## Multi-project
+
+```rust
+let server = Server::multi()
+    .project("berlin", Project::open("berlin.qgs")?)
+    .project("paris", Project::open("paris.qgs")?)
+    .workers(4);
+```
+
+Route on the first path segment — `/berlin/wms`, `/paris/collections` — and
+pass the remainder to the matching handler.
+
+:::caution
+`Server` owns QGIS instances and is `!Send`. Share it across threads behind an
+`Arc`, and let its internal worker pool do the rendering rather than calling
+handlers from arbitrary threads.
+:::
+
+## See also
+
+- [Server Overview](/server/) — endpoints, protocols, and deployment
+- [`wms`](/reference/wms) and [`wfs`](/reference/wfs) — protocol request types
+- [`qgis-cli serve`](/cli/serve) — the same server as a binary

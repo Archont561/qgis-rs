@@ -18,6 +18,15 @@ The `qgis-cli` binary provides command-line access to qgis-rs rendering and serv
 | [`serve`](/cli/serve) | Start an HTTP map server |
 | [`export`](/cli/export) | Export features from a layer |
 
+:::note
+`qgis-cli` is the command-line front end for the `qgis-render` and
+`qgis-server` crates. Each subcommand maps onto a module in the
+[API Reference](/reference/) — `render` onto [`render`](/reference/render),
+`tiles` onto [`tiles`](/reference/tiles), `export` onto
+[`features`](/reference/features), and `serve` onto
+[`server`](/reference/server).
+:::
+
 ## Installation
 
 ```bash
