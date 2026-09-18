@@ -80,7 +80,10 @@ fn info_prints_json_without_needing_qgis() {
     let parsed: serde_json::Value = serde_json::from_str(&stdout).expect("valid json");
     assert_eq!(parsed["format"], "qgz");
     assert!(parsed["size_bytes"].as_u64().expect("size") > 0);
-    assert!(parsed["note"].as_str().expect("note").contains("QGIS backend"));
+    assert!(parsed["note"]
+        .as_str()
+        .expect("note")
+        .contains("QGIS backend"));
 }
 
 #[test]
@@ -140,7 +143,10 @@ fn batch_reads_the_extents_csv_before_failing() {
     assert!(!output.status.success());
 
     let stdout = stdout_of(&output);
-    assert!(stdout.contains("berlin: 13.08,52.33,13.76,52.68"), "{stdout}");
+    assert!(
+        stdout.contains("berlin: 13.08,52.33,13.76,52.68"),
+        "{stdout}"
+    );
     assert!(stderr_of(&output).contains("QGIS backend"));
 }
 

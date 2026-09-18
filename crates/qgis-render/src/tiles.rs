@@ -283,7 +283,8 @@ mod tests {
 
     #[test]
     fn plans_a_zoom_range() {
-        let plan = TilePlan::new(bounds(), ZoomRange::parse("10-14").expect("valid")).expect("valid");
+        let plan =
+            TilePlan::new(bounds(), ZoomRange::parse("10-14").expect("valid")).expect("valid");
         assert_eq!(plan.zooms.count(), 5);
         assert_eq!(plan.levels().len(), 5);
         assert_eq!(plan.tile_count(), 4568);
@@ -307,8 +308,14 @@ mod tests {
 
     #[test]
     fn zoom_range_parsing() {
-        assert_eq!(ZoomRange::parse("12").expect("valid"), ZoomRange { min: 12, max: 12 });
-        assert_eq!(ZoomRange::parse("10-14").expect("valid"), ZoomRange { min: 10, max: 14 });
+        assert_eq!(
+            ZoomRange::parse("12").expect("valid"),
+            ZoomRange { min: 12, max: 12 }
+        );
+        assert_eq!(
+            ZoomRange::parse("10-14").expect("valid"),
+            ZoomRange { min: 10, max: 14 }
+        );
         for text in ["14-10", "a", "", "10-", "-10", "30"] {
             assert!(ZoomRange::parse(text).is_err(), "{text:?} should fail");
         }

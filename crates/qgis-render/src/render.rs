@@ -107,11 +107,10 @@ impl RenderSettings {
             .extension()
             .and_then(|extension| extension.to_str())
             .unwrap_or_default();
-        let format = ImageFormat::from_extension(extension).ok_or_else(|| {
-            Error::UnknownImageFormat {
+        let format =
+            ImageFormat::from_extension(extension).ok_or_else(|| Error::UnknownImageFormat {
                 path: output.to_path_buf(),
-            }
-        })?;
+            })?;
         Ok(Self {
             output: output.to_path_buf(),
             format,

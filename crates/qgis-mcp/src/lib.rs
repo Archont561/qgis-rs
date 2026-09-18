@@ -20,10 +20,12 @@
 //! The `_report` helpers are the pure half of each tool: they take plain
 //! arguments and return typed values, which is what the tests exercise.
 
-use qgis_render::{Crs, Error as RenderError, Extent, Project, RenderSettings, TilePlan, ZoomRange};
+use qgis_render::{
+    Crs, Error as RenderError, Extent, Project, RenderSettings, TilePlan, ZoomRange,
+};
 use rmcp::{
-    ErrorData, ServiceExt, handler::server::wrapper::Parameters, tool, tool_handler, tool_router,
-    transport::stdio,
+    handler::server::wrapper::Parameters, tool, tool_handler, tool_router, transport::stdio,
+    ErrorData, ServiceExt,
 };
 
 /// The implementation name reported during the MCP handshake.
@@ -64,9 +66,13 @@ pub struct ProjectInfoParams {
 pub struct RenderMapParams {
     #[schemars(description = "Path to a .qgs or .qgz project file.")]
     pub project: String,
-    #[schemars(description = "Where to write the image; the extension picks the format (.png, .jpg, .webp, .svg, .pdf).")]
+    #[schemars(
+        description = "Where to write the image; the extension picks the format (.png, .jpg, .webp, .svg, .pdf)."
+    )]
     pub output: String,
-    #[schemars(description = "Area to render in EPSG:4326, as \"minx,miny,maxx,maxy\". Defaults to the full extent.")]
+    #[schemars(
+        description = "Area to render in EPSG:4326, as \"minx,miny,maxx,maxy\". Defaults to the full extent."
+    )]
     pub extent: Option<String>,
     #[schemars(description = "Image width in pixels. Defaults to 1024.")]
     pub width: Option<u32>,
@@ -237,8 +243,9 @@ impl QgisMcpServer {
             server: SERVER_NAME.to_string(),
             version: qgis_render::VERSION.to_string(),
             tools,
-            note: "tools with needs_qgis_backend = true fail until qgis-render gains a QGIS backend"
-                .to_string(),
+            note:
+                "tools with needs_qgis_backend = true fail until qgis-render gains a QGIS backend"
+                    .to_string(),
         }
     }
 
@@ -374,15 +381,16 @@ impl QgisMcpServer {
         report(&Self::capabilities_report())
     }
 
-    #[tool(description = "Describe a coordinate reference system: its name, units and whether it is geographic.")]
-    fn crs_info(
-        &self,
-        Parameters(params): Parameters<CrsInfoParams>,
-    ) -> Result<String, ErrorData> {
+    #[tool(
+        description = "Describe a coordinate reference system: its name, units and whether it is geographic."
+    )]
+    fn crs_info(&self, Parameters(params): Parameters<CrsInfoParams>) -> Result<String, ErrorData> {
         report(&Self::crs_info_report(&params.auth_id)?)
     }
 
-    #[tool(description = "Count and enumerate the XYZ tiles that cover an EPSG:4326 area over a range of zoom levels.")]
+    #[tool(
+        description = "Count and enumerate the XYZ tiles that cover an EPSG:4326 area over a range of zoom levels."
+    )]
     fn plan_tiles(
         &self,
         Parameters(params): Parameters<PlanTilesParams>,
@@ -390,7 +398,9 @@ impl QgisMcpServer {
         report(&Self::plan_tiles_report(&params.bounds, &params.zoom)?)
     }
 
-    #[tool(description = "Describe a QGIS project file: its format, size and where to find it. Layer details need the QGIS backend.")]
+    #[tool(
+        description = "Describe a QGIS project file: its format, size and where to find it. Layer details need the QGIS backend."
+    )]
     fn project_info(
         &self,
         Parameters(params): Parameters<ProjectInfoParams>,

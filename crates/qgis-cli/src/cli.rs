@@ -251,7 +251,15 @@ mod tests {
     #[test]
     fn parses_tiles_with_a_dry_run() {
         let cli = Cli::try_parse_from([
-            "qgis-cli", "tiles", "map.qgs", "-z", "10-14", "-b", "14,50,15,51", "-o", "tiles/",
+            "qgis-cli",
+            "tiles",
+            "map.qgs",
+            "-z",
+            "10-14",
+            "-b",
+            "14,50,15,51",
+            "-o",
+            "tiles/",
             "--dry-run",
         ])
         .expect("valid arguments");
@@ -288,7 +296,13 @@ mod tests {
     #[test]
     fn parses_export_and_info() {
         let cli = Cli::try_parse_from([
-            "qgis-cli", "export", "map.qgs", "--layer", "buildings", "--bbox", "14,50,15,51",
+            "qgis-cli",
+            "export",
+            "map.qgs",
+            "--layer",
+            "buildings",
+            "--bbox",
+            "14,50,15,51",
         ])
         .expect("valid arguments");
         assert!(matches!(cli.command, Command::Export(_)));

@@ -130,7 +130,10 @@ mod tests {
     #[test]
     fn round_trips_through_display() {
         let extent = Extent::new(14.0, 50.0, 15.0, 51.0);
-        assert_eq!(Extent::parse(&extent.to_string()).expect("round trip"), extent);
+        assert_eq!(
+            Extent::parse(&extent.to_string()).expect("round trip"),
+            extent
+        );
     }
 
     #[test]

@@ -7,7 +7,7 @@
 
 use std::path::{Path, PathBuf};
 
-use anyhow::{Context, Result, bail};
+use anyhow::{bail, Context, Result};
 use qgis_render::{Extent, Project, RenderSettings, TilePlan, ZoomRange};
 use qgis_server::{Server, ServerConfig};
 
@@ -141,9 +141,9 @@ pub fn parse_extent_rows(text: &str) -> Result<Vec<(String, Extent)>> {
             let field = fields.next().ok_or_else(|| {
                 anyhow::anyhow!("line {}: expected \"name,minx,miny,maxx,maxy\"", index + 1)
             })?;
-            *slot = field.parse::<f64>().map_err(|_| {
-                anyhow::anyhow!("line {}: {:?} is not a number", index + 1, field)
-            })?;
+            *slot = field
+                .parse::<f64>()
+                .map_err(|_| anyhow::anyhow!("line {}: {:?} is not a number", index + 1, field))?;
         }
         let extent = Extent::new(values[0], values[1], values[2], values[3]);
         if !extent.is_valid() {
@@ -197,7 +197,11 @@ fn serve(args: ServeArgs) -> Result<()> {
     }
 
     let server = Server::new(config);
-    println!("serving {} on http://{}/", what_is_served(&server), server.address());
+    println!(
+        "serving {} on http://{}/",
+        what_is_served(&server),
+        server.address()
+    );
     println!("  /wms  /wfs  /tiles/{{z}}/{{x}}/{{y}}.png  /collections  /health");
     server.serve()?;
     Ok(())

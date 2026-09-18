@@ -5,12 +5,7 @@ use walkdir::WalkDir;
 
 /// Qt modules required by QGIS headers.
 /// Add new modules here as the compiler asks for them.
-const QT_MODULES: &[&str] = &[
-    "QtCore",
-    "QtGui",
-    "QtWidgets",
-    "QtXml",
-];
+const QT_MODULES: &[&str] = &["QtCore", "QtGui", "QtWidgets", "QtXml"];
 
 fn main() -> Result<()> {
     let out_dir = PathBuf::from(env::var("OUT_DIR")?);
@@ -30,7 +25,11 @@ fn main() -> Result<()> {
         .unwrap_or_else(|_| {
             let qt5 = conda.join("include/qt");
             let qt6 = conda.join("include/qt6");
-            if qt5.exists() { qt5 } else { qt6 }
+            if qt5.exists() {
+                qt5
+            } else {
+                qt6
+            }
         });
 
     let qgis_lib = env::var("QGIS_LIB_DIR")
@@ -121,8 +120,7 @@ fn glob(dir: &str, ext: &str) -> Result<Vec<String>> {
         .filter_map(|e| e.ok())
         .filter(|e| {
             let p = e.path();
-            let name =
-                p.file_name().and_then(|n| n.to_str()).unwrap_or("");
+            let name = p.file_name().and_then(|n| n.to_str()).unwrap_or("");
             p.is_file()
                 && p.extension().and_then(|x| x.to_str()) == Some(ext)
                 && name != "lib.rs"

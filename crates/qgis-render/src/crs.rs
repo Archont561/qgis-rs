@@ -29,7 +29,12 @@ pub enum Units {
 const KNOWN: &[(&str, &str, Units, bool)] = &[
     ("EPSG:4326", "WGS 84", Units::Degrees, true),
     ("EPSG:4258", "ETRS89", Units::Degrees, true),
-    ("EPSG:3857", "WGS 84 / Pseudo-Mercator", Units::Meters, false),
+    (
+        "EPSG:3857",
+        "WGS 84 / Pseudo-Mercator",
+        Units::Meters,
+        false,
+    ),
     ("EPSG:32633", "WGS 84 / UTM zone 33N", Units::Meters, false),
     ("EPSG:2180", "ETRS89 / Poland CS92", Units::Meters, false),
 ];

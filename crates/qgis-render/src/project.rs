@@ -103,11 +103,10 @@ impl Project {
             .extension()
             .and_then(|extension| extension.to_str())
             .unwrap_or_default();
-        let format = ProjectFormat::from_extension(extension).ok_or_else(|| {
-            Error::UnsupportedProject {
+        let format =
+            ProjectFormat::from_extension(extension).ok_or_else(|| Error::UnsupportedProject {
                 path: path.to_path_buf(),
-            }
-        })?;
+            })?;
         Ok(Self {
             path: path.to_path_buf(),
             format,
@@ -246,8 +245,14 @@ mod tests {
 
     #[test]
     fn infers_formats_from_extensions() {
-        assert_eq!(ProjectFormat::from_extension("QGS"), Some(ProjectFormat::Qgs));
-        assert_eq!(ProjectFormat::from_extension("qgz"), Some(ProjectFormat::Qgz));
+        assert_eq!(
+            ProjectFormat::from_extension("QGS"),
+            Some(ProjectFormat::Qgs)
+        );
+        assert_eq!(
+            ProjectFormat::from_extension("qgz"),
+            Some(ProjectFormat::Qgz)
+        );
         assert_eq!(ProjectFormat::from_extension("png"), None);
         assert_eq!(ProjectFormat::Qgs.extension(), "qgs");
     }
