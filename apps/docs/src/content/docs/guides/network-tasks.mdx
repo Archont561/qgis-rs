@@ -1,0 +1,515 @@
+---
+title: Network & Tasks
+description: Use QgsNetworkAccessManager and QgsTaskManager via qgis_sdk — proxy, auth, background work
+---
+
+# Network & Tasks — qgis_sdk.network and qgis_sdk.tasks
+
+Build responsive QGIS plugins that fetch data without bypassing QGIS proxy/auth and run heavy work without freezing UI.
+
+## Overview
+
+- **Network**: `qgis_sdk.network` wraps `QgsNetworkAccessManager.instance()` — respects QGIS proxy, cache, auth infrastructure. Fallback to `urllib` for testing.
+- **Tasks**: `qgis_sdk.tasks` wraps `QgsApplication.taskManager()` / `QgsTask` — background threads with progress, cancellation, `on_finished`. Fallback to `ThreadPoolExecutor`.
+
+Both are included in scaffold:
+
+```bash
+qgis-plugin new my_plugin --web
+# Generates:
+# my_plugin/services/network.py — fetch_geojson, download_file examples
+# my_plugin/services/tasks.py — run_heavy_task, ProcessingAlgRunnerTask examples
+# my_plugin/__init__.py — toolbar actions fetch_data, run_background_task
+```
+
+## Network — Fetch Data
+
+### Why not requests?
+
+QGIS provides `QgsNetworkAccessManager.instance()` which handles:
+- Proxy from QGIS settings (`Settings → Options → Network`)
+- Cache (`QgsNetworkAccessManager.setupDefaultProxyAndCache()`)
+- Authentication via `QgsAuthManager` (`auth_cfg`)
+
+Many plugins use `requests` or `httplib2` and bypass these. `qgis_sdk.network` uses QGIS when available.
+
+### Basic Usage
+
+```python
+from qgis_sdk.network import NetworkManager, fetch_json, download
+
+# Simple GET
+response = NetworkManager.instance().get("https://example.com/api")
+print(response.status_code)
+print(response.text)
+print(response.json())
+response.raise_for_status()
+
+# Convenience
+data = fetch_json("https://example.com/data.geojson")
+text = fetch_text("https://example.com/file.txt")
+path = download("https://example.com/file.zip", "/tmp/file.zip")
+
+# With progress
+def on_progress(pct):
+    print(f"{pct}%")
+
+path = download("https://example.com/large.zip", "/tmp/large.zip",
+                progress_callback=on_progress)
+
+# With auth config (QGIS auth infrastructure)
+data = fetch_json("https://example.com/secure", auth_cfg="my_auth_id")
+mgr = NetworkManager(auth_cfg="my_auth_id", timeout=15000)
+response = mgr.get("https://example.com/secure")
+```
+
+### Auth — NetworkAccessManager Helper
+
+From [QGIS authentication cookbook](https://docs.qgis.org/3.44/en/docs/pyqgis_developer_cookbook/authentication.html) — helper that returns `(response, content)` and supports `exception_class`.
+
+```python
+from qgis_sdk.network import NetworkAccessManager, NetworkError
+
+http = NetworkAccessManager(auth_cfg="my_auth", timeout=15000)
+
+try:
+    response, content = http.request("https://example.com/api")
+    # content is bytes, response.json() parses
+    data = response.json()
+except NetworkError as e:
+    print(f"Failed: {e}")
+    print(f"Response: {e.response}")
+
+# Custom exception class
+class MyNetworkError(Exception): pass
+
+http = NetworkAccessManager(auth_cfg="my_auth", exception_class=MyNetworkError)
+try:
+    response, content = http.request("https://example.com/api")
+except MyNetworkError:
+    pass
+
+# GET / POST shortcuts
+response, content = http.get("https://example.com/api")
+response, content = http.post("https://example.com/api", data={"key": "value"})
+```
+
+### Async — ContentFetcher
+
+Wrapper around `QgsNetworkContentFetcher` — async with `finished` signal, plus blocking via `QEventLoop`.
+
+```python
+from qgis_sdk.network import ContentFetcher
+
+# Async (QGIS)
+fetcher = ContentFetcher(auth_cfg="my_auth")
+fetcher.fetch("https://example.com/data.json")
+fetcher.finished.connect(lambda: print(fetcher.content_as_string()))
+# In QGIS, finished is actual Qt signal
+# Without QGIS, it's mock that calls immediately after sync fetch
+
+# Blocking
+fetcher = ContentFetcher()
+response = fetcher.fetch_blocking("https://example.com/data.json", timeout=15000)
+print(fetcher.content_as_string())
+print(fetcher.content_as_bytes())
+print(fetcher.reply)  # QNetworkReply if available
+```
+
+### Inside Plugin
+
+```python
+from qgis_sdk import Plugin, action, toolbar
+from qgis_sdk.network import NetworkManager, NetworkAccessManager
+
+class MyPlugin(Plugin):
+    name = "My Plugin"
+
+    @toolbar("My Toolbar")
+    @action(tooltip="Fetch data")
+    def fetch_data(self, iface):
+        try:
+            # Respects QGIS proxy/cache/auth
+            response = NetworkManager.instance().get("https://example.com/api", auth_cfg="my_auth")
+            response.raise_for_status()
+            data = response.json()
+            iface.messageBar().pushMessage(f"Fetched {len(data)} items")
+        except Exception as e:
+            iface.messageBar().pushMessage(f"Network error: {e}")
+
+    @toolbar("My Toolbar")
+    @action(tooltip="Download file")
+    def download_file(self, iface):
+        def on_progress(pct):
+            # Could update progress bar
+            print(f"{pct}%")
+
+        try:
+            path = NetworkManager.instance().download(
+                "https://example.com/file.zip",
+                "/tmp/file.zip",
+                progress_callback=on_progress
+            )
+            iface.messageBar().pushMessage(f"Downloaded to {path}")
+        except Exception as e:
+            iface.messageBar().pushMessage(f"Download failed: {e}")
+```
+
+### Services Pattern
+
+Scaffold generates `services/network.py`:
+
+```python
+# my_plugin/services/network.py
+from qgis_sdk.network import NetworkManager, NetworkAccessManager, fetch_json, download, NetworkError
+from pathlib import Path
+
+def fetch_geojson(url: str, auth_cfg: str | None = None) -> dict:
+    return fetch_json(url, auth_cfg=auth_cfg)
+
+def fetch_with_auth(url: str, auth_cfg: str) -> tuple:
+    http = NetworkAccessManager(auth_cfg=auth_cfg, timeout=15000)
+    try:
+        response, content = http.request(url)
+        return response, content
+    except NetworkError as e:
+        print(f"Network error: {e}")
+        raise
+
+def download_file(url: str, dest, progress_callback=None) -> Path:
+    return download(url, dest, progress_callback=progress_callback)
+```
+
+## Tasks — Background Work
+
+### Why Tasks?
+
+QGIS UI runs in main thread. Heavy work (processing, network, calculations) freezes UI if run directly. `QgsTask` runs in background thread, reports progress, supports cancellation.
+
+Global manager `QgsApplication.taskManager()` handles:
+- Thread pool
+- Progress bar in status bar
+- Cancellation
+- Dependencies
+
+`qgis_sdk.tasks` wraps this with Pythonic API + fallback to `ThreadPoolExecutor` for testing.
+
+### Basic Usage
+
+```python
+from qgis_sdk.tasks import TaskManager, Task
+from time import sleep
+
+def do_heavy_work(task, wait_time):
+    for i in range(100):
+        sleep(wait_time / 100.0)
+        task.set_progress(i)
+        if task.is_canceled():
+            return None
+    return {"result": 42}
+
+def on_finished(exception, result):
+    if exception is None:
+        print(f"Completed: {result}")
+    else:
+        print(f"Failed: {exception}")
+
+task = Task.from_function("My heavy work", do_heavy_work, wait_time=2, on_finished=on_finished)
+TaskManager.instance().add_task(task)
+```
+
+### Decorator
+
+```python
+from qgis_sdk.tasks import task, TaskManager
+
+@task("My background task", can_cancel=True)
+def my_background_task(task, value=10):
+    from time import sleep
+    for i in range(100):
+        sleep(0.01)
+        task.set_progress(i)
+        if task.is_canceled():
+            return None
+    return value * 2
+
+# Create task instance (decorator returns factory)
+t = my_background_task(value=10)
+TaskManager.instance().add_task(t)
+
+# With on_finished
+def on_finished(exception, result):
+    print(f"Done: {result}")
+
+@task("My task", on_finished=on_finished)
+def my_task(task):
+    return 42
+
+TaskManager.instance().add_task(my_task())
+
+# Convenience
+from qgis_sdk.tasks import run_task
+run_task(my_background_task, value=10, description="My task", on_finished=on_finished)
+```
+
+### Subclass
+
+```python
+from qgis_sdk.tasks import Task, TaskManager
+
+class MyTask(Task):
+    def __init__(self, description):
+        super().__init__(description)
+
+    def run(self):
+        # Heavy work
+        self.set_progress(50)
+        # Check cancellation
+        if self.is_canceled():
+            return False
+        return True
+
+    def finished(self, result):
+        print(f"Finished: {result}")
+
+TaskManager.instance().add_task(MyTask("My task"))
+```
+
+### Processing Algorithm in Background
+
+From [QGIS tasks docs](https://docs.qgis.org/3.44/en/docs/pyqgis_developer_cookbook/tasks.html):
+
+```python
+from qgis_sdk.tasks import ProcessingAlgRunnerTask, TaskManager
+from qgis.core import QgsApplication, QgsProcessingContext, QgsProcessingFeedback
+
+context = QgsProcessingContext()
+feedback = QgsProcessingFeedback()
+params = {"INPUT": layer, "DISTANCE": 10, "OUTPUT": "memory:"}
+
+# qgis_sdk wrapper
+task = ProcessingAlgRunnerTask("qgis:buffer", params, context, feedback,
+                                on_executed=lambda successful, results: print(results))
+# Add via QGIS manager
+QgsApplication.taskManager().addTask(task.qgis_task)
+
+# Or with signal
+def on_executed(successful, results):
+    if successful:
+        print(f"Completed: {results}")
+    else:
+        print("Failed")
+
+task = ProcessingAlgRunnerTask("qgis:randompointsinextent", params, context, feedback)
+task.qgis_task.executed.connect(on_executed)
+QgsApplication.taskManager().addTask(task.qgis_task)
+
+# QGIS docs original
+from qgis.core import QgsProcessingAlgRunnerTask
+alg = QgsApplication.processingRegistry().algorithmById("qgis:randompointsinextent")
+task = QgsProcessingAlgRunnerTask(alg, params, context, feedback)
+task.executed.connect(lambda successful, results: print(results))
+QgsApplication.taskManager().addTask(task)
+```
+
+### Inside Plugin
+
+```python
+from qgis_sdk import Plugin, action, toolbar
+from qgis_sdk.tasks import TaskManager, Task, task
+
+class MyPlugin(Plugin):
+    @toolbar("My Toolbar")
+    @action(tooltip="Run background task")
+    def run_background_task(self, iface):
+        def do_work(task, wait_time):
+            from time import sleep
+            for i in range(100):
+                sleep(wait_time / 100.0)
+                task.set_progress(i)
+                if task.is_canceled():
+                    return None
+            return {"result": 42}
+
+        def on_finished(exception, result):
+            if exception is None:
+                iface.messageBar().pushMessage(f"Task completed: {result}")
+            else:
+                iface.messageBar().pushMessage(f"Task failed: {exception}")
+
+        t = Task.from_function("Heavy work", do_work, wait_time=2, on_finished=on_finished)
+        TaskManager.instance().add_task(t)
+        iface.messageBar().pushMessage("Task started in background")
+
+    @toolbar("My Toolbar")
+    @action(tooltip="Run processing in background")
+    def run_processing(self, iface):
+        from qgis.core import QgsProcessingContext, QgsProcessingFeedback
+        from qgis_sdk.tasks import ProcessingAlgRunnerTask
+        from qgis.core import QgsApplication
+
+        context = QgsProcessingContext()
+        feedback = QgsProcessingFeedback()
+        params = {"INPUT": iface.activeLayer(), "DISTANCE": 10, "OUTPUT": "memory:"}
+
+        def on_executed(successful, results):
+            if successful:
+                iface.messageBar().pushMessage(f"Buffer completed")
+
+        task = ProcessingAlgRunnerTask("qgis:buffer", params, context, feedback, on_executed=on_executed)
+        QgsApplication.taskManager().addTask(task.qgis_task)
+```
+
+### Services Pattern
+
+Scaffold generates `services/tasks.py`:
+
+```python
+# my_plugin/services/tasks.py
+from qgis_sdk.tasks import TaskManager, Task, task, run_task, ProcessingAlgRunnerTask
+
+def run_heavy_task(wait_time=2, on_finished=None):
+    def do_work(task, wait_time):
+        from time import sleep
+        for i in range(100):
+            sleep(wait_time / 100.0)
+            task.set_progress(i)
+            if task.is_canceled():
+                return None
+        return {"result": 42}
+
+    def finished(exception, result=None):
+        if on_finished:
+            on_finished(exception, result)
+
+    t = Task.from_function(f"Heavy work {wait_time}s", do_work, wait_time=wait_time, on_finished=finished)
+    TaskManager.instance().add_task(t)
+    return t
+
+@task("My background task", can_cancel=True)
+def my_background_task(task, value=10):
+    from time import sleep
+    for i in range(100):
+        sleep(0.01)
+        task.set_progress(i)
+        if task.is_canceled():
+            return None
+    return value * 2
+```
+
+## Combined — Network + Tasks
+
+Fetch data in background without freezing UI:
+
+```python
+from qgis_sdk.network import NetworkManager
+from qgis_sdk.tasks import TaskManager, Task
+
+def fetch_in_background(task, url):
+    task.set_progress(0)
+    # Note: NetworkManager blocking uses QEventLoop — okay in task thread?
+    # Better to use urllib directly in task, or use ContentFetcher async in main thread
+    # For simplicity, use fallback request which is urllib
+    from qgis_sdk.network import _fallback_request
+    response = _fallback_request(url)
+    task.set_progress(100)
+    if task.is_canceled():
+        return None
+    return response.json()
+
+def on_finished(exception, result):
+    if exception is None:
+        print(f"Fetched: {result}")
+    else:
+        print(f"Failed: {exception}")
+
+t = Task.from_function("Fetch data", fetch_in_background, url="https://example.com/api", on_finished=on_finished)
+TaskManager.instance().add_task(t)
+
+# Or download with progress
+def download_task(task, url, dest):
+    def on_progress(pct):
+        task.set_progress(pct)
+
+    path = NetworkManager.instance().download(url, dest, progress_callback=on_progress)
+    return str(path)
+
+TaskManager.instance().add_task(
+    Task.from_function("Download", download_task, url="https://example.com/file.zip", dest="/tmp/file.zip", on_finished=on_finished)
+)
+```
+
+## Testing
+
+Both modules have fakes for testing without QGIS.
+
+### Network
+
+```python
+# conftest.py
+pytest_plugins = ["qgis_sdk.testing"]
+
+def test_network(fake_network_manager):
+    resp = fake_network_manager.get("https://example.com/api")
+    assert resp.ok
+    assert resp.json()["mock"] is True
+
+def test_download(fake_network_manager, tmp_path):
+    dest = tmp_path / "file.zip"
+    fake_network_manager.download("https://example.com/file.zip", dest)
+    assert dest.exists()
+```
+
+### Tasks
+
+```python
+def test_task_manager(fake_task_manager):
+    def work(task):
+        task.set_progress(50)
+        return 42
+
+    t = fake_task_manager.add_task(work, description="Test")
+    assert t.is_finished()
+    assert t.progress() == 50
+    assert t.result() == 42
+
+def test_task_decorator(fake_task_manager):
+    from qgis_sdk.tasks import task
+
+    @task("My task")
+    def my_task(task, value=10):
+        return value * 2
+
+    t = fake_task_manager.add_task(my_task, value=10)
+    assert t.is_finished()
+```
+
+Scaffold generates `tests/test_dialog.py` with both:
+
+```python
+def test_network(fake_network_manager):
+    resp = fake_network_manager.get("https://example.com/api")
+    assert resp.ok
+
+def test_tasks(fake_task_manager):
+    def work(task):
+        task.set_progress(100)
+        return 42
+    t = fake_task_manager.add_task(work, description="Test task")
+    assert t.is_finished()
+```
+
+Run:
+
+```bash
+pytest # no QGIS needed — 84+ tests
+```
+
+## See Also
+
+- [Network Reference](/reference/network)
+- [Tasks Reference](/reference/tasks)
+- [Testing Fixtures](/reference/testing)
+- [Testing Guide](/guides/testing-fixtures)
+- [QGIS Network Cookbook](https://docs.qgis.org/3.44/en/docs/pyqgis_developer_cookbook/authentication.html)
+- [QGIS Tasks Cookbook](https://docs.qgis.org/3.44/en/docs/pyqgis_developer_cookbook/tasks.html)

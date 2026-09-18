@@ -1,0 +1,430 @@
+---
+title: Network — QgsNetworkAccessManager
+description: Requests-like wrapper around QgsNetworkAccessManager and QgsNetworkContentFetcher with fallback to urllib
+---
+
+# Network — qgis_sdk.network
+
+Requests-like wrapper around QGIS network infrastructure that respects QGIS proxy, cache, and authentication.
+
+Many plugins incorrectly use `httplib2` or `requests` and bypass QGIS settings. This module uses `QgsNetworkAccessManager.instance()` when QGIS is available and falls back to `urllib` for testing — but with a **requests-like API** (`get/post/Session/params/json/raise_for_status`).
+
+```python
+import qgis_sdk.network as requests
+
+response = requests.get("https://example.com/api", params={"q": "test"})
+print(response.status_code, response.text)
+print(response.json())
+response.raise_for_status()
+
+# Session keeps headers, auth_cfg, timeout
+session = requests.Session(auth_cfg="my_auth", headers={"User-Agent": "MyPlugin/1.0"})
+response = session.get("https://example.com/secure")
+```
+
+## Installation
+
+```bash
+pip install qgis-sdk
+```
+
+## Quick Start — requests-like
+
+```python
+from qgis_sdk.network import get, post, Session, fetch_json, download
+
+# Simple GET — respects QGIS proxy/cache/auth, requests-like
+response = get("https://example.com/api", params={"q": "test"})
+print(response.status_code, response.text, response.headers)
+print(response.json())
+response.raise_for_status()
+
+# POST with json — like requests
+response = post("https://example.com/api", json={"key": "value"})
+print(response.ok)
+
+# With auth config (QGIS auth infrastructure)
+from qgis_sdk.network import fetch_json
+data = fetch_json("https://example.com/secure", params={"limit": 10}, auth_cfg="my_auth_id")
+
+# Session — like requests.Session
+session = Session(auth_cfg="my_auth", headers={"User-Agent": "MyPlugin/1.0"}, timeout=15000)
+response = session.get("https://example.com/secure", params={"limit": 10})
+response.raise_for_status()
+
+with Session() as s:
+    r = s.get("https://example.com")
+
+# Download with progress
+path = download("https://example.com/file.zip", "/tmp/file.zip",
+                progress_callback=lambda p: print(f"{p}%"), params={"token": "abc"})
+
+# Async via ContentFetcher
+from qgis_sdk.network import ContentFetcher
+fetcher = ContentFetcher()
+fetcher.fetch("https://example.com/data.json", params={"q": "test"})
+fetcher.finished.connect(lambda: print(fetcher.content_as_string()))
+
+# Blocking fetch
+response = fetcher.fetch_blocking("https://example.com/data.json")
+print(response.text)
+```
+
+## API
+
+### NetworkResponse — requests.Response-like
+
+```python
+@dataclass
+class NetworkResponse:
+    url: str
+    status_code: int
+    content: bytes
+    headers: Dict[str, str]
+    error: Optional[str]
+    error_code: int
+    encoding: str = "utf-8"
+    elapsed: float = 0.0
+    reason: str = "OK"
+    cookies: Dict[str, str] = {}
+    history: List[NetworkResponse] = []
+
+    @property
+    def ok(self) -> bool: ...  # 200 <= status < 400 and no error
+    @property
+    def text(self) -> str: ...
+    def json(self) -> Any: ...
+    def raise_for_status(self): ...  # raises HTTPError
+    def iter_content(self, chunk_size=1024) -> Iterator[bytes]: ...
+    def iter_lines(self) -> Iterator[bytes]: ...
+    @property
+    def is_redirect(self) -> bool: ...
+```
+
+Requests compatibility:
+- `status_code`, `content`, `text`, `headers`, `url`, `encoding`, `elapsed`, `reason`, `ok`, `cookies`, `history`
+- `json()`, `raise_for_status()`, `iter_content()`, `iter_lines()`
+- `__bool__` returns `ok`
+
+### Session — requests.Session-like
+
+```python
+from qgis_sdk.network import Session
+
+session = Session(auth_cfg="my_auth", timeout=15000,
+                  headers={"User-Agent": "MyPlugin/1.0"},
+                  params={"api_key": "abc"})
+
+# Context manager
+with Session() as s:
+    response = s.get("https://example.com/api")
+
+# Methods — like requests
+response = session.request(method, url, params=None, data=None, json=None, headers=None, auth_cfg=None, timeout=None)
+response = session.get(url, params=None, headers=None, auth_cfg=None, timeout=None)
+response = session.post(url, data=None, json=None, params=None, headers=None)
+response = session.put(url, data=None, json=None, ...)
+response = session.patch(url, data=None, json=None, ...)
+response = session.delete(url, params=None, headers=None)
+response = session.head(url, ...)
+response = session.options(url, ...)
+
+# QGIS-specific
+fetcher = session.fetch(url, params=None, auth_cfg=None)
+response = session.fetch_blocking(url, params=None, timeout=None)
+path = session.download(url, dest_path, progress_callback=None, params=None, auth_cfg=None)
+```
+
+Session merges its `headers` and `params` with per-request ones, keeps `auth_cfg` and `timeout`.
+
+### NetworkManager — QGIS singleton + requests-like
+
+Wrapper around `QgsNetworkAccessManager.instance()`.
+
+```python
+from qgis_sdk.network import NetworkManager
+
+mgr = NetworkManager(auth_cfg="my_auth", timeout=15000, headers={"User-Agent": "MyPlugin"})
+mgr = NetworkManager.instance()  # singleton
+
+# Setup from QGIS settings
+mgr.setup_proxy_and_cache()
+proxy = mgr.fallback_proxy()
+
+# Requests-like shortcuts — now with params, json
+response = mgr.get(url, params=None, headers=None, auth_cfg=None, timeout=None)
+response = mgr.post(url, data=None, json=None, params=None, headers=None)
+response = mgr.put(url, data=None, json=None, params=None, headers=None)
+response = mgr.patch(url, data=None, json=None, params=None, headers=None)
+response = mgr.delete(url, params=None, headers=None)
+response = mgr.head(url, params=None, headers=None)
+response = mgr.options(url, params=None, headers=None)
+
+response = mgr.request(url, method="GET", data=None, json=None, params=None, headers=None,
+                       auth_cfg=None, blocking=True, timeout=None)
+
+# ContentFetcher
+fetcher = mgr.fetch(url, params=None)
+response = mgr.fetch_blocking(url, params=None, timeout=None)
+
+# Download
+path = mgr.download(url, dest_path, progress_callback=None, params=None, auth_cfg=None)
+
+# Create Session
+session = mgr.session(auth_cfg="my_auth", headers={"User-Agent": "MyPlugin"})
+```
+
+When QGIS available:
+- Uses `QgsNetworkAccessManager.instance().get/post/put/deleteResource/createRequest`
+- Waits via `QEventLoop` + `QTimer` timeout
+- Reads `HttpStatusCodeAttribute`, `errorString()`, `rawHeaderList()`
+
+Fallback (no QGIS):
+- Uses `urllib.request.urlopen` with `_build_url` for params and `_prepare_data` for json/form
+- Same `NetworkResponse` interface
+
+### Top-level functions — requests.get-like
+
+```python
+import qgis_sdk.network as requests
+
+response = requests.get("https://example.com/api", params={"q": "test"})
+response = requests.post("https://example.com/api", json={"key": "value"})
+response = requests.put("https://example.com/api", json={"update": True})
+response = requests.patch("https://example.com/api", json={"patch": True})
+response = requests.delete("https://example.com/api")
+response = requests.head("https://example.com/api")
+response = requests.options("https://example.com/api")
+response = requests.request("GET", "https://example.com/api", params={"q": "test"})
+
+# Session
+session = requests.Session(auth_cfg="my_auth")
+```
+
+### ContentFetcher
+
+Wrapper around `QgsNetworkContentFetcher`.
+
+```python
+from qgis_sdk.network import ContentFetcher
+
+fetcher = ContentFetcher(auth_cfg=None)
+
+# Async with params
+fetcher.fetch("https://example.com/data.json", params={"q": "test"})
+fetcher.finished.connect(lambda: print(fetcher.content_as_string()))
+
+# Blocking with params
+response = fetcher.fetch_blocking("https://example.com/data.json", params={"q": "test"}, timeout=15000)
+print(fetcher.content_as_string())
+print(fetcher.content_as_bytes())
+print(fetcher.reply)  # QNetworkReply if available
+```
+
+### NetworkAccessManager (Cookbook Helper)
+
+Helper from [QGIS authentication docs](https://docs.qgis.org/3.44/en/docs/pyqgis_developer_cookbook/authentication.html) — now also supports requests-like API.
+
+```python
+from qgis_sdk.network import NetworkAccessManager, RequestException, HTTPError
+
+http = NetworkAccessManager(auth_cfg="my_auth", timeout=15000)
+
+# Old cookbook pattern — returns tuple
+try:
+    response, content = http.request("https://example.com/api")
+    print(content)
+except RequestException as e:
+    print(f"Failed: {e}, response: {e.response}")
+
+# New requests-like — returns response only
+response = http.get("https://example.com/api", params={"q": "test"})
+response.raise_for_status()
+print(response.json())
+
+# Custom exception
+class MyError(Exception): pass
+http = NetworkAccessManager(auth_cfg="my_auth", exception_class=MyError)
+try:
+    response, content = http.request(url)
+except MyError as e:
+    pass
+
+response = http.get(url, params={"q": "test"})
+response = http.post(url, json={"key": "value"})
+response = http.put(url, json={"update": True})
+response = http.patch(url, json={"patch": True})
+response = http.delete(url)
+response = http.head(url)
+```
+
+### Exceptions — requests-like
+
+```python
+from qgis_sdk.network import RequestException, HTTPError, ConnectionError, Timeout, NetworkError
+
+try:
+    response = get("https://example.com/missing")
+    response.raise_for_status()
+except HTTPError as e:
+    print(e)
+    print(e.response)  # NetworkResponse
+
+# Backwards compat
+NetworkError = RequestException
+```
+
+### Convenience Functions
+
+```python
+from qgis_sdk.network import fetch, fetch_json, fetch_text, download
+
+response = fetch("https://example.com/api", params={"q": "test"})
+data = fetch_json("https://example.com/data.json", params={"limit": 10}, auth_cfg="my_auth")
+text = fetch_text("https://example.com/file.txt")
+path = download("https://example.com/file.zip", "/tmp/file.zip", params={"token": "abc"})
+```
+
+## Inside QGIS Plugin — requests-like
+
+```python
+from qgis_sdk.network import get, Session, NetworkManager
+
+class MyPlugin:
+    def fetch_data(self):
+        # Respects QGIS proxy, cache, auth — requests-like
+        try:
+            response = get("https://example.com/api", params={"q": "test"}, auth_cfg="my_auth_id")
+            response.raise_for_status()
+            data = response.json()
+            self.iface.messageBar().pushMessage(f"Fetched {len(data)} items")
+        except Exception as e:
+            self.iface.messageBar().pushMessage(f"Network error: {e}")
+
+    def fetch_with_session(self):
+        session = Session(auth_cfg="my_auth", headers={"User-Agent": "MyPlugin/1.0"})
+        try:
+            response = session.get("https://example.com/api", params={"limit": 10})
+            response.raise_for_status()
+            data = response.json()
+        except Exception as e:
+            self.iface.messageBar().pushMessage(f"Failed: {e}")
+
+    def download_file(self):
+        def on_progress(pct):
+            self.iface.messageBar().pushMessage(f"Downloading {pct}%")
+
+        path = NetworkManager.instance().download(
+            "https://example.com/file.zip",
+            "/tmp/file.zip",
+            params={"token": "abc"},
+            progress_callback=on_progress
+        )
+```
+
+## Testing without QGIS — using own fixtures
+
+```python
+# conftest.py
+pytest_plugins = ["qgis_sdk.testing"]
+
+def test_network(fake_network_manager):
+    # FakeNetworkManager is requests-like, captures requests, returns mock responses
+    fake_network_manager.responses = {
+        "https://example.com/api": FakeNetworkResponse(content=b'{"data": 123}')
+    }
+    resp = fake_network_manager.get("https://example.com/api", params={"q": "test"})
+    assert resp.ok
+    assert resp.json() == {"data": 123}
+    assert len(fake_network_manager.requests) == 1
+    assert "q=test" in fake_network_manager.requests[0]["url"]
+    assert fake_network_manager.requests[0]["method"] == "GET"
+
+def test_network_session(fake_session):
+    # FakeSession is requests.Session-like
+    fake_session.headers = {"User-Agent": "Test"}
+    resp = fake_session.get("https://example.com/api", params={"q": "test"}, headers={"X-Custom": "1"})
+    assert resp.ok
+    assert "User-Agent" in fake_session.requests[0]["headers"]
+    assert "X-Custom" in fake_session.requests[0]["headers"]
+
+    with fake_session as s:
+        r = s.get("https://example.com/api")
+        assert r.ok
+
+def test_network_download(fake_network_manager, tmp_path):
+    dest = tmp_path / "file.zip"
+    fake_network_manager.download("https://example.com/file.zip", dest)
+    assert dest.exists()
+
+def test_content_fetcher(fake_content_fetcher):
+    assert fake_content_fetcher.content_as_string() == '{"ok": true}'
+    called = []
+    fake_content_fetcher.finished.connect(lambda: called.append(True))
+    assert called
+
+def test_requests_like_api(fake_network_manager):
+    resp = fake_network_manager.post("https://example.com/api", json={"key": "val"})
+    assert resp.ok
+    assert fake_network_manager.requests[0]["json"] == {"key": "val"}
+
+    fake_network_manager.put("https://example.com/api", json={"update": True})
+    fake_network_manager.patch("https://example.com/api", json={"patch": True})
+    fake_network_manager.delete("https://example.com/api")
+    fake_network_manager.head("https://example.com/api")
+    fake_network_manager.options("https://example.com/api")
+```
+
+`FakeNetworkResponse`, `FakeNetworkManager`, `FakeSession`, `FakeContentFetcher`:
+
+```python
+from qgis_sdk.testing import FakeNetworkResponse, FakeNetworkManager, FakeSession, FakeContentFetcher
+
+resp = FakeNetworkResponse(url="https://example.com", status_code=200,
+                           content=b'{"ok": true}', headers={"content-type": "application/json"})
+assert resp.ok
+assert resp.json()["ok"] is True
+assert resp.text == '{"ok": true}'
+assert resp.reason == "OK"
+assert list(resp.iter_content(2))
+
+mgr = FakeNetworkManager(responses={
+    "example.com/api": FakeNetworkResponse(url="https://example.com/api", content=b'{"data": 1}'),
+})
+resp = mgr.get("https://example.com/api", params={"q": "test"})
+assert resp.ok
+assert "q=test" in mgr.requests[0]["url"]
+assert mgr.requests[0]["method"] == "GET"
+assert mgr.requests[0]["params"] == {"q": "test"}
+
+session = FakeSession(headers={"User-Agent": "Test"}, params={"api_key": "abc"})
+resp = session.get("https://example.com/api", params={"q": "test"})
+assert "api_key=abc" in resp.url or "q=test" in session.requests[0]["url"]
+
+fetcher = FakeContentFetcher(url="https://example.com", response=resp)
+fetcher.fetch("https://example.com/api", params={"q": "test"})
+fetcher.finished.connect(lambda: print("done"))
+```
+
+## Fallback Behavior
+
+Without QGIS:
+- `NetworkManager` uses `urllib.request.urlopen` with params/json handling
+- `ContentFetcher` does sync fetch via fallback
+- `NetworkAccessManager` delegates to `NetworkManager`
+- All return same `NetworkResponse` with requests-like API
+
+With QGIS:
+- Uses `QgsNetworkAccessManager.instance()`
+- Respects proxy (`setupDefaultProxyAndCache`, `fallbackProxy`)
+- Respects auth (`auth_cfg`)
+- Uses `QEventLoop` for blocking, `QNetworkReply` signals for async
+- Supports params via `_build_url`, json via `_prepare_data`
+
+## See Also
+
+- [Network & Tasks Guide](/guides/network-tasks)
+- [Testing Fixtures](/reference/testing)
+- [QGIS Authentication Cookbook](https://docs.qgis.org/3.44/en/docs/pyqgis_developer_cookbook/authentication.html)
+- [Tasks Reference](/reference/tasks)
+- [Requests Documentation](https://requests.readthedocs.io/)
