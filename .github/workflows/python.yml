@@ -32,6 +32,14 @@ jobs:
         with:
           python-version: "3.11"
 
+      # `maturin develop` installs into the active virtualenv, and setup-python
+      # alone is not one; create it and keep it first on PATH for later steps.
+      - name: Create virtualenv
+        run: |
+          python -m venv .venv
+          echo "VIRTUAL_ENV=$PWD/.venv" >> "$GITHUB_ENV"
+          echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
+
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
