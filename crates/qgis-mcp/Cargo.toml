@@ -1,0 +1,14 @@
+[package]
+name        = "qgis-mcp"
+description = "Model Context Protocol server exposing the qgis-rs engine as tools"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+qgis-render = { workspace = true }
+rmcp        = { workspace = true }
+serde       = { workspace = true }
+serde_json  = { workspace = true }
+schemars    = { workspace = true }
+anyhow      = { workspace = true }

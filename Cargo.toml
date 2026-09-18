@@ -17,3 +17,18 @@ xshell = "0.2"
 cc = "1.2.65"
 thiserror = "2.0.18"
 qgis-sys = { path = "crates/qgis-sys" }
+
+# ── ecosystem crates ──────────────────────────────────────────────────────────
+qgis-render = { path = "crates/qgis-render" }
+qgis-server = { path = "crates/qgis-server" }
+qgis-mcp    = { path = "crates/qgis-mcp" }
+
+# ── third-party ───────────────────────────────────────────────────────────────
+clap = { version = "4.6", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+# rmcp is the official Model Context Protocol Rust SDK. `transport-io` is the
+# stdio transport, `macros` provides #[tool_router]/#[tool], and `schemars`
+# generates the JSON Schema each tool advertises as its input schema.
+rmcp = { version = "3.4", features = ["server", "macros", "transport-io", "schemars"] }
+schemars = "1.0"
+tokio = { version = "1", features = ["rt", "rt-multi-thread", "io-std", "macros", "signal"] }
