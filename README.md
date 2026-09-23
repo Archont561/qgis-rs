@@ -433,6 +433,27 @@ pixi run lint
 pixi run fmt
 ```
 
+#### Dev container (Pixi + OpenCode)
+
+In VS Code, run **Dev Containers: Reopen in Container**. The container uses the
+[official Pixi image](https://github.com/prefix-dev/pixi-docker) (v0.81.0) with
+Node.js 22. On creation it installs `opencode-ai` via npm for the non-root
+`vscode` user and attempts `opencode models --refresh` (see the
+[OpenCode CLI docs](https://opencode.ai/docs/cli/)). No provider credentials
+are required or stored in this repository. To use a provider, run
+`opencode auth login` interactively in the container.
+
+The large QGIS/Rust Pixi environment is **not** installed automatically. Once
+inside the container, install it when needed:
+
+```bash
+pixi install -e default
+pixi run -e default test
+```
+
+A model refresh needs network access and OpenCode may use its bundled catalog
+when offline. Retry with `opencode models --refresh` when connected.
+
 ### Building Documentation
 
 ```bash
