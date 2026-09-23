@@ -1,0 +1,45 @@
+# publish-sandbox.yml — pack, verify, and publish the reviewed sandbox bundles
+# declared in .pixi-sandbox.toml.
+#
+# This is a thin consumer wrapper around the pixi-sandbox *reusable* workflow:
+# all of the logic (plan → matrix → per native runner: install → pack with a
+# checksum-verified release binary → doctor → publish one orphan branch) lives
+# upstream at Archont561/pixi-sandbox and is checked out at the pinned release
+# ref below. Copying it here would merely create drift.
+#
+# Release mode (not local mode): the upstream workflow downloads the standalone
+# release binary via its setup-pixi-sandbox composite action, so this repo never
+# needs the pixi-sandbox crate or a cargo build just to publish environments.
+#
+# The `release-ref` is the immutable commit that supplies both the reusable
+# workflow (via the `uses:` SHA) and the composite actions. Bump version and
+# ref together, and only after the upstream release has passed its own airlock.
+
+name: publish-sandbox
+
+on:
+  # Auto-publish after CI succeeds on main.
+  workflow_run:
+    workflows: ["CI"]
+    types:
+      - completed
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sandbox:
+    name: publish sandbox bundles
+    uses: Archont561/pixi-sandbox/.github/workflows/publish-sandbox.yml@3d7a61825c165c161d4e13df78ee589d0eafc2f1 # main @ 2026-09-23
+    with:
+      # Environments and platforms come from the reviewed .pixi-sandbox.toml;
+      # leave the override inputs empty so the upstream `plan` job reads config.
+      config: .pixi-sandbox.toml
+      release-repository: Archont561/pixi-sandbox
+      release-ref: 3d7a61825c165c161d4e13df78ee589d0eafc2f1
+      release-version: v0.2.0
+      checksums-asset: SHA256SUMS
+    secrets:
+      SANDBOX_PUSH_TOKEN: ${{ secrets.SANDBOX_PUSH_TOKEN }}

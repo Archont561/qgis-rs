@@ -168,7 +168,7 @@ workflow_dispatch  ────────────────────�
                                 → https://archont561.github.io/qgis-rs/
 ```
 
-All actions are pinned by commit SHA, matching `ci.yml` and `env.yml`. The
+All actions are pinned by commit SHA, matching `ci.yml` and `publish-sandbox.yml`. The
 workflow needs `pages: write` and `id-token: write`; `contents` stays
 read-only. `concurrency: { group: pages, cancel-in-progress: false }` keeps
 deployments ordered.

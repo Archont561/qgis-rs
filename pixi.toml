@@ -58,7 +58,6 @@ requires-pixi = ">=0.79.0"
 # One place to bump a version; the tables below opt in with { workspace = true }.
 [workspace.dependencies]
 rust = ">=1.96.0,<1.97"
-pixi-pack = ">=0.7,<0.8" # sandbox feature: `pixi run -e dev pack` / scripts/pack-env.sh
 qgis = ">=3.44.9,<4"
 maturin = ">=1.7,<2"
 pytest = ">=8,<9"
@@ -101,10 +100,10 @@ docs-preview = { cmd = "bun run preview", cwd = "apps/docs", depends-on = [
   "docs-build",
 ], default-environment = "docs" }
 
-[feature.sandbox.dependencies]
-# Local reproduction of the env-pack pipeline (scripts/pack-env.sh). CI fetches
-# its own helper tools, so this feature is only for developers.
-pixi-pack = { workspace = true }
+[feature.sandbox.tasks]
+# Restore the published offline transport into the current tree. The branch
+# default matches .pixi-sandbox.toml (bundle "developer" on linux-64).
+sandbox-restore = { cmd = "bash scripts/restore.sh", description = "Fetch the published sandbox branch and restore the dev/docs environments offline", default-environment = "dev" }
 
 # ── qgis-rs (Python bindings + Rust CLI) ──────────────────────────────────────
 # The pip-installable `qgis-rs` package — Rust extension via PyO3 + binary.
@@ -255,24 +254,23 @@ lint = { depends-on = ["clippy", "lint-cpp"] }
 lint-commit = { cmd = "convco check --from-stdin", default-environment = "dev" }
 # Optional args like check-cpp: hooks check only staged manifests
 # (`pixi run lint-toml -- a.toml b.toml`); bare `pixi run lint-toml` checks the
-# workspace manifest alone. Only `pixi.toml` is kept in taplo's canonical form —
-# the rest of the repo uses the aligned-`=` style, so it is deliberately not
-# taplo-enforced.
+# workspace manifest and the sandbox publish plan alone. Only those two files
+# are kept in taplo's canonical form — the rest of the repo uses the aligned-`=`
+# style, so it is deliberately not taplo-enforced.
 lint-toml = { cmd = """bash -c '
   if [ $# -gt 0 ]; then
     taplo fmt --check "$@"
   else
-    taplo fmt --check pixi.toml
+    taplo fmt --check pixi.toml .pixi-sandbox.toml
   fi' _""", default-environment = "dev" }
 # Scans .github/workflows/*.yml by default.
 lint-actions = { cmd = "actionlint", default-environment = "dev" }
 
 # ── packaging ─────────────────────────────────────────────────────────────────
-# One implementation for both `pixi run pack` and env.yml: scripts/pack-env.sh
-# packs the environment with pixi-pack and then unpacks the result to prove the
-# toolchain works. Needs `pixi lock` after changing the pack tooling, since
-# pixi-pack lives in [workspace.dependencies] rather than installed ad hoc.
-pack = { cmd = "bash scripts/pack-env.sh", description = "Bundle an environment into a self-extracting pack under dist/ and smoke-test it", default-environment = "dev" }
+# The sandbox bundle (dev + docs) is packed and published by the reusable
+# publish-sandbox workflow, not by a local script here. Validate the reviewed
+# plan config locally with `pixi run -e dev lint-toml` (taplo) and restore the
+# published transport offline with `pixi run -e dev sandbox-restore`.
 
 # ── tests ─────────────────────────────────────────────────────────────────────
 test = { args = [

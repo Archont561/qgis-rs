@@ -48,7 +48,6 @@ Currently Linux-only due to QGIS conda-forge availability.
 | `convco`       | ≥0.6, <0.7    | Conventional commit checker       |
 | `taplo`        | —             | TOML format check (`lint-toml`)   |
 | `actionlint`   | —             | GitHub Actions lint (`lint-actions`) |
-| `pixi-pack`    | ≥0.7, <0.8    | Env bundling (`pack` / scripts/pack-env.sh) |
 
 ### Feature Layers
 
@@ -63,7 +62,7 @@ deliberately empty. The feature set:
 | `qgis`      | `qgis`                                          |
 | `utils`     | `lefthook`, `convco`, `taplo`, `actionlint`     |
 | `docs`      | `bun`                                           |
-| `sandbox`   | `pixi-pack`                                     |
+| `sandbox`   | no deps; `sandbox-restore` task                |
 | `sdk`       | `qgis-sdk` (source), `maturin`, `rust`, `pytest` + PyQGIS activation env |
 | `py`        | `python`, `maturin`, `qgis-rs` (source), `pytest` |
 | `node`      | `nodejs`, `rust`                                |
@@ -241,18 +240,16 @@ umbrella task is what CI is expected to reproduce locally.
 - `lint-cpp` — `clang-tidy` with sysroot, Qt, and QGIS includes (depends on `_build-for-lint`)
 - `lint` — `clippy` + `lint-cpp`
 - `lint-commit` — `convco check --from-stdin` (commit-msg hook)
-- `lint-toml` — `taplo fmt --check` (staged files via `--` args, whole tree otherwise)
+- `lint-toml` — `taplo fmt --check` (staged files via `--` args; bare form checks `pixi.toml` + `.pixi-sandbox.toml`)
 - `lint-actions` — `actionlint` on `.github/workflows`
 
 ### Build & gates
 - `build` — `cargo build --release`
-- `pack` — `scripts/pack-env.sh`: bundle an environment with `pixi-pack` and
-  unpack the result to prove the toolchain works; env.yml runs the same task, so
-  a local `pixi run pack` produces exactly the bundle CI publishes (`--no-smoke`
-  skips the verification, `-e docs` packs another environment)
 - `gates` — `fmt-check` + `clippy` + `lint-toml` + `lint-actions` + `test`; the "CI will be green" check
 - `ci` — `gates` + `check-cpp`
 - `ci-full` — `ci` + `lint-cpp` + `test-full` (needs the `dev` env installed)
+- `sandbox-restore` — `scripts/restore.sh`: fetch the published sandbox branch
+  (`sandbox/developer-linux-64`) and restore `dev`/`docs` offline
 
 ### Testing
 - `test` — basic tests (`application_info`), with optional `--clean` flag
@@ -289,23 +286,19 @@ pixi run -e sdk sdk-doctor  # print interpreter, PYTHONPATH, and prove the impor
 ## Offline / Sandbox Bootstrapping
 
 When pixi is not available (e.g., sandboxed CI, restricted network environments),
-the qgis-rs environment can be bootstrapped from a pre-built **pixi-sandbox pack**:
+the qgis-rs environment can be restored from the published **pixi-sandbox branch**:
 
 ```bash
-# Option A: automated
-sh scripts/setup-env.sh
-. scripts/use-pack.sh
-
-# Option B: manual clone
-git clone --depth 1 --branch env/qgis-rs-linux-64 \
-  https://github.com/Archont561/qgis-rs pack
-cd pack && bash ./pixi-sandbox-*.sh
-. scripts/use-pack.sh
+bash scripts/restore.sh
+# fetches sandbox/developer-linux-64, doctor-verifies, restores dev/docs,
+# sources .pixi/sandbox-env.sh (cargo, rustc, clang-tools, QGIS, bundled pixi)
 ```
 
 This provides cargo, rustc, clang-tools, QGIS headers/libraries, and pixi itself
 without needing conda-forge or prefix.dev. See [env-provisioning.md](/env-provisioning.md)
-for the full design and receipt format.
+for the full design.
 
-The `env.yml` GitHub Actions workflow automatically rebuilds and republishes
-the pack whenever `pixi.toml` or `pixi.lock` changes on `main`.
+The `.github/workflows/publish-sandbox.yml` workflow calls the pixi-sandbox
+*reusable* publisher after every successful `CI` run on `main` (or on manual
+dispatch), validates `.pixi-sandbox.toml`, and republishes the bundle whenever
+`pixi.toml` / `pixi.lock` change. The branch is `sandbox/developer-linux-64`.

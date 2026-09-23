@@ -2,6 +2,33 @@
 
 ## 2026-09-23
 
+* **Addition**: Adopted the reference project's *release-mode* publisher as the
+  new environment-packing path, replacing the homegrown env-pack pipeline.
+  * New `.pixi-sandbox.toml` declares the reviewed publish plan — one `developer`
+    bundle (`dev` + `docs` environments, `linux-64`, `cargo_vendor = true`).
+  * New `.github/workflows/publish-sandbox.yml` is a thin consumer wrapper around
+    the pixi-sandbox *reusable* workflow
+    (`Archont561/pixi-sandbox/.github/workflows/publish-sandbox.yml` at pinned
+    commit `3d7a6182`, release `v0.2.0`). It auto-runs after a successful `CI`
+    run on `main` (or via `workflow_dispatch`) and publishes the
+    `sandbox/developer-linux-64` orphan branch. Packing, verification, and
+    publishing all run on the native runner with a checksum-verified standalone
+    release binary; no pixi-sandbox crate is vendored (consumer mode).
+  * New `scripts/restore.sh` — the airlock one-liner: fetch the branch, run
+    `doctor --verify`, restore envs + vendor tree offline, source
+    `.pixi/sandbox-env.sh`.
+  * **Removed**: `.github/workflows/env.yml` and the old `scripts/pack-env.sh`,
+    `publish-env-branch.sh`, `setup-env.sh`, `use-pack.sh`. The `pack` task and
+    the `pixi-pack` workspace dependency are gone — pack tooling is no longer a
+    local dependency (the release binary fetches its own pinned tools).
+  * **Update**: `ci.yml` gained a "validate sandbox publish plan" job using the
+    upstream `setup-pixi-sandbox` action + `plan --json`, pinned to the same
+    SHA as the publisher. `lint-toml` bare mode now also checks
+    `.pixi-sandbox.toml`. Knowledge docs (`env-provisioning.md`, `pixi.md`,
+    `CONTEXT.md`, `documentation-site.md`) rewritten to the new consumer model.
+
+## 2026-09-23
+
 * **Fix**: Removed the last deprecated pixi syntax — top-level `channels` in
   `[package.build]`. pixi moved that key to `backend.channels` (prefix-dev/pixi
   #4361); the three source-package manifests (`py-packages/qgis-sdk`,

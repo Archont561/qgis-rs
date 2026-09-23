@@ -27,6 +27,8 @@ _*
 
 # pixi
 !.pixi/config.toml
+# sandbox publish plan (committed; .pixi-sandbox/ below is the generated transport)
+!.pixi-sandbox.toml
 
 # cargo
 /target
