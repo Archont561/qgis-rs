@@ -8,8 +8,9 @@ version = "0.1.0"
 description = "Node.js / TypeScript bindings and CLI for qgis-rs — native-speed QGIS rendering, tiling, and plugin tools"
 license = "GPL-2.0-or-later"
 
-[package.build]
-backend = { name = "pixi-build-rust", version = "*" }
+[package.build.backend]
+name = "pixi-build-rust"
+version = "*"
 channels = [
   "https://prefix.dev/pixi-build-backends",
   "https://prefix.dev/conda-forge",

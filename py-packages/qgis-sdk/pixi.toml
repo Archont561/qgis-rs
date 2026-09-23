@@ -14,8 +14,9 @@ description = "Python SDK for building QGIS plugins on top of PyQGIS — with Ru
 license = "GPL-2.0-or-later"
 
 # pixi-build-python with maturin backend — builds Rust extension + binary
-[package.build]
-backend = { name = "pixi-build-python", version = "*" }
+[package.build.backend]
+name = "pixi-build-python"
+version = "*"
 channels = [
   "https://prefix.dev/pixi-build-backends",
   "https://prefix.dev/conda-forge",

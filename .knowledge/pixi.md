@@ -189,8 +189,9 @@ is driven by the *working directory*, so the CLI form is
 name    = "qgis-sdk"
 version = "0.1.0"
 
-[package.build]
-backend  = { name = "pixi-build-python", version = "*" }
+[package.build.backend]
+name     = "pixi-build-python"
+version  = "*"
 channels = ["https://prefix.dev/pixi-build-backends", "https://prefix.dev/conda-forge"]
 
 [package.host-dependencies]

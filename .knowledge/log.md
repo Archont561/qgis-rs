@@ -2,6 +2,13 @@
 
 ## 2026-09-23
 
+* **Fix**: Removed the last deprecated pixi syntax — top-level `channels` in
+  `[package.build]`. pixi moved that key to `backend.channels` (prefix-dev/pixi
+  #4361); the three source-package manifests (`py-packages/qgis-sdk`,
+  `py-packages/qgis-rs`, `crates/qgis-node`) now declare the backend as a
+  `[package.build.backend]` table carrying `name`/`version`/`channels`. The
+  `⚠️ Top-level 'channels' in [package.build] is deprecated` warning no longer
+  appears on `pixi lock`.
 * **Update**: Reorganized the pixi environments and task layout to the reference
   (Archont561/pixi-sandbox) model. There is *no* `default` environment anymore:
   dependencies moved from the root `[dependencies]` table into feature layers
