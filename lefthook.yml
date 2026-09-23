@@ -1,19 +1,50 @@
+# lefthook — local git hooks. Every hook calls a pixi task so hooks and CI
+# cannot drift: the task definitions in pixi.toml are the single source of
+# truth for what the check commands are.
+# https://lefthook.dev
+#
+# Only *staged* files are considered: the `glob` filters which files wake a
+# hook, and `{staged_files}` expands to the staged paths pixi passes through to
+# the task (check-cpp returns a formatted diff for staged files and falls back
+# to the whole tree; lint-toml likewise, defaulting to pixi.toml). Tasks
+# default to the `dev` environment, so hooks pin it explicitly with `-e dev`
+# regardless.
+
+min_version: "2.0.0"
+
 pre-commit:
   parallel: true
-  commands:
-    fmt-rs:
+  jobs:
+    - name: rust-fmt
       glob: "*.rs"
-      run: cargo fmt --all --check
+      run: pixi run -e dev fmt-check
 
-    fmt-cpp:
+    - name: rust-clippy
+      glob: "*.rs"
+      run: pixi run -e dev clippy
+
+    - name: cpp-fmt
       glob: "*.{cpp,h}"
-      run: clang-format --dry-run --Werror {staged_files}
+      run: pixi run -e dev -- check-cpp {staged_files}
 
-    clippy:
-      glob: "*.rs"
-      run: cargo clippy --workspace --all-targets -- -D warnings
+    - name: toml-fmt
+      # Only pixi.toml is kept in taplo's canonical form; the rest of the repo
+      # deliberately uses the aligned-`=` TOML style (see `lint-toml` in
+      # pixi.toml), so the hook is scoped to the one file taplo owns.
+      glob: "pixi.toml"
+      run: pixi run -e dev -- lint-toml {staged_files}
+
+    - name: workflows
+      glob: ".github/workflows/*.{yml,yaml}"
+      run: pixi run -e dev lint-actions
 
 commit-msg:
-  commands:
-    convco:
-      run: convco check --from-stdin < {1}
+  jobs:
+    - name: convco
+      # `{1}` is the file holding the proposed message (git commit-msg hook argument)
+      run: pixi run -e dev lint-commit < {1}
+
+pre-push:
+  jobs:
+    - name: gates
+      run: pixi run -e dev gates

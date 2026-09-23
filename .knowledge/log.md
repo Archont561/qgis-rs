@@ -1,5 +1,41 @@
 # Bundle Update Log
 
+## 2026-09-23
+
+* **Update**: Reorganized the pixi environments and task layout to the reference
+  (Archont561/pixi-sandbox) model. There is *no* `default` environment anymore:
+  dependencies moved from the root `[dependencies]` table into feature layers
+  (`rust`, `cxx`, `qgis`, `utils`, `docs`, `sandbox`, `sdk`, `py`, `node`), and
+  the environments are now `dev` (rust+cxx+qgis+utils+sandbox — the primary one),
+  `ci` (rust+cxx+qgis+sandbox), `utils` (hook/lint tooling), plus the unchanged
+  `docs`/`sdk`/`py`/`py-qgis`/`node`. User-facing tasks set `default-environment`
+  so bare `pixi run <task>` still works; CI and lefthook pass `-e` explicitly.
+* **Update**: pixi 0.81 quirk discovered and documented — `default-environment`
+  is only accepted on tasks that have a `cmd`, declared inline in `[tasks]`;
+  block-form `[tasks.<name>]` tables and pure aggregators (`gates`/`ci`/`ci-full`)
+  reject it. Aggregators instead resolve their environment through `depends-on`.
+* **Fix**: splitting `docs` out of the `default` group surfaced a latent icu
+  conflict — conda-forge QGIS needs icu ≥78.3 while `bun` pins icu <76, so bun
+  cannot share an environment with QGIS. The `docs` feature is deliberately kept
+  out of `dev`/`ci`; docs tasks run against the separate `docs` environment.
+* **Addition**: New `utils`-backed tasks — `lint-commit` (`convco check
+  --from-stdin`, used by the commit-msg hook), `lint-toml` (taplo, staged-file
+  aware via `$@` passthrough), `lint-actions` (actionlint). `check-cpp` now
+  accepts optional staged files passed through `pixi run check-cpp -- a.cpp b.h`
+  (falls back to the whole tree without args). `gates` gained `lint-toml` +
+  `lint-actions`.
+* **Update**: [lefthook.yml](/lefthook.yml) rewritten to the reference shape
+  (`min_version: "2.0.0"`, `pixi run -e dev <task>` for every hook) so hooks and
+  CI cannot drift; pinned to staged files only via `glob` + `{staged_files}`,
+  with a `commit-msg` convco job and an optional `pre-push` gates job.
+* **Update**: workflows re-pointed — `ci.yml` validates `dev` + `utils` + `docs`
+  and runs tests in `dev`; `env.yml` packs the `dev` environment
+  (`pixi install -e dev` / `pixi run -e dev pack`); `scripts/pack-env.sh`
+  defaults to packing `dev`. README + knowledge docs updated to match.
+  (The env->`sandbox/` branch migration to `pixi-sandbox` itself is still
+  pending — see the notes in [CONTEXT.md](/CONTEXT.md) and the pixi-sandbox
+  reference project.)
+
 ## 2026-09-18
 
 * **Creation**: Added `crates/qgis-mcp` — a Model Context Protocol server on the official [rmcp](https://github.com/modelcontextprotocol/rust-sdk) SDK (3.4), bundled into the `qgis-cli` binary as `qgis-cli mcp`. Six tools mirror the subcommands (`capabilities`, `crs_info`, `plan_tiles`, `project_info`, `render_map`, `export_features`); `crates/qgis-cli/tests/mcp_stdio.rs` spawns the real binary and drives it through `initialize` → `tools/list` → `tools/call`.

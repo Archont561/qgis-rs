@@ -1,7 +1,7 @@
 # ci.yml — validate PRs: check pixi environments and run tests
 #
 # Runs on every PR to main. Validates:
-# 1. Pixi environments are valid (default + docs)
+# 1. Pixi environments are valid (dev + docs + utils)
 # 2. Rust code compiles and tests pass
 # 3. Documentation site builds
 #
@@ -37,11 +37,18 @@ jobs:
           run-install: false
           cache: false
 
-      - name: validate default environment
+      - name: validate dev environment
         run: |
-          pixi install -e default
-          pixi run -e default cargo --version
-          pixi run -e default pixi --version
+          pixi install -e dev
+          pixi run -e dev cargo --version
+          pixi run -e dev pixi --version
+          pixi run -e dev clang-format --version
+
+      - name: validate utils environment
+        run: |
+          pixi install -e utils
+          pixi run -e utils actionlint --version
+          pixi run -e utils taplo --version
 
       - name: validate docs environment
         run: |
@@ -64,10 +71,10 @@ jobs:
           cache: false
 
       - name: install environment
-        run: pixi install -e default
+        run: pixi install -e dev
 
       - name: run tests
-        run: pixi run -e default cargo test --workspace
+        run: pixi run -e dev cargo test --workspace
 
   # Mirrors the build half of pages.yml, so a PR catches a broken Pages
   # deployment before it can reach main.

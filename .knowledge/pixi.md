@@ -46,6 +46,27 @@ Currently Linux-only due to QGIS conda-forge availability.
 | `clang-tools`  | ≥22.1, <23    | clang-format + clang-tidy         |
 | `lefthook`     | ≥2.1, <3      | Git hooks manager                 |
 | `convco`       | ≥0.6, <0.7    | Conventional commit checker       |
+| `taplo`        | —             | TOML format check (`lint-toml`)   |
+| `actionlint`   | —             | GitHub Actions lint (`lint-actions`) |
+| `pixi-pack`    | ≥0.7, <0.8    | Env bundling (`pack` / scripts/pack-env.sh) |
+
+### Feature Layers
+
+Dependencies live in features (mirroring the pixi-sandbox reference project), so
+each environment installs only what it needs; the root `[dependencies]` table is
+deliberately empty. The feature set:
+
+| Feature     | Contents                                        |
+|-------------|-------------------------------------------------|
+| `rust`      | `rust`                                          |
+| `cxx`       | `cxx-compiler`, `clang-tools`                   |
+| `qgis`      | `qgis`                                          |
+| `utils`     | `lefthook`, `convco`, `taplo`, `actionlint`     |
+| `docs`      | `bun`                                           |
+| `sandbox`   | `pixi-pack`                                     |
+| `sdk`       | `qgis-sdk` (source), `maturin`, `rust`, `pytest` + PyQGIS activation env |
+| `py`        | `python`, `maturin`, `qgis-rs` (source), `pytest` |
+| `node`      | `nodejs`, `rust`                                |
 
 ### Feature: `qgis`
 
@@ -56,7 +77,10 @@ qgis = ">=3.44.9,<4"
 
 The QGIS dependency is in a feature so that lightweight tasks (formatting, linting Rust code) don't require downloading the entire QGIS stack.
 
-The `default` environment activates the `qgis` feature.
+There is no `default` environment. The `dev` environment activates the
+`rust`, `cxx`, `qgis`, `utils`, and `sandbox` features; every user-facing task
+sets `default-environment` so bare `pixi run <task>` works, and CI passes `-e`
+explicitly.
 
 ### Feature: `docs`
 
@@ -81,15 +105,29 @@ QT_QPA_PLATFORM  = "offscreen"
 
 ### Environments
 
-| Environment | Features | Solve group | Purpose |
-|-------------|----------|-------------|---------|
-| `default` | `qgis` | `default` | Rust/C++ development and tests |
-| `docs` | `docs` | `default` | Astro docs site |
-| `sdk` | `qgis`, `sdk` | `sdk` | Python plugin SDK |
+| Environment | Features                                   | Solve group | Purpose |
+|-------------|--------------------------------------------|-------------|---------|
+| `dev`       | `rust`, `cxx`, `qgis`, `utils`, `sandbox`  | `dev`       | Rust/C++ development and tests |
+| `ci`        | `rust`, `cxx`, `qgis`, `sandbox`           | `ci`        | What CI actually runs (parity) |
+| `utils`     | `utils`                                    | `utils`     | Hook / lint tooling only |
+| `docs`      | `docs`                                     | `docs`      | Astro docs site |
+| `sdk`       | `qgis`, `sdk`                              | `sdk`       | Python plugin SDK |
+| `py`        | `py`                                       | `py`        | qgis-rs wheel, no QGIS |
+| `py-qgis`   | `qgis`, `py`                               | `py-qgis`   | qgis-rs wheel with QGIS |
+| `node`      | `node`                                     | `node`      | qgis-rs npm package |
 
 `sdk` has its own solve group on purpose. Building `qgis-sdk` from source needs
 the `pixi-build-python` backend from `prefix.dev`; keeping `sdk` out of the
-`default` group means `pixi install -e default` and `-e docs` never need it.
+other groups means `pixi install -e dev` and `-e ci` never need it.
+
+The `docs` feature (bun, icu <76) is deliberately **not** in `dev`/`ci`:
+conda-forge QGIS needs icu ≥78.3, so the two cannot share an environment — docs
+tasks run against the separate `docs` environment.
+
+> **Gotcha (pixi 0.81):** `default-environment` is only accepted on tasks that
+> have a `cmd`, declared inline in the single `[tasks]` table. Pure aggregators
+> (`gates`, `ci`, `ci-full`) omit it — pixi resolves their environment through
+> the tasks they `depends-on`.
 
 ## Python and PyQGIS
 
@@ -198,9 +236,12 @@ umbrella task is what CI is expected to reproduce locally.
 
 ### Linting
 - `clippy` — `cargo clippy --workspace --all-targets -- -D warnings`
-- `check-cpp` — `clang-format --dry-run --Werror` over the shims
+- `check-cpp` — `clang-format --dry-run --Werror` over the shims (staged files via `--` args, whole tree otherwise)
 - `lint-cpp` — `clang-tidy` with sysroot, Qt, and QGIS includes (depends on `_build-for-lint`)
 - `lint` — `clippy` + `lint-cpp`
+- `lint-commit` — `convco check --from-stdin` (commit-msg hook)
+- `lint-toml` — `taplo fmt --check` (staged files via `--` args, whole tree otherwise)
+- `lint-actions` — `actionlint` on `.github/workflows`
 
 ### Build & gates
 - `build` — `cargo build --release`
@@ -208,9 +249,9 @@ umbrella task is what CI is expected to reproduce locally.
   unpack the result to prove the toolchain works; env.yml runs the same task, so
   a local `pixi run pack` produces exactly the bundle CI publishes (`--no-smoke`
   skips the verification, `-e docs` packs another environment)
-- `gates` — `fmt-check` + `clippy` + `test`; the "CI will be green" check
+- `gates` — `fmt-check` + `clippy` + `lint-toml` + `lint-actions` + `test`; the "CI will be green" check
 - `ci` — `gates` + `check-cpp`
-- `ci-full` — `ci` + `lint-cpp` + `test-full` (needs the `default` env installed)
+- `ci-full` — `ci` + `lint-cpp` + `test-full` (needs the `dev` env installed)
 
 ### Testing
 - `test` — basic tests (`application_info`), with optional `--clean` flag
@@ -232,7 +273,7 @@ Both set:
 ## Common Commands
 
 ```bash
-pixi shell                  # enter the environment
+pixi shell                  # enter the `dev` environment
 pixi run fmt                # format everything
 pixi run lint               # lint everything
 pixi run test               # run basic tests

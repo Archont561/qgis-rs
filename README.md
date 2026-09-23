@@ -447,8 +447,8 @@ The large QGIS/Rust Pixi environment is **not** installed automatically. Once
 inside the container, install it when needed:
 
 ```bash
-pixi install -e default
-pixi run -e default test
+pixi install -e dev
+pixi run test
 ```
 
 A model refresh needs network access and OpenCode may use its bundled catalog

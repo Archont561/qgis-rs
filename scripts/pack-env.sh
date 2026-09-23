@@ -6,14 +6,14 @@
 # Single implementation shared by `pixi run pack` and .github/workflows/env.yml.
 #
 # Usage:
-#   pixi run pack                                   # default env, dist/
+#   pixi run pack                                   # dev env, dist/
 #   sh scripts/pack-env.sh -e docs -o dist --no-smoke
 #
 # The environment must contain pixi-pack (declared in [workspace.dependencies]);
 # run `pixi lock` after changing that pin.
 set -eu
 
-pe_env="default"
+pe_env="dev"
 pe_out="dist"
 pe_smoke=1
 pe_manifest="pixi.toml"
@@ -47,8 +47,8 @@ fi
 # artifact names are keyed on.
 pe_platform="${PIXI_SANDBOX_PLATFORM:-linux-64}"
 case "$pe_env" in
-  default) pe_name="qgis-rs-$pe_platform" ;;
-  *)       pe_name="qgis-rs-$pe_env-$pe_platform" ;;
+  dev) pe_name="qgis-rs-$pe_platform" ;;
+  *)   pe_name="qgis-rs-$pe_env-$pe_platform" ;;
 esac
 
 mkdir -p "$pe_out"
