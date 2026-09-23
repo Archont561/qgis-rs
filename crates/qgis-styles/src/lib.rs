@@ -22,10 +22,10 @@ pub mod symbol;
 
 pub use color::{Color, Rgba};
 pub use error::{Error, Result};
-pub use labeling::{Labeling, LabelPlacement};
+pub use labeling::{LabelPlacement, Labeling};
 pub use layout::{Layout, LayoutItem, LayoutItemType, PageSize};
 pub use renderer::{Category, Range, Renderer, Rule};
 pub use style::{LayerStyle, StyleSheet};
-pub use symbol::{LineSymbol, MarkerSymbol, FillSymbol, Symbol, Stroke};
+pub use symbol::{FillSymbol, LineSymbol, MarkerSymbol, Stroke, Symbol};
 
 pub const VERSION: u8 = 1;

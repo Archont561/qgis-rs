@@ -45,7 +45,7 @@ namespace qgis_shim::core {
 
 void application_init_qgis(QgsApplication& app) noexcept {
     try {
-        QGIS_NULL_GUARD(app, );
+        QGIS_NULL_GUARD(app, void());
         ::QgsApplication::initQgis();
     } catch (...) {
     }
@@ -53,7 +53,7 @@ void application_init_qgis(QgsApplication& app) noexcept {
 
 void application_exit_qgis(QgsApplication& app) noexcept {
     try {
-        QGIS_NULL_GUARD(app, );
+        QGIS_NULL_GUARD(app, void());
         ::QgsApplication::exitQgis();
         app.ptr = nullptr;
     } catch (...) {

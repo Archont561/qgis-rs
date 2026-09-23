@@ -61,7 +61,9 @@ pub struct StyleSheet {
     pub description: Option<String>,
 }
 
-fn default_version() -> u8 { 1 }
+fn default_version() -> u8 {
+    1
+}
 
 impl StyleSheet {
     pub fn new() -> Self {
@@ -89,7 +91,9 @@ impl StyleSheet {
     pub fn from_json(json: &str) -> crate::error::Result<Self> {
         let sheet: Self = serde_json::from_str(json)?;
         if !sheet.is_valid() {
-            return Err(crate::error::Error::InvalidStyle { reason: "one or more layer styles invalid".to_string() });
+            return Err(crate::error::Error::InvalidStyle {
+                reason: "one or more layer styles invalid".to_string(),
+            });
         }
         Ok(sheet)
     }
@@ -158,8 +162,7 @@ mod tests {
     #[test]
     fn round_trips_json() {
         let sym = Symbol::fill(Rgba::new(0, 255, 0));
-        let sheet = StyleSheet::new()
-            .with_layer("roads", LayerStyle::new(Renderer::single(sym)));
+        let sheet = StyleSheet::new().with_layer("roads", LayerStyle::new(Renderer::single(sym)));
         let json = sheet.to_json().unwrap();
         let parsed = StyleSheet::from_json(&json).unwrap();
         assert_eq!(parsed.layers.len(), 1);
