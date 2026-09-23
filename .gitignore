@@ -19,6 +19,9 @@ _*
 # git / github
 !.git*
 
+# devcontainer (the general .* rule would otherwise hide it)
+!.devcontainer/
+
 # knowledge bundle
 !.knowledge/
 

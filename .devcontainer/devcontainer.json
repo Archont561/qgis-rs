@@ -1,0 +1,22 @@
+{
+  "name": "qgis-rs (Pixi + OpenCode)",
+  "image": "ghcr.io/prefix-dev/pixi:0.81.0",
+  "features": {
+    "ghcr.io/devcontainers/features/common-utils:2": {
+      "username": "vscode",
+      "installZsh": false,
+      "installOhMyZsh": false,
+      "upgradePackages": false
+    },
+    "ghcr.io/devcontainers/features/node:2": {
+      "version": "22",
+      "pnpmVersion": "none"
+    }
+  },
+  "remoteUser": "vscode",
+  "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
+  "containerEnv": {
+    "QT_QPA_PLATFORM": "offscreen"
+  },
+  "postCreateCommand": "bash .devcontainer/setup.sh"
+}
