@@ -9,12 +9,12 @@
 #   crates/<crate>       Rust: the engine crates and the PyO3 / NAPI cores
 #
 # Environments (features are layered, so nothing installs more than it needs):
-#   dev      QGIS + Rust + C++ toolchain + utils + sandbox — everything a
-#            contributor needs; the primary environment (umbrella tasks default
+#   dev      QGIS + Rust + C++ toolchain + Python + utils + sandbox — everything
+#            a contributor needs; the primary environment (umbrella tasks default
 #            to it via `default-environment`).
 #   ci       QGIS + Rust + C++ toolchain + sandbox — what CI actually runs.
 #   utils    git-hook / lint tooling only (lefthook, convco, taplo, actionlint).
-#   docs     Bun for apps/docs (Astro Starlight).
+#   docs     Bun for apps/docs (Astro Starlight) and the JS test suites.
 #   sdk      the qgis-sdk Python package built from source, with QGIS.
 #   py       the qgis-rs Python wheel, no QGIS.
 #   py-qgis  the qgis-rs Python wheel, with QGIS.
@@ -42,7 +42,10 @@
 # between pixi minors, so `requires-pixi` and the workflows' pixi-version move
 # together. Python is deliberately NOT declared as a dependency of the QGIS
 # environments: the conda-forge `qgis` package pulls in the interpreter its
-# PyQGIS bindings were built against, and a separate pin could only drift.
+# PyQGIS bindings were built against, and a separate pin could only drift. The
+# one exception is `dev`'s `py-runtime` feature: it declares the wide workspace
+# range, which can only intersect qgis's own python pin, so the interpreter is
+# guaranteed present without ever being able to drift.
 # See .knowledge/pixi.md.
 
 [workspace]
@@ -61,6 +64,7 @@ rust = ">=1.96.0,<1.97"
 qgis = ">=3.44.9,<4"
 maturin = ">=1.7,<2"
 pytest = ">=8,<9"
+pytest-cov = ">=5,<7"
 python = ">=3.11,<3.15"
 bun = ">=1.2.0,<2"
 
@@ -77,6 +81,13 @@ clang-tools = ">=22.1.8,<23"
 
 [feature.qgis.dependencies]
 qgis = { workspace = true }
+
+[feature.py-runtime.dependencies]
+# dev-only: guarantee the interpreter that `qgis` already pulls in, so Python
+# helpers and pytest entrypoints run from `dev` without a second environment.
+# The workspace range is wide enough that it can only intersect qgis's own
+# python pin — it cannot override it.
+python = { workspace = true }
 
 [feature.utils.dependencies]
 lefthook = ">=2.1.9,<3"
@@ -116,6 +127,9 @@ maturin = { workspace = true }
 # The wheel under test; pixi drives maturin through its pyproject.
 qgis-rs = { path = "./py-packages/qgis-rs" }
 pytest = { workspace = true }
+# The plugin CI exercises through --cov; declared so `pixi run py-test` can do
+# coverage without a pip install.
+pytest-cov = { workspace = true }
 
 [feature.py.tasks]
 py-build = { cmd = "maturin build --release -o dist", cwd = "py-packages/qgis-rs", default-environment = "py" }
@@ -132,13 +146,14 @@ nodejs = ">=20,<23"
 rust = { workspace = true }
 
 [feature.node.tasks]
+# The addon builds with npm in the `node` env (napi build needs a Node
+# runtime). Testing runs on bun in the `docs` env instead — see the root
+# `node-test` task: conda-forge bun pins icu <76, which QGIS's icu >=78.3
+# keeps out of every QGIS-bearing environment.
 node-install = { cmd = "npm ci --workspaces=false", cwd = "ts-packages/qgis-node", default-environment = "node" }
 node-build = { cmd = "npm run build", cwd = "ts-packages/qgis-node", depends-on = [
   "node-install",
 ], default-environment = "node" }
-node-test = { cmd = "npm test", cwd = "ts-packages/qgis-node", depends-on = [
-  "node-build",
-], env = { QGIS_REQUIRE_NATIVE = "1" }, default-environment = "node" }
 
 # ── qgis-sdk (Python plugin SDK) ──────────────────────────────────────────────
 # Now with Rust-native CLI (qgis-plugin binary) built via maturin.
@@ -177,6 +192,7 @@ dev = { features = [
   "rust",
   "cxx",
   "qgis",
+  "py-runtime",
   "utils",
   "sandbox",
 ], solve-group = "dev" }
@@ -275,6 +291,15 @@ lint-actions = { cmd = "actionlint", default-environment = "dev" }
 # published transport offline with `pixi run -e dev sandbox-restore`.
 
 # ── tests ─────────────────────────────────────────────────────────────────────
+# JS tests run on bun, not `node --test` / npm test. bun lives in the `docs`
+# env (conda-forge bun pins icu <76, which QGIS's icu >=78.3 keeps out of every
+# QGIS-bearing environment), so this task builds the addon in `node` and then
+# tests it in `docs` — a cross-env depends-on resolves each task in its own
+# default environment. The bridge suites stay on `pixi run -e docs bun test`.
+node-test = { cmd = "bun test tests/contract.test.js", cwd = "ts-packages/qgis-node", depends-on = [
+  "node-build",
+], env = { QGIS_REQUIRE_NATIVE = "1" }, default-environment = "docs" }
+
 test = { args = [
   { arg = "package", default = "" },
   { arg = "clean", default = "" },

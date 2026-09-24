@@ -12,7 +12,7 @@
   "scripts": {
     "build": "napi build --platform --release --cargo-cwd ../../crates/qgis-node --js false --dts .napi-generated.d.ts .",
     "build:debug": "napi build --platform --cargo-cwd ../../crates/qgis-node --js false --dts .napi-generated.d.ts .",
-    "test": "node --test tests/contract.test.js",
+    "test": "bun test tests/contract.test.js",
     "prepublishOnly": "napi prepublish -t npm",
     "artifacts": "napi artifacts",
     "version": "napi version"
