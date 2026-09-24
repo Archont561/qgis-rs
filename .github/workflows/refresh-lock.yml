@@ -1,12 +1,14 @@
 # TEMPORARY: regenerate pixi.lock from a network-enabled runner.
 # Added by the arena agent session on 2026-09-24 because the working sandbox
-# cannot reach conda-forge/prefix.dev; dispatched once via workflow_dispatch,
-# the refreshed pixi.lock is downloaded from the artifact and committed, and
-# this workflow is removed again. Not part of the standing CI surface.
+# cannot reach conda-forge/prefix.dev. It runs on pull_request (branch-only
+# workflow files can't be workflow_dispatched), the refreshed pixi.lock is
+# downloaded from the artifact and committed, and this workflow is removed
+# again. Not part of the standing CI surface.
 name: refresh-lock
 
 on:
-  workflow_dispatch:
+  pull_request:
+    branches: [main]
 
 permissions:
   contents: read
