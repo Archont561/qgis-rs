@@ -35,8 +35,9 @@ npm ci --workspaces=false
 # Build native addon
 npm run build
 
-# Smoke-test the compiled NAPI API
-npm test
+# Smoke-test the compiled NAPI API (bun is the repo's JS test runner;
+# `pixi run node-test` from the repository root wires build + test up)
+bun test tests/contract.test.js
 
 # Inspect the CLI wrapper
 npx qgis-cli --help
