@@ -6,9 +6,9 @@
 # ../../ts-packages/qgis-node/, and drives this crate with:
 #
 #   napi build --platform --release \
-#     --manifest-path ../../crates/qgis-node/Cargo.toml -o .
+#     --cargo-cwd ../../crates/qgis-node .
 #
-# `-o .` puts the compiled .node and the regenerated index.d.ts next to the
+# The positional destination `.` puts the compiled .node file next to the
 # package.json, so npm users never see this directory.
 
 [package]

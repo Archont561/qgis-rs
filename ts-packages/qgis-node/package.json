@@ -10,12 +10,12 @@
     "qgis-sdk": "./bin/qgis-sdk.js"
   },
   "scripts": {
-    "build": "napi build --platform --release --manifest-path ../../crates/qgis-node/Cargo.toml -o .",
-    "build:debug": "napi build --platform --manifest-path ../../crates/qgis-node/Cargo.toml -o .",
+    "build": "napi build --platform --release --cargo-cwd ../../crates/qgis-node .",
+    "build:debug": "napi build --platform --cargo-cwd ../../crates/qgis-node .",
     "test": "node --test tests/contract.test.js",
-    "prepublishOnly": "napi prepublish -t npm --manifest-path ../../crates/qgis-node/Cargo.toml",
-    "artifacts": "napi artifacts --manifest-path ../../crates/qgis-node/Cargo.toml",
-    "version": "napi version --manifest-path ../../crates/qgis-node/Cargo.toml"
+    "prepublishOnly": "napi prepublish -t npm",
+    "artifacts": "napi artifacts",
+    "version": "napi version"
   },
   "keywords": [
     "qgis",
