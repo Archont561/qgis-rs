@@ -792,7 +792,6 @@ dependencies = [
  "napi-derive",
  "qgis-cli",
  "qgis-render",
- "qgis-sdk",
  "qgis-server",
  "serde",
  "serde_json",

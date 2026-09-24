@@ -1,7 +1,7 @@
 //! Node.js / TypeScript bindings for qgis-rs — native-speed API via NAPI-RS.
 //!
 //! This crate exposes `qgis-render` types (Extent, Crs, Tile, TilePlan, Project, etc.)
-//! and plugin SDK helpers to Node.js/TypeScript at native Rust speed.
+//! to Node.js/TypeScript at native Rust speed.
 //!
 //! The npm package `qgis-rs` ships:
 //! - `qgis-rs.<platform>.node` — NAPI addon (this crate)

@@ -120,7 +120,9 @@ pytest = { workspace = true }
 [feature.py.tasks]
 py-build = { cmd = "maturin build --release -o dist", cwd = "py-packages/qgis-rs", default-environment = "py" }
 py-develop = { cmd = "maturin develop", cwd = "py-packages/qgis-rs", default-environment = "py" }
-py-test = { cmd = "python -m pytest py-packages/qgis-rs/tests -v", depends-on = ["py-develop"], env = { QGIS_REQUIRE_NATIVE = "1" }, default-environment = "py" }
+py-test = { cmd = "python -m pytest py-packages/qgis-rs/tests -v", depends-on = [
+  "py-develop",
+], env = { QGIS_REQUIRE_NATIVE = "1" }, default-environment = "py" }
 
 # ── qgis-node (TypeScript / Node.js bindings + Rust CLI) ─────────────────────
 # npm-installable `qgis-rs` package — Rust NAPI addon + binary.
@@ -134,7 +136,9 @@ node-install = { cmd = "npm ci --workspaces=false", cwd = "ts-packages/qgis-node
 node-build = { cmd = "npm run build", cwd = "ts-packages/qgis-node", depends-on = [
   "node-install",
 ], default-environment = "node" }
-node-test = { cmd = "npm test", cwd = "ts-packages/qgis-node", depends-on = ["node-build"], env = { QGIS_REQUIRE_NATIVE = "1" }, default-environment = "node" }
+node-test = { cmd = "npm test", cwd = "ts-packages/qgis-node", depends-on = [
+  "node-build",
+], env = { QGIS_REQUIRE_NATIVE = "1" }, default-environment = "node" }
 
 # ── qgis-sdk (Python plugin SDK) ──────────────────────────────────────────────
 # Now with Rust-native CLI (qgis-plugin binary) built via maturin.
@@ -159,7 +163,9 @@ QGIS_PREFIX_PATH = "$CONDA_PREFIX"
 QT_QPA_PLATFORM = "offscreen"
 
 [feature.sdk.tasks]
-sdk-test = { cmd = "python -m pytest -q", cwd = "py-packages/qgis-sdk", depends-on = ["sdk-develop"], env = { QGIS_REQUIRE_NATIVE = "1" }, default-environment = "sdk" }
+sdk-test = { cmd = "python -m pytest -q", cwd = "py-packages/qgis-sdk", depends-on = [
+  "sdk-develop",
+], env = { QGIS_REQUIRE_NATIVE = "1" }, default-environment = "sdk" }
 # Prints the interpreter, the PyQGIS paths, and whether qgis.core / qgis_sdk
 # resolve. Exits non-zero when the environment is broken.
 sdk-doctor = { cmd = "python scripts/doctor.py", cwd = "py-packages/qgis-sdk", default-environment = "sdk" }

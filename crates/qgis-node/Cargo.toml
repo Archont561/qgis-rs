@@ -37,7 +37,6 @@ path = "src/bin/qgis-plugin.rs"
 qgis-render = { workspace = true }
 qgis-server = { workspace = true }
 qgis-cli = { workspace = true }
-qgis-sdk = { workspace = true }
 anyhow = { workspace = true }
 clap = { workspace = true }
 serde = { workspace = true }
