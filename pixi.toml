@@ -120,8 +120,7 @@ pytest = { workspace = true }
 [feature.py.tasks]
 py-build = { cmd = "maturin build --release -o dist", cwd = "py-packages/qgis-rs", default-environment = "py" }
 py-develop = { cmd = "maturin develop", cwd = "py-packages/qgis-rs", default-environment = "py" }
-py-test = { cmd = "python -m pytest py-packages/qgis-rs/tests -v", default-environment = "py" }
-py-cli-test = { cmd = "python -m qgis_rs.cli --help && qgis-cli --help || python -m qgis_rs.cli --help", default-environment = "py" }
+py-test = { cmd = "python -m pytest py-packages/qgis-rs/tests -v", depends-on = ["py-develop"], env = { QGIS_REQUIRE_NATIVE = "1" }, default-environment = "py" }
 
 # ── qgis-node (TypeScript / Node.js bindings + Rust CLI) ─────────────────────
 # npm-installable `qgis-rs` package — Rust NAPI addon + binary.
@@ -131,12 +130,11 @@ nodejs = ">=20,<23"
 rust = { workspace = true }
 
 [feature.node.tasks]
-node-install = { cmd = "npm install", cwd = "ts-packages/qgis-node", default-environment = "node" }
-node-build = { cmd = "npx napi build --platform --release --manifest-path ../../crates/qgis-node/Cargo.toml -o .", cwd = "ts-packages/qgis-node", depends-on = [
+node-install = { cmd = "npm ci --workspaces=false", cwd = "ts-packages/qgis-node", default-environment = "node" }
+node-build = { cmd = "npm run build", cwd = "ts-packages/qgis-node", depends-on = [
   "node-install",
 ], default-environment = "node" }
-node-test = { cmd = "npm test", cwd = "ts-packages/qgis-node", default-environment = "node" }
-node-example = { cmd = "node ../../examples/typescript_api.js", cwd = "ts-packages/qgis-node", default-environment = "node" }
+node-test = { cmd = "npm test", cwd = "ts-packages/qgis-node", depends-on = ["node-build"], env = { QGIS_REQUIRE_NATIVE = "1" }, default-environment = "node" }
 
 # ── qgis-sdk (Python plugin SDK) ──────────────────────────────────────────────
 # Now with Rust-native CLI (qgis-plugin binary) built via maturin.
@@ -161,9 +159,7 @@ QGIS_PREFIX_PATH = "$CONDA_PREFIX"
 QT_QPA_PLATFORM = "offscreen"
 
 [feature.sdk.tasks]
-sdk-test = { cmd = "python -m pytest -q", cwd = "py-packages/qgis-sdk", default-environment = "sdk" }
-sdk-test-rust = { cmd = "python -m pytest tests/test_cli.py -v", cwd = "py-packages/qgis-sdk", default-environment = "sdk" }
-sdk-cli-test = { cmd = "python -m qgis_sdk.cli --help && qgis-plugin --help || python -m qgis_sdk.cli --help", default-environment = "sdk" }
+sdk-test = { cmd = "python -m pytest -q", cwd = "py-packages/qgis-sdk", depends-on = ["sdk-develop"], env = { QGIS_REQUIRE_NATIVE = "1" }, default-environment = "sdk" }
 # Prints the interpreter, the PyQGIS paths, and whether qgis.core / qgis_sdk
 # resolve. Exits non-zero when the environment is broken.
 sdk-doctor = { cmd = "python scripts/doctor.py", cwd = "py-packages/qgis-sdk", default-environment = "sdk" }
@@ -190,8 +186,8 @@ py-qgis = { features = ["qgis", "py"], solve-group = "py-qgis" }
 node = { features = ["node"], solve-group = "node" }
 
 # ---------------------------------------------------------------------------
-# Tasks. CI invokes cargo / pytest / bun directly (.github/workflows); these are
-# the user-facing entrypoints, one verb per action, sharing pixi-sandbox's
+# Tasks. Workflows call these Pixi entrypoints as the local gates, so both
+# contributors and CI use the same verbs, one action per task, sharing pixi-sandbox's
 # vocabulary: fmt / clippy / build / test / gates / ci.
 #
 # There is no `default` environment, so every user-facing task sets
@@ -268,7 +264,7 @@ lint-actions = { cmd = "actionlint", default-environment = "dev" }
 
 # ── packaging ─────────────────────────────────────────────────────────────────
 # The sandbox bundle (dev + docs) is packed and published by the reusable
-# publish-sandbox workflow, not by a local script here. Validate the reviewed
+# publish_sandbox workflow, not by a local script here. Validate the reviewed
 # plan config locally with `pixi run -e dev lint-toml` (taplo) and restore the
 # published transport offline with `pixi run -e dev sandbox-restore`.
 

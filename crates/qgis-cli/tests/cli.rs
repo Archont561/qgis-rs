@@ -34,6 +34,13 @@ fn stderr_of(output: &std::process::Output) -> String {
 }
 
 #[test]
+fn version_reports_the_crate_version() {
+    let output = run(&["--version"]);
+    assert!(output.status.success(), "{}", stderr_of(&output));
+    assert!(stdout_of(&output).contains(env!("CARGO_PKG_VERSION")));
+}
+
+#[test]
 fn help_lists_every_subcommand() {
     let output = run(&["--help"]);
     assert!(output.status.success());

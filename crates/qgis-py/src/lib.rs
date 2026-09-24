@@ -742,3 +742,17 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::plan_tiles;
+
+    #[test]
+    fn plan_tiles_adapter_returns_python_integer_tuples() {
+        let (total, levels) = plan_tiles("14,50,15,51", "10-14").expect("valid plan");
+
+        assert_eq!(total, 4568);
+        assert_eq!(levels.len(), 5);
+        assert_eq!(levels[0], (10, 551, 554, 342, 347, 24));
+    }
+}

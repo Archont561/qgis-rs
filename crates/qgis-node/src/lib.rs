@@ -587,3 +587,25 @@ pub fn get_max_latitude() -> f64 {
 pub fn get_max_zoom() -> u32 {
     qgis_render::MAX_ZOOM
 }
+
+#[cfg(test)]
+mod tests {
+    use super::plan_tiles;
+
+    #[test]
+    fn plan_tiles_adapter_uses_javascript_number_sized_fields() {
+        let result = plan_tiles("14,50,15,51".to_string(), "10-14".to_string())
+            .expect("valid plan");
+
+        assert_eq!(result.total, 4568_i64);
+        assert_eq!(result.levels.len(), 5);
+        assert_eq!(result.levels[0].zoom, 10);
+        assert_eq!(result.levels[0].tile_count, 24_i64);
+    }
+
+    #[test]
+    fn plan_tiles_adapter_rejects_invalid_input() {
+        assert!(plan_tiles("bad extent".to_string(), "10-14".to_string()).is_err());
+        assert!(plan_tiles("14,50,15,51".to_string(), "14-10".to_string()).is_err());
+    }
+}
