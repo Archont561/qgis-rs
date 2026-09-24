@@ -1,5 +1,42 @@
 # Bundle Update Log
 
+## 2026-09-24
+
+* **Verify**: Landed the pending environment refactor (PR #6) after verifying it
+  from scratch on a fresh Codespaces sandbox — pixi 0.81, cargo 1.96.1, clang-format
+  22.1.8, QGIS 3.44.14. `pixi install -e dev --locked` succeeds and the committed
+  `Cargo.lock` is complete for all 9 workspace crates; `gates` (fmt-check, clippy
+  `-D warnings`, lint-toml, lint-actions, test), `check-cpp`, and `test-full`
+  (application_lifecycle + vector_layer) are all green.
+* **Fix**: Clippy 1.96 widened beyond what the code was written for.
+  * `unnecessary_map_or` → `is_none_or` (`LayerStyle::is_valid`, qgis-styles).
+  * `ptr_arg` → `&Path` parameters in `write_compile_commands` (qgis-sys build.rs).
+  * `manual_pattern_char_comparison` → `split(['_', '-', ' '])` in `to_pascal_case`
+    (qgis-sdk + qgis-plugin) and `type_complexity` → `PlanLevel` alias (qgis-py).
+  * `inherent_to_string` → `impl fmt::Display` + `#[napi(js_name = "toString")]`
+    `as_string` on the qgis-node wrappers; the `.d.ts` `toString()` contract is
+    preserved because the generated names stay identical.
+  * PyO3 `useless_conversion` false positive on `#[pyfunction]`/`#[pymethods]`
+    (pyo3/pyo3#4828, fixed upstream in 0.23.5) silenced with module-level
+    `#![allow(...)]`; `render` also got an explicit `#[pyo3(signature = ...)]` to
+    retire pyo3's deprecated implicit defaults warning.
+* **Fix (test harness)**: `QApplication` is a per-process singleton, but `AppHandle`
+  created one per `vector_layer` test — deterministic heap corruption
+  ("corrupted double-linked list", SIGABRT) from the second test on. Rebuilt
+  `crates/qgis-sys/tests/helpers/mod.rs` around a `thread_local` shared app that
+  lives for the whole test binary; 5/5 vector_layer + 1/1 lifecycle tests now pass.
+  Also required `const { RefCell::new(None) }` for clippy 1.96's
+  `missing_const_for_thread_local`.
+* **Fix (setup task)**: the old `setup` hardcoded `$CONDA_PREFIX/lib/libqca-qt6.so.2`
+  as the soname source, but the dev env ships the Qt5 flavor
+  (`libqca-qt5.so.2.3.12`) with no `libqca-qt6` at all — the symlink was dangling
+  and QGIS-backed tests failed to load (`libqca-qt5.so.2 not found`). The task now
+  links whichever flavor is present, failing loudly otherwise.
+* **Fix**: `.github/workflows/rust-check.yml` fmt scope omitted `qgis-styles`; the
+  crate is now formatted there too.
+* **Style**: ran `clang-format 22` over the C++ shims/headers (`qgis-sys/src`,
+  `qgis-sys/include`) that predated the formatting requirement.
+
 ## 2026-09-23
 
 * **Addition**: Adopted the reference project's *release-mode* publisher as the
