@@ -283,7 +283,7 @@ def test_validate_with_ui(tmp_path, capsys):
 
 
 def test_validate_web_missing_qwebchannel(tmp_path, capsys):
-    from qgis_sdk.cli import main
+    from qgis_sdk.cli import HAS_RUST, main
 
     # Create plugin with bad html (no qwebchannel)
     plugin_dir = tmp_path / "bad_web"
@@ -293,11 +293,14 @@ def test_validate_web_missing_qwebchannel(tmp_path, capsys):
     web_dir.mkdir()
     (web_dir / "map.html").write_text("<html><body>No bridge</body></html>")
 
-    # Python fallback validation doesn't check web, but Rust core would
-    # So we test that our Python scaffold always includes qwebchannel
+    # The Rust validator checks WebChannel references; the older Python
+    # fallback only validates the plugin's metadata layout.
     rc = main(["validate", str(plugin_dir)])
-    # Should still be valid in fallback mode
-    assert rc == 0
+    if HAS_RUST:
+        assert rc == 1
+        assert "missing qwebchannel.js reference" in capsys.readouterr().err.lower()
+    else:
+        assert rc == 0
 
 
 def test_scaffold_with_react(tmp_path):
