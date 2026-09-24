@@ -34,6 +34,17 @@
   links whichever flavor is present, failing loudly otherwise.
 * **Fix**: `.github/workflows/rust-check.yml` fmt scope omitted `qgis-styles`; the
   crate is now formatted there too.
+* **Fix (CI)**: the `test-rust` job ran bare `cargo test --workspace`, which on a
+  headless runner aborted once the (now-run) QGIS-backed tests created a
+  `QApplication` (`could not connect to display`) and would race the single-app
+  harness across threads. It now delegates to the repo's own `test`/`test-full`
+  pixi tasks so offscreen platform, `--test-threads=1`, and provider/proj env are
+  the single source of truth. `Test Rust code` is green in CI.
+* **Known pre-existing (unchanged)**: `main` CI was already red on
+  `npx napi build --manifest-path` (unsupported in current `@napi-rs/cli`), the
+  `qgis_sdk.testing` pytest plugin double-registration, and the ubuntu
+  maturin-action python3 lookup. Tracked as follow-ups, out of scope for the env
+  refactor landing.
 * **Style**: ran `clang-format 22` over the C++ shims/headers (`qgis-sys/src`,
   `qgis-sys/include`) that predated the formatting requirement.
 
