@@ -1,5 +1,10 @@
-# Publish the reviewed development environments through pixi-sandbox's
-# reusable release-mode workflow.
+# Publish the reviewed development environments through pixi-sandbox.
+# Fixed to strip the top-level `schema` field from `plan --json` before using it
+# as a GitHub Actions strategy.matrix. The reusable publisher at
+# 3d7a61825c165c161d4e13df78ee589d0eafc2f1 passed the raw plan JSON (which includes
+# {"schema":1,"include":[...]}) directly to `strategy.matrix`. GitHub's matrix
+# only accepts axis arrays plus include/exclude, so the extra `schema: 1` integer
+# caused the publish job to fail to initialize and no sandbox branch was created.
 name: publish_sandbox
 
 on:
@@ -19,19 +24,147 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  sandbox:
-    name: Publish sandbox bundles
-    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+  plan:
+    name: validate sandbox publish plan
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+    steps:
+      - name: Checkout project
+        uses: actions/checkout@v7.0.1 # v7.0.1
+        with:
+          path: project
+          persist-credentials: false
+          ref: ${{ github.event.workflow_run.head_sha || github.ref }}
+
+      - name: Require immutable pixi-sandbox action source
+        shell: bash
+        env:
+          RELEASE_REF: 3d7a61825c165c161d4e13df78ee589d0eafc2f1
+        run: '[[ "$RELEASE_REF" =~ ^[0-9a-fA-F]{40}$ ]] || { echo "::error::release-ref must be a 40-character commit SHA"; exit 1; }'
+
+      - name: Checkout pixi-sandbox actions (release mode)
+        uses: actions/checkout@v7.0.1 # v7.0.1
+        with:
+          repository: Archont561/pixi-sandbox
+          ref: 3d7a61825c165c161d4e13df78ee589d0eafc2f1
+          path: pixi-sandbox-action
+          persist-credentials: false
+          token: ${{ secrets.SANDBOX_PUSH_TOKEN || github.token }}
+
+      - name: Install verified pixi-sandbox release (release mode)
+        id: sandbox-release
+        uses: ./pixi-sandbox-action/.github/actions/setup-pixi-sandbox
+        with:
+          repository: Archont561/pixi-sandbox
+          version: v0.2.0
+          checksums-asset: SHA256SUMS
+          token: ${{ github.token }}
+
+      - name: Emit reviewed native matrix (release mode)
+        id: plan-release
+        working-directory: project
+        shell: bash
+        env:
+          CONFIG: .pixi-sandbox.toml
+          SANDBOX_BIN: ${{ steps.sandbox-release.outputs.path }}
+        run: |
+          set -euo pipefail
+          matrix=$("$SANDBOX_BIN" plan --config "$CONFIG" --json)
+          printf 'matrix=%s\n' "$matrix" >> "$GITHUB_OUTPUT"
+          echo "Raw plan: $matrix"
+
+      - name: Consolidate matrix output
+        id: plan
+        shell: bash
+        env:
+          MATRIX_RELEASE: ${{ steps.plan-release.outputs.matrix }}
+        run: |
+          set -euo pipefail
+          MATRIX="$MATRIX_RELEASE"
+          if [ -z "$MATRIX" ]; then
+            echo "::error::Failed to produce publish matrix"
+            exit 1
+          fi
+          # The plan JSON includes a schema field for versioning, but GitHub's
+          # strategy.matrix only accepts include/exclude and axis arrays. Strip
+          # any extra top-level keys so the matrix is directly consumable.
+          # This was the root cause of run 35982903709: the reusable workflow
+          # passed {"schema":1,"include":[...]} directly to strategy.matrix,
+          # which is invalid because schema is not an array.
+          MATRIX=$(echo "$MATRIX" | jq -c '{include: .include}')
+          echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
+          echo "Produced matrix: $MATRIX"
+
+  publish:
+    name: ${{ matrix.bundle }} · ${{ matrix.platform }}
+    needs: plan
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 90
     permissions:
       contents: write
-    uses: Archont561/pixi-sandbox/.github/workflows/publish-sandbox.yml@3d7a61825c165c161d4e13df78ee589d0eafc2f1 # v0.2.0, 2026-09-23
-    with:
-      # Environments and platforms come from the reviewed .pixi-sandbox.toml;
-      # leave overrides empty so the reusable workflow reads the plan.
-      config: .pixi-sandbox.toml
-      release-repository: Archont561/pixi-sandbox
-      release-ref: 3d7a61825c165c161d4e13df78ee589d0eafc2f1
-      release-version: v0.2.0
-      checksums-asset: SHA256SUMS
-    secrets:
-      SANDBOX_PUSH_TOKEN: ${{ secrets.SANDBOX_PUSH_TOKEN }}
+    concurrency:
+      group: sandbox-publish-${{ github.repository }}-${{ matrix.branch }}
+      cancel-in-progress: false
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    steps:
+      - name: Checkout project
+        uses: actions/checkout@v7.0.1 # v7.0.1
+        with:
+          path: project
+          persist-credentials: false
+          ref: ${{ github.event.workflow_run.head_sha || github.ref }}
+
+      - name: Require immutable pixi-sandbox action source (release)
+        shell: bash
+        env:
+          RELEASE_REF: 3d7a61825c165c161d4e13df78ee589d0eafc2f1
+        run: '[[ "$RELEASE_REF" =~ ^[0-9a-fA-F]{40}$ ]] || { echo "::error::release-ref must be a 40-character commit SHA"; exit 1; }'
+
+      - name: Checkout pixi-sandbox actions (release)
+        uses: actions/checkout@v7.0.1 # v7.0.1
+        with:
+          repository: Archont561/pixi-sandbox
+          ref: 3d7a61825c165c161d4e13df78ee589d0eafc2f1
+          path: pixi-sandbox-action
+          persist-credentials: false
+          token: ${{ secrets.SANDBOX_PUSH_TOKEN || secrets.SANDBOX_PUSH_TOKEN || github.token }}
+
+      - name: Install Pixi (release)
+        uses: prefix-dev/setup-pixi@v0.10.2 # v0.10.2
+        with:
+          cache: true
+
+      - name: Install verified pixi-sandbox release
+        id: sandbox-release
+        uses: ./pixi-sandbox-action/.github/actions/setup-pixi-sandbox
+        with:
+          repository: Archont561/pixi-sandbox
+          version: v0.2.0
+          checksums-asset: SHA256SUMS
+          token: ${{ github.token }}
+
+      - name: Pack, verify, and publish one native sandbox branch (release)
+        id: publish-release
+        uses: ./pixi-sandbox-action/.github/actions/publish-pixi-sandbox
+        with:
+          project: project
+          environments: ${{ matrix.environments }}
+          platform: ${{ matrix.platform }}
+          branch: ${{ matrix.branch }}
+          cargo-vendor: ${{ matrix.cargo_vendor }}
+          self-bin: ${{ steps.sandbox-release.outputs.path }}
+          remote: ${{ github.server_url }}/${{ github.repository }}.git
+          output-dir: ${{ runner.temp }}/pixi-sandbox/${{ matrix.bundle }}-${{ matrix.platform }}
+          push-token: ${{ secrets.SANDBOX_PUSH_TOKEN || github.token }}
+
+      - name: Upload published manifest
+        if: success()
+        uses: actions/upload-artifact@v7.0.1 # v7.0.1
+        with:
+          name: sandbox-manifest-${{ matrix.bundle }}-${{ matrix.platform }}
+          path: ${{ steps.publish-release.outputs.manifest }}
+          retention-days: 14
