@@ -1,17 +1,20 @@
 # TEMPORARY: regenerate pixi.lock from a network-enabled runner.
 # Added by the arena agent session on 2026-09-24 because the working sandbox
-# cannot reach conda-forge/prefix.dev. It runs on pull_request (branch-only
-# workflow files can't be workflow_dispatched), the refreshed pixi.lock is
-# downloaded from the artifact and committed, and this workflow is removed
-# again. Not part of the standing CI surface.
+# cannot reach conda-forge/prefix.dev (and the artifact CDN is blocked there
+# too), so the refreshed pixi.lock is committed straight back to the session
+# branch instead of being downloaded as an artifact. Runs on pull_request
+# because a workflow file that exists only on a non-default branch cannot be
+# workflow_dispatched. Removed again once the lock has landed.
 name: refresh-lock
 
 on:
   pull_request:
     branches: [main]
 
+# Pushing the refreshed lockfile back to the session branch. The GITHUB_TOKEN
+# push does not re-trigger workflows, so there is no recursion.
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: refresh-lock
@@ -24,7 +27,12 @@ jobs:
     timeout-minutes: 30
 
     steps:
+      # The branch head, not the pull_request merge ref: the lock must be
+      # committed on top of exactly what the session branch points at.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: arena/01a0d2f3-qgis-rs
+          persist-credentials: true
 
       - name: Set up pixi
         uses: prefix-dev/setup-pixi@d3f436a425481402e6a95a1d1fc10331c708cd9e # v0.10.2
@@ -37,11 +45,16 @@ jobs:
         run: pixi lock
 
       - name: Report the lockfile diff
-        run: git diff --stat pixi.lock
+        run: git --no-pager diff --stat pixi.lock
 
-      - name: Upload refreshed lockfile
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: refreshed-pixi-lock
-          path: pixi.lock
-          retention-days: 7
+      - name: Commit the refreshed lockfile to the session branch
+        run: |
+          git config user.name "arena-agent[bot]"
+          git config user.email "arena-agent[bot]@users.noreply.github.com"
+          git add pixi.lock
+          if git diff --cached --quiet; then
+            echo "pixi.lock unchanged — nothing to push"
+            exit 0
+          fi
+          git commit -m "chore(env): refresh pixi.lock for the dev/py/task changes"
+          git push origin HEAD:arena/01a0d2f3-qgis-rs
