@@ -2,7 +2,7 @@
 # One-liner offline reconstruction from an orphan branch, with PATH aliases.
 # Usage: bash scripts/restore.sh [branch] [output-path]
 #   branch defaults to sandbox/developer-linux-64 (the bundle published by
-#   .github/workflows/publish-sandbox.yml for .pixi-sandbox.toml)
+#   .github/workflows/publish_sandbox.yml for .pixi-sandbox.toml)
 #   output-path defaults to .
 # After restore, sources .pixi/sandbox-env.sh and adds dev env to PATH.
 

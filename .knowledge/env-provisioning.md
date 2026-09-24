@@ -33,7 +33,7 @@ qgis-rs is a **consumer** of pixi-sandbox (release mode): it does not vendor the
 
 ### Producer (CI)
 
-The `.github/workflows/publish-sandbox.yml` workflow is a thin wrapper around the *reusable* pixi-sandbox publisher (`Archont561/pixi-sandbox/.github/workflows/publish-sandbox.yml`, pinned to an immutable commit SHA). On `workflow_run` after a successful `CI` run on `main` (or on `workflow_dispatch`), it:
+The `.github/workflows/publish_sandbox.yml` workflow is a thin wrapper around the *reusable* pixi-sandbox publisher (`Archont561/pixi-sandbox/.github/workflows/publish-sandbox.yml`, pinned to an immutable commit SHA). On `workflow_run` after a successful `CI` run on `main` (or on `workflow_dispatch`), it:
 
 1. Validates `.pixi-sandbox.toml` via `pixi-sandbox plan --json`.
 2. Expands the plan into one native job per (bundle × platform) — here the single `developer` bundle (environments `dev` + `docs`, platform `linux-64`).

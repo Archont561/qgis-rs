@@ -1,14 +1,6 @@
-# ci.yml — validate PRs: check pixi environments and run tests
-#
-# Runs on every PR to main. Validates:
-# 1. Pixi environments are valid (dev + docs + utils)
-# 2. The sandbox publish plan (.pixi-sandbox.toml) is valid
-# 3. Rust code compiles and tests pass
-# 4. Documentation site builds
-#
-# This workflow only validates. Publishing the docs site to GitHub Pages lives
-# in pages.yml; publishing sandbox bundles lives in publish-sandbox.yml.
-
+# Pull-request and main-branch quality gates. The full development gate is
+# defined by pixi's `ci-full` task; the other jobs collect coverage and smoke-test
+# the Python, Node, and TypeScript-facing APIs.
 name: CI
 
 on:
@@ -16,117 +8,208 @@ on:
     branches: [main]
   push:
     branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  validate-pixi:
-    name: Validate Pixi environments
+  quality:
+    name: Formatting, linting, and QGIS tests
     runs-on: ubuntu-latest
-    
+    timeout-minutes: 60
+
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: set up pixi
+      - name: Set up pixi
         uses: prefix-dev/setup-pixi@d3f436a425481402e6a95a1d1fc10331c708cd9e # v0.10.2
         with:
           pixi-version: v0.81.0
           run-install: false
           cache: false
 
-      - name: validate dev environment
-        run: |
-          pixi install -e dev
-          pixi run -e dev cargo --version
-          pixi run -e dev pixi --version
-          pixi run -e dev clang-format --version
+      - name: Install the development environment
+        run: pixi install -e dev --locked
 
-      - name: validate utils environment
-        run: |
-          pixi install -e utils
-          pixi run -e utils actionlint --version
-          pixi run -e utils taplo --version
+      # This repository task is the single source of truth for Rust/C++
+      # formatting and linting plus Rust unit/integration tests (including QGIS).
+      - name: Run the full CI gate
+        run: pixi run -e dev ci-full
 
-      - name: validate docs environment
-        run: |
-          pixi install -e docs
-          pixi run -e docs bun --version
+  coverage:
+    name: Rust coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
 
-      # Validate the reviewed publish plan (.pixi-sandbox.toml) exactly as the
-      # publish-sandbox workflow will: checksum-verified release binary + plan.
-      # Pinned SHA matches .github/workflows/publish-sandbox.yml `uses:` ref.
-      - name: validate sandbox publish plan
-        uses: Archont561/pixi-sandbox/.github/actions/setup-pixi-sandbox@3d7a61825c165c161d4e13df78ee589d0eafc2f1 # main @ 2026-09-23
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Rust with LLVM coverage tools
+        uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de # master
+        with:
+          toolchain: stable
+          components: llvm-tools-preview
+
+      - name: Install cargo-llvm-cov
+        run: cargo install cargo-llvm-cov --version 0.9.1 --locked
+
+      - name: Generate LCOV report
+        run: |
+          mkdir -p target/coverage
+          cargo llvm-cov \
+            --workspace \
+            --exclude qgis-sys \
+            --no-default-features \
+            --lcov \
+            --output-path target/coverage/rust-lcov.info \
+            -- --test-threads=1
+
+      - name: Upload Rust coverage report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: rust-coverage
+          path: target/coverage/rust-lcov.info
+          if-no-files-found: ignore
+          retention-days: 7
+
+  package-smoke:
+    name: Python and Node native FFI smoke tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.0.0
+        with:
+          python-version: "3.11"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.0.0
+        with:
+          node-version: "22"
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de # master
+        with:
+          toolchain: stable
+
+      # maturin develop installs into an active virtual environment.
+      - name: Create virtual environment
+        run: |
+          python -m venv .venv
+          echo "VIRTUAL_ENV=$GITHUB_WORKSPACE/.venv" >> "$GITHUB_ENV"
+          echo "$GITHUB_WORKSPACE/.venv/bin" >> "$GITHUB_PATH"
+
+      - name: Install Python test tools
+        run: python -m pip install "maturin>=1.7,<2" "pytest>=8,<9" "pytest-cov>=5,<7"
+
+      - name: Build and install qgis-rs
+        working-directory: py-packages/qgis-rs
+        run: maturin develop
+
+      - name: Test qgis-rs Python API and FFI with coverage
+        env:
+          QGIS_REQUIRE_NATIVE: "1"
+        run: |
+          mkdir -p target/coverage
+          python -m pytest py-packages/qgis-rs/tests -v \
+            --cov=qgis_rs \
+            --cov-report=term-missing \
+            --cov-report=xml:target/coverage/python-qgis-rs.xml
+
+      - name: Build and install qgis-sdk
+        working-directory: py-packages/qgis-sdk
+        run: maturin develop
+
+      - name: Test qgis-sdk Python API and FFI with coverage
+        env:
+          QGIS_REQUIRE_NATIVE: "1"
+        run: |
+          python -m pytest py-packages/qgis-sdk/tests -v \
+            --cov=qgis_sdk \
+            --cov-report=term-missing \
+            --cov-report=xml:target/coverage/python-qgis-sdk.xml
+
+      - name: Install qgis-rs npm dependencies
+        working-directory: ts-packages/qgis-node
+        run: npm ci --workspaces=false
+
+      # `napi build` takes --cargo-cwd (not --manifest-path) in @napi-rs/cli
+      # 2.x. The package script also supplies the output directory positionally.
+      - name: Build the native Node.js addon
+        working-directory: ts-packages/qgis-node
+        run: npm run build
+
+      - name: Test the native Node.js FFI
+        working-directory: ts-packages/qgis-node
+        env:
+          QGIS_REQUIRE_NATIVE: "1"
+        run: |
+          npm test
+          npm pack --dry-run
+
+      - name: Upload Python coverage reports
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: python-coverage
+          path: target/coverage/python-*.xml
+          if-no-files-found: ignore
+          retention-days: 7
+
+  web-smoke:
+    name: TypeScript bridge tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up pixi
+        uses: prefix-dev/setup-pixi@d3f436a425481402e6a95a1d1fc10331c708cd9e # v0.10.2
+        with:
+          pixi-version: v0.81.0
+          run-install: false
+          cache: false
+
+      - name: Install docs environment and Bun dependencies
+        run: |
+          pixi install -e docs --locked
+          pixi run -e docs bun install --frozen-lockfile
+
+      - name: Run TypeScript bridge tests
+        run: pixi run -e docs bun test
+
+      - name: Build TypeScript bridge
+        working-directory: ts-packages/qgis-sdk-bridge
+        run: pixi run -e docs bun run build
+
+  validate-sandbox-plan:
+    name: Validate reusable sandbox publish plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up the pinned pixi-sandbox release binary
+        uses: Archont561/pixi-sandbox/.github/actions/setup-pixi-sandbox@3d7a61825c165c161d4e13df78ee589d0eafc2f1 # v0.2.0, 2026-09-23
         id: sandbox-setup
         with:
           repository: Archont561/pixi-sandbox
           version: v0.2.0
           token: ${{ github.token }}
 
-      - name: check sandbox plan matrix
-        run: |
-          "${{ steps.sandbox-setup.outputs.path }}" plan --config .pixi-sandbox.toml --json
-
-  test-rust:
-    name: Test Rust code
-    runs-on: ubuntu-latest
-    needs: validate-pixi
-    
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: set up pixi
-        uses: prefix-dev/setup-pixi@d3f436a425481402e6a95a1d1fc10331c708cd9e # v0.10.2
-        with:
-          pixi-version: v0.81.0
-          run-install: false
-          cache: false
-
-      - name: install environment
-        run: pixi install -e dev
-
-      - name: run tests
-        run: |
-          set -o pipefail
-          pixi run -e dev test
-          pixi run -e dev test-full
-
-  # Mirrors the build half of pages.yml, so a PR catches a broken Pages
-  # deployment before it can reach main.
-  build-docs:
-    name: Build documentation site
-    runs-on: ubuntu-latest
-    needs: validate-pixi
-    
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: set up pixi
-        uses: prefix-dev/setup-pixi@d3f436a425481402e6a95a1d1fc10331c708cd9e # v0.10.2
-        with:
-          pixi-version: v0.81.0
-          run-install: false
-          cache: false
-
-      - name: install docs environment
-        run: pixi install -e docs
-
-      # apps/docs is a member of the root Bun workspace, so the frozen install
-      # runs at the workspace root against the committed bun.lock.
-      - name: install dependencies
-        run: pixi run -e docs bun install --frozen-lockfile
-
-      - name: build documentation
-        working-directory: apps/docs
-        run: pixi run -e docs bun run build
-
-      - name: upload docs artifact
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: docs-site
-          path: apps/docs/dist/
-          retention-days: 7
+      - name: Validate the reviewed publish plan
+        run: '"${{ steps.sandbox-setup.outputs.path }}" plan --config .pixi-sandbox.toml --json'

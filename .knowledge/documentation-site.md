@@ -151,34 +151,35 @@ Pages in these directories appear automatically in sidebar order.
 ## Deployment
 
 The site is published to **GitHub Pages** at
-<https://archont561.github.io/qgis-rs/> by `.github/workflows/pages.yml`:
+<https://archont561.github.io/qgis-rs/> by `.github/workflows/docs.yml`:
 
 ```
-push to main (apps/docs/**, pixi.toml, pixi.lock, pages.yml)  ──┐
-workflow_dispatch  ────────────────────────────────────────────┤
+pull request (docs inputs) ────────────────────────────────┐
+push to main / manual dispatch ──────────────────────────────┤
                                                                ▼
                               build job (ubuntu-latest)
-                                actions/configure-pages
                                 pixi install -e docs
-                                pixi run -e docs bun install / bun run build
-                                actions/upload-pages-artifact (apps/docs/dist)
+                                bun install --frozen-lockfile / bun run build
+                                upload Pages artifact (main only)
                                                                ▼
-                              deploy job
+                              deploy job (main only)
                                 actions/deploy-pages
                                 → https://archont561.github.io/qgis-rs/
 ```
 
-All actions are pinned by commit SHA, matching `ci.yml` and `publish-sandbox.yml`. The
-workflow needs `pages: write` and `id-token: write`; `contents` stays
-read-only. `concurrency: { group: pages, cancel-in-progress: false }` keeps
+All actions are pinned by commit SHA, alongside `ci.yml` and
+`publish_sandbox.yml`. The build job has read-only content and Pages access;
+the deploy job receives `pages: write` and `id-token: write`.
+`concurrency: { group: github-pages, cancel-in-progress: false }` keeps
 deployments ordered.
 
 **One-time admin step**: *Settings → Pages → Source: GitHub Actions*. The
 repository starts with Pages disabled, and the default workflow token cannot
 enable it, so the `deploy` job fails until this is set.
 
-`ci.yml` still builds the site on every PR (`build-docs` job) to catch breakage
-before it reaches `main`; `pages.yml` only publishes.
+`docs.yml` builds the site on matching pull requests without publishing, and
+publishes only from `main`. The `CI` workflow owns Rust/C++ quality, coverage,
+and package smoke tests.
 
 ### Subpath (`base`)
 

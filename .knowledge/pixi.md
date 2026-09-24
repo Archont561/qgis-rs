@@ -298,7 +298,7 @@ This provides cargo, rustc, clang-tools, QGIS headers/libraries, and pixi itself
 without needing conda-forge or prefix.dev. See [env-provisioning.md](/env-provisioning.md)
 for the full design.
 
-The `.github/workflows/publish-sandbox.yml` workflow calls the pixi-sandbox
+The `.github/workflows/publish_sandbox.yml` workflow calls the pixi-sandbox
 *reusable* publisher after every successful `CI` run on `main` (or on manual
 dispatch), validates `.pixi-sandbox.toml`, and republishes the bundle whenever
 `pixi.toml` / `pixi.lock` change. The branch is `sandbox/developer-linux-64`.

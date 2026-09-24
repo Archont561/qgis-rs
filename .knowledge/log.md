@@ -40,11 +40,22 @@
   harness across threads. It now delegates to the repo's own `test`/`test-full`
   pixi tasks so offscreen platform, `--test-threads=1`, and provider/proj env are
   the single source of truth. `Test Rust code` is green in CI.
-* **Known pre-existing (unchanged)**: `main` CI was already red on
-  `npx napi build --manifest-path` (unsupported in current `@napi-rs/cli`), the
-  `qgis_sdk.testing` pytest plugin double-registration, and the ubuntu
-  maturin-action python3 lookup. Tracked as follow-ups, out of scope for the env
-  refactor landing.
+* **Workflow consolidation and PR failure follow-up**: the PR's red Node builds
+  used `napi build --manifest-path`/`-o`, which `@napi-rs/cli` 2.18 does not
+  support; the package scripts now use `--cargo-cwd` and a positional output
+  directory. The qgis-sdk test suite loaded `qgis_sdk.testing` both through its
+  `pytest11` entry point and explicit `pytest_plugins` declarations; the duplicate
+  registrations were removed. The Ubuntu maturin-action wheel matrix (which failed
+  in its Docker/Python bootstrap) is no longer part of CI: smoke tests build both
+  Python packages with maturin directly. The workflows are now `ci.yml`, `docs.yml`,
+  and `publish_sandbox.yml`; Python and Rust coverage reports are retained as
+  artifacts, and sandbox publishing is gated on a successful CI run.
+* **Test layout**: Removed the standalone `examples/` programs and their Pixi/CI
+  invocations. Core geometry and CLI behavior stay tested in Rust crates; the
+  PyO3/NAPI adapters now have Rust-side result-shape tests, and Python/Node smoke
+  suites run after extension compilation with native loading required in CI.
+  Rust CLI smoke coverage lives in `crates/qgis-cli/tests` and
+  `crates/qgis-sdk/tests/plugin_cli.rs`, rather than inline workflow shell.
 * **Style**: ran `clang-format 22` over the C++ shims/headers (`qgis-sys/src`,
   `qgis-sys/include`) that predated the formatting requirement.
 
