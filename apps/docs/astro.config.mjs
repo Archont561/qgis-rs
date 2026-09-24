@@ -5,7 +5,7 @@ import remarkBaseLinks from './remark-base-links.mjs';
 
 // Deployed to GitHub Pages as a project site, so the site lives under the
 // /qgis-rs subpath: https://archont561.github.io/qgis-rs/
-// See .github/workflows/pages.yml for the deployment.
+// See .github/workflows/docs.yml for the deployment.
 const site = 'https://archont561.github.io';
 const base = '/qgis-rs';
 

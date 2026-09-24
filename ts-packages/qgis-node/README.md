@@ -30,14 +30,15 @@ cd qgis-rs
 
 # Install deps
 cd ts-packages/qgis-node
-npm install
+npm ci --workspaces=false
 
 # Build native addon
 npm run build
 
-# Test
+# Smoke-test the compiled NAPI API
 npm test
-node -e "const { Extent, TilePlan, ZoomRange } = require('./index.js'); console.log(new TilePlan(Extent.parse('14,50,15,51'), ZoomRange.parse('10-14')).tileCount())"
+
+# Inspect the CLI wrapper
 npx qgis-cli --help
 ```
 
@@ -116,7 +117,7 @@ Same Rust code as Python packages, but via Node.js wrappers.
 ```bash
 # Binary on PATH (installed via npm)
 npx qgis-cli --help
-npx qgis-cli version
+npx qgis-cli --version
 npx qgis-cli info map.qgs --json
 npx qgis-cli tiles map.qgs -z 10-14 -b 14,50,15,51 -o ./tiles/ --dry-run
 
@@ -146,7 +147,7 @@ qgis-rs npm package
 ```
 
 - Rust: `crates/qgis-render` (pure Rust), `crates/qgis-cli`, `crates/qgis-sdk` (plugin CLI)
-- Node: `ts-packages/qgis-node/` — package.json, `index.js`, `fallback.js`, `bin/` wrappers; the NAPI crate it builds is `crates/qgis-node/` (`napi build --manifest-path ../../crates/qgis-node/Cargo.toml -o .`)
+- Node: `ts-packages/qgis-node/` — package.json, `index.js`, `fallback.js`, `bin/` wrappers; the NAPI crate it builds is `crates/qgis-node/` (`napi build --cargo-cwd ../../crates/qgis-node .`)
 - Python: `py-packages/qgis-rs/` and `py-packages/qgis-sdk/` — same Rust code via PyO3
 
 ## Conda-forge (Node.js)

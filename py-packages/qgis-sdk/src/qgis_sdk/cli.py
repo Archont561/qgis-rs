@@ -58,7 +58,24 @@ def _cmd_new(args: argparse.Namespace) -> int:
     bundle = getattr(args, "bundle", False)
     offline_wheel = getattr(args, "offline_wheel", None)
 
-    if HAS_RUST and core is not None and hasattr(core, "scaffold_plugin") and not declarative:
+    # The Rust scaffold currently covers the vanilla layout only. Route
+    # framework-specific templates and packaging options through Python so the
+    # native extension doesn't silently ignore CLI arguments it does not yet
+    # support.
+    native_scaffold_supports_args = (
+        framework == "vanilla"
+        and not bundle
+        and offline_wheel is None
+        and not getattr(args, "author", None)
+        and not getattr(args, "email", None)
+    )
+    if (
+        HAS_RUST
+        and core is not None
+        and hasattr(core, "scaffold_plugin")
+        and not declarative
+        and native_scaffold_supports_args
+    ):
         try:
             try:
                 result = core.scaffold_plugin(name, str(output_dir), args.type, args.rust, args.web, not args.no_ui)

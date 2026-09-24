@@ -10,7 +10,6 @@ import time
 
 import pytest
 
-pytest_plugins = ["qgis_sdk.testing"]
 
 
 # ── TaskManager ─────────────────────────────────────────────────────────────

@@ -1,7 +1,7 @@
 ---
 type: Practice
 title: Environment Provisioning
-description: How qgis-rs bootstraps its development environment via pixi-sandbox packs when pixi/conda are unavailable.
+description: How qgis-rs bootstraps its development environment via pixi-sandbox transports when pixi/conda are unavailable.
 status: stable
 tags: [environment, pixi-sandbox, provisioning, sandbox, offline]
 generated: { by: arena-agent/qgis-rs-kb-init, at: 2026-09-17T20:00:00Z }
@@ -10,10 +10,10 @@ sources:
     resource: https://github.com/Archont561/pixi-sandbox
     title: "pixi-sandbox — Portable, verifiable Pixi environments for sandboxed machines"
     author: human:archont561
-  - id: pixi-sh
-    resource: https://pixi.sh
-    title: "Pixi — cross-platform, multi-language package manager"
-    author: team:prefix-dev
+  - id: publish-automation
+    resource: https://github.com/Archont561/pixi-sandbox/blob/main/.knowledge/publish-automation.md
+    title: "pixi-sandbox — Release-driven sandbox publication"
+    author: human:archont561
 
 ---
 
@@ -27,54 +27,39 @@ The only reliable network path is `github.com` over the git protocol. This is th
 
 ## The Solution: pixi-sandbox
 
-[pixi-sandbox](https://github.com/Archont561/pixi-sandbox) packages entire conda environments as self-extracting `.sh` bundles, distributed via orphan git branches. The consumer needs only `sh`, `git`, `tar`, and `sha256sum` — all available in virtually every Unix sandbox.
+[pixi-sandbox](https://github.com/Archont561/pixi-sandbox) packages entire conda environments as a git transport (raw `.conda` files, helper tools, optional cargo vendor), distributes it via orphan git branches, and restores it offline. The consumer needs only `sh`, `git`, and `sha256sum`.
+
+qgis-rs is a **consumer** of pixi-sandbox (release mode): it does not vendor the pixi-sandbox crate. The reviewed publish plan lives in `.pixi-sandbox.toml` at the repo root.
 
 ### Producer (CI)
 
-The `.github/workflows/env.yml` workflow:
+The `.github/workflows/publish_sandbox.yml` workflow is a thin wrapper around the *reusable* pixi-sandbox publisher (`Archont561/pixi-sandbox/.github/workflows/publish-sandbox.yml`, pinned to an immutable commit SHA). On `workflow_run` after a successful `CI` run on `main` (or on `workflow_dispatch`), it:
 
-1. Installs pixi on a hosted runner (full network access)
-2. Resolves `pixi install -e default` (deliberately not `--locked`, as in the
-   reference project, so a manifest change never reddens this job by itself)
-3. Runs `pixi run -e default pack`, i.e. `scripts/pack-env.sh`: `pixi-pack
-   --create-executable` produces `dist/qgis-rs-<platform>.sh`, then the script
-   unpacks it into a scratch dir with the extractor's own flags
-   (`-o <dir> -e env`) and prints `pixi`/`cargo`/`rustc`/`bun --version` from
-   the unpacked environment
-4. Force-pushes `dist/` to the orphan branch `env/qgis-rs-linux-64`
+1. Validates `.pixi-sandbox.toml` via `pixi-sandbox plan --json`.
+2. Expands the plan into one native job per (bundle × platform) — here the single `developer` bundle (environments `dev` + `docs`, platform `linux-64`).
+3. On each native runner: `pixi install --frozen -e <env>` → `pack --self-bin <verified release> --cargo-vendor` → `doctor --verify` → `publish` (one orphan branch, force-pushed).
+4. The same checksum-verified standalone release binary is embedded as the branch bootstrap executable.
 
-`pixi-pack` is a declared dependency (`[workspace.dependencies]`, consumed by
-the root environment) rather than something the workflow installs ad hoc, which
-is what makes `pixi run -e default pack` find the tool. After adding or bumping
-a pin, run `pixi lock` and commit the result so the checked-in `pixi.lock`
-matches `pixi.toml`.
+The branch published is `sandbox/developer-linux-64`. Packing, verifying and publishing all run on the *same* native runner — the payload never travels as an artifact.
+
+`pixi-pack` / `pixi-unpack` are **not** local dependencies: the release binary fetches them from its own embedded SHA-256 pins (`--fetch-tools`), so the checked-in `pixi.lock` does not need to carry pack tooling.
 
 ### Consumer (sandbox / local)
 
 ```sh
-# Option A: full script
-sh scripts/setup-env.sh
-
-# Option B: manual
-git clone --depth 1 --branch env/qgis-rs-linux-64 \
-  https://github.com/Archont561/qgis-rs pack
-cd pack && bash ./pixi-sandbox-*.sh
+# From any machine with git + bash (no pixi, no conda):
+bash scripts/restore.sh
+# default branch: sandbox/developer-linux-64
+# default output: .
 ```
 
-Then activate:
-
-```sh
-. scripts/use-pack.sh
-# or: PIXI_SANDBOX_HOME=.pixi-sandbox . scripts/use-pack.sh
-```
-
-This puts `env/bin` on PATH and sets `CONDA_PREFIX`, so `build.rs` finds Qt and QGIS headers automatically.
+`scripts/restore.sh` fetches the branch (via a worktree), runs `doctor --verify` on the transport, and calls the branch's own `restore.sh` / embedded binary to materialise the environments and vendor tree into the current repo, then sources `.pixi/sandbox-env.sh` and puts `dev` env + bundled tools on PATH — so `build.rs` finds Qt and QGIS headers, and `cargo build --offline` works.
 
 ## Network Reachability Matrix
 
 | Endpoint                    | Reachable? | Used by                  |
 |-----------------------------|-----------|--------------------------|
-| `github.com` (git)          | ✔        | Clone env branch         |
+| `github.com` (git)          | ✔        | Clone/fetch sandbox branch |
 | `conda.anaconda.org`        | ✘        | `pixi install`           |
 | `prefix.dev`                | ✘        | pixi-build backends      |
 | `static.rust-lang.org`      | ✘        | `rustup install`         |
@@ -83,32 +68,13 @@ This puts `env/bin` on PATH and sets `CONDA_PREFIX`, so `build.rs` finds Qt and 
 
 ## Scripts
 
-| Script                          | Purpose                                              |
-|---------------------------------|------------------------------------------------------|
-| `scripts/setup-env.sh`          | Clone env branch + run self-extractor + write receipt |
-| `scripts/use-pack.sh`           | Source to put pack tools on PATH + set CONDA_PREFIX  |
-| `scripts/publish-env-branch.sh` | CI helper: force-push dist/ to orphan env/ branch    |
+| Script                  | Purpose                                              |
+|-------------------------|------------------------------------------------------|
+| `scripts/restore.sh`    | Fetch the published sandbox branch and restore dev/docs offline |
 
-## Receipt
+## What the Transport Contains
 
-After `setup-env.sh` completes, `.pixi-sandbox/env-pack-receipt.json` records:
-
-```json
-{
-  "protocol": 1,
-  "pack": "qgis-rs",
-  "platform": "linux-64",
-  "installDir": ".pixi-sandbox/env",
-  "tools": ["pixi", "cargo", "rustc", "clang-format", "clang-tidy"],
-  "binDir": ".pixi-sandbox/env/bin"
-}
-```
-
-Tools and agents read the receipt to verify environment state — never re-derive it.
-
-## What the Pack Contains
-
-Based on `pixi.toml` `[dependencies]`:
+Based on `pixi.toml`:
 
 | Package        | Purpose                                |
 |----------------|----------------------------------------|
@@ -120,31 +86,20 @@ Based on `pixi.toml` `[dependencies]`:
 | `qgis` ≥3.44   | QGIS headers, libraries, plugins       |
 | `pixi`         | Environment manager (for `pixi run` tasks) |
 
-## Using Tools After Activation
+Blobs are verified against the manifest's SHA-256 digests before anything is written. The vendor tree (when `cargo_vendor = true`, as here) is always materialised so `cargo build --offline` works regardless of which environments were selected.
 
-Once `use-pack.sh` is sourced:
+## Using Tools After Restore
 
 ```sh
-cargo build -p qgis-sys          # works — cargo on PATH
+bash scripts/restore.sh
+cargo build -p qgis-sys          # works — cargo on PATH (offline)
 clang-format --version            # works — clang-tools on PATH
+pixi --version                   # works — bundled pixi
 QT_QPA_PLATFORM=offscreen cargo test -p qgis-sys --test application_info -- --test-threads=1
-```
-
-**Note:** `pixi run <task>` may not work if the `default` environment wasn't pre-installed into the pack. Use the tools directly from PATH instead.
-
-## GitHub Action (for downstream consumers)
-
-Other repos that need the qgis-rs environment can use the pixi-sandbox action:
-
-```yaml
-- uses: Archont561/pixi-sandbox@v1
-  with:
-    pack: qgis-rs
-    version: qgis-rs-linux-64
 ```
 
 ## Relationship to pixi.toml
 
-The `pixi.toml` remains the single source of truth for environment definition. The env pack is a **pre-computed snapshot** of that definition — produced in CI, consumed where pixi can't install.
+The `pixi.toml` remains the single source of truth for environment definition. The sandbox transport is a **pre-computed snapshot** of that definition — produced in CI by the reusable publisher, consumed where pixi can't install.
 
-When `pixi.toml` or `pixi.lock` changes, the `env.yml` workflow triggers automatically (via `paths:` filter) and republishes the pack.
+When `pixi.toml` or `pixi.lock` changes, CI runs and the `publish-sandbox` workflow republishes the bundle. The environments actually published are gated by `.pixi-sandbox.toml` (explicit, reviewed bundles — never "every environment"), not by the manifest alone.

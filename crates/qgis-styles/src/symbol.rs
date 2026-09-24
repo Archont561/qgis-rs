@@ -16,7 +16,9 @@ pub struct Stroke {
     pub opacity: Option<f64>,
 }
 
-fn default_width() -> f64 { 1.0 }
+fn default_width() -> f64 {
+    1.0
+}
 
 impl Default for Stroke {
     fn default() -> Self {
@@ -43,7 +45,9 @@ pub struct MarkerSymbol {
     pub opacity: Option<f64>,
 }
 
-fn default_marker_size() -> f64 { 6.0 }
+fn default_marker_size() -> f64 {
+    6.0
+}
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct LineSymbol {

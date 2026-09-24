@@ -1,9 +1,10 @@
-#include "qgis-sys/include/core/application_info.h"
-#include "qgis-sys/include/core/convert.h"
+#include <qgsconfig.h>
 
 #include <QSysInfo>
 #include <QtGlobal>
-#include <qgsconfig.h>
+
+#include "qgis-sys/include/core/application_info.h"
+#include "qgis-sys/include/core/convert.h"
 
 namespace qgis_shim::core {
 
@@ -19,4 +20,4 @@ AppInfo application_info() noexcept {
     }
 }
 
-} // namespace qgis_shim::core
+}  // namespace qgis_shim::core

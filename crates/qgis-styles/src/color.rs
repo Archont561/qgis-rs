@@ -13,7 +13,9 @@ pub struct Rgba {
     pub a: u8,
 }
 
-fn default_alpha() -> u8 { 255 }
+fn default_alpha() -> u8 {
+    255
+}
 
 impl Rgba {
     pub const fn new(r: u8, g: u8, b: u8) -> Self {
@@ -25,26 +27,47 @@ impl Rgba {
     }
 
     pub const fn transparent() -> Self {
-        Self { r: 0, g: 0, b: 0, a: 0 }
+        Self {
+            r: 0,
+            g: 0,
+            b: 0,
+            a: 0,
+        }
     }
 
     pub fn from_hex(hex: &str) -> Result<Self> {
         let hex = hex.trim().trim_start_matches('#');
         match hex.len() {
             6 => {
-                let r = u8::from_str_radix(&hex[0..2], 16).map_err(|_| Error::InvalidColor { value: hex.to_string() })?;
-                let g = u8::from_str_radix(&hex[2..4], 16).map_err(|_| Error::InvalidColor { value: hex.to_string() })?;
-                let b = u8::from_str_radix(&hex[4..6], 16).map_err(|_| Error::InvalidColor { value: hex.to_string() })?;
+                let r = u8::from_str_radix(&hex[0..2], 16).map_err(|_| Error::InvalidColor {
+                    value: hex.to_string(),
+                })?;
+                let g = u8::from_str_radix(&hex[2..4], 16).map_err(|_| Error::InvalidColor {
+                    value: hex.to_string(),
+                })?;
+                let b = u8::from_str_radix(&hex[4..6], 16).map_err(|_| Error::InvalidColor {
+                    value: hex.to_string(),
+                })?;
                 Ok(Self::new(r, g, b))
             }
             8 => {
-                let r = u8::from_str_radix(&hex[0..2], 16).map_err(|_| Error::InvalidColor { value: hex.to_string() })?;
-                let g = u8::from_str_radix(&hex[2..4], 16).map_err(|_| Error::InvalidColor { value: hex.to_string() })?;
-                let b = u8::from_str_radix(&hex[4..6], 16).map_err(|_| Error::InvalidColor { value: hex.to_string() })?;
-                let a = u8::from_str_radix(&hex[6..8], 16).map_err(|_| Error::InvalidColor { value: hex.to_string() })?;
+                let r = u8::from_str_radix(&hex[0..2], 16).map_err(|_| Error::InvalidColor {
+                    value: hex.to_string(),
+                })?;
+                let g = u8::from_str_radix(&hex[2..4], 16).map_err(|_| Error::InvalidColor {
+                    value: hex.to_string(),
+                })?;
+                let b = u8::from_str_radix(&hex[4..6], 16).map_err(|_| Error::InvalidColor {
+                    value: hex.to_string(),
+                })?;
+                let a = u8::from_str_radix(&hex[6..8], 16).map_err(|_| Error::InvalidColor {
+                    value: hex.to_string(),
+                })?;
                 Ok(Self::with_alpha(r, g, b, a))
             }
-            _ => Err(Error::InvalidColor { value: hex.to_string() }),
+            _ => Err(Error::InvalidColor {
+                value: hex.to_string(),
+            }),
         }
     }
 
@@ -57,7 +80,13 @@ impl Rgba {
     }
 
     pub fn to_rgba_string(&self) -> String {
-        format!("rgba({},{},{},{:.2})", self.r, self.g, self.b, self.a as f32 / 255.0)
+        format!(
+            "rgba({},{},{},{:.2})",
+            self.r,
+            self.g,
+            self.b,
+            self.a as f32 / 255.0
+        )
     }
 }
 
@@ -96,7 +125,9 @@ impl Color {
                     "black" => Ok(Rgba::new(0, 0, 0)),
                     "white" => Ok(Rgba::new(255, 255, 255)),
                     "transparent" => Ok(Rgba::transparent()),
-                    _ => Err(Error::InvalidColor { value: name.clone() }),
+                    _ => Err(Error::InvalidColor {
+                        value: name.clone(),
+                    }),
                 }
             }
         }

@@ -8,6 +8,13 @@
 //! The Python package `qgis_sdk` imports this as `qgis_sdk._core` when built
 //! with maturin, otherwise falls back to pure Python.
 
+// pyo3's `#[pyfunction]`/`#[pymethods]` wrappers perform an identity
+// `From<PyErr> for PyErr` conversion for the `PyResult<T>` alias; clippy's
+// `useless_conversion` flags it but `#[allow]` on the item does not reach the
+// macro output (PyO3/pyo3#4828, fixed upstream in 0.23.5). Module-level allow
+// is the documented workaround.
+#![allow(clippy::useless_conversion)]
+
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use std::path::{Path, PathBuf};
@@ -666,7 +673,7 @@ fn _native(m: &Bound<'_, PyModule>) -> PyResult<()> {
 }
 
 fn to_pascal_case(s: &str) -> String {
-    s.split(|c| c == '_' || c == '-' || c == ' ')
+    s.split(['_', '-', ' '])
         .filter(|part| !part.is_empty())
         .map(|part| {
             let mut chars = part.chars();

@@ -10,7 +10,6 @@ from pathlib import Path
 
 import pytest
 
-pytest_plugins = ["qgis_sdk.testing"]
 
 
 # ── Response ────────────────────────────────────────────────────────────────

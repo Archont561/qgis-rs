@@ -184,7 +184,11 @@ impl RenderSettings {
 
     /// Set per-layer style.
     #[must_use]
-    pub fn with_layer_style(mut self, layer: impl Into<String>, style: qgis_styles::LayerStyle) -> Self {
+    pub fn with_layer_style(
+        mut self,
+        layer: impl Into<String>,
+        style: qgis_styles::LayerStyle,
+    ) -> Self {
         self.layer_styles.insert(layer.into(), style);
         self
     }

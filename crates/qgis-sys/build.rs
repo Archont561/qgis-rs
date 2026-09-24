@@ -1,4 +1,7 @@
-use std::{env, path::PathBuf};
+use std::{
+    env,
+    path::{Path, PathBuf},
+};
 
 use anyhow::{Context, Result};
 use walkdir::WalkDir;
@@ -134,11 +137,11 @@ fn glob(dir: &str, ext: &str) -> Result<Vec<String>> {
 }
 
 fn write_compile_commands(
-    manifest_dir: &PathBuf,
-    cxxbridge_include: &PathBuf,
-    cxxbridge_crate: &PathBuf,
-    qt_inc: &PathBuf,
-    qgis_inc: &PathBuf,
+    manifest_dir: &Path,
+    cxxbridge_include: &Path,
+    cxxbridge_crate: &Path,
+    qt_inc: &Path,
+    qgis_inc: &Path,
     shims: &[String],
 ) -> Result<()> {
     let workspace_root = manifest_dir
@@ -149,16 +152,16 @@ fn write_compile_commands(
 
     let mut include_dirs = vec![
         manifest_dir.join("include"),
-        cxxbridge_include.clone(),
-        cxxbridge_crate.clone(),
-        qt_inc.clone(),
+        cxxbridge_include.to_path_buf(),
+        cxxbridge_crate.to_path_buf(),
+        qt_inc.to_path_buf(),
     ];
 
     for module in QT_MODULES {
         include_dirs.push(qt_inc.join(module));
     }
 
-    include_dirs.push(qgis_inc.clone());
+    include_dirs.push(qgis_inc.to_path_buf());
 
     let flags: String = include_dirs
         .iter()

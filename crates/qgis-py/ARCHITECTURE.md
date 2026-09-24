@@ -78,13 +78,12 @@ Currently `qgis-render` is pure Rust (no `libqgis_core`). Rendering methods retu
 
 ### Testing
 
-- `cargo test -p qgis-render -p qgis-cli -p qgis-py` — Rust unit tests (no QGIS needed for pure ops)
-- `python -m pytest py-packages/qgis-rs/tests -v` — Python API + CLI tests (uses fallback if _core missing, _core if built)
-- `maturin develop && pytest` — full test with Rust extension
-- `pixi run -e py py-test` — via pixi environment
-- `qgis-cli --help`, `qgis-cli tiles ... --dry-run` — CLI smoke tests
+- `cargo test -p qgis-render -p qgis-cli -p qgis-py -p qgis-sdk -p qgis-node` — Rust logic, CLI, and binding-adapter tests (QGIS is only needed for `qgis-sys` integration tests)
+- `maturin develop && QGIS_REQUIRE_NATIVE=1 python -m pytest py-packages/qgis-rs/tests -v` — Python API and PyO3 boundary smoke tests after building the extension
+- `pixi run -e py py-test` — builds the extension, then runs the native Python tests
+- `qgis-cli` behavior is covered by Rust integration tests in `crates/qgis-cli/tests/cli.rs`; plugin CLI behavior is covered in `crates/qgis-sdk/tests/plugin_cli.rs`
 
 ### Publishing
 
-- **PyPI**: GitHub workflow `.github/workflows/python.yml` builds wheels via `PyO3/maturin-action` on Linux, macOS, Windows and publishes on tag.
+- **CI**: `.github/workflows/ci.yml` builds the Python extensions with maturin, runs API/CLI smoke tests, and records Python coverage. Wheel publishing is not part of the current workflow set.
 - **conda-forge**: Copy `conda-recipe/` to `conda-forge/staged-recipes/recipes/qgis-rs/` and open PR.

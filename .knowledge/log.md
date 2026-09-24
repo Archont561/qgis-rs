@@ -1,5 +1,134 @@
 # Bundle Update Log
 
+## 2026-09-24
+
+* **Verify**: Landed the pending environment refactor (PR #6) after verifying it
+  from scratch on a fresh Codespaces sandbox — pixi 0.81, cargo 1.96.1, clang-format
+  22.1.8, QGIS 3.44.14. `pixi install -e dev --locked` succeeds and the committed
+  `Cargo.lock` is complete for all 9 workspace crates; `gates` (fmt-check, clippy
+  `-D warnings`, lint-toml, lint-actions, test), `check-cpp`, and `test-full`
+  (application_lifecycle + vector_layer) are all green.
+* **Fix**: Clippy 1.96 widened beyond what the code was written for.
+  * `unnecessary_map_or` → `is_none_or` (`LayerStyle::is_valid`, qgis-styles).
+  * `ptr_arg` → `&Path` parameters in `write_compile_commands` (qgis-sys build.rs).
+  * `manual_pattern_char_comparison` → `split(['_', '-', ' '])` in `to_pascal_case`
+    (qgis-sdk + qgis-plugin) and `type_complexity` → `PlanLevel` alias (qgis-py).
+  * `inherent_to_string` → `impl fmt::Display` + `#[napi(js_name = "toString")]`
+    `as_string` on the qgis-node wrappers; the `.d.ts` `toString()` contract is
+    preserved because the generated names stay identical.
+  * PyO3 `useless_conversion` false positive on `#[pyfunction]`/`#[pymethods]`
+    (pyo3/pyo3#4828, fixed upstream in 0.23.5) silenced with module-level
+    `#![allow(...)]`; `render` also got an explicit `#[pyo3(signature = ...)]` to
+    retire pyo3's deprecated implicit defaults warning.
+* **Fix (test harness)**: `QApplication` is a per-process singleton, but `AppHandle`
+  created one per `vector_layer` test — deterministic heap corruption
+  ("corrupted double-linked list", SIGABRT) from the second test on. Rebuilt
+  `crates/qgis-sys/tests/helpers/mod.rs` around a `thread_local` shared app that
+  lives for the whole test binary; 5/5 vector_layer + 1/1 lifecycle tests now pass.
+  Also required `const { RefCell::new(None) }` for clippy 1.96's
+  `missing_const_for_thread_local`.
+* **Fix (setup task)**: the old `setup` hardcoded `$CONDA_PREFIX/lib/libqca-qt6.so.2`
+  as the soname source, but the dev env ships the Qt5 flavor
+  (`libqca-qt5.so.2.3.12`) with no `libqca-qt6` at all — the symlink was dangling
+  and QGIS-backed tests failed to load (`libqca-qt5.so.2 not found`). The task now
+  links whichever flavor is present, failing loudly otherwise.
+* **Fix**: `.github/workflows/rust-check.yml` fmt scope omitted `qgis-styles`; the
+  crate is now formatted there too.
+* **Fix (CI)**: the `test-rust` job ran bare `cargo test --workspace`, which on a
+  headless runner aborted once the (now-run) QGIS-backed tests created a
+  `QApplication` (`could not connect to display`) and would race the single-app
+  harness across threads. It now delegates to the repo's own `test`/`test-full`
+  pixi tasks so offscreen platform, `--test-threads=1`, and provider/proj env are
+  the single source of truth. `Test Rust code` is green in CI.
+* **Workflow consolidation and PR failure follow-up**: the PR's red Node builds
+  used `napi build --manifest-path`/`-o`, which `@napi-rs/cli` 2.18 does not
+  support; the package scripts now use `--cargo-cwd` and a positional output
+  directory. The qgis-sdk test suite loaded `qgis_sdk.testing` both through its
+  `pytest11` entry point and explicit `pytest_plugins` declarations; the duplicate
+  registrations were removed. The Ubuntu maturin-action wheel matrix (which failed
+  in its Docker/Python bootstrap) is no longer part of CI: smoke tests build both
+  Python packages with maturin directly. The workflows are now `ci.yml`, `docs.yml`,
+  and `publish_sandbox.yml`; Python and Rust coverage reports are retained as
+  artifacts, and sandbox publishing is gated on a successful CI run.
+* **Test layout**: Removed the standalone `examples/` programs and their Pixi/CI
+  invocations. Core geometry and CLI behavior stay tested in Rust crates; the
+  PyO3/NAPI adapters now have Rust-side result-shape tests, and Python/Node smoke
+  suites run after extension compilation with native loading required in CI.
+  Rust CLI smoke coverage lives in `crates/qgis-cli/tests` and
+  `crates/qgis-sdk/tests/plugin_cli.rs`, rather than inline workflow shell.
+* **Style**: ran `clang-format 22` over the C++ shims/headers (`qgis-sys/src`,
+  `qgis-sys/include`) that predated the formatting requirement.
+
+## 2026-09-23
+
+* **Addition**: Adopted the reference project's *release-mode* publisher as the
+  new environment-packing path, replacing the homegrown env-pack pipeline.
+  * New `.pixi-sandbox.toml` declares the reviewed publish plan — one `developer`
+    bundle (`dev` + `docs` environments, `linux-64`, `cargo_vendor = true`).
+  * New `.github/workflows/publish-sandbox.yml` is a thin consumer wrapper around
+    the pixi-sandbox *reusable* workflow
+    (`Archont561/pixi-sandbox/.github/workflows/publish-sandbox.yml` at pinned
+    commit `3d7a6182`, release `v0.2.0`). It auto-runs after a successful `CI`
+    run on `main` (or via `workflow_dispatch`) and publishes the
+    `sandbox/developer-linux-64` orphan branch. Packing, verification, and
+    publishing all run on the native runner with a checksum-verified standalone
+    release binary; no pixi-sandbox crate is vendored (consumer mode).
+  * New `scripts/restore.sh` — the airlock one-liner: fetch the branch, run
+    `doctor --verify`, restore envs + vendor tree offline, source
+    `.pixi/sandbox-env.sh`.
+  * **Removed**: `.github/workflows/env.yml` and the old `scripts/pack-env.sh`,
+    `publish-env-branch.sh`, `setup-env.sh`, `use-pack.sh`. The `pack` task and
+    the `pixi-pack` workspace dependency are gone — pack tooling is no longer a
+    local dependency (the release binary fetches its own pinned tools).
+  * **Update**: `ci.yml` gained a "validate sandbox publish plan" job using the
+    upstream `setup-pixi-sandbox` action + `plan --json`, pinned to the same
+    SHA as the publisher. `lint-toml` bare mode now also checks
+    `.pixi-sandbox.toml`. Knowledge docs (`env-provisioning.md`, `pixi.md`,
+    `CONTEXT.md`, `documentation-site.md`) rewritten to the new consumer model.
+
+## 2026-09-23
+
+* **Fix**: Removed the last deprecated pixi syntax — top-level `channels` in
+  `[package.build]`. pixi moved that key to `backend.channels` (prefix-dev/pixi
+  #4361); the three source-package manifests (`py-packages/qgis-sdk`,
+  `py-packages/qgis-rs`, `crates/qgis-node`) now declare the backend as a
+  `[package.build.backend]` table carrying `name`/`version`/`channels`. The
+  `⚠️ Top-level 'channels' in [package.build] is deprecated` warning no longer
+  appears on `pixi lock`.
+* **Update**: Reorganized the pixi environments and task layout to the reference
+  (Archont561/pixi-sandbox) model. There is *no* `default` environment anymore:
+  dependencies moved from the root `[dependencies]` table into feature layers
+  (`rust`, `cxx`, `qgis`, `utils`, `docs`, `sandbox`, `sdk`, `py`, `node`), and
+  the environments are now `dev` (rust+cxx+qgis+utils+sandbox — the primary one),
+  `ci` (rust+cxx+qgis+sandbox), `utils` (hook/lint tooling), plus the unchanged
+  `docs`/`sdk`/`py`/`py-qgis`/`node`. User-facing tasks set `default-environment`
+  so bare `pixi run <task>` still works; CI and lefthook pass `-e` explicitly.
+* **Update**: pixi 0.81 quirk discovered and documented — `default-environment`
+  is only accepted on tasks that have a `cmd`, declared inline in `[tasks]`;
+  block-form `[tasks.<name>]` tables and pure aggregators (`gates`/`ci`/`ci-full`)
+  reject it. Aggregators instead resolve their environment through `depends-on`.
+* **Fix**: splitting `docs` out of the `default` group surfaced a latent icu
+  conflict — conda-forge QGIS needs icu ≥78.3 while `bun` pins icu <76, so bun
+  cannot share an environment with QGIS. The `docs` feature is deliberately kept
+  out of `dev`/`ci`; docs tasks run against the separate `docs` environment.
+* **Addition**: New `utils`-backed tasks — `lint-commit` (`convco check
+  --from-stdin`, used by the commit-msg hook), `lint-toml` (taplo, staged-file
+  aware via `$@` passthrough), `lint-actions` (actionlint). `check-cpp` now
+  accepts optional staged files passed through `pixi run check-cpp -- a.cpp b.h`
+  (falls back to the whole tree without args). `gates` gained `lint-toml` +
+  `lint-actions`.
+* **Update**: [lefthook.yml](/lefthook.yml) rewritten to the reference shape
+  (`min_version: "2.0.0"`, `pixi run -e dev <task>` for every hook) so hooks and
+  CI cannot drift; pinned to staged files only via `glob` + `{staged_files}`,
+  with a `commit-msg` convco job and an optional `pre-push` gates job.
+* **Update**: workflows re-pointed — `ci.yml` validates `dev` + `utils` + `docs`
+  and runs tests in `dev`; `env.yml` packs the `dev` environment
+  (`pixi install -e dev` / `pixi run -e dev pack`); `scripts/pack-env.sh`
+  defaults to packing `dev`. README + knowledge docs updated to match.
+  (The env->`sandbox/` branch migration to `pixi-sandbox` itself is still
+  pending — see the notes in [CONTEXT.md](/CONTEXT.md) and the pixi-sandbox
+  reference project.)
+
 ## 2026-09-18
 
 * **Creation**: Added `crates/qgis-mcp` — a Model Context Protocol server on the official [rmcp](https://github.com/modelcontextprotocol/rust-sdk) SDK (3.4), bundled into the `qgis-cli` binary as `qgis-cli mcp`. Six tools mirror the subcommands (`capabilities`, `crs_info`, `plan_tiles`, `project_info`, `render_map`, `export_features`); `crates/qgis-cli/tests/mcp_stdio.rs` spawns the real binary and drives it through `initialize` → `tools/list` → `tools/call`.

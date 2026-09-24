@@ -1,18 +1,14 @@
-<div align="center">
-
 # qgis-rs
 
-### Safe, idiomatic Rust bindings for [QGIS](https://qgis.org/) — the world's most popular open-source GIS platform
+**Safe, idiomatic Rust bindings for [QGIS](https://qgis.org/) — the world's most popular open-source GIS platform.**
 
 [![CI](https://github.com/Archont561/qgis-rs/actions/workflows/ci.yml/badge.svg)](https://github.com/Archont561/qgis-rs/actions/workflows/ci.yml)
-[![Pages](https://github.com/Archont561/qgis-rs/actions/workflows/pages.yml/badge.svg)](https://github.com/Archont561/qgis-rs/actions/workflows/pages.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Docs](https://github.com/Archont561/qgis-rs/actions/workflows/docs.yml/badge.svg)](https://github.com/Archont561/qgis-rs/actions/workflows/docs.yml)
+[![License: GPL-2.0-or-later](https://img.shields.io/badge/License-GPL--2.0--or--later-blue.svg)](https://spdx.org/licenses/GPL-2.0-or-later.html)
 [![QGIS](https://img.shields.io/badge/QGIS-3.44.9+-green.svg)](https://qgis.org/)
 [![Rust](https://img.shields.io/badge/Rust-1.96+-orange.svg)](https://www.rust-lang.org/)
 
-[Documentation](https://archont561.github.io/qgis-rs/) · [API Reference](https://docs.rs/qgis-render) · [Examples](#examples) · [Contributing](#contributing)
-
-</div>
+[Documentation](https://archont561.github.io/qgis-rs/) · [API Reference](https://docs.rs/qgis-render) · [Contributing](#contributing)
 
 ---
 
@@ -35,36 +31,12 @@ project.render_to_file(
 
 ## Why qgis-rs?
 
-<table>
-<tr>
-<td>
-
-### 🚀 Native Performance
-Render QGIS projects at C++ speed with zero Python overhead. Batch-process thousands of maps in minutes.
-
-</td>
-<td>
-
-### 🛡️ Type Safety
-Catch errors at compile time. No more runtime crashes from mismatched types or null pointers.
-
-</td>
-</tr>
-<tr>
-<td>
-
-### 🎨 Full QGIS Styling
-Use your existing `.qgs` projects with all symbology, labels, and print layouts — no SLD conversion needed.
-
-</td>
-<td>
-
-### 📦 Single Binary
-Deploy as a standalone executable. No JVM, no Python environment, no system dependencies.
-
-</td>
-</tr>
-</table>
+| Benefit | What it means |
+| --- | --- |
+| 🚀 **Native performance** | Render QGIS projects at C++ speed with zero Python overhead. Batch-process thousands of maps in minutes. |
+| 🛡️ **Type safety** | Catch errors at compile time, without runtime crashes from mismatched types or null pointers. |
+| 🎨 **Full QGIS styling** | Use existing `.qgs` projects with symbology, labels, and print layouts — no SLD conversion needed. |
+| 📦 **Single binary** | Deploy as a standalone executable without a JVM or Python runtime. |
 
 ## Features
 
@@ -169,12 +141,13 @@ See [Python docs](https://archont561.github.io/qgis-rs/getting-started/python/) 
 git clone https://github.com/Archont561/qgis-rs.git
 cd qgis-rs
 
-# Activate the development environment
-pixi shell
+# Install the development environment
+pixi install -e dev
 
-# Build and test
-cargo build
-cargo test
+# Build and run the headless and QGIS-backed tests
+pixi run -e dev build
+pixi run -e dev test
+pixi run -e dev test-full
 ```
 
 #### Using Cargo
@@ -274,7 +247,7 @@ graph TB
     end
     
     subgraph "qgis-rs"
-        B[qgis-sys<br/>CXX bindings]
+        B[qgis-sys CXX bindings]
     end
     
     subgraph "System"
@@ -313,43 +286,6 @@ graph TB
 - **[Guides](https://archont561.github.io/qgis-rs/guides/rendering-projects/)** — Practical tutorials
 - **[API Reference](https://archont561.github.io/qgis-rs/reference/)** — Complete API documentation
 - **[Knowledge Base](.knowledge/)** — Design documents and decision records
-
-## Examples
-
-### Batch Rendering
-
-```rust
-let projects = ["map1.qgs", "map2.qgs", "map3.qgs"];
-
-for path in projects {
-    let project = Project::open(path)?;
-    let settings = RenderSettings::new(1920, 1080)
-        .extent(project.extent());
-    
-    let output = format!("{}.png", path.trim_end_matches(".qgs"));
-    project.render_to_file(&settings, &output)?;
-}
-```
-
-### Custom Extent
-
-```rust
-use qgis_render::Extent;
-
-let settings = RenderSettings::new(1920, 1080)
-    .extent(Extent::new(14.0, 50.0, 15.0, 51.0))  // Warsaw area
-    .crs(Crs::from_epsg(4326)?);
-```
-
-### High DPI Rendering
-
-```rust
-let settings = RenderSettings::new(3840, 2160)  // 4K
-    .dpi(300)  // Print quality
-    .extent(project.extent());
-
-project.render_to_file(&settings, "print.png")?;
-```
 
 ## Performance
 
@@ -407,11 +343,7 @@ See [ROADMAP.md](.knowledge/ROADMAP.md) for detailed plans.
 
 ## Contributing
 
-Contributions are welcome! Please read:
-
-- [CONTRIBUTING.md](CONTRIBUTING.md) — How to contribute
-- [AGENTS.md](AGENTS.md) — Guidelines for AI agents
-- [Code of Conduct](CODE_OF_CONDUCT.md) — Community standards
+Contributions are welcome! See [AGENTS.md](AGENTS.md) for repository conventions, open an issue for bugs or feature requests, and submit changes through a pull request.
 
 ### Development Setup
 
@@ -420,17 +352,14 @@ Contributions are welcome! Please read:
 git clone https://github.com/Archont561/qgis-rs.git
 cd qgis-rs
 
-# Install dependencies (Pixi)
-pixi install
+# Install the development environment
+pixi install -e dev
 
-# Run tests
-pixi run test
+# Format Rust and C++ code
+pixi run -e dev fmt
 
-# Run lints
-pixi run lint
-
-# Format code
-pixi run fmt
+# Run the complete local gate (formatting, linting, and QGIS tests)
+pixi run -e dev ci-full
 ```
 
 #### Dev container (Pixi + OpenCode)
@@ -447,8 +376,8 @@ The large QGIS/Rust Pixi environment is **not** installed automatically. Once
 inside the container, install it when needed:
 
 ```bash
-pixi install -e default
-pixi run -e default test
+pixi install -e dev
+pixi run -e dev ci-full
 ```
 
 A model refresh needs network access and OpenCode may use its bundled catalog
@@ -468,22 +397,13 @@ pixi run docs-build
 ```
 
 The site is published to [archont561.github.io/qgis-rs](https://archont561.github.io/qgis-rs/)
-by [`pages.yml`](.github/workflows/pages.yml) on every push to `main` that
-touches `apps/docs/`. See [`apps/docs/README.md`](apps/docs/README.md) for the
-one-time Pages setup.
+by [`docs.yml`](.github/workflows/docs.yml) after documentation changes land on
+`main`. See [`apps/docs/README.md`](apps/docs/README.md) for the one-time Pages
+setup.
 
 ## License
 
-Licensed under either of:
-
-- Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
-- MIT license ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
-
-at your option.
-
-### Contribution
-
-Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in the work by you, as defined in the Apache-2.0 license, shall be dual licensed as above, without any additional terms or conditions.
+This project is licensed under the [GNU General Public License v2.0 or later](https://spdx.org/licenses/GPL-2.0-or-later.html), consistent with the workspace package manifests.
 
 ## Acknowledgments
 
@@ -496,14 +416,9 @@ Unless you explicitly state otherwise, any contribution intentionally submitted 
 
 - **Issues**: [GitHub Issues](https://github.com/Archont561/qgis-rs/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/Archont561/qgis-rs/discussions)
-- **Email**: [your-email@example.com](mailto:your-email@example.com)
 
 ---
-
-<div align="center">
 
 **Built with ❤️ by the qgis-rs community**
 
 [⭐ Star us on GitHub](https://github.com/Archont561/qgis-rs) if you find this useful!
-
-</div>

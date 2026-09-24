@@ -92,9 +92,9 @@ The sidebar is configured in `astro.config.mjs`.
 
 The site is published to **GitHub Pages** at
 <https://archont561.github.io/qgis-rs/> by
-[`.github/workflows/pages.yml`](../../.github/workflows/pages.yml), which runs on
-every push to `main` that touches `apps/docs/`, `pixi.toml`, or `pixi.lock`
-(and on demand via *Actions → Pages → Run workflow*).
+[`.github/workflows/docs.yml`](../../.github/workflows/docs.yml), which builds
+pull requests and publishes after documentation changes land on `main` (and can
+also be run manually via *Actions → Docs → Run workflow*).
 
 Because it is a *project* site it is served from the `/qgis-rs` subpath, so
 `astro.config.mjs` sets:

@@ -1,10 +1,11 @@
-"""Tests for qgis_sdk CLI — Rust-native when built, Python fallback otherwise."""
+"""Python CLI integration tests for the qgis-sdk package."""
 
 from __future__ import annotations
 
 import json
-import sys
+import os
 import subprocess
+import sys
 from pathlib import Path
 
 def test_cli_import():
@@ -96,8 +97,8 @@ def test_cli_rust_init(tmp_path, capsys):
     assert rc == 0
     assert (plugin_dir / "Cargo.toml").exists()
 
-def test_cli_binary_exists():
-    """If maturin built the binary, qgis-plugin should be invocable."""
+def test_cli_module_entrypoint_displays_help():
+    """The installed Python entrypoint should expose the plugin CLI help."""
     result = subprocess.run(
         [sys.executable, "-m", "qgis_sdk.cli", "--help"],
         capture_output=True,
@@ -106,8 +107,10 @@ def test_cli_binary_exists():
     assert result.returncode == 0
     assert "qgis-plugin" in result.stdout or "QGIS plugin SDK" in result.stdout
 
-def test_has_rust_flag():
+def test_native_extension_is_used_in_ci():
     import qgis_sdk
-    # Should have HAS_RUST attribute now
-    assert hasattr(qgis_sdk, "HAS_RUST")
-    assert hasattr(qgis_sdk, "__version__")
+
+    assert isinstance(qgis_sdk.HAS_RUST, bool)
+    if os.environ.get("QGIS_REQUIRE_NATIVE") == "1":
+        assert qgis_sdk.HAS_RUST is True
+        assert qgis_sdk.RUST_VERSION == qgis_sdk.__version__

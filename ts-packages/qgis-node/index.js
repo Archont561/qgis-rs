@@ -267,7 +267,32 @@ class Project {
 }
 
 function planTiles(bounds, zoom) {
-  return binding.planTiles(bounds, zoom);
+  const result = binding.planTiles(bounds, zoom);
+  return {
+    total: result.total,
+    levels: result.levels.map((level) => {
+      // Keep both spellings consistent if NAPI and the JS fallback marshal
+      // Rust's snake_case fields differently.
+      const xMin = level.xMin ?? level.x_min;
+      const xMax = level.xMax ?? level.x_max;
+      const yMin = level.yMin ?? level.y_min;
+      const yMax = level.yMax ?? level.y_max;
+      const tileCount = level.tileCount ?? level.tile_count;
+      return {
+        ...level,
+        xMin,
+        xMax,
+        yMin,
+        yMax,
+        tileCount,
+        x_min: xMin,
+        x_max: xMax,
+        y_min: yMin,
+        y_max: yMax,
+        tile_count: tileCount,
+      };
+    }),
+  };
 }
 
 function plan_tiles(bounds, zoom) {

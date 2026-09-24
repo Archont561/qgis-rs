@@ -1,4 +1,4 @@
-"""Tests for qgis_rs CLI — pure Rust logic via Python wrapper."""
+"""Python CLI integration tests backed by the qgis-rs Rust extension."""
 
 import json
 import subprocess
@@ -57,9 +57,8 @@ def test_cli_version(capsys):
     out = capsys.readouterr().out
     assert "qgis-rs" in out
 
-def test_cli_binary_exists():
-    """If maturin built the binary, qgis-cli should be on PATH or in python env."""
-    # Try to find binary via python -m qgis_rs.cli --help should work even without binary
+def test_cli_module_entrypoint_displays_help():
+    """The installed Python entrypoint should expose the CLI help."""
     result = subprocess.run(
         [sys.executable, "-m", "qgis_rs.cli", "--help"],
         capture_output=True,
