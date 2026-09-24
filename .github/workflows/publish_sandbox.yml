@@ -8,12 +8,14 @@
 name: publish_sandbox
 
 on:
-  # Run only after the CI workflow completes on main; the job below also gates
-  # on the conclusion because workflow_run fires for both successes and fails.
-  workflow_run:
-    workflows: ["CI"]
-    types: [completed]
+  # Same trigger shape as pixi-sandbox's own workflows: push to main, filtered
+  # by paths. Republish only when an input of the sandbox snapshot changes (the
+  # reviewed plan, the workspace manifest and lock, or this workflow); any other
+  # push leaves the published branch alone. `workflow_run` cannot filter by
+  # path, so this no longer waits for CI; `workflow_dispatch` always republishes.
+  push:
     branches: [main]
+    paths: [".pixi-sandbox.toml", "pixi.toml", "pixi.lock", ".github/workflows/publish_sandbox.yml"]
   workflow_dispatch:
 
 permissions:
@@ -27,7 +29,6 @@ jobs:
   plan:
     name: validate sandbox publish plan
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     outputs:
       matrix: ${{ steps.plan.outputs.matrix }}
     steps:
@@ -36,7 +37,6 @@ jobs:
         with:
           path: project
           persist-credentials: false
-          ref: ${{ github.event.workflow_run.head_sha || github.ref }}
 
       - name: Require immutable pixi-sandbox action source
         shell: bash
@@ -116,7 +116,6 @@ jobs:
         with:
           path: project
           persist-credentials: false
-          ref: ${{ github.event.workflow_run.head_sha || github.ref }}
 
       - name: Require immutable pixi-sandbox action source (release)
         shell: bash

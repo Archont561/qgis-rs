@@ -33,7 +33,7 @@ qgis-rs is a **consumer** of pixi-sandbox (release mode): it does not vendor the
 
 ### Producer (CI)
 
-The `.github/workflows/publish_sandbox.yml` workflow is a thin wrapper around the *reusable* pixi-sandbox publisher (`Archont561/pixi-sandbox/.github/workflows/publish-sandbox.yml`, pinned to an immutable commit SHA). On `workflow_run` after a successful `CI` run on `main` (or on `workflow_dispatch`), it:
+The `.github/workflows/publish_sandbox.yml` workflow is a thin wrapper around the *reusable* pixi-sandbox publisher (`Archont561/pixi-sandbox/.github/workflows/publish-sandbox.yml`, pinned to an immutable commit SHA). On a push to `main` that changes `.pixi-sandbox.toml`, `pixi.toml`, `pixi.lock`, or the workflow itself (or on `workflow_dispatch`), it:
 
 1. Validates `.pixi-sandbox.toml` via `pixi-sandbox plan --json`.
 2. Expands the plan into one native job per (bundle × platform) — here the single `developer` bundle (environments `dev` + `docs`, platform `linux-64`).
@@ -102,4 +102,4 @@ QT_QPA_PLATFORM=offscreen cargo test -p qgis-sys --test application_info -- --te
 
 The `pixi.toml` remains the single source of truth for environment definition. The sandbox transport is a **pre-computed snapshot** of that definition — produced in CI by the reusable publisher, consumed where pixi can't install.
 
-When `pixi.toml` or `pixi.lock` changes, CI runs and the `publish-sandbox` workflow republishes the bundle. The environments actually published are gated by `.pixi-sandbox.toml` (explicit, reviewed bundles — never "every environment"), not by the manifest alone.
+The `publish_sandbox` workflow republishes the bundle only when a push to `main` changes one of the snapshot's inputs — `.pixi-sandbox.toml`, `pixi.toml`, `pixi.lock`, or `.github/workflows/publish_sandbox.yml` (a `push` `paths` filter, the trigger shape pixi-sandbox itself uses); other pushes leave the published branch untouched. The environments actually published are gated by `.pixi-sandbox.toml` (explicit, reviewed bundles — never "every environment"), not by the manifest alone.

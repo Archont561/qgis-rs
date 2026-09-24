@@ -2,6 +2,14 @@
 
 ## 2026-09-24
 
+* **Change (ci)**: `publish_sandbox.yml` now uses pixi-sandbox's trigger shape —
+  `push` to `main` with a `paths` filter (`.pixi-sandbox.toml`, `pixi.toml`,
+  `pixi.lock`, `.github/workflows/publish_sandbox.yml`) plus `workflow_dispatch` —
+  instead of `workflow_run` after every successful `CI` run, which cannot filter
+  by path and so republished `sandbox/developer-linux-64` on every green `main`.
+  The publish no longer waits for `CI` on the same commit (the PR that changes
+  these files is still validated by CI, including `plan --json`), and both jobs
+  now check out the triggering commit instead of the branch tip.
 * **Change (env)**: `dev` now guarantees Python via a new `py-runtime` feature
   (`python >=3.11,<3.15` — intersects, never overrides, the interpreter the
   conda-forge `qgis` package pins), and the `py` feature gained `pytest-cov`
