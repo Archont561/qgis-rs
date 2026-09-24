@@ -2,6 +2,18 @@
 
 ## 2026-09-24
 
+* **Change (env)**: `dev` now guarantees Python via a new `py-runtime` feature
+  (`python >=3.11,<3.15` — intersects, never overrides, the interpreter the
+  conda-forge `qgis` package pins), and the `py` feature gained `pytest-cov`
+  (the plugin CI previously pip-installed) next to `pytest`. JS testing moved
+  to bun: the `node-test` task now runs `bun test tests/contract.test.js` in
+  the `docs` env while `node-build` still builds the napi addon with npm in
+  `node`; CI's node-FFI step invokes `pixi run -e docs bun test …`. bun cannot
+  join `dev` and `docs`/`dev` cannot share a solve group: conda-forge
+  `bun 1.3.11 h5` pins `icu >=75.1,<76` while the QGIS stack pins
+  `icu >=78.3,<79` (verified against the feedstock — latest build 2026-07-31,
+  "Rebuild for icu 78" open since 2026-02-10). bun was verified to load the
+  napi addon and run the contract suite (5/5) plus the bridge suites (22/22).
 * **Verify**: Landed the pending environment refactor (PR #6) after verifying it
   from scratch on a fresh Codespaces sandbox — pixi 0.81, cargo 1.96.1, clang-format
   22.1.8, QGIS 3.44.14. `pixi install -e dev --locked` succeeds and the committed

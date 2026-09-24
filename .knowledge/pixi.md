@@ -84,7 +84,9 @@ explicitly.
 ### Feature: `docs`
 
 `bun >=1.2,<2` plus the `docs-dev` / `docs-build` / `docs-preview` tasks. See
-[documentation-site.md](/documentation-site.md).
+[documentation-site.md](/documentation-site.md). The `docs` env is also where
+JS **testing** runs — the root `node-test` task and CI both invoke bun here,
+because bun cannot share an environment with QGIS (icu, see below).
 
 ### Feature: `sdk`
 
@@ -104,12 +106,12 @@ QT_QPA_PLATFORM  = "offscreen"
 
 ### Environments
 
-| Environment | Features                                   | Solve group | Purpose |
-|-------------|--------------------------------------------|-------------|---------|
-| `dev`       | `rust`, `cxx`, `qgis`, `utils`, `sandbox`  | `dev`       | Rust/C++ development and tests |
-| `ci`        | `rust`, `cxx`, `qgis`, `sandbox`           | `ci`        | What CI actually runs (parity) |
-| `utils`     | `utils`                                    | `utils`     | Hook / lint tooling only |
-| `docs`      | `docs`                                     | `docs`      | Astro docs site |
+| Environment | Features                                         | Solve group | Purpose |
+|-------------|--------------------------------------------------|-------------|---------|
+| `dev`       | `rust`, `cxx`, `qgis`, `py-runtime`, `utils`, `sandbox` | `dev` | Rust/C++/Python development and tests |
+| `ci`        | `rust`, `cxx`, `qgis`, `sandbox`                 | `ci`        | What CI actually runs (parity) |
+| `utils`     | `utils`                                          | `utils`     | Hook / lint tooling only |
+| `docs`      | `docs`                                           | `docs`      | Astro docs site + bun JS tests |
 | `sdk`       | `qgis`, `sdk`                              | `sdk`       | Python plugin SDK |
 | `py`        | `py`                                       | `py`        | qgis-rs wheel, no QGIS |
 | `py-qgis`   | `qgis`, `py`                               | `py-qgis`   | qgis-rs wheel with QGIS |
@@ -254,6 +256,9 @@ umbrella task is what CI is expected to reproduce locally.
 ### Testing
 - `test` — basic tests (`application_info`), with optional `--clean` flag
 - `test-full` — full tests including `application_lifecycle` and `vector_layer`
+- `node-test` — `bun test tests/contract.test.js` for `ts-packages/qgis-node`,
+  run in the `docs` env (bun); depends on `node-build` in the `node` env, so a
+  bare `pixi run node-test` builds the addon and then tests it on bun
 
 Both set:
 - `QT_QPA_PLATFORM=offscreen` — prevents Qt display requirement

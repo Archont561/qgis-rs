@@ -132,12 +132,15 @@ jobs:
         working-directory: ts-packages/qgis-node
         run: npm run build
 
+      # bun is the JS test runner (same runner as the bridge suites below); the
+      # addon still builds with npm in the `node` env in the step above, because
+      # conda-forge bun pins icu <76 and cannot join the QGIS-bearing envs.
       - name: Test the native Node.js FFI
         working-directory: ts-packages/qgis-node
         env:
           QGIS_REQUIRE_NATIVE: "1"
         run: |
-          npm test
+          pixi run -e docs bun test tests/contract.test.js
           npm pack --dry-run
 
       - name: Upload Python coverage reports

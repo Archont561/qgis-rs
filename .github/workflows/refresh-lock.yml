@@ -1,0 +1,45 @@
+# TEMPORARY: regenerate pixi.lock from a network-enabled runner.
+# Added by the arena agent session on 2026-09-24 because the working sandbox
+# cannot reach conda-forge/prefix.dev; dispatched once via workflow_dispatch,
+# the refreshed pixi.lock is downloaded from the artifact and committed, and
+# this workflow is removed again. Not part of the standing CI surface.
+name: refresh-lock
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: refresh-lock
+  cancel-in-progress: false
+
+jobs:
+  lock:
+    name: Regenerate pixi.lock
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up pixi
+        uses: prefix-dev/setup-pixi@d3f436a425481402e6a95a1d1fc10331c708cd9e # v0.10.2
+        with:
+          pixi-version: v0.81.0
+          run-install: false
+          cache: false
+
+      - name: Regenerate the lockfile
+        run: pixi lock
+
+      - name: Report the lockfile diff
+        run: git diff --stat pixi.lock
+
+      - name: Upload refreshed lockfile
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: refreshed-pixi-lock
+          path: pixi.lock
+          retention-days: 7
