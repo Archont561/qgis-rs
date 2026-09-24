@@ -10,7 +10,7 @@
 
 use napi_derive::napi;
 use qgis_render::{Crs, Extent, Project, ProjectFormat, Tile, TilePlan, ZoomRange};
-use std::path::PathBuf;
+use std::fmt;
 
 // ── Extent ──────────────────────────────────────────────────────────────────
 
@@ -18,6 +18,12 @@ use std::path::PathBuf;
 #[derive(Clone, Debug)]
 pub struct ExtentWrapper {
     inner: Extent,
+}
+
+impl fmt::Display for ExtentWrapper {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.inner)
+    }
 }
 
 #[napi]
@@ -77,9 +83,9 @@ impl ExtentWrapper {
     pub fn intersects(&self, other: &ExtentWrapper) -> bool {
         self.inner.intersects(&other.inner)
     }
-    #[napi]
-    pub fn to_string(&self) -> String {
-        self.inner.to_string()
+    #[napi(js_name = "toString")]
+    pub fn as_string(&self) -> String {
+        self.to_string()
     }
     #[napi]
     pub fn to_array(&self) -> Vec<f64> {
@@ -102,6 +108,12 @@ impl ExtentWrapper {
 #[derive(Clone, Debug)]
 pub struct CrsWrapper {
     inner: Crs,
+}
+
+impl fmt::Display for CrsWrapper {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.inner)
+    }
 }
 
 #[napi]
@@ -157,9 +169,9 @@ impl CrsWrapper {
         matches!(self.inner.units(), qgis_render::Units::Meters)
     }
 
-    #[napi]
-    pub fn to_string(&self) -> String {
-        self.inner.auth_id().to_string()
+    #[napi(js_name = "toString")]
+    pub fn as_string(&self) -> String {
+        self.to_string()
     }
 
     #[napi]
@@ -174,6 +186,12 @@ impl CrsWrapper {
 #[derive(Clone, Debug)]
 pub struct TileWrapper {
     inner: Tile,
+}
+
+impl fmt::Display for TileWrapper {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}/{}/{}", self.inner.z, self.inner.x, self.inner.y)
+    }
 }
 
 #[napi]
@@ -212,9 +230,9 @@ impl TileWrapper {
         }
     }
 
-    #[napi]
-    pub fn to_string(&self) -> String {
-        format!("{}/{}/{}", self.inner.z, self.inner.x, self.inner.y)
+    #[napi(js_name = "toString")]
+    pub fn as_string(&self) -> String {
+        self.to_string()
     }
 
     #[napi]
@@ -229,6 +247,16 @@ impl TileWrapper {
 #[derive(Clone, Debug)]
 pub struct ZoomRangeWrapper {
     inner: ZoomRange,
+}
+
+impl fmt::Display for ZoomRangeWrapper {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.inner.min == self.inner.max {
+            write!(f, "{}", self.inner.min)
+        } else {
+            write!(f, "{}-{}", self.inner.min, self.inner.max)
+        }
+    }
 }
 
 #[napi]
@@ -261,13 +289,9 @@ impl ZoomRangeWrapper {
         self.inner.count()
     }
 
-    #[napi]
-    pub fn to_string(&self) -> String {
-        if self.inner.min == self.inner.max {
-            format!("{}", self.inner.min)
-        } else {
-            format!("{}-{}", self.inner.min, self.inner.max)
-        }
+    #[napi(js_name = "toString")]
+    pub fn as_string(&self) -> String {
+        self.to_string()
     }
 
     #[napi]

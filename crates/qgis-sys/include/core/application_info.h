@@ -6,4 +6,4 @@ namespace qgis_shim::core {
 
 AppInfo application_info() noexcept;
 
-} // namespace qgis_shim::core
+}  // namespace qgis_shim::core

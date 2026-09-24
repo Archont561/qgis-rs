@@ -44,7 +44,7 @@ impl LayerStyle {
     }
 
     pub fn is_valid(&self) -> bool {
-        self.renderer.is_valid() && self.opacity.map_or(true, |o| (0.0..=1.0).contains(&o))
+        self.renderer.is_valid() && self.opacity.is_none_or(|o| (0.0..=1.0).contains(&o))
     }
 }
 

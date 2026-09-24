@@ -41,7 +41,7 @@ jobs:
           # The PyO3 / NAPI crates count as backend-agnostic since the layout split
           # put them in crates/ — they are workspace members, so leaving them out of
           # this list would let rustfmt drift go unnoticed.
-          FMT="-p qgis-render -p qgis-server -p qgis-mcp -p qgis-cli -p qgis-py -p qgis-sdk -p qgis-node"
+          FMT="-p qgis-render -p qgis-server -p qgis-mcp -p qgis-cli -p qgis-py -p qgis-sdk -p qgis-node -p qgis-styles"
           cargo fmt $FMT 2>&1 | tee /tmp/fmt.log
           cargo fmt $FMT -- --check 2>&1 | tee /tmp/fmt-check.log
 

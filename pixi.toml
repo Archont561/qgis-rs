@@ -201,7 +201,7 @@ node = { features = ["node"], solve-group = "node" }
 [tasks]
 
 # ── internal ──────────────────────────────────────────────────────────────────
-setup = { cmd = "ln -sf $CONDA_PREFIX/lib/libqca-qt6.so.2 $CONDA_PREFIX/lib/libqca-qt5.so.2", description = "Link the Qt6-only libqca under the Qt5 soname QGIS still asks for", default-environment = "dev" }
+setup = { cmd = "bash -c 'L=\"$CONDA_PREFIX/lib\"; if [ -e \"$L/libqca-qt6.so.2\" ]; then ln -sf \"$L/libqca-qt6.so.2\" \"$L/libqca-qt5.so.2\"; elif [ -e \"$L/libqca-qt5.so.2.3.12\" ]; then ln -sf libqca-qt5.so.2.3.12 \"$L/libqca-qt5.so.2\"; else exit 1; fi'", description = "Link libqca under the Qt5 soname QGIS still asks for, whichever flavor the env provides", default-environment = "dev" }
 _build-for-lint = { cmd = "cargo build -p qgis-sys", default-environment = "dev" }
 
 # ── formatting ────────────────────────────────────────────────────────────────

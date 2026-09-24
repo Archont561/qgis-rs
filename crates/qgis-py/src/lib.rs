@@ -14,6 +14,13 @@
 //! Users install via `pip install qgis-rs` or `conda install -c conda-forge qgis-rs`
 //! and get both `import qgis_rs` and the `qgis-cli` binary at native speed.
 
+// pyo3's `#[pyfunction]`/`#[pymethods]` wrappers perform an identity
+// `From<PyErr> for PyErr` conversion for the `PyResult<T>` alias; clippy's
+// `useless_conversion` flags it but `#[allow]` on the item does not reach the
+// macro output (PyO3/pyo3#4828, fixed upstream in 0.23.5). Module-level allow
+// is the documented workaround.
+#![allow(clippy::useless_conversion)]
+
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 
@@ -461,6 +468,7 @@ impl PyProject {
             .map_err(|e| PyValueError::new_err(e.to_string()))
     }
 
+    #[pyo3(signature = (output, width=None, height=None, extent=None, crs=None, dpi=None))]
     fn render(
         &self,
         output: &str,
@@ -688,8 +696,10 @@ impl PyRenderSettings {
 
 // ── Helpers for CLI ─────────────────────────────────────────────────────────
 
+type PlanLevel = (u32, u32, u32, u32, u32, u64);
+
 #[pyfunction]
-fn plan_tiles(bounds: &str, zoom: &str) -> PyResult<(u64, Vec<(u32, u32, u32, u32, u32, u64)>)> {
+fn plan_tiles(bounds: &str, zoom: &str) -> PyResult<(u64, Vec<PlanLevel>)> {
     let extent = Extent::parse(bounds).map_err(|e| PyValueError::new_err(e.to_string()))?;
     let zooms = ZoomRange::parse(zoom).map_err(|e| PyValueError::new_err(e.to_string()))?;
     let plan = TilePlan::new(extent, zooms).map_err(|e| PyValueError::new_err(e.to_string()))?;

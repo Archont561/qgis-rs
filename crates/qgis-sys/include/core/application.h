@@ -1,7 +1,7 @@
 #pragma once
 
-#include "rust/cxx.h"
 #include "qgis-sys/include/core/handle.h"
+#include "rust/cxx.h"
 
 namespace qgis_shim::core {
 
@@ -10,15 +10,14 @@ namespace qgis_shim::core {
 // which triggers a static initializer crash via qgssettingsentry.h.
 QGIS_DECLARE_HANDLE(QgsApplication);
 
-} // namespace qgis_shim::core
+}  // namespace qgis_shim::core
 
 #include "qgis-sys/src/core/application/app.rs.h"
 
 namespace qgis_shim::core {
 
-::std::unique_ptr<QgsApplication> application_new(
-    rust::Str prefix_path) noexcept;
+::std::unique_ptr<QgsApplication> application_new(rust::Str prefix_path) noexcept;
 void application_init_qgis(QgsApplication& app) noexcept;
 void application_exit_qgis(QgsApplication& app) noexcept;
 
-} // namespace qgis_shim::core
+}  // namespace qgis_shim::core
