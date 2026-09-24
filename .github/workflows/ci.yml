@@ -52,6 +52,13 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
+      # With the `python` Cargo feature disabled, PyO3 links to the interpreter
+      # for Rust test binaries instead of leaving extension-module symbols open.
+      - name: Set up Python for PyO3 test linking
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.0.0
+        with:
+          python-version: "3.11"
+
       - name: Set up Rust with LLVM coverage tools
         uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de # master
         with:

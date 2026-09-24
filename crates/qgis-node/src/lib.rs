@@ -594,8 +594,8 @@ mod tests {
 
     #[test]
     fn plan_tiles_adapter_uses_javascript_number_sized_fields() {
-        let result = plan_tiles("14,50,15,51".to_string(), "10-14".to_string())
-            .expect("valid plan");
+        let result =
+            plan_tiles("14,50,15,51".to_string(), "10-14".to_string()).expect("valid plan");
 
         assert_eq!(result.total, 4568_i64);
         assert_eq!(result.levels.len(), 5);

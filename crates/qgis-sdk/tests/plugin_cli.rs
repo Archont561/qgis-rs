@@ -19,10 +19,8 @@ fn run(args: &[&str]) -> Output {
 fn temp_dir() -> TempDir {
     static NEXT_ID: AtomicUsize = AtomicUsize::new(0);
     let id = NEXT_ID.fetch_add(1, Ordering::Relaxed);
-    let path = std::env::temp_dir().join(format!(
-        "qgis-sdk-plugin-cli-{}-{id}",
-        std::process::id()
-    ));
+    let path =
+        std::env::temp_dir().join(format!("qgis-sdk-plugin-cli-{}-{id}", std::process::id()));
     std::fs::create_dir_all(&path).expect("create temporary directory");
     TempDir(path)
 }
@@ -60,10 +58,7 @@ fn help_and_version_are_available() {
 
     let output = run(&["version"]);
     assert!(output.status.success(), "{}", stderr(&output));
-    assert!(stdout(&output).contains(&format!(
-        "qgis-plugin {}",
-        env!("CARGO_PKG_VERSION")
-    )));
+    assert!(stdout(&output).contains(&format!("qgis-plugin {}", env!("CARGO_PKG_VERSION"))));
 }
 
 #[test]
