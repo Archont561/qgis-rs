@@ -1,6 +1,5 @@
-# Pull-request and main-branch quality gates. The full development gate is
-# defined by pixi's `ci-full` task; the other jobs collect coverage and smoke-test
-# the Python, Node, and TypeScript-facing APIs.
+# One required CI job runs the full Rust/QGIS gate, coverage, native package
+# smoke tests, TypeScript bridge tests, and reusable sandbox-plan validation.
 name: CI
 
 on:
@@ -21,10 +20,10 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  quality:
-    name: Formatting, linting, and QGIS tests
+  ci:
+    name: CI
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 180
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -36,28 +35,15 @@ jobs:
           run-install: false
           cache: false
 
-      - name: Install the development environment
-        run: pixi install -e dev --locked
-
-      # This repository task is the single source of truth for Rust/C++
-      # formatting and linting plus Rust unit/integration tests (including QGIS).
-      - name: Run the full CI gate
-        run: pixi run -e dev ci-full
-
-  coverage:
-    name: Rust coverage
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
-
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      # With the `python` Cargo feature disabled, PyO3 links to the interpreter
-      # for Rust test binaries instead of leaving extension-module symbols open.
-      - name: Set up Python for PyO3 test linking
+      - name: Set up Python
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.0.0
         with:
           python-version: "3.11"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.0.0
+        with:
+          node-version: "22"
 
       - name: Set up Rust with LLVM coverage tools
         uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de # master
@@ -65,10 +51,30 @@ jobs:
           toolchain: stable
           components: llvm-tools-preview
 
+      - name: Install development environment
+        run: pixi install -e dev --locked
+
       - name: Install cargo-llvm-cov
         run: cargo install cargo-llvm-cov --version 0.9.1 --locked
 
-      - name: Generate LCOV report
+      # maturin develop installs into an active virtual environment.
+      - name: Create Python virtual environment
+        run: |
+          python -m venv .venv
+          echo "VIRTUAL_ENV=$GITHUB_WORKSPACE/.venv" >> "$GITHUB_ENV"
+          echo "$GITHUB_WORKSPACE/.venv/bin" >> "$GITHUB_PATH"
+
+      - name: Install Python test tools
+        run: python -m pip install "maturin>=1.7,<2" "pytest>=8,<9" "pytest-cov>=5,<7"
+
+      # The repository task is the single source of truth for Rust/C++
+      # formatting and linting plus Rust unit/integration tests, including QGIS.
+      - name: Run the full CI gate
+        run: pixi run -e dev ci-full
+
+      # With the `python` Cargo feature disabled, PyO3 links to the interpreter
+      # for Rust test binaries instead of leaving extension-module symbols open.
+      - name: Generate Rust coverage report
         run: |
           mkdir -p target/coverage
           cargo llvm-cov \
@@ -87,39 +93,6 @@ jobs:
           path: target/coverage/rust-lcov.info
           if-no-files-found: ignore
           retention-days: 7
-
-  package-smoke:
-    name: Python and Node native FFI smoke tests
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
-
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: Set up Python
-        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.0.0
-        with:
-          python-version: "3.11"
-
-      - name: Set up Node.js
-        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.0.0
-        with:
-          node-version: "22"
-
-      - name: Set up Rust
-        uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de # master
-        with:
-          toolchain: stable
-
-      # maturin develop installs into an active virtual environment.
-      - name: Create virtual environment
-        run: |
-          python -m venv .venv
-          echo "VIRTUAL_ENV=$GITHUB_WORKSPACE/.venv" >> "$GITHUB_ENV"
-          echo "$GITHUB_WORKSPACE/.venv/bin" >> "$GITHUB_PATH"
-
-      - name: Install Python test tools
-        run: python -m pip install "maturin>=1.7,<2" "pytest>=8,<9" "pytest-cov>=5,<7"
 
       - name: Build and install qgis-rs
         working-directory: py-packages/qgis-rs
@@ -153,7 +126,8 @@ jobs:
         run: npm ci --workspaces=false
 
       # `napi build` takes --cargo-cwd (not --manifest-path) in @napi-rs/cli
-      # 2.x. The package script also supplies the output directory positionally.
+      # 2.x. The package script supplies the output directory positionally and
+      # preserves the package's custom JS wrapper and declarations.
       - name: Build the native Node.js addon
         working-directory: ts-packages/qgis-node
         run: npm run build
@@ -175,21 +149,6 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
-  web-smoke:
-    name: TypeScript bridge tests
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: Set up pixi
-        uses: prefix-dev/setup-pixi@d3f436a425481402e6a95a1d1fc10331c708cd9e # v0.10.2
-        with:
-          pixi-version: v0.81.0
-          run-install: false
-          cache: false
-
       - name: Install docs environment and Bun dependencies
         run: |
           pixi install -e docs --locked
@@ -201,14 +160,6 @@ jobs:
       - name: Build TypeScript bridge
         working-directory: ts-packages/qgis-sdk-bridge
         run: pixi run -e docs bun run build
-
-  validate-sandbox-plan:
-    name: Validate reusable sandbox publish plan
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up the pinned pixi-sandbox release binary
         uses: Archont561/pixi-sandbox/.github/actions/setup-pixi-sandbox@3d7a61825c165c161d4e13df78ee589d0eafc2f1 # v0.2.0, 2026-09-23
