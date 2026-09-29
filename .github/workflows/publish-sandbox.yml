@@ -10,7 +10,10 @@
 #   2. least-privilege permissions: read at the top, write only on `publish`;
 #   3. concurrency groups, so a rerun cannot race an in-flight publish;
 #   4. `timeout-minutes` on both jobs;
-#   5. every third-party action pinned to a 40-char commit SHA.
+#   5. every third-party action pinned to a 40-char commit SHA;
+#   6. the pixi-sandbox action is referenced at the repository root with an
+#      explicit `subpath`, not as `setup/`/`publish/`. Fix upstream in the
+#      generator; drop this when a release ships shims that work.
 #
 # Unlike v0.2.0 this needs no matrix fixup: v0.3.1 emits
 # `fromJSON(...).include`, which drops the top-level `schema` key that made
@@ -54,9 +57,15 @@ jobs:
       matrix: ${{ steps.plan.outputs.matrix }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # The repo-root action, not the `setup/` shim the generator emits. The shim
+      # is a composite whose only step is `uses: ../action.yml`, and GitHub
+      # Actions does not resolve a relative `uses:` — it fails at "Set up job"
+      # with "Expected format {org}/{repo}[/path]@ref". The root action is the
+      # real implementation and takes the same inputs, plus `subpath`.
       - id: sandbox
-        uses: Archont561/pixi-sandbox/setup@26e13491ea341c198981e55ecf86b8210e8c93f9
+        uses: Archont561/pixi-sandbox@26e13491ea341c198981e55ecf86b8210e8c93f9
         with:
+          subpath: setup
           version: v0.3.1
       - id: plan
         shell: bash
@@ -83,12 +92,16 @@ jobs:
         with:
           cache: true
           environments: ${{ matrix.environments }}
+      # Root action + explicit subpath; see the note on the `setup` step above
+      # for why the generated `setup/` and `publish/` shims cannot be used.
       - id: sandbox
-        uses: Archont561/pixi-sandbox/setup@26e13491ea341c198981e55ecf86b8210e8c93f9
+        uses: Archont561/pixi-sandbox@26e13491ea341c198981e55ecf86b8210e8c93f9
         with:
+          subpath: setup
           version: v0.3.1
-      - uses: Archont561/pixi-sandbox/publish@26e13491ea341c198981e55ecf86b8210e8c93f9
+      - uses: Archont561/pixi-sandbox@26e13491ea341c198981e55ecf86b8210e8c93f9
         with:
+          subpath: publish
           project: .
           environments: ${{ matrix.environments }}
           platform: ${{ matrix.platform }}

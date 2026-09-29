@@ -163,10 +163,16 @@ jobs:
       - name: Build TypeScript bridge
         run: pixi run -e bun bridge-build
 
+      # Repository root, not the `setup/` shim: the shim is a composite whose
+      # only step is `uses: ../action.yml`, and GitHub Actions cannot resolve a
+      # relative `uses:` — it fails at "Set up job" before any step runs. The root
+      # action is the real implementation and takes the same inputs plus
+      # `subpath`. Same workaround as publish-sandbox.yml.
       - name: Set up the pinned pixi-sandbox release binary
-        uses: Archont561/pixi-sandbox/setup@26e13491ea341c198981e55ecf86b8210e8c93f9 # v0.3.1
+        uses: Archont561/pixi-sandbox@26e13491ea341c198981e55ecf86b8210e8c93f9 # v0.3.1
         id: sandbox-setup
         with:
+          subpath: setup
           repository: Archont561/pixi-sandbox
           version: v0.3.1
           token: ${{ github.token }}
