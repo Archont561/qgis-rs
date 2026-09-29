@@ -35,6 +35,19 @@ jobs:
           run-install: false
           cache: false
 
+      # Validate the independently-published sandbox contract before the full
+      # native/QGIS suite. This exercises the pinned v0.3.2 release action and
+      # its plan shape even when a later application-level test fails.
+      - name: Set up the pinned pixi-sandbox release binary
+        uses: Archont561/pixi-sandbox/setup@da230c2db2dff8a242c40a89c3a4c66de7777518 # v0.3.2
+        id: sandbox-setup
+        with:
+          version: v0.3.2
+          token: ${{ github.token }}
+
+      - name: Validate the reviewed publish plan
+        run: '"${{ steps.sandbox-setup.outputs.path }}" plan --config .pixi-sandbox.toml --json'
+
       - name: Set up Python
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.0.0
         with:
@@ -162,16 +175,3 @@ jobs:
       # workspace member, not just the bridge. The task carries its own cwd.
       - name: Build TypeScript bridge
         run: pixi run -e bun bridge-build
-
-      # v0.3.2's published setup action is self-contained. The v0.3.1 shim
-      # used an invalid relative `uses:` reference, fixed upstream in
-      # pixi-sandbox#37.
-      - name: Set up the pinned pixi-sandbox release binary
-        uses: Archont561/pixi-sandbox/setup@da230c2db2dff8a242c40a89c3a4c66de7777518 # v0.3.2
-        id: sandbox-setup
-        with:
-          version: v0.3.2
-          token: ${{ github.token }}
-
-      - name: Validate the reviewed publish plan
-        run: '"${{ steps.sandbox-setup.outputs.path }}" plan --config .pixi-sandbox.toml --json'
