@@ -87,9 +87,9 @@ def test_network_manager_fallback(monkeypatch):
     assert hasattr(mgr, "fetch_blocking")
     assert hasattr(mgr, "session")
 
-    mgr2 = NetworkManager.instance()
+    mgr2 = network.NetworkManager.instance()
     assert mgr2 is not None
-    mgr3 = NetworkManager.instance()
+    mgr3 = network.NetworkManager.instance()
     assert mgr2 is mgr3
 
 
