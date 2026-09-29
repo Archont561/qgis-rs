@@ -191,6 +191,16 @@ docs-preview = { cmd = "bun run preview", cwd = "apps/docs", depends-on = [
   "docs-build",
 ], default-environment = "bun" }
 
+# The published SDK bridge. `cwd` is load-bearing and not interchangeable with a
+# `working-directory:` on the calling workflow step: pixi runs every task in the
+# directory holding the manifest, so a bare `pixi run bun run build` from CI
+# resolves the *root* package.json instead and runs `bun run --filter '*' build`
+# — the bridge, the napi addon and the docs site, of which only the first is
+# wanted. Anything that means "build this one member" has to carry its own cwd.
+bridge-build = { cmd = "bun run build", cwd = "ts-packages/qgis-sdk-bridge", depends-on = [
+  "bun-install",
+], default-environment = "bun" }
+
 # The npm-installable `qgis-rs` package: Rust NAPI addon built by `napi build`
 # and driven by `bun run build`. It lives in this feature rather than its own
 # because it needs `bun` and `cargo` and nothing else — crates/qgis-node and the

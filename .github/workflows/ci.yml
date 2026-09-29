@@ -155,9 +155,13 @@ jobs:
       - name: Run TypeScript bridge tests
         run: pixi run -e bun bun test ts-packages/qgis-sdk-bridge
 
+      # `bridge-build` rather than `pixi run bun run build` with a
+      # `working-directory:` above it: pixi runs tasks in the manifest's
+      # directory, so the step's working-directory is ignored and the root
+      # package.json's `bun run --filter '*' build` runs instead — every
+      # workspace member, not just the bridge. The task carries its own cwd.
       - name: Build TypeScript bridge
-        working-directory: ts-packages/qgis-sdk-bridge
-        run: pixi run -e bun bun run build
+        run: pixi run -e bun bridge-build
 
       - name: Set up the pinned pixi-sandbox release binary
         uses: Archont561/pixi-sandbox/setup@26e13491ea341c198981e55ecf86b8210e8c93f9 # v0.3.1
