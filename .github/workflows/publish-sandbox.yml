@@ -9,8 +9,10 @@
 #   1. push-path filter, so only a sandbox-input change republishes;
 #   2. least-privilege permissions: read at the top, write only on `publish`;
 #   3. concurrency groups, so a rerun cannot race an in-flight publish;
-#   4. `timeout-minutes` on both jobs; and
-#   5. every third-party action pinned to a 40-character commit SHA.
+#   4. `timeout-minutes` on both jobs;
+#   5. every third-party action pinned to a 40-character commit SHA; and
+#   6. setup-pixi installs only its pinned executable — pixi-sandbox owns the
+#      native environment install, so the action cache stays disabled.
 #
 # v0.3.2 resolves pixi-sandbox#37: its published `setup/` and `publish/`
 # actions are self-contained, and the plan's `include` array is nested under
@@ -86,10 +88,14 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      # Only install the Pixi executable here. Cache-key generation must not
+      # inspect the manifest: pixi-sandbox controls the native `pixi install`
+      # invocation while packing the checked-out project (see qgis-rs#9).
       - uses: prefix-dev/setup-pixi@d3f436a425481402e6a95a1d1fc10331c708cd9e # v0.10.2
         with:
-          cache: true
-          environments: ${{ matrix.environments }}
+          pixi-version: v0.81.0
+          run-install: false
+          cache: false
       - id: sandbox
         uses: Archont561/pixi-sandbox/setup@da230c2db2dff8a242c40a89c3a4c66de7777518 # v0.3.2
         with:
