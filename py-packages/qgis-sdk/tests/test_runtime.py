@@ -49,7 +49,7 @@ def test_require_qgis_explains_how_to_fix_a_missing_binding(monkeypatch):
         require_qgis()
     except PyQgisImportError as exc:
         message = str(exc)
-        assert "pixi run -e sdk" in message
+        assert "pixi run -e default" in message
         assert "share/qgis/python" in message
         assert "PYTHONPATH" in message
     else:  # pragma: no cover

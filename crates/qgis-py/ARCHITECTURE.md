@@ -51,7 +51,7 @@ py-packages/qgis-rs/          # the Python distribution
 
 ### Build systems
 
-- **pip (PyPI)**: `maturin` builds the wheel with the `_core` extension module. `pyproject.toml` declares `[project.scripts] qgis-cli = "qgis_rs.cli:main"` for the Python wrapper; the Rust binary itself is installed by the conda recipe, since maturin ships only the extension module. Pre-built wheels for Linux, macOS, Windows — no cargo needed for end users.
+- **pip (PyPI)**: `maturin` builds the wheel with the `_core` extension module. `pyproject.toml` declares `[project.scripts] qgis-cli = "qgis_rs.cli:main"` for the Python wrapper; the Rust binary itself is installed by the conda recipe, since maturin ships only the extension module. Pre-built wheels for Linux x86_64 and arm64 — no cargo needed for end users.
 
 - **conda-forge**: `conda-recipe/meta.yaml` builds the Rust binary with `cargo build --release -p qgis-py`, copies to `$PREFIX/bin`, then builds the Python wheel with `cd py-packages/qgis-rs && maturin build` and `pip install`. Depends on `qgis >=3.44.9` optionally — lightweight variant (no QGIS) supports `info`, `tiles --dry-run`, `version`; full variant (with QGIS) supports `render`, `tiles`, `export`, `serve`.
 
@@ -80,7 +80,7 @@ Currently `qgis-render` is pure Rust (no `libqgis_core`). Rendering methods retu
 
 - `cargo test -p qgis-render -p qgis-cli -p qgis-py -p qgis-sdk -p qgis-node` — Rust logic, CLI, and binding-adapter tests (QGIS is only needed for `qgis-sys` integration tests)
 - `maturin develop && QGIS_REQUIRE_NATIVE=1 python -m pytest py-packages/qgis-rs/tests -v` — Python API and PyO3 boundary smoke tests after building the extension
-- `pixi run -e py py-test` — builds the extension, then runs the native Python tests
+- `pixi run -e default py-test` — builds the extension, then runs the native Python tests
 - `qgis-cli` behavior is covered by Rust integration tests in `crates/qgis-cli/tests/cli.rs`; plugin CLI behavior is covered in `crates/qgis-sdk/tests/plugin_cli.rs`
 
 ### Publishing

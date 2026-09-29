@@ -7,7 +7,11 @@ name = "qgis-sdk"
 version = "0.1.0"
 description = "Python SDK for building QGIS plugins on top of PyQGIS — with Rust-native CLI and acceleration"
 readme = "README.md"
-requires-python = ">=3.11"
+# The Python this wheel supports is the one QGIS is bundled with, not a range of
+# its own. A plugin SDK is useless on any other interpreter, since `import
+# qgis` only resolves under the ABI its bindings were built for. Keep this in
+# step with `python` in the root pixi.toml and the qgis build's ABI.
+requires-python = ">=3.12,<3.13"
 license = { text = "GPL-2.0-or-later" }
 keywords = ["qgis", "gis", "plugin", "pyqgis", "rust", "cli"]
 classifiers = [

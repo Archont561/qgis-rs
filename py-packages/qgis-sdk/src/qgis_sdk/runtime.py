@@ -54,7 +54,7 @@ def require_qgis() -> None:
         hint = (
             "\n\nPyQGIS lives inside the QGIS environment. Run this code through "
             "pixi so the environment is activated:\n\n"
-            "    pixi run -e sdk python your_script.py\n"
+            "    pixi run -e default python your_script.py\n"
         )
         if expected:
             joined = os.pathsep.join(expected)

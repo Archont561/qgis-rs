@@ -7,10 +7,6 @@
       "installZsh": false,
       "installOhMyZsh": false,
       "upgradePackages": false
-    },
-    "ghcr.io/devcontainers/features/node:2": {
-      "version": "22",
-      "pnpmVersion": "none"
     }
   },
   "remoteUser": "vscode",

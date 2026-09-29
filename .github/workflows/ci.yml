@@ -38,12 +38,9 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.0.0
         with:
-          python-version: "3.11"
-
-      - name: Set up Node.js
-        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.0.0
-        with:
-          node-version: "22"
+          # Must be the python QGIS is bundled with — the same value as
+          # `python` in pixi.toml and `requires-python` in py-packages/*/pyproject.toml.
+          python-version: "3.12"
 
       - name: Set up Rust with LLVM coverage tools
         uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de # master
@@ -51,8 +48,8 @@ jobs:
           toolchain: stable
           components: llvm-tools-preview
 
-      - name: Install development environment
-        run: pixi install -e dev --locked
+      - name: Install default environment
+        run: pixi install -e default --locked
 
       - name: Install cargo-llvm-cov
         run: cargo install cargo-llvm-cov --version 0.9.1 --locked
@@ -70,7 +67,7 @@ jobs:
       # The repository task is the single source of truth for Rust/C++
       # formatting and linting plus Rust unit/integration tests, including QGIS.
       - name: Run the full CI gate
-        run: pixi run -e dev ci-full
+        run: pixi run -e default ci-full
 
       # With the `python` Cargo feature disabled, PyO3 links to the interpreter
       # for Rust test binaries instead of leaving extension-module symbols open.
@@ -121,27 +118,30 @@ jobs:
             --cov-report=term-missing \
             --cov-report=xml:target/coverage/python-qgis-sdk.xml
 
-      - name: Install qgis-rs npm dependencies
-        working-directory: ts-packages/qgis-node
-        run: npm ci --workspaces=false
+      # Every JS step below runs in the `bun` environment. Bun is not installed
+      # in `default` and cannot be: conda-forge qgis needs icu >=78.3 while bun
+      # needs icu >=75.1,<76, so the two never solve together. The Rust side of
+      # the addon still builds because the `bun` environment carries the rust
+      # toolchain that `napi build` shells out to.
+      - name: Install the Bun environment from the root lockfile
+        run: |
+          pixi install -e bun --locked
+          pixi run -e bun bun-install
 
       # `napi build` takes --cargo-cwd (not --manifest-path) in @napi-rs/cli
       # 2.x. The package script supplies the output directory positionally and
       # preserves the package's custom JS wrapper and declarations.
-      - name: Build the native Node.js addon
-        working-directory: ts-packages/qgis-node
-        run: npm run build
+      - name: Build the native addon
+        run: pixi run -e bun node-build
 
-      # bun is the JS test runner (same runner as the bridge suites below); the
-      # addon still builds with npm in the `node` env in the step above, because
-      # conda-forge bun pins icu <76 and cannot join the QGIS-bearing envs.
-      - name: Test the native Node.js FFI
-        working-directory: ts-packages/qgis-node
-        env:
-          QGIS_REQUIRE_NATIVE: "1"
-        run: |
-          pixi run -e docs bun test tests/contract.test.js
-          npm pack --dry-run
+      - name: Test the native FFI
+        run: pixi run -e bun node-test
+
+      # Not `bun pm pack`: it always packs the root workspace (no --filter) and
+      # the root package shares the member's name, so it would validate the
+      # wrong package and still exit 0. See the pack-check task.
+      - name: Check the npm publishable file set
+        run: pixi run -e bun pack-check
 
       - name: Upload Python coverage reports
         if: always()
@@ -152,24 +152,19 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
-      - name: Install docs environment and Bun dependencies
-        run: |
-          pixi install -e docs --locked
-          pixi run -e docs bun install --frozen-lockfile
-
       - name: Run TypeScript bridge tests
-        run: pixi run -e docs bun test
+        run: pixi run -e bun bun test ts-packages/qgis-sdk-bridge
 
       - name: Build TypeScript bridge
         working-directory: ts-packages/qgis-sdk-bridge
-        run: pixi run -e docs bun run build
+        run: pixi run -e bun bun run build
 
       - name: Set up the pinned pixi-sandbox release binary
-        uses: Archont561/pixi-sandbox/.github/actions/setup-pixi-sandbox@3d7a61825c165c161d4e13df78ee589d0eafc2f1 # v0.2.0, 2026-09-23
+        uses: Archont561/pixi-sandbox/setup@26e13491ea341c198981e55ecf86b8210e8c93f9 # v0.3.1
         id: sandbox-setup
         with:
           repository: Archont561/pixi-sandbox
-          version: v0.2.0
+          version: v0.3.1
           token: ${{ github.token }}
 
       - name: Validate the reviewed publish plan

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """Environment doctor for the qgis-sdk pixi environment.
 
-Run it as ``pixi run -e sdk sdk-doctor``. It prints the interpreter in use, the
+Run it as ``pixi run -e default sdk-doctor``. It prints the interpreter in use, the
 PyQGIS import paths, and whether ``qgis.core`` and ``qgis_sdk`` actually
 resolve. Exits non-zero if anything is missing.
 """

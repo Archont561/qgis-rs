@@ -22,16 +22,19 @@ yarn add qgis-rs
 pnpm add qgis-rs
 ```
 
-Pre-built binaries for Linux x64 gnu/musl, arm64, macOS x64/arm64, Windows x64. Falls back to pure JS if no native binary, and you can build from source with `npm run build` (requires Rust ≥1.96).
+Pre-built binaries for Linux x64 (gnu + musl) and Linux arm64 (gnu). Falls back to pure JS if no native binary, and you can build from source with `bun run build` (requires Rust ≥1.96).
 
-From source (the addon builds with npm; the test suite runs on [bun](https://bun.sh) — in this repository `pixi run node-test` wires both up):
+From source (the addon builds and tests with [bun](https://bun.sh) — in this repository `pixi run node-test` wires both up):
 
 ```bash
 git clone https://github.com/Archont561/qgis-rs
-cd qgis-rs/ts-packages/qgis-node
-npm install
-npm run build
-bun test tests/contract.test.js
+cd qgis-rs
+
+# The Bun workspace at the root owns resolution; ts-packages/qgis-node is a
+# member of it, so there is nothing to install in the package directory.
+pixi run bun-install
+pixi run node-build
+bun test ts-packages/qgis-node/tests/contract.test.js
 ```
 
 ## TypeScript API
@@ -121,16 +124,20 @@ qgis-rs npm package
 ```
 
 - Rust: `crates/qgis-render` (pure Rust), `crates/qgis-cli`, `crates/qgis-node` (NAPI addon), `crates/qgis-sdk`
-- Node: `ts-packages/qgis-node/` — npm package (JS wrappers + fallback); the addon is built from `crates/qgis-node/`
+- JS: `ts-packages/qgis-node/` — npm package (JS wrappers + fallback); the addon is built from `crates/qgis-node/`
 
 ## Conda-forge
 
-For conda:
+For conda, install the runtime the addon needs plus QGIS:
 
 ```bash
 conda install -c conda-forge nodejs qgis
 npm install qgis-rs
 ```
+
+There is no Node.js toolchain in this repository — the addon is built, tested and
+packed with bun, and the build only needs cargo. The `nodejs` above is for
+*consuming* the published package, not for building it.
 
 `qgis-cli` binary from conda-forge `qgis-rs` Python package is also on `$PREFIX/bin`.
 

@@ -7,7 +7,10 @@ name = "qgis-rs"
 version = "0.1.0"
 description = "Python bindings and CLI for qgis-rs — native-speed QGIS rendering, tiling, and server tools"
 readme = "README.md"
-requires-python = ">=3.9"
+# The Python this wheel supports is the one QGIS is bundled with, not a range of
+# its own. PyO3 0.22 additionally refuses an interpreter newer than 3.13. Keep
+# this in step with `python` in the root pixi.toml and the qgis build's ABI.
+requires-python = ">=3.12,<3.13"
 license = { text = "GPL-2.0-or-later" }
 keywords = ["qgis", "gis", "rendering", "tiles", "cli", "rust"]
 classifiers = [

@@ -27,7 +27,7 @@ The long-term goal is a safe, idiomatic Rust API that exposes QGIS's vector/rast
 
 | Action      | Command                            | Notes                                              |
 |-------------|------------------------------------|----------------------------------------------------|
-| Bootstrap   | `bash scripts/restore.sh`          | Fetch sandbox branch + restore envs offline (when pixi unavailable) |
+| Bootstrap   | `scripts/restore.sh`               | Restore envs from an already-fetched sandbox branch (when pixi unavailable) |
 | Environment | `pixi shell`                       | Activates conda-forge env with rust, clang, QGIS   |
 | Build       | `cargo build -p qgis-sys`          | Compiles bridges + C++ shims via build.rs          |
 | Format      | `cargo fmt --all`                  | Rust formatting (C++: `clang-format -i`)           |
@@ -38,7 +38,7 @@ The long-term goal is a safe, idiomatic Rust API that exposes QGIS's vector/rast
 | Scaffold    | `pixi run scaffold <layer> <concept> <class> <short>` | Generates header + bridge + cpp + mod.rs |
 
 > **When pixi is unavailable** (sandboxed environments), bootstrap via
-> `bash scripts/restore.sh`. See [env-provisioning.md](/env-provisioning.md).
+> `git fetch origin sandbox/developer-linux-64 && scripts/restore.sh`. See [env-provisioning.md](/env-provisioning.md).
 
 ## Judgment Boundaries
 

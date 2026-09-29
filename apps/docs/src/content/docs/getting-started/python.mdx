@@ -51,8 +51,8 @@ pip install maturin
 (cd py-packages/qgis-rs && maturin develop)
 
 # Or via pixi (conda env with QGIS)
-pixi install -e py
-pixi run -e py py-test
+pixi install -e default
+pixi run -e default py-test
 
 # Test
 python -m pytest py-packages/qgis-rs/tests -q

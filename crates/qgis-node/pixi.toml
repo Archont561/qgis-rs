@@ -5,7 +5,7 @@
 [package]
 name = "qgis-node"
 version = "0.1.0"
-description = "Node.js / TypeScript bindings and CLI for qgis-rs — native-speed QGIS rendering, tiling, and plugin tools"
+description = "TypeScript/JS bindings and CLI for qgis-rs — native-speed QGIS rendering, tiling, and plugin tools"
 license = "GPL-2.0-or-later"
 
 [package.build.backend]
@@ -17,11 +17,14 @@ channels = [
 ]
 
 [package.host-dependencies]
+# `napi build` drives cargo, so rust is the only thing the build needs.
 rust = ">=1.96.0,<1.97"
-nodejs = ">=20,<23"
 
 [package.run-dependencies]
-nodejs = ">=20,<23"
+# Deliberately empty of any JavaScript runtime. The addon is published to npm
+# and declares `"engines": { "node": ">= 18" }` for its consumers; the build and
+# test toolchain in this repository is bun, and neither belongs in a package's
+# run dependencies. Consumers bring their own runtime.
 
 [package.build.config]
 # Build Rust NAPI addon + binaries

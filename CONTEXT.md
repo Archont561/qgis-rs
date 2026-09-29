@@ -215,7 +215,7 @@ pixi run scaffold core geometry QgsGeometry geometry
 
 - **Thread safety** — QGIS is single-threaded; Rust wrappers enforce this
 - **Qt dependency** — Requires Qt 6.x runtime (bundled with QGIS)
-- **Platform support** — Linux x86_64 primary, macOS/Windows experimental
+- **Platform support** — Linux x86_64 and arm64 only
 - **QGIS version** — Targets QGIS 3.44.9 LTS only
 
 ## Key Contacts

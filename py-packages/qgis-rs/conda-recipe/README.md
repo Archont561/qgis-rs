@@ -16,7 +16,7 @@ conda build conda-recipe/ -c conda-forge
 ## Build with pixi
 
 ```bash
-pixi shell -e dev
+pixi shell -e default
 pixi run cargo build -p qgis-py --release
 (cd py-packages/qgis-rs && maturin build --release)
 ```

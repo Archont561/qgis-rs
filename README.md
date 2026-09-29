@@ -142,12 +142,12 @@ git clone https://github.com/Archont561/qgis-rs.git
 cd qgis-rs
 
 # Install the development environment
-pixi install -e dev
+pixi install -e default
 
 # Build and run the headless and QGIS-backed tests
-pixi run -e dev build
-pixi run -e dev test
-pixi run -e dev test-full
+pixi run -e default build
+pixi run -e default test
+pixi run -e default test-full
 ```
 
 #### Using Cargo
@@ -353,21 +353,21 @@ git clone https://github.com/Archont561/qgis-rs.git
 cd qgis-rs
 
 # Install the development environment
-pixi install -e dev
+pixi install -e default
 
 # Format Rust and C++ code
-pixi run -e dev fmt
+pixi run -e default fmt
 
 # Run the complete local gate (formatting, linting, and QGIS tests)
-pixi run -e dev ci-full
+pixi run -e default ci-full
 ```
 
 #### Dev container (Pixi + OpenCode)
 
 In VS Code, run **Dev Containers: Reopen in Container**. The container uses the
-[official Pixi image](https://github.com/prefix-dev/pixi-docker) (v0.81.0) with
-Node.js 22. On creation it installs `opencode-ai` via npm for the non-root
-`vscode` user and attempts `opencode models --refresh` (see the
+[official Pixi image](https://github.com/prefix-dev/pixi-docker) (v0.81.0) and
+has no Node.js toolchain. On creation it installs `opencode-ai` with bun for the
+non-root `vscode` user and attempts `opencode models --refresh` (see the
 [OpenCode CLI docs](https://opencode.ai/docs/cli/)). No provider credentials
 are required or stored in this repository. To use a provider, run
 `opencode auth login` interactively in the container.
@@ -376,8 +376,8 @@ The large QGIS/Rust Pixi environment is **not** installed automatically. Once
 inside the container, install it when needed:
 
 ```bash
-pixi install -e dev
-pixi run -e dev ci-full
+pixi install -e default
+pixi run -e default ci-full
 ```
 
 A model refresh needs network access and OpenCode may use its bundled catalog
@@ -387,7 +387,7 @@ when offline. Retry with `opencode models --refresh` when connected.
 
 ```bash
 # Activate docs environment
-pixi shell -e docs
+pixi shell -e bun
 
 # Start dev server (serves at http://localhost:4321/qgis-rs)
 pixi run docs-dev

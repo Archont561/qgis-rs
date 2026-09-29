@@ -50,17 +50,14 @@ jobs:
           run-install: false
           cache: false
 
-      - name: Install docs environment
-        run: pixi install -e docs --locked
+      - name: Install the Bun environment
+        run: pixi install -e bun --locked
 
-      # apps/docs is a member of the root Bun workspace, so install at the
-      # workspace root against the committed bun.lock.
-      - name: Install documentation dependencies
-        run: pixi run -e docs bun install --frozen-lockfile
-
+      # apps/docs is a member of the root Bun workspace, so `bun-install` runs at
+      # the workspace root against the committed bun.lock. `docs-build` depends on
+      # it, so this one task covers both the install and the build.
       - name: Build documentation
-        working-directory: apps/docs
-        run: pixi run -e docs bun run build
+        run: pixi run -e bun docs-build
 
       - name: Configure GitHub Pages
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'

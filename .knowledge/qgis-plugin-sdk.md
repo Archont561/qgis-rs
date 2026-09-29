@@ -945,6 +945,6 @@ injects a fake interface and an `action_factory`, so plugin and algorithm logic
 is exercised on a machine with no QGIS at all:
 
 ```bash
-pixi run -e sdk sdk-test      # 35 tests, no QGIS required
-pixi run -e sdk sdk-doctor    # proves import qgis.core resolves in the env
+pixi run -e default sdk-test      # 35 tests, no QGIS required
+pixi run -e default sdk-doctor    # proves import qgis.core resolves in the env
 ```

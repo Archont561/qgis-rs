@@ -20,7 +20,7 @@ yarn add qgis-rs
 pnpm add qgis-rs
 ```
 
-Pre-built binaries for Linux x86_64 (gnu + musl), Linux arm64, macOS x64 + arm64, Windows x64. If no binary matches, falls back to pure JS (slower) and you can build from source with `npm run build` (requires Rust ≥1.96).
+Pre-built binaries for Linux x86_64 (gnu + musl) and Linux arm64 (gnu). If no binary matches, falls back to pure JS (slower) and you can build from source with `bun run build` (requires Rust ≥1.96).
 
 ### From source (development)
 
@@ -28,20 +28,25 @@ Pre-built binaries for Linux x86_64 (gnu + musl), Linux arm64, macOS x64 + arm64
 git clone https://github.com/Archont561/qgis-rs
 cd qgis-rs
 
-# Install deps
-cd ts-packages/qgis-node
-npm ci --workspaces=false
+# Install the whole Bun workspace from the root lockfile.
+# ts-packages/qgis-node is a member, so there is nothing to install here.
+pixi run bun-install
 
-# Build native addon
-npm run build
+# Build native addon (napi build, driven by bun)
+pixi run node-build
 
-# Smoke-test the compiled NAPI API (bun is the repo's JS test runner;
-# `pixi run node-test` from the repository root wires build + test up)
-bun test tests/contract.test.js
+# Smoke-test the compiled NAPI API
+# (`pixi run node-test` from the repository root wires build + test together)
+pixi run -e bun bun test tests/contract.test.js
 
 # Inspect the CLI wrapper
-npx qgis-cli --help
+pixi run -e bun bunx qgis-cli --help
 ```
+
+There is no Node.js toolchain in this repository: the addon is built, tested and
+packed with bun (`pixi run -e bun …`). The published package still declares
+`"engines": { "node": ">= 18" }` because that describes the addon's runtime for
+whoever installs it from npm, not the CLI used to build it.
 
 ## TypeScript API
 
@@ -157,10 +162,13 @@ For conda, install Node.js + Rust package:
 
 ```bash
 conda install -c conda-forge nodejs qgis qgis-rs
-# npm still needed for JS deps, but binary qgis-cli is in $PREFIX/bin
+# the binary qgis-cli is in $PREFIX/bin
 ```
 
-The npm package is primary for TypeScript; conda-forge recipe for Node could be added similarly to Python (build Rust binary + NAPI addon).
+`nodejs` here is only the runtime needed to *consume* the published addon — the
+build itself needs nothing but cargo and bun. The npm package is primary for
+TypeScript; a conda-forge recipe for it could be added similarly to Python
+(build Rust binary + NAPI addon).
 
 ## Performance
 

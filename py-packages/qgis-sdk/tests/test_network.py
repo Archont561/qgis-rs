@@ -61,10 +61,20 @@ def test_network_response_requests_like():
 
 # ── NetworkManager + Session (requests-like) ────────────────────────────────
 
-def test_network_manager_fallback():
-    from qgis_sdk.network import NetworkManager
+def test_network_manager_fallback(monkeypatch):
+    """The pure-Python surface used when QGIS is unavailable.
 
-    mgr = NetworkManager()
+    The precondition is forced rather than inferred: `import qgis` succeeding is
+    not enough to make the real backend usable, and reaching for
+    QgsNetworkAccessManager.instance() without a QgsApplication segfaults
+    instead of raising. So this asserts the fallback contract in every
+    environment, including the QGIS-bearing `default` one.
+    """
+    import qgis_sdk.network as network
+
+    monkeypatch.setattr(network, "_get_qgis_network_manager", lambda: None)
+
+    mgr = network.NetworkManager()
     assert hasattr(mgr, "get")
     assert hasattr(mgr, "post")
     assert hasattr(mgr, "put")
@@ -196,10 +206,13 @@ def test_fetch_helpers_exist():
 
 # ── ContentFetcher ──────────────────────────────────────────────────────────
 
-def test_content_fetcher_fallback():
-    from qgis_sdk.network import ContentFetcher
+def test_content_fetcher_fallback(monkeypatch):
+    """Forces the no-QGIS branch; see test_network_manager_fallback."""
+    import qgis_sdk.network as network
 
-    fetcher = ContentFetcher()
+    monkeypatch.setattr(network, "_get_qgis_fetcher", lambda: None)
+
+    fetcher = network.ContentFetcher()
     assert hasattr(fetcher, "fetch")
     assert hasattr(fetcher, "fetch_blocking")
     assert hasattr(fetcher, "content_as_string")
@@ -223,6 +236,20 @@ def test_fake_content_fetcher(fake_content_fetcher):
 # ── NetworkAccessManager ────────────────────────────────────────────────────
 
 def test_network_access_manager():
+    """The real QGIS-backed path, which needs a live QgsApplication.
+
+    Skipped otherwise. QgsNetworkAccessManager.instance() is a QGIS singleton
+    that dereferences the application object, so importing qgis is not enough —
+    calling it without one crashes the interpreter rather than raising, and a
+    crash cannot be caught from Python. In CI's bare virtualenv qgis is absent
+    and this skips; the fallback contract is covered by the two tests above.
+    """
+    import pytest
+
+    qgis = pytest.importorskip("qgis.core")
+    if qgis.QgsApplication.instance() is None:
+        pytest.skip("needs a QgsApplication; run from QGIS or a plugin host")
+
     from qgis_sdk.network import NetworkAccessManager
 
     http = NetworkAccessManager(timeout=5000)

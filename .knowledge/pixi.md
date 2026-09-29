@@ -61,11 +61,10 @@ deliberately empty. The feature set:
 | `cxx`       | `cxx-compiler`, `clang-tools`                   |
 | `qgis`      | `qgis`                                          |
 | `utils`     | `lefthook`, `convco`, `taplo`, `actionlint`     |
-| `docs`      | `bun`                                           |
-| `sandbox`   | no deps; `sandbox-restore` task                |
-| `sdk`       | `qgis-sdk` (source), `maturin`, `rust`, `pytest` + PyQGIS activation env |
-| `py`        | `python`, `maturin`, `qgis-rs` (source), `pytest` |
-| `node`      | `nodejs`, `rust`                                |
+| `py-runtime`| `python` (3.12.*), `maturin`, `pip`, `pytest`, `pytest-cov` + PyQGIS activation env |
+| `py`        | task-only grouping (`py-build`, `py-develop`, `py-test`) |
+| `sdk`       | task-only grouping (`sdk-build`, `sdk-develop`, `sdk-test`, `sdk-doctor`) |
+| `bun`       | `bun`, `rust`                                   |
 
 ### Feature: `qgis`
 
@@ -76,54 +75,66 @@ qgis = ">=3.44.9,<4"
 
 The QGIS dependency is in a feature so that lightweight tasks (formatting, linting Rust code) don't require downloading the entire QGIS stack.
 
-There is no `default` environment. The `dev` environment activates the
-`rust`, `cxx`, `qgis`, `utils`, and `sandbox` features; every user-facing task
-sets `default-environment` so bare `pixi run <task>` works, and CI passes `-e`
-explicitly.
+`default` is the implicit environment and activates the `rust`, `cxx`, `qgis`,
+`py-runtime`, `utils`, `py` and `sdk` features, so bare `pixi run <task>`
+resolves without a flag; tasks in the `bun` environment pin
+`default-environment = "bun"`. CI passes `-e` explicitly.
 
-### Feature: `docs`
+### Feature: `py-runtime`
 
-`bun >=1.2,<2` plus the `docs-dev` / `docs-build` / `docs-preview` tasks. See
-[documentation-site.md](/documentation-site.md). The `docs` env is also where
-JS **testing** runs — the root `node-test` task and CI both invoke bun here,
-because bun cannot share an environment with QGIS (icu, see below).
-
-### Feature: `sdk`
-
-The Python plugin SDK. It adds the `qgis-sdk` workspace package and `pytest`,
-and exports the PyQGIS paths at activation:
+The interpreter plus the tooling both Python distributions need, and the PyQGIS
+activation environment. The interpreter is the one QGIS is bundled with
+(`3.12.*`, the `py312` qgis build) — see the note in `[workspace.dependencies]`.
+`pip` is there because `maturin develop` shells out to it; `pytest` / `pytest-cov`
+so the tasks never need a pip install.
 
 ```toml
-[feature.sdk.dependencies]
-qgis-sdk = { path = "./py-packages/qgis-sdk" }
-pytest   = ">=8,<9"
-
-[feature.sdk.activation.env]
+[feature.py-runtime.activation.env]
 PYTHONPATH       = "$CONDA_PREFIX/share/qgis/python/plugins:$CONDA_PREFIX/share/qgis/python:$PYTHONPATH"
 QGIS_PREFIX_PATH = "$CONDA_PREFIX"
 QT_QPA_PLATFORM  = "offscreen"
 ```
 
+### Feature: `bun`
+
+`bun >=1.2,<2` plus `rust`, and the `docs-*` / `node-build` / `bun-install` tasks.
+See [documentation-site.md](/documentation-site.md). Every JS task in the repo
+resolves here: the docs app, the bridge suites, and the napi addon build and
+test — because bun cannot share an environment with QGIS (icu, see below).
+
+### Features: `py`, `sdk`
+
+Both are task-only groupings now. They used to add the distributions as
+environment *source dependencies*, which pulls in the `pixi-build-python` backend
+and drags the solve onto python 3.14 — which PyO3 0.22 refuses outright. They are
+developed in place with `maturin develop` instead, which is what CI does.
+
 ### Environments
 
 | Environment | Features                                         | Solve group | Purpose |
 |-------------|--------------------------------------------------|-------------|---------|
-| `dev`       | `rust`, `cxx`, `qgis`, `py-runtime`, `utils`, `sandbox` | `dev` | Rust/C++/Python development and tests |
-| `ci`        | `rust`, `cxx`, `qgis`, `sandbox`                 | `ci`        | What CI actually runs (parity) |
-| `utils`     | `utils`                                          | `utils`     | Hook / lint tooling only |
-| `docs`      | `docs`                                           | `docs`      | Astro docs site + bun JS tests |
-| `sdk`       | `qgis`, `sdk`                              | `sdk`       | Python plugin SDK |
-| `py`        | `py`                                       | `py`        | qgis-rs wheel, no QGIS |
-| `py-qgis`   | `qgis`, `py`                               | `py-qgis`   | qgis-rs wheel with QGIS |
-| `node`      | `node`                                     | `node`      | qgis-rs npm package |
+| `default`   | `rust`, `cxx`, `qgis`, `py-runtime`, `utils`, `py`, `sdk` | one | Rust/C++/Python development and tests; what the sandbox branch packs |
+| `bun`       | `bun`                                            | one | Bun for the docs app, the bridge suites and the napi addon build |
 
-`sdk` has its own solve group on purpose. Building `qgis-sdk` from source needs
-the `pixi-build-python` backend from `prefix.dev`; keeping `sdk` out of the
-other groups means `pixi install -e dev` and `-e ci` never need it.
+`default` and `bun` are the only two environments, and the split is forced by
+conda-forge rather than chosen for tidiness:
 
-The `docs` feature (bun, icu <76) is deliberately **not** in `dev`/`ci`:
-conda-forge QGIS needs icu ≥78.3, so the two cannot share an environment — docs
-tasks run against the separate `docs` environment.
+- qgis 3.44.9 / 3.44.11 / 3.44.14 require `icu >=78.3,<79.0a0`
+- bun 1.3.7 / 1.3.9 / 1.3.10 / 1.3.11 require `icu >=75.1,<76.0a0`
+
+No icu satisfies both, so a single environment carrying QGIS and bun does not
+solve. The `bun` environment carries `rust` because `napi build` runs
+`cargo metadata` before anything else and fails with `cargo: Permission denied`
+without it on PATH. It is safe for the addon to live there because
+`crates/qgis-node` and the whole `qgis-render` / `qgis-server` / `qgis-cli` chain
+beneath it are QGIS-free.
+
+There is no `node` environment and no `nodejs` dependency anywhere in the
+manifest (the only remaining mentions of nodejs are consumer-facing
+instructions to install a runtime for the *published* addon). The napi addon is
+built, tested and packed with bun. The published package keeps
+`"engines": { "node": ">= 18" }` because that describes the addon's runtime for
+npm consumers, not the build CLI.
 
 > **Gotcha (pixi 0.81):** `default-environment` is only accepted on tasks that
 > have a `cmd`, declared inline in the single `[tasks]` table. Pure aggregators
@@ -179,7 +190,7 @@ path in `[tool.maturin]` stays relative to this directory — which is what keep
 `python-source = "src"` pointing at the Python sources. A PEP 517 build that
 copies the project out of the checkout (an sdist) would not see the crate, so
 wheels are built from a clone: `pip install ./py-packages/qgis-sdk`, pixi
-(`pixi run -e sdk sdk-build`) and the conda recipe all build in place. Note that
+(`pixi run -e default sdk-build`) and the conda recipe all build in place. Note that
 maturin's own `-m` flag accepts only a `Cargo.toml` — the pyproject -> crate hop
 is driven by the *working directory*, so the CLI form is
 `cd py-packages/qgis-sdk && maturin build`.
@@ -249,16 +260,22 @@ umbrella task is what CI is expected to reproduce locally.
 - `build` — `cargo build --release`
 - `gates` — `fmt-check` + `clippy` + `lint-toml` + `lint-actions` + `test`; the "CI will be green" check
 - `ci` — `gates` + `check-cpp`
-- `ci-full` — `ci` + `lint-cpp` + `test-full` (needs the `dev` env installed)
-- `sandbox-restore` — `scripts/restore.sh`: fetch the published sandbox branch
-  (`sandbox/developer-linux-64`) and restore `dev`/`docs` offline
+- `ci-full` — `ci` + `lint-cpp` + `test-full` (needs the `default` env installed)
+
+There is no `sandbox-restore` task: the `sandbox` feature went away with the
+environment consolidation. Restoring the published transport is
+`scripts/restore.sh`, run directly — see [env-provisioning.md](/env-provisioning.md).
 
 ### Testing
 - `test` — basic tests (`application_info`), with optional `--clean` flag
 - `test-full` — full tests including `application_lifecycle` and `vector_layer`
 - `node-test` — `bun test tests/contract.test.js` for `ts-packages/qgis-node`,
-  run in the `docs` env (bun); depends on `node-build` in the `node` env, so a
-  bare `pixi run node-test` builds the addon and then tests it on bun
+  in the `bun` env; depends on `node-build`, which is also in `bun`, so a bare
+  `pixi run node-test` builds the addon and then tests it on bun
+- `pack-check` — asserts the npm `files` allowlist against what `napi build`
+  actually produced. Not `bun pm pack`: that always packs the root workspace and
+  the root package shares the member's name, so it would validate the wrong
+  package and still exit 0.
 
 Both set:
 - `QT_QPA_PLATFORM=offscreen` — prevents Qt display requirement
@@ -276,35 +293,48 @@ Both set:
 ## Common Commands
 
 ```bash
-pixi shell                  # enter the `dev` environment
+pixi shell                  # enter the `default` environment
 pixi run fmt                # format everything
 pixi run lint               # lint everything
 pixi run test               # run basic tests
 pixi run test-full          # run all tests
 pixi run scaffold core raster QgsRasterLayer raster
 
-pixi install -e sdk         # build + install the qgis-sdk workspace package
-pixi run -e sdk sdk-test    # pytest for py-packages/qgis-sdk
-pixi run -e sdk sdk-doctor  # print interpreter, PYTHONPATH, and prove the imports
+pixi install -e default         # install the QGIS-bearing environment
+pixi run -e default sdk-test    # pytest for py-packages/qgis-sdk
+pixi run -e default sdk-doctor  # print interpreter, PYTHONPATH, and prove the imports
 ```
 
 ## Offline / Sandbox Bootstrapping
 
 When pixi is not available (e.g., sandboxed CI, restricted network environments),
-the qgis-rs environment can be restored from the published **pixi-sandbox branch**:
+the qgis-rs environment can be restored from the published **pixi-sandbox branch**.
+As of pixi-sandbox v0.3.1 the transport is git-only: there is no network fetch
+inside the restore script and no sourced env script.
 
 ```bash
-bash scripts/restore.sh
-# fetches sandbox/developer-linux-64, doctor-verifies, restores dev/docs,
-# sources .pixi/sandbox-env.sh (cargo, rustc, clang-tools, QGIS, bundled pixi)
+# One fetch is enough; the launcher reads the branch out of the reviewed plan.
+git fetch origin sandbox/developer-linux-64
+scripts/restore.sh
 ```
+
+`scripts/restore.sh` (generated by `pixi-sandbox init github`, along with
+`scripts/restore.ps1` for the Windows airlock) works out the branch from
+`.pixi-sandbox.toml` — matching bundle name against the current platform — then
+`git archive`s it into `.pixi/.restore-transport` and hands that to the
+`pixi-sandbox restore` binary the branch carries. It never reaches the network,
+so the branch must already be present locally or under `origin/`. Override the
+branch with `PIXI_SANDBOX_BRANCH`, or pick between several bundles that publish
+the same platform with `PIXI_SANDBOX_BUNDLE`.
 
 This provides cargo, rustc, clang-tools, QGIS headers/libraries, and pixi itself
 without needing conda-forge or prefix.dev. See [env-provisioning.md](/env-provisioning.md)
 for the full design.
 
-The `.github/workflows/publish_sandbox.yml` workflow runs the pixi-sandbox
-publisher on pushes to `main` that change `.pixi-sandbox.toml`, `pixi.toml`,
-`pixi.lock`, or the workflow itself (or on manual dispatch), validates
-`.pixi-sandbox.toml`, and republishes the bundle; other pushes do not
-republish. The branch is `sandbox/developer-linux-64`.
+The `.github/workflows/publish-sandbox.yml` workflow runs the pixi-sandbox
+publisher on pushes to `main` that change an input of the sandbox snapshot (the
+reviewed plan, `pixi.toml`, `pixi.lock`, the root `package.json` / `bun.lock`, the
+Cargo manifests, the addon's `package.json` / `build.rs`, or the workflow itself),
+or on manual dispatch. Other pushes do not republish. The branch is
+`sandbox/developer-linux-64` and the bundle packs both `default` and `bun`, so an
+airlock clone can build the Rust side and the JS side.

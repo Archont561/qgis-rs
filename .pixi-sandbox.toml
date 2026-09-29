@@ -1,12 +1,13 @@
-# Reviewed publish plan consumed by `pixi-sandbox plan` and the release-binary
-# reusable workflow. Add a target only after its native runner and standalone
-# Rust bootstrap artifact have passed the airlock proof. linux-64 is the
-# presently validated target for this repository.
 schema = 1
 branch_prefix = "sandbox"
 cargo_vendor = true
 
 [[bundle]]
 name = "developer"
-environments = ["dev", "docs"]
+# `bun` is packed alongside `default` on purpose: every JS task in pixi.toml
+# resolves its environment to `bun`, so a transport carrying only `default`
+# could not build the napi addon, the docs app or the bridge suites. Both
+# environments are QGIS-free of each other's icu pin by construction — see the
+# header of pixi.toml.
+environments = ["default", "bun"]
 platforms = ["linux-64"]

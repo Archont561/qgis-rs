@@ -35,7 +35,10 @@ rust = ">=1.96.0,<1.97"
 [package.run-dependencies]
 # Python >=3.9, no QGIS required for pure-Rust ops (tiles --dry-run, info, etc.)
 # QGIS is optional but recommended for full rendering.
-python = ">=3.9"
+# The interpreter is whatever QGIS is bundled with, pinned to that build's ABI.
+# Not a standalone range: PyQGIS bindings only import under the exact python they
+# were compiled against. Keep in step with `python` in the root pixi.toml.
+python = "3.12.*"
 
 # For full backend, user can install qgis via conda-forge separately.
 # We do NOT hard-depend on qgis here to keep pure-Rust install lightweight,

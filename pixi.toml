@@ -8,28 +8,36 @@
 #   ts-packages/<dist>   Bun/npm project: package.json + JS/TS sources + tests
 #   crates/<crate>       Rust: the engine crates and the PyO3 / NAPI cores
 #
-# Environments (features are layered, so nothing installs more than it needs):
-#   dev      QGIS + Rust + C++ toolchain + Python + utils + sandbox — everything
-#            a contributor needs; the primary environment (umbrella tasks default
-#            to it via `default-environment`).
-#   ci       QGIS + Rust + C++ toolchain + sandbox — what CI actually runs.
-#   utils    git-hook / lint tooling only (lefthook, convco, taplo, actionlint).
-#   docs     Bun for apps/docs (Astro Starlight) and the JS test suites.
-#   sdk      the qgis-sdk Python package built from source, with QGIS.
-#   py       the qgis-rs Python wheel, no QGIS.
-#   py-qgis  the qgis-rs Python wheel, with QGIS.
-#   node     the qgis-rs npm package (napi addon), no QGIS.
+# TWO environments, and the split between them is forced by conda-forge:
 #
-# The `docs` feature (bun, which pins icu <76) is NOT part of `dev`/`ci`:
-# conda-forge QGIS needs icu >=78.3, so the two cannot share an environment —
-# docs tasks run against the separate `docs` environment instead.
+#   default  QGIS + Rust + C++ toolchain + Python + the packaged Python
+#            distributions (qgis-rs, qgis-sdk) + lint tooling. Everything that
+#            touches QGIS lives here, and this is what the published sandbox
+#            branch ships.
+#   bun      Bun, for apps/docs (Astro Starlight), the JS test suites, and the
+#            napi addon build.
 #
-# There is deliberately NO `default` environment: bare `pixi run <task>`
-# resolves through each task's `default-environment` (dev for the umbrella
-# tasks, docs/py/node/sdk for the language-dist tasks), and every workflow
-# passes `-e` explicitly. Keeping the root `[dependencies]` table empty is what
-# makes the layering real — the default feature would otherwise leak its
-# packages into every environment.
+# WHY BUN CANNOT JOIN `default` — do not "simplify" this back into one
+# environment without re-reading the constraint. The two runtimes need disjoint
+# icu majors, verified by solving against conda-forge:
+#
+#   qgis 3.44.9 | 3.44.11 | 3.44.14   requires  icu >=78.3,<79.0a0
+#   bun  1.3.7  | 1.3.9  | 1.3.10 | 1.3.11  requires  icu >=75.1,<76.0a0
+#
+# There is no icu that satisfies both, so a single environment carrying QGIS and
+# bun does not solve. `bun` is the only thing in `bun`; the Rust toolchain is
+# there too because `napi build` shells out to `cargo` (it runs `cargo metadata`
+# before it runs anything else, and fails with `cargo: Permission denied`
+# without it on PATH). The napi chain is QGIS-free — neither qgis-node nor
+# qgis-render / qgis-server / qgis-cli depends on qgis-sys — so the `bun`
+# environment never has to reach for QGIS and the icu conflict cannot reappear.
+#
+# Node.js is not installed anywhere. The napi addon is built and loaded with bun
+# (`pixi run bun run build`), which is verified to work, though upstream napi-rs
+# calls bun addon support best-effort. The published npm package still declares
+# `"engines": { "node": ">= 18" }` — that describes the addon's runtime for
+# consumers, not the build CLI, so it is deliberately kept.
+# See .knowledge/decisions/D08-icu-split-and-bun-toolchain.md.
 #
 # NOTE (pixi 0.81): `default-environment` is only accepted on tasks that have a
 # `cmd`, declared inline in `[tasks]`. Pure aggregators (gates/ci/ci-full) omit
@@ -43,9 +51,9 @@
 # together. Python is deliberately NOT declared as a dependency of the QGIS
 # environments: the conda-forge `qgis` package pulls in the interpreter its
 # PyQGIS bindings were built against, and a separate pin could only drift. The
-# one exception is `dev`'s `py-runtime` feature: it declares the wide workspace
-# range, which can only intersect qgis's own python pin, so the interpreter is
-# guaranteed present without ever being able to drift.
+# one exception is `py-runtime`, which declares the workspace range so the
+# interpreter is guaranteed present. That range is capped at <3.14 because
+# PyO3 0.22 refuses anything newer — see the feature for the full story.
 # See .knowledge/pixi.md.
 
 [workspace]
@@ -65,7 +73,25 @@ qgis = ">=3.44.9,<4"
 maturin = ">=1.7,<2"
 pytest = ">=8,<9"
 pytest-cov = ">=5,<7"
-python = ">=3.11,<3.15"
+# The Python the project runs on is the Python QGIS is bundled with — not an
+# independently chosen version. conda-forge ships qgis as per-ABI builds, and
+# its PyQGIS bindings only import under the exact interpreter they were compiled
+# against, so a project on any other python is a broken QGIS project.
+#
+# `3.12.*` is therefore not a preference: it tracks the `py312` qgis build
+# (qgis 3.44.14-py312h7fa5fc2_1 -> python_abi 3.12 -> python 3.12.14). Pin it
+# this tightly on purpose — a range would let the solver drift onto a different
+# ABI, which fails at `import qgis`, not at solve time.
+#
+# To move Python, change all of these together or the build breaks in a place
+# that does not name the cause:
+#   1. this pin;
+#   2. requires-python in py-packages/qgis-rs/pyproject.toml and
+#      py-packages/qgis-sdk/pyproject.toml;
+#   3. python = "3.12.*" in py-packages/qgis-rs/pixi.toml;
+#   4. python-version in .github/workflows/ci.yml;
+#   5. then `pixi lock`, and expect PyO3 0.22 to block anything past 3.13.
+python = "3.12.*"
 bun = ">=1.2.0,<2"
 
 # ── feature layers ────────────────────────────────────────────────────────────
@@ -83,11 +109,47 @@ clang-tools = ">=22.1.8,<23"
 qgis = { workspace = true }
 
 [feature.py-runtime.dependencies]
-# dev-only: guarantee the interpreter that `qgis` already pulls in, so Python
-# helpers and pytest entrypoints run from `dev` without a second environment.
-# The workspace range is wide enough that it can only intersect qgis's own
-# python pin — it cannot override it.
+# The interpreter plus the tooling needed to develop and test the two Python
+# distributions (py-packages/qgis-rs, py-packages/qgis-sdk) inside the QGIS
+# environment.
+#
+# `python` is the version QGIS is bundled with (see [workspace.dependencies] for
+# the full coupling and the list of places that must move together). Declaring
+# it here is not overriding QGIS — it is stating the same fact twice, so a
+# mismatch between the two is a solve error rather than an `import qgis` failure.
+#
+# The two distributions are deliberately NOT environment dependencies here.
+# They are `[package]` sources built by `pixi-build-python`, and that backend
+# drags the solve onto python 3.14 — which PyO3 0.22 refuses outright ("the
+# configured Python interpreter version (3.14) is newer than PyO3's maximum
+# supported version (3.13)"). The failure is invisible to the solver because
+# PyO3's ceiling is not a conda dependency, so `pixi install` fails minutes
+# later inside maturin. They are instead developed in place with `maturin
+# develop`, which is exactly what CI does; see [feature.py.tasks] and
+# [feature.sdk.tasks].
 python = { workspace = true }
+maturin = { workspace = true }
+# `maturin develop` shells out to `pip --version` before it does anything else
+# ("Failed to find pip (if working with a uv venv try `maturin develop --uv`)").
+# The pixi-build-python path never needed it, because it installed the built
+# wheel itself; developing in place does.
+pip = ">=24,<27"
+pytest = { workspace = true }
+# The plugin CI exercises through --cov; declared so `pixi run py-test` can do
+# coverage without a pip install.
+pytest-cov = { workspace = true }
+
+[feature.py-runtime.activation.env]
+# The conda-forge `qgis` package already exports these through
+# etc/conda/activate.d/qgis-activate.sh, which pixi runs for `pixi run` and
+# `pixi shell`. They are repeated here so `import qgis` does not depend on
+# remembering that, and so the paths are visible in the manifest. This moved
+# here from [feature.sdk.activation] when the environments were consolidated:
+# the QGIS environment is the only place a Python distribution is exercised.
+# ($VAR syntax: activation runs under bash; platforms are linux-64 only.)
+PYTHONPATH = "$CONDA_PREFIX/share/qgis/python/plugins:$CONDA_PREFIX/share/qgis/python:$PYTHONPATH"
+QGIS_PREFIX_PATH = "$CONDA_PREFIX"
+QT_QPA_PLATFORM = "offscreen"
 
 [feature.utils.dependencies]
 lefthook = ">=2.1.9,<3"
@@ -95,26 +157,50 @@ convco = ">=0.6.4,<0.7"
 taplo = "*"
 actionlint = "*"
 
-[feature.docs.dependencies]
-# 1.2+ is required to read the text-format apps/docs/bun.lock.
+[feature.bun.dependencies]
+# 1.2+ is required to read the text-format root bun.lock.
+# rust: `napi build` spawns `cargo metadata` and `cargo build`; the addon
+# cannot be produced without it on PATH.
 bun = { workspace = true }
+rust = { workspace = true }
 
-[feature.docs.tasks]
-docs-install = { cmd = "bun install --frozen-lockfile", cwd = "apps/docs", description = "Install the docs workspace dependencies", default-environment = "docs" }
+[feature.bun.tasks]
+# The whole JS toolchain runs under bun, and this task is how a caller reaches
+# it: `pixi run bun test`, `pixi run bun run build`. `default-environment` puts
+# the command in the `bun` environment, so `pixi run -e bun bun …` is the same
+# thing spelled explicitly.
+#
+# Always invoke workspace CLIs through `bun run <script>` or `bunx`. A path like
+# `bun ./node_modules/.bin/napi` fails with "Module not found" — `.bin` entries
+# are symlinks with a node shebang, not modules bun can resolve by path.
+bun = { cmd = "bun", default-environment = "bun" }
+
+# One install for the whole Bun workspace at the repository root: package.json
+# declares `workspaces: ["ts-packages/*", "apps/*"]`, so this covers the docs
+# app, the napi package and the SDK bridge. Members carry no lockfile of their
+# own; root bun.lock is the single resolution record.
+bun-install = { cmd = "bun install --frozen-lockfile", description = "Install the Bun workspace from the root lockfile", default-environment = "bun" }
+
 docs-dev = { cmd = "bun run dev", cwd = "apps/docs", depends-on = [
-  "docs-install",
-], default-environment = "docs" }
-docs-build = { cmd = "bun run build", cwd = "apps/docs", default-environment = "docs", depends-on = [
-  "docs-install",
+  "bun-install",
+], default-environment = "bun" }
+docs-build = { cmd = "bun run build", cwd = "apps/docs", default-environment = "bun", depends-on = [
+  "bun-install",
 ] }
 docs-preview = { cmd = "bun run preview", cwd = "apps/docs", depends-on = [
   "docs-build",
-], default-environment = "docs" }
+], default-environment = "bun" }
 
-[feature.sandbox.tasks]
-# Restore the published offline transport into the current tree. The branch
-# default matches .pixi-sandbox.toml (bundle "developer" on linux-64).
-sandbox-restore = { cmd = "bash scripts/restore.sh", description = "Fetch the published sandbox branch and restore the dev/docs environments offline", default-environment = "dev" }
+# The npm-installable `qgis-rs` package: Rust NAPI addon built by `napi build`
+# and driven by `bun run build`. It lives in this feature rather than its own
+# because it needs `bun` and `cargo` and nothing else — crates/qgis-node and the
+# whole qgis-render / qgis-server / qgis-cli chain beneath it are QGIS-free, so
+# the addon never needs the `default` environment.
+# Members are installed by `bun-install`; the per-member `npm ci
+# --workspaces=false` is gone because the root Bun workspace owns resolution.
+node-build = { cmd = "bun run build", cwd = "ts-packages/qgis-node", depends-on = [
+  "bun-install",
+], default-environment = "bun" }
 
 # ── qgis-rs (Python bindings + Rust CLI) ──────────────────────────────────────
 # The pip-installable `qgis-rs` package — Rust extension via PyO3 + binary.
@@ -122,115 +208,92 @@ sandbox-restore = { cmd = "bash scripts/restore.sh", description = "Fetch the pu
 # Full rendering needs QGIS backend (conda-forge qgis package).
 
 [feature.py.dependencies]
-python = { workspace = true }
-maturin = { workspace = true }
-# The wheel under test; pixi drives maturin through its pyproject.
-qgis-rs = { path = "./py-packages/qgis-rs" }
-pytest = { workspace = true }
-# The plugin CI exercises through --cov; declared so `pixi run py-test` can do
-# coverage without a pip install.
-pytest-cov = { workspace = true }
+# No dependencies of its own: python, maturin and pytest all come from
+# `py-runtime`, which the `default` environment already carries. This feature is
+# now a task-only grouping — the wheel is built in place by `py-develop`
+# (maturin develop), not installed into the environment as a source package.
 
 [feature.py.tasks]
-py-build = { cmd = "maturin build --release -o dist", cwd = "py-packages/qgis-rs", default-environment = "py" }
-py-develop = { cmd = "maturin develop", cwd = "py-packages/qgis-rs", default-environment = "py" }
+py-build = { cmd = "maturin build --release -o dist", cwd = "py-packages/qgis-rs", default-environment = "default" }
+py-develop = { cmd = "maturin develop", cwd = "py-packages/qgis-rs", default-environment = "default" }
 py-test = { cmd = "python -m pytest py-packages/qgis-rs/tests -v", depends-on = [
   "py-develop",
-], env = { QGIS_REQUIRE_NATIVE = "1" }, default-environment = "py" }
+], env = { QGIS_REQUIRE_NATIVE = "1" }, default-environment = "default" }
 
-# ── qgis-node (TypeScript / Node.js bindings + Rust CLI) ─────────────────────
-# npm-installable `qgis-rs` package — Rust NAPI addon + binary.
-
-[feature.node.dependencies]
-nodejs = ">=20,<23"
-rust = { workspace = true }
-
-[feature.node.tasks]
-# The addon builds with npm in the `node` env (napi build needs a Node
-# runtime). Testing runs on bun in the `docs` env instead — see the root
-# `node-test` task: conda-forge bun pins icu <76, which QGIS's icu >=78.3
-# keeps out of every QGIS-bearing environment.
-node-install = { cmd = "npm ci --workspaces=false", cwd = "ts-packages/qgis-node", default-environment = "node" }
-node-build = { cmd = "npm run build", cwd = "ts-packages/qgis-node", depends-on = [
-  "node-install",
-], default-environment = "node" }
+# ── qgis-node (napi addon) ────────────────────────────────────────────────────
+# The npm-installable `qgis-rs` package. Built with bun; see the header for why
+# there is no Node.js environment anywhere in this manifest. The build task
+# itself lives in [feature.bun.tasks]: it needs bun and cargo, and the `node`
+# feature it used to carry is no longer part of any environment.
 
 # ── qgis-sdk (Python plugin SDK) ──────────────────────────────────────────────
 # Now with Rust-native CLI (qgis-plugin binary) built via maturin.
-# The conda-forge `qgis` package provides Python interpreter, so we don't
-# declare python separately — it comes from qgis.
+# The conda-forge `qgis` package provides the Python interpreter and its PyQGIS
+# paths, so neither is declared here — they come from `py-runtime`, which also
+# carries the activation environment `import qgis` needs.
 
 [feature.sdk.dependencies]
-# Source dependency: pixi builds py-packages/qgis-sdk with pixi-build-python (maturin).
-qgis-sdk = { path = "./py-packages/qgis-sdk" }
-maturin = { workspace = true }
-rust = { workspace = true }
-pytest = { workspace = true }
-
-# The conda-forge qgis package already exports these through
-# etc/conda/activate.d/qgis-activate.sh, which pixi runs for `pixi run` and
-# `pixi shell`. They are repeated here so `import qgis` does not depend on
-# remembering that, and so the paths are visible in the manifest.
-# ($VAR syntax: activation runs under bash; platforms are linux-64 only.)
-[feature.sdk.activation.env]
-PYTHONPATH = "$CONDA_PREFIX/share/qgis/python/plugins:$CONDA_PREFIX/share/qgis/python:$PYTHONPATH"
-QGIS_PREFIX_PATH = "$CONDA_PREFIX"
-QT_QPA_PLATFORM = "offscreen"
+# Task-only grouping, like `py`: the interpreter, maturin, pytest and the PyQGIS
+# activation all come from `py-runtime`. `sdk-develop` builds the package in
+# place rather than pixi installing it from source, for the PyO3/python-3.14
+# reason documented on [feature.py-runtime.dependencies].
 
 [feature.sdk.tasks]
 sdk-test = { cmd = "python -m pytest -q", cwd = "py-packages/qgis-sdk", depends-on = [
   "sdk-develop",
-], env = { QGIS_REQUIRE_NATIVE = "1" }, default-environment = "sdk" }
+], env = { QGIS_REQUIRE_NATIVE = "1" }, default-environment = "default" }
 # Prints the interpreter, the PyQGIS paths, and whether qgis.core / qgis_sdk
 # resolve. Exits non-zero when the environment is broken.
-sdk-doctor = { cmd = "python scripts/doctor.py", cwd = "py-packages/qgis-sdk", default-environment = "sdk" }
-sdk-build = { cmd = "maturin build --release -o dist", cwd = "py-packages/qgis-sdk", default-environment = "sdk" }
-sdk-develop = { cmd = "maturin develop", cwd = "py-packages/qgis-sdk", default-environment = "sdk" }
+# Depends on sdk-develop: `import qgis_sdk` only resolves once the package is
+# built and installed, which used to happen implicitly because pixi installed
+# it as an environment source dependency.
+sdk-doctor = { cmd = "python scripts/doctor.py", cwd = "py-packages/qgis-sdk", depends-on = [
+  "sdk-develop",
+], default-environment = "default" }
+sdk-build = { cmd = "maturin build --release -o dist", cwd = "py-packages/qgis-sdk", default-environment = "default" }
+sdk-develop = { cmd = "maturin develop", cwd = "py-packages/qgis-sdk", default-environment = "default" }
 
 [environments]
-dev = { features = [
+# See the header: two environments, split by an icu conflict that no single
+# solve can satisfy. `default` is what the published sandbox branch packs.
+default = { features = [
   "rust",
   "cxx",
   "qgis",
   "py-runtime",
   "utils",
-  "sandbox",
-], solve-group = "dev" }
-ci = { features = ["rust", "cxx", "qgis", "sandbox"], solve-group = "ci" }
-utils = { features = ["utils"], solve-group = "utils" }
-docs = { features = ["docs"], solve-group = "docs" }
-# Its own solve-group on purpose: the `sdk` environment needs the pixi-build
-# backend to build qgis-sdk from source, and keeping it out of the `dev` group
-# means `pixi install -e dev` / `-e ci` never need that backend.
-sdk = { features = ["qgis", "sdk"], solve-group = "sdk" }
-py = { features = ["py"], solve-group = "py" }
-py-qgis = { features = ["qgis", "py"], solve-group = "py-qgis" }
-node = { features = ["node"], solve-group = "node" }
+  "py",
+  "sdk",
+] }
+# QGIS-free on purpose: crates/qgis-node and everything it depends on are pure
+# Rust, so adding `qgis` here would reintroduce the icu conflict.
+bun = { features = ["bun"] }
 
 # ---------------------------------------------------------------------------
 # Tasks. Workflows call these Pixi entrypoints as the local gates, so both
 # contributors and CI use the same verbs, one action per task, sharing pixi-sandbox's
 # vocabulary: fmt / clippy / build / test / gates / ci.
 #
-# There is no `default` environment, so every user-facing task sets
-# `default-environment` (dev for the umbrella tasks, docs/py/node/sdk for the
-# language-dist tasks). lefthook extends this by calling `pixi run -e dev …`.
+# `default` is the implicit environment, so `pixi run <task>` needs no flag and
+# `-e default` stays valid for anything that prefers to be explicit. The JS
+# tasks pin `default-environment = "bun"` because their commands do not exist in
+# `default` — see the icu note in the header.
 # ---------------------------------------------------------------------------
 [tasks]
 
 # ── internal ──────────────────────────────────────────────────────────────────
-setup = { cmd = "bash -c 'L=\"$CONDA_PREFIX/lib\"; if [ -e \"$L/libqca-qt6.so.2\" ]; then ln -sf \"$L/libqca-qt6.so.2\" \"$L/libqca-qt5.so.2\"; elif [ -e \"$L/libqca-qt5.so.2.3.12\" ]; then ln -sf libqca-qt5.so.2.3.12 \"$L/libqca-qt5.so.2\"; else exit 1; fi'", description = "Link libqca under the Qt5 soname QGIS still asks for, whichever flavor the env provides", default-environment = "dev" }
-_build-for-lint = { cmd = "cargo build -p qgis-sys", default-environment = "dev" }
+setup = { cmd = "bash -c 'L=\"$CONDA_PREFIX/lib\"; if [ -e \"$L/libqca-qt6.so.2\" ]; then ln -sf \"$L/libqca-qt6.so.2\" \"$L/libqca-qt5.so.2\"; elif [ -e \"$L/libqca-qt5.so.2.3.12\" ]; then ln -sf libqca-qt5.so.2.3.12 \"$L/libqca-qt5.so.2\"; else exit 1; fi'", description = "Link libqca under the Qt5 soname QGIS still asks for, whichever flavor the env provides", default-environment = "default" }
+_build-for-lint = { cmd = "cargo build -p qgis-sys", default-environment = "default" }
 
 # ── formatting ────────────────────────────────────────────────────────────────
-fmt-rs = { cmd = "cargo fmt --all", default-environment = "dev" }
-fmt-cpp = { cmd = "bash -c 'clang-format -i $(find crates/qgis-sys/src crates/qgis-sys/include -name \"*.cpp\" -o -name \"*.h\")'", default-environment = "dev" }
+fmt-rs = { cmd = "cargo fmt --all", default-environment = "default" }
+fmt-cpp = { cmd = "bash -c 'clang-format -i $(find crates/qgis-sys/src crates/qgis-sys/include -name \"*.cpp\" -o -name \"*.h\")'", default-environment = "default" }
 fmt = { depends-on = ["fmt-rs", "fmt-cpp"] }
 
 # ── checks ────────────────────────────────────────────────────────────────────
-fmt-check = { cmd = "cargo fmt --all --check", default-environment = "dev" }
-clippy = { cmd = "cargo clippy --workspace --all-targets -- -D warnings", default-environment = "dev" }
-build = { cmd = "cargo build --release", default-environment = "dev" }
+fmt-check = { cmd = "cargo fmt --all --check", default-environment = "default" }
+clippy = { cmd = "cargo clippy --workspace --all-targets -- -D warnings", default-environment = "default" }
+build = { cmd = "cargo build --release", default-environment = "default" }
 # Optional args: lefthook passes only the staged C++ files (`pixi run check-cpp
 # -- a.cpp b.h`); with no args the whole tree is checked via `find`. `ci`
 # depends on this task unchanged.
@@ -239,7 +302,7 @@ check-cpp = { cmd = """bash -c '
     clang-format --dry-run --Werror "$@"
   else
     clang-format --dry-run --Werror $(find crates/qgis-sys/src crates/qgis-sys/include -name "*.cpp" -o -name "*.h")
-  fi' _""", default-environment = "dev" }
+  fi' _""", default-environment = "default" }
 
 lint-cpp = { cmd = """bash -c '
   SRCS=$(find crates/qgis-sys/src -name "*.cpp")
@@ -261,7 +324,7 @@ lint-cpp = { cmd = """bash -c '
     -I$QT_INC/QtWidgets \
     -I$QT_INC/QtXml'""", depends-on = [
   "_build-for-lint",
-], default-environment = "dev" }
+], default-environment = "default" }
 
 # `lint` is the full-codebase gate: Rust lints plus clang-tidy over the shims.
 lint = { depends-on = ["clippy", "lint-cpp"] }
@@ -269,7 +332,7 @@ lint = { depends-on = ["clippy", "lint-cpp"] }
 # ── lint tooling (lefthook + CI share these) ──────────────────────────────────
 # Conventional-commit check for the `commit-msg` hook; reads the proposed
 # message from stdin (git passes it via {1} in lefthook.yml).
-lint-commit = { cmd = "convco check --from-stdin", default-environment = "dev" }
+lint-commit = { cmd = "convco check --from-stdin", default-environment = "default" }
 # Optional args like check-cpp: hooks check only staged manifests
 # (`pixi run lint-toml -- a.toml b.toml`); bare `pixi run lint-toml` checks the
 # workspace manifest and the sandbox publish plan alone. Only those two files
@@ -280,25 +343,50 @@ lint-toml = { cmd = """bash -c '
     taplo fmt --check "$@"
   else
     taplo fmt --check pixi.toml .pixi-sandbox.toml
-  fi' _""", default-environment = "dev" }
+  fi' _""", default-environment = "default" }
 # Scans .github/workflows/*.yml by default.
-lint-actions = { cmd = "actionlint", default-environment = "dev" }
+lint-actions = { cmd = "actionlint", default-environment = "default" }
 
 # ── packaging ─────────────────────────────────────────────────────────────────
-# The sandbox bundle (dev + docs) is packed and published by the reusable
-# publish_sandbox workflow, not by a local script here. Validate the reviewed
-# plan config locally with `pixi run -e dev lint-toml` (taplo) and restore the
-# published transport offline with `pixi run -e dev sandbox-restore`.
+# The sandbox bundle (`default` + `bun`) is packed and published by the generated
+# publish-sandbox workflow, not by a local task here. Validate the reviewed plan
+# config with `pixi run lint-toml` (taplo); restore the published transport
+# offline with `scripts/restore.sh`, which lives outside pixi because the whole
+# point is that pixi is not installed on the machine that runs it.
 
 # ── tests ─────────────────────────────────────────────────────────────────────
-# JS tests run on bun, not `node --test` / npm test. bun lives in the `docs`
-# env (conda-forge bun pins icu <76, which QGIS's icu >=78.3 keeps out of every
-# QGIS-bearing environment), so this task builds the addon in `node` and then
-# tests it in `docs` — a cross-env depends-on resolves each task in its own
-# default environment. The bridge suites stay on `pixi run -e docs bun test`.
+# Every JS test runs on bun, in the `bun` environment: the docs app, the SDK
+# bridge and the napi addon alike. `node-test` is a cross-environment
+# depends-on — `node-build` runs `napi build` in `bun`, and so does the test that
+# loads the resulting addon. Nothing here needs a Node.js runtime.
 node-test = { cmd = "bun test tests/contract.test.js", cwd = "ts-packages/qgis-node", depends-on = [
   "node-build",
-], env = { QGIS_REQUIRE_NATIVE = "1" }, default-environment = "docs" }
+], env = { QGIS_REQUIRE_NATIVE = "1" }, default-environment = "bun" }
+
+# Assert the publishable file set without invoking a packer. `bun pm pack` cannot
+# do this job: it always packs the *root* workspace (there is no --filter), and
+# the root package is also named "qgis-rs", so it would silently validate the
+# wrong package while reporting a plausible-looking tarball. This checks the
+# `files` allowlist in ts-packages/qgis-node/package.json against what the build
+# actually produced, which is the failure this gate exists to catch — a missing
+# compiled addon.
+pack-check = { cmd = """bash -c '
+  set -eu
+  cd ts-packages/qgis-node
+  fail=0
+  for f in index.js index.d.ts README.md; do
+    [ -e "$f" ] || { echo "missing from package: $f" >&2; fail=1; }
+  done
+  [ -d bin ] || { echo "missing from package: bin/" >&2; fail=1; }
+  # The host-platform addon is the only one napi build emits, so glob rather
+  # than enumerate: the release pipeline cross-builds the rest.
+  set -- qgis-rs.*.node
+  [ -e "$1" ] || { echo "missing from package: qgis-rs.*.node (did napi build run?)" >&2; fail=1; }
+  [ "$fail" = 0 ] || exit 1
+  echo "package files present:" index.js index.d.ts README.md bin/ "$@"
+'""", description = "Check the npm publishable file set against the build output", depends-on = [
+  "node-build",
+], default-environment = "bun" }
 
 test = { args = [
   { arg = "package", default = "" },
@@ -322,7 +410,7 @@ test = { args = [
       --test application_info -- --test-threads=1
   fi'""", depends-on = [
   "setup",
-], default-environment = "dev" }
+], default-environment = "default" }
 
 test-full = { args = [
   { arg = "package", default = "" },
@@ -352,12 +440,12 @@ test-full = { args = [
       -- --test-threads=1
   fi'""", depends-on = [
   "setup",
-], default-environment = "dev" }
+], default-environment = "default" }
 
 # ── clean ─────────────────────────────────────────────────────────────────────
 clean = { args = [
   { arg = "package", default = "" },
-], cmd = "bash -c 'if [ -n \"{{ package }}\" ]; then cargo clean -p {{ package }}; else cargo clean; fi'", default-environment = "dev" }
+], cmd = "bash -c 'if [ -n \"{{ package }}\" ]; then cargo clean -p {{ package }}; else cargo clean; fi'", default-environment = "default" }
 
 # ── scaffold ──────────────────────────────────────────────────────────────────
 # Usage: pixi run scaffold <layer> <concept> <qgis_class> <short_name>
@@ -467,12 +555,12 @@ EOF
   echo "  2. Edit the .rs    — declare matching Rust signatures"
   echo "  3. Edit the .cpp   — implement the functions"
   echo "  4. cargo build -p qgis-sys"
-'""", default-environment = "dev" }
+'""", default-environment = "default" }
 
 # ── gates ─────────────────────────────────────────────────────────────────────
 # One command for "what CI will run". `gates` needs no QGIS at runtime; `ci-full`
-# adds clang-tidy and the QGIS-backed test binaries, so it wants the `dev`
-# environment installed: `pixi run -e dev ci-full`. Aggregators below resolve
+# adds clang-tidy and the QGIS-backed test binaries, so it wants the `default`
+# environment installed: `pixi run ci-full`. Aggregators below resolve
 # their environment through the tasks they depend on (pixi 0.81 limitation:
 # `default-environment` requires a `cmd`).
 gates = { description = "Format check + clippy + the QGIS-free test run", depends-on = [

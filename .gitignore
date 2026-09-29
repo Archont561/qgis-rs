@@ -43,11 +43,14 @@ symbology-style.db
 .pixi-sandbox/
 dist/
 
-# docs app (Node.js / Astro)
+# docs app (Bun / Astro)
 apps/docs/node_modules/
-# The Bun workspace at the root owns JS resolution; a root npm lock is a mistake
-# (member locks, e.g. ts-packages/qgis-node/package-lock.json, stay tracked).
+# The Bun workspace at the root owns JS resolution and its root bun.lock is the
+# single lockfile. A root npm lock, or a member lock under ts-packages/, is a
+# mistake: two lockfiles for one dependency graph resolve differently.
 /package-lock.json
+ts-packages/*/package-lock.json
+apps/*/package-lock.json
 apps/docs/dist/
 apps/docs/.astro/
 

@@ -8,7 +8,7 @@ Documentation site for qgis-rs, built with [Astro Starlight](https://starlight.a
 
 ```bash
 # Activate the docs environment
-pixi shell -e docs
+pixi shell -e bun
 
 # Start dev server
 pixi run docs-dev
@@ -122,8 +122,8 @@ Until then the `deploy` job fails with *"Get Pages site failed"*.
 ### Building locally
 
 ```bash
-pixi run -e docs docs-build     # output in apps/docs/dist/
-pixi run -e docs docs-preview   # serve dist/ at http://localhost:4321/qgis-rs
+pixi run -e bun docs-build     # output in apps/docs/dist/
+pixi run -e bun docs-preview   # serve dist/ at http://localhost:4321/qgis-rs
 ```
 
 Or with Bun directly: `bun run build` / `bun run preview`.

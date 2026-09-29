@@ -88,7 +88,7 @@ What you get:
 - `qgis-sdk` executable (alias)
 - `qgis-plugin` and `qgis-sdk` console scripts (`python -m qgis_sdk.cli`)
 
-Pre-built wheels for Linux x86_64, macOS arm64/x86_64, Windows x86_64. If no wheel matches, pip builds from source via maturin (requires Rust ≥1.96).
+Pre-built wheels for Linux x86_64 and Linux arm64. If no wheel matches, pip builds from source via maturin (requires Rust ≥1.96).
 
 ### From conda-forge
 
@@ -111,9 +111,9 @@ pip install maturin
 (cd py-packages/qgis-sdk && maturin develop)
 
 # Or via pixi (conda env with QGIS)
-pixi install -e sdk
-pixi run -e sdk python -m pytest py-packages/qgis-sdk/tests -v
-pixi run -e sdk qgis-plugin --help
+pixi install -e default
+pixi run -e default python -m pytest py-packages/qgis-sdk/tests -v
+pixi run -e default qgis-plugin --help
 
 # Test without Rust (pure Python fallback)
 python -m pytest py-packages/qgis-sdk/tests -q
@@ -300,8 +300,8 @@ Fakes: `FakeIface`, `FakeAction`, `FakeDialog`, `FakeWebView`, `FakeBridge`, `mo
 From the repository root:
 
 ```bash
-pixi run -e sdk sdk-test      # pytest (35 tests, no QGIS needed)
-pixi run -e sdk sdk-doctor    # prove `import qgis.core` resolves
+pixi run -e default sdk-test      # pytest (35 tests, no QGIS needed)
+pixi run -e default sdk-doctor    # prove `import qgis.core` resolves
 ```
 
 Or without pixi, if Python and the package are already installed:

@@ -32,7 +32,7 @@ This installs:
 - `qgis-cli` executable (Rust binary built by maturin)
 - `qgis-cli` and `qgis-rs` console scripts (`python -m qgis_rs.cli`)
 
-Pre-built wheels are published for Linux x86_64, macOS (arm64 + x86_64), and Windows x86_64. If no wheel matches your platform, `pip` builds from source via `maturin` (requires Rust ≥1.96).
+Pre-built wheels are published for Linux x86_64 and Linux arm64. If no wheel matches your platform, `pip` builds from source via `maturin` (requires Rust ≥1.96).
 
 ### From conda-forge (conda / pixi / mamba)
 
@@ -58,8 +58,8 @@ pip install maturin
 (cd py-packages/qgis-rs && maturin develop)   # reads ./pyproject.toml -> crates/qgis-py
 
 # Or via pixi (conda environment with QGIS)
-pixi install -e py
-pixi run -e py py-develop
+pixi install -e default
+pixi run -e default py-develop
 
 # Test
 python -m pytest py-packages/qgis-rs/tests -q

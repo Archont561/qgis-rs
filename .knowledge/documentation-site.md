@@ -71,7 +71,7 @@ CI installs with
 
 ```bash
 # Activate docs environment
-pixi shell -e docs
+pixi shell -e bun
 
 # Development server
 pixi run docs-dev
@@ -158,7 +158,7 @@ pull request (docs inputs) ─────────────────�
 push to main / manual dispatch ──────────────────────────────┤
                                                                ▼
                               build job (ubuntu-latest)
-                                pixi install -e docs
+                                pixi install -e bun
                                 bun install --frozen-lockfile / bun run build
                                 upload Pages artifact (main only)
                                                                ▼
@@ -168,7 +168,7 @@ push to main / manual dispatch ────────────────�
 ```
 
 All actions are pinned by commit SHA, alongside `ci.yml` and
-`publish_sandbox.yml`. The build job has read-only content and Pages access;
+`publish-sandbox.yml`. The build job has read-only content and Pages access;
 the deploy job receives `pages: write` and `id-token: write`.
 `concurrency: { group: github-pages, cancel-in-progress: false }` keeps
 deployments ordered.
