@@ -119,36 +119,11 @@ jobs:
       - name: Install Python test tools
         run: python -m pip install "maturin>=1.7,<2" "pytest>=8,<9" "pytest-cov>=5,<7"
 
-      # The whole gate: repo lints, turbo lint, format drift gate, every
-      # package's tests (builds are pulled in transitively), pack:check.
-      # Temporarily expanded from `pixi run ci` to locate a CI-only failure.
-      - name: Gate — repo lints
-        run: |
-          pixi run -e default lint-toml
-          pixi run -e default lint-actions
-
-      - name: Gate — turbo lint
-        run: pixi run -e bun bun x turbo run lint --filter="!qgis-rs-docs"
-
-      - name: Gate — format drift
-        run: |
-          pixi run -e bun bun x turbo run format --filter="!qgis-rs-docs"
-          git diff --exit-code --quiet || { echo "unformatted files" >&2; exit 1; }
-
-      # Diagnostic build: force-runs the test pipeline, then ALWAYS fails so
-      # the job annotation tail carries the loader trace (the only readable
-      # log channel from this sandbox).
-      - name: Gate — turbo test (load-trace diagnostic)
-        run: |
-          pixi run -e bun bun x turbo run test --filter="!qgis-rs-docs" --force || true
-          cd ts-packages/qgis-node
-          ls -la . | tail -12
-          echo "── raw require of the platform addon:"
-          pixi run -e bun bun -e 'try { require("./qgis-rs.linux-x64-gnu.node"); console.log("LOAD OK"); } catch (e) { console.log("LOAD ERROR: " + ((e && e.stack) || e)); }'
-          exit 1
-
-      - name: Gate — pack:check
-        run: pixi run -e bun bun x turbo run pack:check
+      # The whole gate as one pixi task: repo lints, turbo lint, format drift
+      # gate, every package's tests (same-package builds are pulled in by
+      # turbo's test dependency), pack:check. Same as `pixi run ci` locally.
+      - name: Run the CI gate
+        run: pixi run ci
 
       # With the `python` Cargo feature disabled, PyO3 links to the interpreter
       # for Rust test binaries instead of leaving extension-module symbols open.
