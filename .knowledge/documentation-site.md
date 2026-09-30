@@ -1,7 +1,7 @@
 ---
 type: concept
 title: "Documentation Site"
-description: "Astro Starlight documentation site for qgis-rs, running on Bun via Pixi docs environment. Located in apps/docs/."
+description: "Astro Starlight documentation site for qgis-rs, running on Bun via Pixi docs environment. Located in docs/."
 tags: [docs, astro, starlight, bun, pixi, website]
 generated: "2026-09-18T00:00:00Z"
 status: active
@@ -14,12 +14,12 @@ sources:
 
 # Documentation Site
 
-The qgis-rs documentation site is built with [Astro Starlight](https://starlight.astro.build/) and located in `apps/docs/`.
+The qgis-rs documentation site is built with [Astro Starlight](https://starlight.astro.build/) and located in `docs/`.
 
 ## Architecture
 
 ```
-apps/docs/
+docs/
 ├── astro.config.mjs           # Starlight config (site, base, sidebar, social, logo)
 ├── remark-base-links.mjs       # Prefix in-content links with the configured base
 ├── package.json                # Astro + Starlight + sharp + TypeScript
@@ -50,17 +50,17 @@ The docs site has its own Pixi environment:
 bun = ">=1.2.0,<2"   # reads the text-format root bun.lock
 
 [feature.docs.tasks]
-docs-dev = { cmd = "bun run dev", cwd = "apps/docs" }
-docs-build = { cmd = "bun run build", cwd = "apps/docs" }
-docs-preview = { cmd = "bun run preview", cwd = "apps/docs" }
+docs-dev = { cmd = "bun run dev", cwd = "docs" }
+docs-build = { cmd = "bun run build", cwd = "docs" }
+docs-preview = { cmd = "bun run preview", cwd = "docs" }
 
 [environments]
 docs = { features = ["docs"] }
 ```
 
-JavaScript dependencies are pinned by the **root** `bun.lock` — `apps/docs` is a
+JavaScript dependencies are pinned by the **root** `bun.lock` — `docs` is a
 member of the root Bun workspace (`package.json → workspaces`), and a nested lock
-there is not consulted for resolution. (A nested `apps/docs/bun.lock` used to exist
+there is not consulted for resolution. (A nested `docs/bun.lock` used to exist
 and quietly disagreed with the root resolution: a root install then pulled
 `@astrojs/sitemap` 3.7.4 while the nested lock pinned 3.6.0, and the docs build died
 in `astro:build:done`. The pin now lives in the root `overrides` for that reason.)
@@ -89,7 +89,7 @@ Pixi is the supported path — it is what CI uses and it pins the Bun version.
 With Bun ≥ 1.2 already on `PATH`, the same commands work directly:
 
 ```bash
-cd apps/docs
+cd docs
 bun install --frozen-lockfile
 bun run dev
 bun run build
@@ -201,7 +201,7 @@ the Pages deploy — `astro dev` never exercises them:
    and Starlight's production filter (`data.draft === false`) drops every page:
    the build "succeeds" with 1 page (the 404) and no `index.html`.
 2. **`@astrojs/sitemap` is pinned to 3.6.0** via `overrides`/`resolutions` in
-   `apps/docs/package.json`. 3.7+ populates its route list in the
+   `docs/package.json`. 3.7+ populates its route list in the
    `astro:routes:resolved` hook, which only exists in Astro 5, so on Astro 4 it
    crashes `astro:build:done` with *"Cannot read properties of undefined
    (reading 'reduce')"*. The crash only surfaces once `site` is set — without
@@ -209,7 +209,7 @@ the Pages deploy — `astro dev` never exercises them:
 
 ## Other hosting
 
-The build output in `apps/docs/dist/` is plain static files, so any static host
+The build output in `docs/dist/` is plain static files, so any static host
 works — keep `site`/`base` in sync with the URL it is served from:
 
 | Platform | Command |
@@ -233,7 +233,7 @@ works — keep `site`/`base` in sync with the URL it is served from:
 Excluded from version control:
 
 ```
-apps/docs/node_modules/
-apps/docs/dist/
-apps/docs/.astro/
+docs/node_modules/
+docs/dist/
+docs/.astro/
 ```

@@ -17,7 +17,7 @@ bun x turbo run dev --filter=qgis-rs-docs
 bun x turbo run build --filter=qgis-rs-docs
 
 # Preview production build
-bun run --cwd apps/docs preview
+bun run --cwd docs preview
 ```
 
 ### Using Bun directly (without Pixi)
@@ -50,7 +50,7 @@ versions. Note the `overrides`/`resolutions` entry for `@astrojs/sitemap` in
 ## Structure
 
 ```
-apps/docs/
+docs/
 ├── src/
 │   ├── assets/           # Images, logos
 │   ├── content/
@@ -122,8 +122,8 @@ Until then the `deploy` job fails with *"Get Pages site failed"*.
 ### Building locally
 
 ```bash
-bun x turbo run build --filter=qgis-rs-docs   # output in apps/docs/dist/
-bun run --cwd apps/docs preview               # serve dist/ at http://localhost:4321/qgis-rs
+bun x turbo run build --filter=qgis-rs-docs   # output in docs/dist/
+bun run --cwd docs preview               # serve dist/ at http://localhost:4321/qgis-rs
 ```
 
 The output in `dist/` is plain static files, so it can equally be uploaded to

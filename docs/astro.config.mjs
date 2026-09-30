@@ -33,7 +33,7 @@ export default defineConfig({
 				github: "https://github.com/Archont561/qgis-rs",
 			},
 			editLink: {
-				baseUrl: "https://github.com/Archont561/qgis-rs/edit/main/apps/docs/",
+				baseUrl: "https://github.com/Archont561/qgis-rs/edit/main/docs/",
 			},
 			sidebar: [
 				{

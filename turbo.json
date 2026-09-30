@@ -79,7 +79,8 @@
 				"../../Cargo.toml",
 				"../../Cargo.lock"
 			],
-			"outputs": ["dist/**"]
+			"outputs": ["dist/**"],
+			"cache": false
 		},
 		"qgis-sdk-py#build": {
 			"inputs": [
@@ -91,7 +92,8 @@
 				"../../Cargo.toml",
 				"../../Cargo.lock"
 			],
-			"outputs": ["dist/**"]
+			"outputs": ["dist/**"],
+			"cache": false
 		},
 		"@qgis/rust#build": {
 			"cache": false
@@ -106,9 +108,11 @@
 			"cache": false
 		},
 		"qgis-rs-py#test": {
+			"dependsOn": ["build"],
 			"cache": false
 		},
 		"qgis-sdk-py#test": {
+			"dependsOn": ["build"],
 			"cache": false
 		},
 		"dev": {

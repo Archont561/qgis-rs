@@ -112,8 +112,7 @@ qgis-rs/
 │   ├── qgis-node/             # npm dist: package.json, index.js, fallback.js, bin/ wrappers
 │   └── qgis-sdk-bridge/       # @qgis-sdk/bridge — Bun workspace, TypeScript sources + bun:test
 │
-├── apps/
-│   └── docs/                  # Documentation site (Astro Starlight)
+├── docs/                      # Documentation site (Astro Starlight)
 │
 ├── .knowledge/                # Design documents and decision records
 │   ├── INDEX.md              # Entry point
@@ -122,7 +121,7 @@ qgis-rs/
 │   ├── decisions/            # Architecture Decision Records
 │   └── api-design.md         # Public API specification
 │
-├── scripts/                   # Bootstrap and utility scripts
+├── scripts/                   # Shell entry points for every long task (CI, coverage, lint, release)
 ├── .github/workflows/         # CI/CD pipelines
 │
 ├── pixi.toml                  # Pixi environment configuration
@@ -183,7 +182,7 @@ pixi run bun x turbo run test --filter=qgis-rs --filter=@qgis-sdk/bridge
 
 Workspace façades: `crates/package.json` (`@qgis/rust`, the whole Cargo
 workspace as one package), `py-packages/*` (maturin/pytest), `ts-packages/*`,
-`apps/docs`. Lint/format rules live in ONE global `biome.json` — biome
+`docs`. Lint/format rules live in ONE global `biome.json` — biome
 discovers the root config upward (gitignore scoping, rule overrides) — and
 every package's own `lint`/`format` script applies it to its tree; the Rust
 façade chains biome for its package.json plus cargo fmt/clippy. Layering:
@@ -207,7 +206,7 @@ own matching `llvm-profdata` / `llvm-cov` inside the sysroot, so no rustup
 4. **Add Rust bridge** in `crates/qgis-sys/src/{layer}/{concept}/{short}.rs`
 5. **Add C++ shim** in `crates/qgis-sys/src/{layer}/{concept}/{short}.cpp`
 6. **Write tests** in `tests/{concept}.rs`
-7. **Update documentation** in `.knowledge/` and `apps/docs/`
+7. **Update documentation** in `.knowledge/` and `docs/`
 
 Use the scaffold task to generate boilerplate:
 

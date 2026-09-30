@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "qgis-sdk"
-version = "0.1.0"
+version = "0.2.0"
 description = "Python SDK for building QGIS plugins on top of PyQGIS — with Rust-native CLI and acceleration"
 readme = "README.md"
 # The Python this wheel supports is the one QGIS is bundled with, not a range of

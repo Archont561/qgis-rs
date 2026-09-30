@@ -9,7 +9,7 @@
  * `https://archont561.github.io/qgis-rs/getting-started/quick-start`, i.e. a
  * 404 on GitHub Pages.
  *
- * Usage (apps/docs/astro.config.mjs):
+ * Usage (docs/astro.config.mjs):
  *
  *   markdown: { remarkPlugins: [remarkBaseLinks(base)] }
  *
