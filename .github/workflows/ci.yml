@@ -135,7 +135,35 @@ jobs:
       # THE gate. Identical to what a contributor runs before pushing.
       # Produces target/coverage/{rust-lcov.info,python-*.xml} on the way.
       - name: Run the CI gate
-        run: pixi run ci
+        id: gate
+        run: |
+          set -o pipefail
+          pixi run ci 2>&1 | tee gate.log
+
+      # The full log is a click away in the UI, but a failure summary that
+      # travels with the API (an annotation and the job summary) is what makes
+      # a red run diagnosable from a terminal, a bot, or a phone.
+      - name: Summarize the failure
+        if: ${{ failure() && steps.gate.outcome == 'failure' }}
+        run: |
+          {
+            echo '### CI gate failed'
+            echo
+            echo '```'
+            tail -n 120 gate.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          printf '::error title=CI gate failed::%s\n' \
+            "$(tail -n 40 gate.log | sed -e 's/%/%25/g' -e 's/\r/%0D/g' | awk '{printf "%s%%0A", $0}')"
+
+      - name: Upload the gate log
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: gate-log
+          path: gate.log
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Upload coverage reports
         if: always()
