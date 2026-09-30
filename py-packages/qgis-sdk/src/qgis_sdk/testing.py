@@ -1461,24 +1461,22 @@ try:
         yield app
 
     @pytest.fixture(scope="session")
-    def qgis_app(qgis_environment, qt_app):
-        """A live QgsApplication, or a skip in pure-Python tests.
+    def qgis_app(qgis_environment):
+        """Return the host's live QgsApplication, or skip safely.
 
-        Existing host applications are borrowed and never shut down. When the
-        fixture creates the application, it initializes and tears it down for
-        the session so integration tests can safely use QGIS singletons.
+        A plain pytest process may import PyQGIS without being a QGIS host.
+        This fixture intentionally does not construct or tear down a native
+        ``QgsApplication``: some QGIS/Qt builds abort during pytest shutdown.
+        Use it from a QGIS-hosted test runner, while pure-Python tests continue
+        to use the SDK fakes and fallback implementations.
         """
         qgis_environment.require_qgis()
         from qgis.core import QgsApplication
 
         app = QgsApplication.instance()
-        owns_application = app is None
-        if owns_application:
-            app = QgsApplication([], False)
-            app.initQgis()
-        yield app
-        if owns_application:
-            app.exitQgis()
+        if app is None:
+            pytest.skip("qgis.core is installed, but no QgsApplication is running")
+        return app
 
     @pytest.fixture
     def fake_iface():
