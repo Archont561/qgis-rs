@@ -758,7 +758,7 @@ dependencies = [
 
 [[package]]
 name = "qgis-cli"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -771,7 +771,7 @@ dependencies = [
 
 [[package]]
 name = "qgis-mcp"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "qgis-render",
@@ -783,7 +783,7 @@ dependencies = [
 
 [[package]]
 name = "qgis-node"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -800,7 +800,7 @@ dependencies = [
 
 [[package]]
 name = "qgis-py"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -816,7 +816,7 @@ dependencies = [
 
 [[package]]
 name = "qgis-render"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "qgis-styles",
  "serde",
@@ -826,7 +826,7 @@ dependencies = [
 
 [[package]]
 name = "qgis-sdk"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -840,7 +840,7 @@ dependencies = [
 
 [[package]]
 name = "qgis-server"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "qgis-render",
  "serde",
@@ -848,7 +848,7 @@ dependencies = [
 
 [[package]]
 name = "qgis-styles"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -857,7 +857,7 @@ dependencies = [
 
 [[package]]
 name = "qgis-sys"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "cc",
