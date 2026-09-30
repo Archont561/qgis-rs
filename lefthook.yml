@@ -40,11 +40,11 @@ pre-commit:
       run: pixi run -e default lint-actions
 
     - name: js-biome
-      # Whole-tree gate is fast (biome checks ~40 files in <100ms), but the
-      # staged-scoped form keeps hook output focused on what is being
-      # committed — same pattern as check-cpp above. lint-js handles both.
+      # Whole-repo enforcement lives in the packages' own lint tasks fanned
+      # out by turbo (pixi run lint-js); the hook checks exactly the staged
+      # files instead — same global biome config, focused output.
       glob: "*.{js,ts,mts,mjs,cjs,json,jsonc,css}"
-      run: pixi run -e bun -- lint-js {staged_files}
+      run: pixi run -e bun -- _biome {staged_files}
 
 commit-msg:
   jobs:

@@ -14,6 +14,17 @@
 		"lint": {
 			"outputs": []
 		},
+		"format": {
+			"outputs": [],
+			"cache": false
+		},
+		"//#lint": {
+			"outputs": []
+		},
+		"//#format": {
+			"outputs": [],
+			"cache": false
+		},
 		"develop": {
 			"cache": false,
 			"persistent": false
@@ -76,6 +87,12 @@
 			"cache": false
 		},
 		"@qgis/rust#test": {
+			"cache": false
+		},
+		"@qgis/rust#lint": {
+			"cache": false
+		},
+		"@qgis/rust#format": {
 			"cache": false
 		},
 		"qgis-rs-py#test": {

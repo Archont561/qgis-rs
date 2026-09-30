@@ -6,6 +6,8 @@
 	"scripts": {
 		"build": "pixi run py-build",
 		"develop": "pixi run py-develop",
-		"test": "pixi run py-test"
+		"test": "pixi run py-test",
+		"lint": "bunx biome check package.json",
+		"format": "bunx biome format --write package.json"
 	}
 }

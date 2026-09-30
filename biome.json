@@ -12,6 +12,7 @@
 			"package.json",
 			"bunfig.toml",
 			"turbo.json",
+			"biome.json",
 			"crates/package.json",
 			"py-packages/*/package.json",
 			"!**/dist",

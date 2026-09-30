@@ -6,6 +6,8 @@
 	"scripts": {
 		"build": "pixi run sdk-build",
 		"develop": "pixi run sdk-develop",
-		"test": "pixi run sdk-test"
+		"test": "pixi run sdk-test",
+		"lint": "bunx biome check package.json",
+		"format": "bunx biome format --write package.json"
 	}
 }

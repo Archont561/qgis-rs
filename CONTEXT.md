@@ -174,14 +174,19 @@ pixi run docs-build
 pixi run docs-dev
 ```
 
-**Whole-repo umbrellas** — `build-all` and `test-all` run the package graph
-through turborepo (content-hash caching, parallel scheduling, `--filter`
-scoping); the fmt/lint aggregates and `coverage` stay pixi-native. Layering:
-turbo decides *whether* a task runs, pixi *how* it runs (env activation),
-Cargo/maturin own internal edges. The bun/Turbo façades are
-`ts-packages/*` and `crates/package.json` (Cargo workspace as one package
-`@qgis/rust`) — purely internal crates stay Cargo-only. QGIS-dependent tasks
-are `cache: false` in `turbo.json` (QGIS runtime data is not hashable).:
+**Whole-repo umbrellas** — `build-all`, `test-all`, `lint-js` and `fmt-js`
+run the package graph through turborepo (content-hash caching, parallel
+scheduling, `--filter` scoping); the remaining aggregates and `coverage`
+stay pixi-native. Lint/format rules live in ONE global `biome.json`, and
+every workspace package owns a scoped `lint`/`format` script (biome
+discovers the root config upward, including gitignore scoping and rule
+overrides; the Rust façade's scripts chain biome for its package.json with
+cargo fmt/clippy). Layering: turbo decides *whether* a task runs, pixi
+*how* it runs (env activation), Cargo/maturin own internal edges. The
+bun/Turbo façades are `ts-packages/*` and `crates/package.json` (Cargo
+workspace as one package `@qgis/rust`) — purely internal crates stay
+Cargo-only. QGIS-dependent tasks are `cache: false` in `turbo.json` (QGIS
+runtime data is not hashable).
 
 ```bash
 pixi run fmt-all         # format Rust + C++ + biome

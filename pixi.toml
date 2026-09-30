@@ -610,25 +610,26 @@ ci-full = { description = "Everything: `ci` plus clang-tidy and the QGIS-backed 
 # `default` and `bun` environments. CI keeps calling the narrow gates above;
 # these are the local entrypoints for "the whole repo".
 
-# ── JavaScript gates (biome + bun test) ───────────────────────────────────────
-# Mirror the root package.json scripts, resolved through the `bun` environment
-# like every other task. `bun-install` runs first so `bun x biome` resolves the
-# workspace's own copy from the lockfile instead of fetching one ad hoc.
-fmt-js = { cmd = "bun x biome format --write .", depends-on = [
+# ── JavaScript gates (biome via turborepo) ────────────────────────────────────
+# lint-js/fmt-js are one command each: the repo-wide rules live in the ROOT
+# biome.json, and every workspace package owns a scoped `lint`/`format` script
+# that runs biome in its own directory (biome discovers the root config
+# upward, including gitignore scoping and rule overrides). turbo fans those
+# out in dependency order with caching; the root package contributes the
+# root-level JSON configs through its own //:lint //:format tasks. The PATH
+# export keeps the restored pixi binary reachable from inside the bun
+# environment for facades that delegate into pixi (@qgis/rust).
+lint-js = { cmd = "bash -c 'export PATH=\"$(echo \"$PWD\"/.pixi/tools/*):$PATH\"; exec bun x turbo run lint'", depends-on = [
   "bun-install",
-], description = "Format JS/TS/JSON with biome (write mode)", default-environment = "bun" }
-# `biome check` is one gate covering formatting, lint rules and import
-# organization, matching `bun run lint` at the root. Optional args like
-# check-cpp: lefthook passes only the staged JS/TS/JSON files (`pixi run
-# lint-js -- a.ts b.json`); with no args the whole tree is checked.
-lint-js = { cmd = """bash -c '
-  if [ $# -gt 0 ]; then
-    bun x biome check "$@"
-  else
-    bun x biome check .
-  fi' _""", depends-on = [
+], description = "Repo-wide lint+format gate via turbo (each package's own lint task)", default-environment = "bun" }
+fmt-js = { cmd = "bash -c 'export PATH=\"$(echo \"$PWD\"/.pixi/tools/*):$PATH\"; exec bun x turbo run format'", depends-on = [
   "bun-install",
-], description = "JS check gate: biome formatting + lint rules", default-environment = "bun" }
+], description = "Repo-wide formatter via turbo (each package's own format task)", default-environment = "bun" }
+# Internal staged-file form for the lefthook js-biome hook: checks exactly the
+# files being committed, same global config. Not part of the CI gates.
+_biome = { cmd = "bash -c 'bun x biome check \"$@\"' _", depends-on = [
+  "bun-install",
+], description = "Internal: biome check on explicit files (lefthook staged-files path)", default-environment = "bun" }
 # CI runs this suite inline; as a task it can join the local aggregators.
 # bun transpiles the bridge's TypeScript directly, so no build is needed first.
 bridge-test = { cmd = "bun test ts-packages/qgis-sdk-bridge", depends-on = [

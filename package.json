@@ -15,8 +15,8 @@
 		"test": "bun test",
 		"test:py": "pytest py-packages/qgis-sdk/tests -v",
 		"dev": "bun --bun astro dev --filter docs",
-		"lint": "bunx biome check .",
-		"format": "bunx biome format --write .",
+		"lint": "bunx biome check package.json turbo.json biome.json",
+		"format": "bunx biome format --write package.json turbo.json biome.json",
 		"docs:dev": "bun --cwd apps/docs dev",
 		"docs:build": "bun --cwd apps/docs build"
 	},

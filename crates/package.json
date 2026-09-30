@@ -7,6 +7,7 @@
 		"build": "pixi run build",
 		"test": "pixi run test && pixi run test-full",
 		"test:full": "pixi run test-full",
-		"lint": "pixi run clippy"
+		"lint": "bunx biome check package.json && pixi run fmt-check && pixi run clippy",
+		"format": "bunx biome format --write package.json && pixi run fmt-rs"
 	}
 }

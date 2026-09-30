@@ -6,6 +6,8 @@
 		"dev": "astro dev",
 		"start": "astro dev",
 		"build": "astro check && astro build",
+		"lint": "bunx biome check .",
+		"format": "bunx biome format --write .",
 		"preview": "astro preview",
 		"astro": "astro"
 	},
