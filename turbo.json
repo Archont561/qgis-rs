@@ -108,9 +108,11 @@
 			"cache": false
 		},
 		"qgis-rs-py#test": {
+			"dependsOn": ["build"],
 			"cache": false
 		},
 		"qgis-sdk-py#test": {
+			"dependsOn": ["build"],
 			"cache": false
 		},
 		"dev": {
