@@ -1,0 +1,12 @@
+{
+	"name": "@qgis/rust",
+	"private": true,
+	"version": "0.1.0",
+	"description": "Bun/Turbo facade for the Cargo workspace as ONE package. Cargo owns the internal crate graph; turbo only sees this boundary. Scripts delegate to the pixi tasks because the QGIS-linked crates need CONDA_PREFIX activation, which exists only in pixi's default environment.",
+	"scripts": {
+		"build": "pixi run build",
+		"test": "pixi run test && pixi run test-full",
+		"test:full": "pixi run test-full",
+		"lint": "pixi run clippy"
+	}
+}

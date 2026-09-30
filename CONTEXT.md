@@ -155,13 +155,13 @@ cargo test
 ### Common Tasks
 
 ```bash
-# Format code
+# Format code (Rust + C++)
 pixi run fmt
 
-# Lint code
+# Lint code (clippy + clang-tidy)
 pixi run lint
 
-# Run tests
+# Run tests (QGIS-free Rust suite)
 pixi run test
 
 # Run full tests (with QGIS environment)
@@ -173,6 +173,33 @@ pixi run docs-build
 # Start docs dev server
 pixi run docs-dev
 ```
+
+**Whole-repo umbrellas** — `build-all` and `test-all` run the package graph
+through turborepo (content-hash caching, parallel scheduling, `--filter`
+scoping); the fmt/lint aggregates and `coverage` stay pixi-native. Layering:
+turbo decides *whether* a task runs, pixi *how* it runs (env activation),
+Cargo/maturin own internal edges. The bun/Turbo façades are
+`ts-packages/*` and `crates/package.json` (Cargo workspace as one package
+`@qgis/rust`) — purely internal crates stay Cargo-only. QGIS-dependent tasks
+are `cache: false` in `turbo.json` (QGIS runtime data is not hashable).:
+
+```bash
+pixi run fmt-all         # format Rust + C++ + biome
+pixi run fmt-check-all   # format check everywhere
+pixi run lint-all        # clippy + clang-tidy + biome + TOML + actionlint
+pixi run build-all       # Rust workspace + wheels + napi addon + bridge + docs (via turbo)
+pixi run test-all        # Rust (free + QGIS) + Python + napi + bridge (via turbo)
+pixi run coverage        # Rust lcov + Python XML + bun coverage table
+pixi run all             # everything above, in dependency order
+
+# scoped turbo runs for day-to-day iteration:
+pixi run -e bun bun x turbo run build --filter=@qgis-sdk/bridge
+pixi run -e bun bun x turbo run build --filter=qgis-rs   # napi addon, cached
+```
+
+Coverage mirrors the CI upload paths under `target/coverage/`. `cov-rs` needs
+`cargo-llvm-cov` next to pixi (CI installs it system-wide; the conda Rust
+toolchain carries no llvm-tools-preview component).
 
 ### Adding a New QGIS Class
 

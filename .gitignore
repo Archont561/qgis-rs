@@ -47,6 +47,9 @@ symbology-style.db
 .pixi-sandbox/
 dist/
 
+# turbo (local task cache)
+.turbo/
+
 # docs app (Bun / Astro)
 apps/docs/node_modules/
 # The Bun workspace at the root owns JS resolution and its root bun.lock is the

@@ -602,3 +602,135 @@ ci-full = { description = "Everything: `ci` plus clang-tidy and the QGIS-backed 
   "lint-cpp",
   "test-full",
 ] }
+
+# ── cross-ecosystem umbrellas ─────────────────────────────────────────────────
+# One verb per scope, spanning all three toolchains. The aggregators at the
+# bottom of this section stay cmd-less (pixi 0.81 resolves their environment
+# from the tasks beneath them), which is what lets one depends-on tree mix the
+# `default` and `bun` environments. CI keeps calling the narrow gates above;
+# these are the local entrypoints for "the whole repo".
+
+# ── JavaScript gates (biome + bun test) ───────────────────────────────────────
+# Mirror the root package.json scripts, resolved through the `bun` environment
+# like every other task. `bun-install` runs first so `bun x biome` resolves the
+# workspace's own copy from the lockfile instead of fetching one ad hoc.
+fmt-js = { cmd = "bun x biome format --write .", depends-on = [
+  "bun-install",
+], description = "Format JS/TS/JSON with biome (write mode)", default-environment = "bun" }
+# `biome check` is one gate covering formatting, lint rules and import
+# organization, matching `bun run lint` at the root. Optional args like
+# check-cpp: lefthook passes only the staged JS/TS/JSON files (`pixi run
+# lint-js -- a.ts b.json`); with no args the whole tree is checked.
+lint-js = { cmd = """bash -c '
+  if [ $# -gt 0 ]; then
+    bun x biome check "$@"
+  else
+    bun x biome check .
+  fi' _""", depends-on = [
+  "bun-install",
+], description = "JS check gate: biome formatting + lint rules", default-environment = "bun" }
+# CI runs this suite inline; as a task it can join the local aggregators.
+# bun transpiles the bridge's TypeScript directly, so no build is needed first.
+bridge-test = { cmd = "bun test ts-packages/qgis-sdk-bridge", depends-on = [
+  "bun-install",
+], description = "Run the SDK bridge test suite under bun", default-environment = "bun" }
+
+# ── python umbrella ───────────────────────────────────────────────────────────
+test-py = { depends-on = [
+  "py-test",
+  "sdk-test",
+], description = "Both Python package suites (qgis-rs + qgis-sdk), maturin develop included" }
+
+# ── coverage ──────────────────────────────────────────────────────────────────
+# Mirrors the CI upload paths so a local run produces the same artifacts under
+# target/coverage/. Each probe refuses with instructions instead of failing
+# opaquely when its coverage tool is not installed — see the notes inside.
+cov-rs = { cmd = """bash -c '
+  if ! cargo llvm-cov --version >/dev/null 2>&1; then
+    echo "cargo-llvm-cov is not on PATH. CI installs it next to pixi, outside" >&2
+    echo "the environment, because the conda rust toolchain carries no" >&2
+    echo "llvm-tools-preview component:" >&2
+    echo "  cargo install cargo-llvm-cov --locked" >&2
+    exit 1
+  fi
+  mkdir -p target/coverage
+  QT_QPA_PLATFORM=offscreen \
+  PROJ_DATA=$CONDA_PREFIX/share/proj \
+  QGIS_PLUGINPATH=$CONDA_PREFIX/lib/qgis/plugins \
+  cargo llvm-cov \
+    --workspace \
+    --exclude qgis-sys \
+    --no-default-features \
+    --lcov \
+    --output-path target/coverage/rust-lcov.info \
+    -- --test-threads=1'""", depends-on = [
+  "setup",
+], description = "Rust lcov at target/coverage/rust-lcov.info (same flags as CI)", default-environment = "default" }
+
+cov-py = { cmd = """bash -c '
+  set -eu
+  mkdir -p target/coverage
+  QGIS_REQUIRE_NATIVE=1 python -m pytest py-packages/qgis-rs/tests -v \
+    --cov=qgis_rs --cov-report=term-missing \
+    --cov-report=xml:target/coverage/python-qgis-rs.xml
+  QGIS_REQUIRE_NATIVE=1 python -m pytest py-packages/qgis-sdk/tests -v \
+    --cov=qgis_sdk --cov-report=term-missing \
+    --cov-report=xml:target/coverage/python-qgis-sdk.xml'""", depends-on = [
+  "py-develop",
+  "sdk-develop",
+], description = "pytest-cov XML for both packages at target/coverage/python-*.xml", default-environment = "default" }
+
+# bun's coverage is built into the test runner, so this needs no extra tools.
+cov-js = { cmd = "bun test --coverage ts-packages/qgis-sdk-bridge ts-packages/qgis-node/tests", depends-on = [
+  "bun-install",
+  "node-build",
+], description = "bun test --coverage table for the bridge and the napi addon", default-environment = "bun" }
+
+coverage = { description = "All coverage reports: Rust lcov, Python XML, bun table", depends-on = [
+  "cov-rs",
+  "cov-py",
+  "cov-js",
+] }
+
+# ── whole-repo verbs ──────────────────────────────────────────────────────────
+fmt-all = { description = "Format everything: Rust, C++ and biome", depends-on = [
+  "fmt",
+  "fmt-js",
+] }
+fmt-check-all = { description = "Format check everything: Rust, C++ and biome", depends-on = [
+  "fmt-check",
+  "check-cpp",
+  "lint-js",
+] }
+lint-all = { description = "Lint everything: clippy, clang-tidy, biome, TOML, GitHub Actions", depends-on = [
+  "lint",
+  "lint-toml",
+  "lint-actions",
+  "lint-js",
+] }
+# build-all/test-all run the package graph through turborepo for content-hash
+# caching and parallel scheduling. Layering: turbo decides WHETHER to run
+# (hash of file inputs), pixi decides HOW (env activation), cargo/maturin
+# decide internal edges. Root package.json workspaces give turbo the package
+# set; each facade script in ts-packages/*, apps/*, py-packages/*/package.json
+# and crates/package.json delegates to the narrow pixi task, in words per
+# package. The PATH export makes the restored pixi binary reachable from
+# inside the bun environment — facades call `pixi run ...` and pixi is not on
+# the bun env's PATH. QGIS-dependent tasks are cache:false in turbo.json
+# because QGIS runtime data is not content-hashable.
+build-all = { cmd = "bash -c 'export PATH=\"$(echo \"$PWD\"/.pixi/tools/*):$PATH\"; exec bun x turbo run build'", depends-on = [
+  "bun-install",
+], description = "Build everything through turborepo: Rust workspace, Python wheels, napi addon, bridge, docs", default-environment = "bun" }
+test-all = { cmd = "bash -c 'export PATH=\"$(echo \"$PWD\"/.pixi/tools/*):$PATH\"; exec bun x turbo run test'", depends-on = [
+  "bun-install",
+], description = "Test everything through turborepo: Rust, Python, napi and bridge suites", default-environment = "bun" }
+
+# The single top-level entrypoint asked for: format check + lint + build +
+# test + coverage across Rust, Python and JS in one command.
+all = { description = "The whole repo end to end: fmt check, lint, build, test, coverage", depends-on = [
+  "fmt-check-all",
+  "lint-all",
+  "build-all",
+  "test-all",
+  "coverage",
+] }

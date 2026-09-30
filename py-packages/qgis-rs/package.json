@@ -1,0 +1,11 @@
+{
+	"name": "qgis-rs-py",
+	"private": true,
+	"version": "0.1.0",
+	"description": "Bun/Turbo facade for the qgis-rs Python package. Scripts delegate to the pixi tasks, which own environment activation; this file exists so turborepo can see and cache the package boundary.",
+	"scripts": {
+		"build": "pixi run py-build",
+		"develop": "pixi run py-develop",
+		"test": "pixi run py-test"
+	}
+}

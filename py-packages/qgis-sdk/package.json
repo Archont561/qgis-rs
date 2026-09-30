@@ -1,0 +1,11 @@
+{
+	"name": "qgis-sdk-py",
+	"private": true,
+	"version": "0.1.0",
+	"description": "Bun/Turbo facade for the qgis-sdk Python package. Scripts delegate to the pixi tasks, which own environment activation; this file exists so turborepo can see and cache the package boundary.",
+	"scripts": {
+		"build": "pixi run sdk-build",
+		"develop": "pixi run sdk-develop",
+		"test": "pixi run sdk-test"
+	}
+}

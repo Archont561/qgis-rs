@@ -141,6 +141,11 @@ jobs:
           pixi install -e bun --locked
           pixi run -e bun bun-install
 
+      # biome gate for JS/TS/JSON formatting and lint rules; mirrors the
+      # lefthook js-biome job, which lints the staged files on commit.
+      - name: JS lint and format gate
+        run: pixi run -e bun lint-js
+
       # `napi build` takes --cargo-cwd (not --manifest-path) in @napi-rs/cli
       # 2.x. The package script supplies the output directory positionally and
       # preserves the package's custom JS wrapper and declarations.

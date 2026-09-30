@@ -39,6 +39,13 @@ pre-commit:
       glob: ".github/workflows/*.{yml,yaml}"
       run: pixi run -e default lint-actions
 
+    - name: js-biome
+      # Whole-tree gate is fast (biome checks ~40 files in <100ms), but the
+      # staged-scoped form keeps hook output focused on what is being
+      # committed — same pattern as check-cpp above. lint-js handles both.
+      glob: "*.{js,ts,mts,mjs,cjs,json,jsonc,css}"
+      run: pixi run -e bun -- lint-js {staged_files}
+
 commit-msg:
   jobs:
     - name: convco
