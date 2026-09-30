@@ -47,6 +47,7 @@ def plugin(
     changelog: str = None,
     plugin_dependencies: str = None,
     permissions: list = None,
+    algorithms: list | None = None,
     **extra,
 ):
     """Class decorator to declare a plugin.
@@ -85,13 +86,20 @@ def plugin(
             **extra,
         }
 
+        if algorithms is not None:
+            metadata["algorithms"] = list(algorithms)
+            cls.algorithms = list(algorithms)
+
         # Register plugin
         registry.register_plugin(cls, metadata)
 
-        # Inject attributes for backwards compat with old Plugin class
+        # Inject resolved attributes for backwards compatibility. The metadata
+        # mapping already prefers explicit class values when decorator arguments
+        # are omitted, so assigning it here keeps metadata_txt(), processing
+        # discovery, and the registry in sync for both standalone classes and
+        # Plugin subclasses.
         for k, v in metadata.items():
-            if not hasattr(cls, k):
-                setattr(cls, k, v)
+            setattr(cls, k, v)
 
         # Store metadata
         cls._qgis_sdk_metadata = metadata
@@ -135,77 +143,85 @@ def plugin(
 
             cls.metadata_txt = metadata_txt
 
-        # Inject init_gui and unload if not present, using old Plugin logic but with registry
-        if not hasattr(cls, "init_gui") or cls.init_gui is getattr(PluginBase, "init_gui", None):
-            # Create init_gui that works with registry
+        # A declarative plugin does not need to inherit Plugin. Inject the small
+        # lifecycle/action surface that PluginBase provides so @plugin works as
+        # a real class decorator, not only as a metadata marker. Existing Plugin
+        # subclasses retain their own inherited constructor and implementation.
+        is_plugin_subclass = isinstance(cls, type) and issubclass(cls, PluginBase)
+        if not is_plugin_subclass:
+            original_init = cls.__dict__.get("__init__")
+            if original_init is None:
+                def __init__(self, iface=None):
+                    self.iface = iface
+                    self._created = []
+                    self._processing_provider = None
+            else:
+                def __init__(self, *args, **kwargs):
+                    original_init(self, *args, **kwargs)
+                    if getattr(self, "iface", None) is None:
+                        self.iface = kwargs.get("iface", args[0] if args else None)
+                    self._created = list(getattr(self, "_created", []))
+                    self._processing_provider = getattr(self, "_processing_provider", None)
+
+            cls.__init__ = __init__
+
+        if not is_plugin_subclass:
+            for method_name in ("_create_action", "_invoke", "_init_processing_provider", "_unload_processing_provider"):
+                if not hasattr(cls, method_name):
+                    setattr(cls, method_name, getattr(PluginBase, method_name))
+            if not hasattr(cls, "action_factory"):
+                cls.action_factory = None
+            if not hasattr(cls, "on_init"):
+                cls.on_init = lambda self, iface: None
+            if not hasattr(cls, "on_unload"):
+                cls.on_unload = lambda self, iface: None
+
+        # Inject init_gui and unload if not present, using the same lifecycle as
+        # the base-class API but sourcing actions from the global registry.
+        if "init_gui" not in cls.__dict__:
             def init_gui(self, iface=None):
                 if iface is not None:
                     self.iface = iface
-                if not hasattr(self, "iface") or self.iface is None:
-                    # Try to get from arg
-                    pass
-                # Ensure _created exists
-                if not hasattr(self, "_created"):
-                    self._created = []
+                if self.iface is None:
+                    raise RuntimeError("init_gui() needs an interface")
 
-                # Get actions from registry
                 for spec in registry.get_actions(self.__class__):
-                    # Create action widget
-                    # Use action_factory if available, else try old PluginBase._create_action
-                    if hasattr(self, "_create_action"):
-                        # Build old spec for _create_action
-                        old_spec = OldActionSpec(
-                            func_name=spec.func_name,
-                            tooltip=spec.tooltip,
-                            icon=spec.icon,
-                            toolbar=spec.toolbar,
-                            menu=spec.menu or (),
-                        )
-                        widget = self._create_action(old_spec)
-                        self._created.append((old_spec, widget))
-                        if old_spec.toolbar and hasattr(self.iface, "addToolBarIcon"):
-                            self.iface.addToolBarIcon(widget)
-                        if old_spec.menu and hasattr(self.iface, "addPluginToMenu"):
-                            self.iface.addPluginToMenu(old_spec.menu_path, widget)
-                    else:
-                        # Fallback: just call function
-                        pass
+                    old_spec = OldActionSpec(
+                        func_name=spec.func_name,
+                        tooltip=spec.tooltip,
+                        icon=spec.icon,
+                        toolbar=spec.toolbar,
+                        menu=spec.menu or (),
+                    )
+                    widget = self._create_action(old_spec)
+                    self._created.append((old_spec, widget))
+                    if old_spec.toolbar and hasattr(self.iface, "addToolBarIcon"):
+                        self.iface.addToolBarIcon(widget)
+                    if old_spec.menu and hasattr(self.iface, "addPluginToMenu"):
+                        self.iface.addPluginToMenu(old_spec.menu_path, widget)
 
-                # Also call old PluginBase init for any old-style actions
-                # Avoid recursion
-                try:
-                    # If class inherits from PluginBase, call its on_init
-                    if hasattr(self, "on_init"):
-                        self.on_init(self.iface)
-                except Exception:
-                    pass
+                self._init_processing_provider()
+                self.on_init(self.iface)
 
-            # Only set if class doesn't already have custom init_gui
-            if "init_gui" not in cls.__dict__:
-                cls.init_gui = init_gui
+            cls.init_gui = init_gui
 
-        if not hasattr(cls, "unload") or cls.unload is getattr(PluginBase, "unload", None):
+        if "unload" not in cls.__dict__:
             def unload(self, iface=None):
                 if iface is not None:
                     self.iface = iface
-                if hasattr(self, "_created"):
-                    for spec, widget in reversed(self._created):
-                        try:
-                            if spec.toolbar and hasattr(self.iface, "removeToolBarIcon"):
-                                self.iface.removeToolBarIcon(widget)
-                            if spec.menu and hasattr(self.iface, "removePluginMenu"):
-                                self.iface.removePluginMenu(spec.menu_path, widget)
-                        except Exception:
-                            pass
-                    self._created.clear()
-                if hasattr(self, "on_unload"):
+                self._unload_processing_provider()
+                for spec, widget in reversed(getattr(self, "_created", [])):
                     try:
-                        self.on_unload(self.iface)
+                        if spec.toolbar and self.iface is not None and hasattr(self.iface, "removeToolBarIcon"):
+                            self.iface.removeToolBarIcon(widget)
+                        if spec.menu and self.iface is not None and hasattr(self.iface, "removePluginMenu"):
+                            self.iface.removePluginMenu(spec.menu_path, widget)
                     except Exception:
                         pass
+                self._created.clear()
+                self.on_unload(self.iface)
 
-            if "unload" not in cls.__dict__:
-                cls.unload = unload
+            cls.unload = unload
 
         # Handle pending actions that were decorated before plugin decorator
         if hasattr(registry, "_pending_actions"):

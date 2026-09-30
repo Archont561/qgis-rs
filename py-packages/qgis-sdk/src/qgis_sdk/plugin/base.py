@@ -270,8 +270,9 @@ class Plugin:
         Uses a real ``QAction`` inside QGIS; :attr:`action_factory` can replace
         it, which is how the test-suite avoids needing Qt.
         """
-        if self.action_factory is not None:
-            return self.action_factory(spec, self._invoke(spec))
+        action_factory = getattr(self, "action_factory", None)
+        if action_factory is not None:
+            return action_factory(spec, self._invoke(spec))
         try:
             from .._qt import make_action  # type: ignore
         except ImportError:

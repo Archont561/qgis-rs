@@ -70,17 +70,24 @@ def _get_qgis_task_manager():
     try:
         from qgis.core import QgsApplication  # type: ignore
 
+        # The bindings may be importable in a test process before a
+        # QgsApplication exists. Calling taskManager() in that state can emit
+        # native warnings or block, so use the thread-pool fallback instead.
+        if hasattr(QgsApplication, "instance") and QgsApplication.instance() is None:
+            return None
         return QgsApplication.taskManager()
-    except ImportError:
+    except (ImportError, RuntimeError):
         return None
 
 
 def _get_qgis_task_class():
     try:
-        from qgis.core import QgsTask  # type: ignore
+        from qgis.core import QgsApplication, QgsTask  # type: ignore
 
+        if hasattr(QgsApplication, "instance") and QgsApplication.instance() is None:
+            return None
         return QgsTask
-    except ImportError:
+    except (ImportError, RuntimeError):
         return None
 
 
@@ -544,6 +551,11 @@ class Signature:
     def __or__(self, other: "Signature") -> "Chain":
         return Chain(self, other)
 
+    def then(self, next_task: Union["TaskWrapper", "Signature"], *args, **kwargs) -> "Chain":
+        """Append a task to this signature using a fluent Celery-style API."""
+        next_sig = next_task if isinstance(next_task, Signature) else next_task.s(*args, **kwargs)
+        return Chain(self, next_sig)
+
     def clone(self, args=None, kwargs=None, **opts) -> "Signature":
         new_args = args if args is not None else self.args
         new_kwargs = kwargs if kwargs is not None else self.kwargs
@@ -565,6 +577,11 @@ class Chain:
         if isinstance(other, Chain):
             return Chain(*self.signatures, *other.signatures)
         return Chain(*self.signatures, other)
+
+    def then(self, next_task: Union["TaskWrapper", Signature], *args, **kwargs) -> "Chain":
+        """Append a task and keep the previous result as its first argument."""
+        next_sig = next_task if isinstance(next_task, Signature) else next_task.s(*args, **kwargs)
+        return Chain(*self.signatures, next_sig)
 
     def _execute_sig(self, sig: Signature, prev_result: Any) -> Any:
         if not isinstance(sig, Signature):
@@ -709,6 +726,10 @@ class TaskWrapper:
     def s(self, *args, **kwargs) -> Signature:
         """Create signature — like Celery s()."""
         return Signature(self, args, kwargs, immutable=False)
+
+    def then(self, next_task: Union["TaskWrapper", Signature], *args, **kwargs) -> Chain:
+        """Start a fluent chain: ``download.then(parse).then(save)``."""
+        return self.s().then(next_task, *args, **kwargs)
 
     def si(self, *args, **kwargs) -> Signature:
         """Create immutable signature — like Celery si()."""
@@ -1312,6 +1333,39 @@ class ProcessingAlgRunnerTask:
         return self.delay()
 
 
+# ── Fluent group result ──────────────────────────────────────────────────────
+
+class GroupResult(list):
+    """List-compatible collection of :class:`AsyncResult` objects.
+
+    It preserves the existing ``group(...)[0].get()`` API while adding the
+    fluent aggregate operations used by Celery-style code.
+    """
+
+    def get(self, timeout: Optional[float] = None, propagate: bool = True) -> list[Any]:
+        return [result.get(timeout=timeout, propagate=propagate) for result in self]
+
+    join = get
+
+    def ready(self) -> bool:
+        return all(result.ready() for result in self)
+
+    def successful(self) -> bool:
+        return all(result.successful() for result in self)
+
+    def failed(self) -> bool:
+        return any(result.failed() for result in self)
+
+    def revoke(self, terminate: bool = False) -> None:
+        for result in self:
+            result.revoke(terminate=terminate)
+
+    def then(self, callback: Callable[[list[Any]], Any]) -> "GroupResult":
+        """Run a callback after all members complete; returns this group."""
+        callback(self.get())
+        return self
+
+
 # ── Convenience functions ───────────────────────────────────────────────────
 
 def run_task(function: Callable, *args, description: str = "Task", on_finished: Optional[Callable] = None, bind: bool = False, **kwargs) -> Union[Task, _FallbackTask, AsyncResult]:
@@ -1358,9 +1412,9 @@ def chain(*tasks: Union[Signature, TaskWrapper]) -> Chain:
     return Chain(*sigs)
 
 
-def group(*tasks: Union[Signature, TaskWrapper]) -> List[AsyncResult]:
-    """Create group of tasks — simplified Celery-like, returns list of AsyncResults."""
-    results = []
+def group(*tasks: Union[Signature, TaskWrapper]) -> GroupResult:
+    """Create a list-compatible fluent group of tasks."""
+    results: GroupResult = GroupResult()
     for t in tasks:
         if isinstance(t, TaskWrapper):
             results.append(t.delay())
@@ -1380,6 +1434,7 @@ __all__ = [
     "AsyncResult",
     "Signature",
     "Chain",
+    "GroupResult",
     "task",
     "shared_task",
     "celery_task",

@@ -63,7 +63,9 @@ Usage in tests:
 
 from __future__ import annotations
 
+import importlib
 import json
+from dataclasses import dataclass
 import time
 import uuid
 from pathlib import Path
@@ -1340,10 +1342,141 @@ def fake_qgis_api_factory(iface=None, network_manager=None, task_manager=None):
 
 
 
+@dataclass(frozen=True)
+class QgisTestEnvironment:
+    """Detected runtime capabilities for a pytest session.
+
+    The detector only imports ``qgis.core`` and inspects the application
+    singleton; it does not create a QApplication or QgsApplication. That makes
+    it safe to use in both a bare Python virtualenv and a QGIS host process.
+    """
+
+    qgis_available: bool
+    qt_available: bool
+    qgis_application_available: bool
+    qgis_version: str | None = None
+    qgis_import_error: str | None = None
+
+    @property
+    def pure_python(self) -> bool:
+        """Whether the PyQGIS bindings are unavailable."""
+        return not self.qgis_available
+
+    @property
+    def is_pure_python(self) -> bool:
+        return self.pure_python
+
+    @property
+    def is_qgis(self) -> bool:
+        return self.qgis_available
+
+    @property
+    def backend(self) -> str:
+        """A stable label suitable for test output and CI diagnostics."""
+        return "qgis" if self.qgis_available else "pure-python"
+
+    def require_qgis(self) -> None:
+        """Skip the current test when PyQGIS is not importable."""
+        if not self.qgis_available:
+            import pytest
+
+            pytest.skip("requires an importable qgis.core runtime")
+
+
+def detect_qgis_environment() -> QgisTestEnvironment:
+    """Inspect whether tests run with PyQGIS or pure Python.
+
+    This function is deliberately independent of pytest so applications and
+    custom test plugins can use the same check. ``qgis_available`` means that
+    ``qgis.core`` imports; ``qgis_application_available`` additionally means a
+    live ``QgsApplication`` singleton already exists.
+    """
+    qgis_available = False
+    qgis_application_available = False
+    qgis_version = None
+    qgis_import_error = None
+
+    try:
+        core = importlib.import_module("qgis.core")
+    except (ImportError, ModuleNotFoundError) as exc:
+        qgis_import_error = str(exc)
+    except Exception as exc:  # pragma: no cover - depends on a broken QGIS install
+        qgis_import_error = f"{type(exc).__name__}: {exc}"
+    else:
+        qgis_available = True
+        qgis_version = getattr(core, "QGIS_VERSION", None)
+        application = getattr(core, "QgsApplication", None)
+        if application is not None and hasattr(application, "instance"):
+            try:
+                qgis_application_available = application.instance() is not None
+            except Exception:  # pragma: no cover - depends on QGIS bindings
+                qgis_application_available = False
+
+    try:
+        importlib.import_module("PyQt5.QtWidgets")
+    except (ImportError, ModuleNotFoundError):
+        qt_available = False
+    except Exception:  # pragma: no cover - depends on the Qt installation
+        qt_available = False
+    else:
+        qt_available = True
+
+    return QgisTestEnvironment(
+        qgis_available=qgis_available,
+        qt_available=qt_available,
+        qgis_application_available=qgis_application_available,
+        qgis_version=qgis_version,
+        qgis_import_error=qgis_import_error,
+    )
+
+
 # ── Pytest fixtures ─────────────────────────────────────────────────────────
 
 try:
     import pytest
+
+    @pytest.fixture(scope="session")
+    def qgis_environment():
+        """Return the detected pure-Python/QGIS runtime for this test session."""
+        return detect_qgis_environment()
+
+    @pytest.fixture(scope="session")
+    def qgis_available(qgis_environment):
+        """Boolean fixture: whether ``qgis.core`` imports."""
+        return qgis_environment.qgis_available
+
+    @pytest.fixture(scope="session")
+    def pure_python(qgis_environment):
+        """Boolean fixture: whether tests run without PyQGIS."""
+        return qgis_environment.pure_python
+
+    @pytest.fixture(scope="session")
+    def qt_app():
+        """A QApplication, or a skip when Qt is unavailable."""
+        if not detect_qgis_environment().qt_available:
+            pytest.skip("Qt is not installed in this environment")
+        from PyQt5.QtWidgets import QApplication
+
+        app = QApplication.instance() or QApplication([])
+        yield app
+
+    @pytest.fixture(scope="session")
+    def qgis_app(qgis_environment):
+        """Return the host's live QgsApplication, or skip safely.
+
+        A plain pytest process may import PyQGIS without being a QGIS host.
+        This fixture intentionally does not construct or tear down a native
+        ``QgsApplication``: some QGIS/Qt builds abort during pytest shutdown.
+        Use it from a QGIS-hosted test runner, while pure-Python tests continue
+        to use the SDK fakes and fallback implementations.
+        """
+        qgis_environment.require_qgis()
+        from qgis.core import QgsApplication
+
+        app = QgsApplication.instance()
+        if app is None:
+            pytest.skip("qgis.core is installed, but no QgsApplication is running")
+        return app
 
     @pytest.fixture
     def fake_iface():
@@ -1472,9 +1605,22 @@ except ImportError:
 def pytest_configure(config):
     """Register markers for qgis_sdk tests."""
     config.addinivalue_line("markers", "qgis: mark test as requiring QGIS")
+    config.addinivalue_line("markers", "pure_python: mark test as requiring no QGIS bindings")
     config.addinivalue_line("markers", "webengine: mark test as requiring QWebEngine")
     config.addinivalue_line("markers", "network: mark test as requiring network")
     config.addinivalue_line("markers", "tasks: mark test as requiring QgsTaskManager")
+
+
+def pytest_collection_modifyitems(config, items):
+    """Skip environment-specific tests before their bodies can touch QGIS."""
+    environment = detect_qgis_environment()
+    qgis_skip = pytest.mark.skip(reason="requires an importable qgis.core runtime")
+    pure_python_skip = pytest.mark.skip(reason="requires a pure-Python runtime without qgis.core")
+    for item in items:
+        if item.get_closest_marker("qgis") and environment.pure_python:
+            item.add_marker(qgis_skip)
+        if item.get_closest_marker("pure_python") and not environment.pure_python:
+            item.add_marker(pure_python_skip)
 
 
 __all__ = [
@@ -1521,6 +1667,8 @@ __all__ = [
     "fake_session_factory",
     "fake_task_manager_factory",
     "fake_task_factory",
+    "QgisTestEnvironment",
+    "detect_qgis_environment",
     "mock_features",
     "mock_source",
     "mock_context",

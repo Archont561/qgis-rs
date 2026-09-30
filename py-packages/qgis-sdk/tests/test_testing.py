@@ -2,6 +2,37 @@
 
 from __future__ import annotations
 
+import pytest
+
+
+def test_runtime_detector_reports_pure_python_or_qgis():
+    from qgis_sdk.testing import QgisTestEnvironment, detect_qgis_environment
+
+    environment = detect_qgis_environment()
+    assert isinstance(environment, QgisTestEnvironment)
+    assert environment.backend in {"pure-python", "qgis"}
+    assert environment.pure_python is (not environment.qgis_available)
+    assert environment.is_pure_python is environment.pure_python
+    assert environment.is_qgis is environment.qgis_available
+    if environment.pure_python:
+        assert environment.qgis_import_error is not None
+
+
+def test_runtime_fixtures_are_reusable(qgis_environment, qgis_available, pure_python):
+    assert qgis_available is qgis_environment.qgis_available
+    assert pure_python is qgis_environment.pure_python
+    assert qgis_environment.backend in {"pure-python", "qgis"}
+
+
+@pytest.mark.pure_python
+def test_pure_python_marker(pure_python):
+    assert pure_python
+
+
+@pytest.mark.qgis
+def test_qgis_marker(qgis_environment):
+    assert qgis_environment.qgis_available
+
 
 def test_fake_iface():
     from qgis_sdk.testing import FakeIface, fake_action_factory
@@ -133,6 +164,9 @@ def test_pytest_fixtures_via_plugin():
     assert hasattr(testing_module, "fake_dialog_factory")
     assert hasattr(testing_module, "fake_webview_factory")
     assert hasattr(testing_module, "fake_bridge")
+    assert hasattr(testing_module, "qgis_environment")
+    assert hasattr(testing_module, "qgis_available")
+    assert hasattr(testing_module, "pure_python")
 
     # Check Fake classes
     assert hasattr(testing_module, "FakeIface")

@@ -170,7 +170,7 @@ rust = { workspace = true }
 # the command in the `bun` environment, so `pixi run -e bun bun …` is the same
 # thing spelled explicitly.
 #
-# Always invoke workspace CLIs through `bun run <script>` or `bunx`. A path like
+# Always invoke workspace CLIs through `bun run <script>` or `bun x`. A path like
 # `bun ./node_modules/.bin/napi` fails with "Module not found" — `.bin` entries
 # are symlinks with a node shebang, not modules bun can resolve by path.
 bun = { cmd = "bun", default-environment = "bun" }
@@ -180,6 +180,17 @@ bun = { cmd = "bun", default-environment = "bun" }
 # app, the napi package and the SDK bridge. Members carry no lockfile of their
 # own; root bun.lock is the single resolution record.
 bun-install = { cmd = "bun install --frozen-lockfile", description = "Install the Bun workspace from the root lockfile", default-environment = "bun" }
+
+# Repo-wide agent tooling follows pixi-sandbox: the packages are installed in
+# the root Bun workspace and invoked through `bun x`, which uses Bun instead of
+# the packages' Node shebangs. This keeps the commands usable in the restored
+# `bun` environment, which intentionally has no Node.js runtime.
+backlog = { cmd = "bun x backlog", depends-on = [
+  "bun-install",
+], description = "Manage the Markdown project backlog", default-environment = "bun" }
+skills = { cmd = "bun x skills", depends-on = [
+  "bun-install",
+], description = "Manage agent skills", default-environment = "bun" }
 
 docs-dev = { cmd = "bun run dev", cwd = "apps/docs", depends-on = [
   "bun-install",

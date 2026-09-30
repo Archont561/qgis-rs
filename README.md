@@ -360,7 +360,17 @@ pixi run -e default fmt
 
 # Run the complete local gate (formatting, linting, and QGIS tests)
 pixi run -e default ci-full
+
+# Install the Bun workspace and use the repo-wide agent tools
+pixi run bun-install
+pixi run skills
+pixi run backlog task list --plain
 ```
+
+The repository includes the versioned agent skills from
+[`pixi-sandbox`](https://github.com/Archont561/pixi-sandbox), plus the
+`backlog.md` and `skills` Bun packages. They are invoked through Pixi's `bun`
+environment so no Node.js installation is required.
 
 #### Dev container (Pixi + OpenCode)
 
