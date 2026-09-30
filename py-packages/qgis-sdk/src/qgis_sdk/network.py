@@ -10,7 +10,9 @@ import json
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, Iterable, Iterator, List, Optional, Tuple, Union
+from functools import wraps
+import inspect
 from urllib.parse import urlencode, urlparse, parse_qs, urlunparse
 
 
@@ -40,6 +42,29 @@ class TooManyRedirects(RequestException):
 
 
 NetworkError = RequestException
+
+
+@dataclass(frozen=True)
+class RetryPolicy:
+    """Retry policy shared by sessions and request decorators.
+
+    Retries are deliberately opt-in. By default only transient HTTP statuses
+    are retried; mutating requests can opt out with ``retry_methods``.
+    """
+
+    retries: int = 0
+    backoff_factor: float = 0.0
+    retry_statuses: tuple[int, ...] = (408, 429, 500, 502, 503, 504)
+    retry_methods: tuple[str, ...] = ("GET", "HEAD", "OPTIONS")
+    max_backoff: float = 30.0
+
+    def delay(self, attempt: int) -> float:
+        if self.backoff_factor <= 0:
+            return 0.0
+        return min(self.max_backoff, self.backoff_factor * (2 ** max(0, attempt - 1)))
+
+    def allows(self, method: str) -> bool:
+        return method.upper() in {item.upper() for item in self.retry_methods}
 
 
 # ── Response ────────────────────────────────────────────────────────────────
@@ -135,9 +160,14 @@ def _reason_for_status(code: int) -> str:
 
 def _get_qgis_network_manager():
     try:
-        from qgis.core import QgsNetworkAccessManager  # type: ignore
+        from qgis.core import QgsApplication, QgsNetworkAccessManager  # type: ignore
+        # QgsNetworkAccessManager.instance() dereferences the application
+        # singleton in some QGIS builds. A plain Python test process can have
+        # the bindings importable without a live QgsApplication.
+        if hasattr(QgsApplication, "instance") and QgsApplication.instance() is None:
+            return None
         return QgsNetworkAccessManager.instance()
-    except ImportError:
+    except (ImportError, RuntimeError):
         return None
 
 
@@ -409,12 +439,24 @@ class Session:
         headers: Optional[Dict[str, str]] = None,
         params: Optional[Dict[str, Any]] = None,
         verify: bool = True,
+        retries: int = 0,
+        backoff_factor: float = 0.0,
+        retry_statuses: Iterable[int] = (408, 429, 500, 502, 503, 504),
+        retry_methods: Iterable[str] = ("GET", "HEAD", "OPTIONS"),
+        max_backoff: float = 30.0,
     ):
         self.auth_cfg = auth_cfg
         self.timeout = timeout
         self.headers: Dict[str, str] = dict(headers or {})
         self.params: Dict[str, Any] = dict(params or {})
         self.verify = verify
+        self.retry_policy = RetryPolicy(
+            retries=max(0, retries),
+            backoff_factor=max(0.0, backoff_factor),
+            retry_statuses=tuple(retry_statuses),
+            retry_methods=tuple(retry_methods),
+            max_backoff=max(0.0, max_backoff),
+        )
         self._qgis_nam = _get_qgis_network_manager()
         self.cookies: Dict[str, str] = {}
 
@@ -455,15 +497,35 @@ class Session:
         auth_cfg = auth_cfg or self.auth_cfg
 
         mgr = NetworkManager.instance(auth_cfg=auth_cfg, timeout=timeout)
-        return mgr.request(
-            url,
-            method=method,
-            data=req_data,
-            headers=final_headers,
-            auth_cfg=auth_cfg,
-            blocking=blocking,
-            timeout=timeout,
-        )
+        method = method.upper()
+        policy = self.retry_policy
+        attempts = policy.retries if policy.allows(method) else 0
+        history: list[NetworkResponse] = []
+
+        for attempt in range(attempts + 1):
+            response = mgr.request(
+                url,
+                method=method,
+                data=req_data,
+                headers=final_headers,
+                auth_cfg=auth_cfg,
+                blocking=blocking,
+                timeout=timeout,
+            )
+            response.request = {"method": method, "url": url}
+            if response.ok or attempt >= attempts:
+                if history:
+                    response.history = history
+                return response
+
+            # Keep prior transient responses available just like requests.
+            history.append(response)
+            delay = policy.delay(attempt + 1)
+            if delay:
+                time.sleep(delay)
+
+        # The loop always returns, but keeps a useful type for static checkers.
+        return response
 
     def get(self, url: str, **kwargs) -> NetworkResponse:
         return self.request("GET", url, **kwargs)
@@ -778,7 +840,18 @@ class NetworkManager:
         return dest
 
     def session(self, **kwargs) -> Session:
-        return Session(auth_cfg=kwargs.get("auth_cfg", self.auth_cfg), timeout=kwargs.get("timeout", self.timeout), headers=kwargs.get("headers", self.headers))
+        return Session(
+            auth_cfg=kwargs.get("auth_cfg", self.auth_cfg),
+            timeout=kwargs.get("timeout", self.timeout),
+            headers=kwargs.get("headers", self.headers),
+            params=kwargs.get("params"),
+            verify=kwargs.get("verify", True),
+            retries=kwargs.get("retries", 0),
+            backoff_factor=kwargs.get("backoff_factor", 0.0),
+            retry_statuses=kwargs.get("retry_statuses", (408, 429, 500, 502, 503, 504)),
+            retry_methods=kwargs.get("retry_methods", ("GET", "HEAD", "OPTIONS")),
+            max_backoff=kwargs.get("max_backoff", 30.0),
+        )
 
 
 class NetworkAccessManager:
@@ -834,6 +907,202 @@ class NetworkAccessManager:
 
     def head(self, url: str, headers=None, params=None, auth_cfg=None, **kwargs) -> NetworkResponse:
         return self._session.head(url, headers=headers, params=params, auth_cfg=auth_cfg or self.auth_cfg, timeout=kwargs.get("timeout", self.timeout))
+
+
+# ── Decorators ───────────────────────────────────────────────────────────────
+
+
+def session(
+    *,
+    base_url: str = "",
+    auth_cfg: Optional[str] = None,
+    timeout: int = 15000,
+    headers: Optional[Dict[str, str]] = None,
+    params: Optional[Dict[str, Any]] = None,
+    verify: bool = True,
+    retries: int = 0,
+    backoff_factor: float = 0.0,
+    retry_statuses: Iterable[int] = (408, 429, 500, 502, 503, 504),
+    retry_methods: Iterable[str] = ("GET", "HEAD", "OPTIONS"),
+    max_backoff: float = 30.0,
+):
+    """Decorate an API client class with a configured requests-like session.
+
+    The decorated instance receives ``self.session`` and ``self.http``. Endpoint
+    methods can then use ``@http.get(...)`` or ``@http.request(...)``.
+    """
+
+    config = {
+        "base_url": base_url,
+        "auth_cfg": auth_cfg,
+        "timeout": timeout,
+        "headers": dict(headers or {}),
+        "params": dict(params or {}),
+        "verify": verify,
+        "retries": retries,
+        "backoff_factor": backoff_factor,
+        "retry_statuses": tuple(retry_statuses),
+        "retry_methods": tuple(retry_methods),
+        "max_backoff": max_backoff,
+    }
+
+    def decorate(cls: type) -> type:
+        original_init = cls.__dict__.get("__init__")
+
+        @wraps(original_init) if original_init is not None else (lambda f: f)
+        def __init__(self, *args, **kwargs):
+            provided = kwargs.pop("session", None)
+            if original_init is not None:
+                original_init(self, *args, **kwargs)
+            self.session = provided or Session(
+                auth_cfg=config["auth_cfg"],
+                timeout=config["timeout"],
+                headers=config["headers"],
+                params=config["params"],
+                verify=config["verify"],
+                retries=config["retries"],
+                backoff_factor=config["backoff_factor"],
+                retry_statuses=config["retry_statuses"],
+                retry_methods=config["retry_methods"],
+                max_backoff=config["max_backoff"],
+            )
+            self.http = self.session
+            self.base_url = config["base_url"]
+
+        cls.__init__ = __init__
+        cls.__network_session_config__ = config
+        return cls
+
+    return decorate
+
+
+class _HttpDecorators:
+    """Requests-like endpoint decorators backed by :class:`Session`."""
+
+    def request(self, method: str, url: str, **request_options):
+        method = method.upper()
+
+        def decorate(func: Callable) -> Callable:
+            signature = inspect.signature(func)
+            # A response handler is explicit rather than inferred from arbitrary
+            # endpoint arguments. This keeps ``def get_user(self, user_id)`` a
+            # normal declarative request while still allowing a convenient
+            # ``def parse(self, response)`` hook.
+            response_handler = bool(request_options.get("response_handler", False))
+            positional = [
+                parameter
+                for parameter in signature.parameters.values()
+                if parameter.kind in (parameter.POSITIONAL_ONLY, parameter.POSITIONAL_OR_KEYWORD)
+                and parameter.name != "self"
+            ]
+            response_handler = response_handler or (
+                bool(positional) and positional[0].name in {"response", "resp"}
+            )
+
+            @wraps(func)
+            def wrapper(*args, **kwargs):
+                owner = args[0] if args and hasattr(args[0], "session") else None
+                configured_client = getattr(owner, "session", None) if owner is not None else None
+                retry_keys = {
+                    "retries",
+                    "backoff_factor",
+                    "retry_statuses",
+                    "retry_methods",
+                    "max_backoff",
+                }
+                retry_options = {
+                    key: request_options[key]
+                    for key in retry_keys
+                    if key in request_options
+                }
+                client = configured_client
+                if client is None or retry_options:
+                    policy = getattr(configured_client, "retry_policy", None)
+                    client = Session(
+                        auth_cfg=getattr(configured_client, "auth_cfg", None),
+                        timeout=getattr(configured_client, "timeout", 15000),
+                        headers=getattr(configured_client, "headers", None),
+                        params=getattr(configured_client, "params", None),
+                        verify=getattr(configured_client, "verify", True),
+                        retries=retry_options.get("retries", getattr(policy, "retries", 0)),
+                        backoff_factor=retry_options.get("backoff_factor", getattr(policy, "backoff_factor", 0.0)),
+                        retry_statuses=retry_options.get("retry_statuses", getattr(policy, "retry_statuses", (408, 429, 500, 502, 503, 504))),
+                        retry_methods=retry_options.get("retry_methods", getattr(policy, "retry_methods", ("GET", "HEAD", "OPTIONS"))),
+                        max_backoff=retry_options.get("max_backoff", getattr(policy, "max_backoff", 30.0)),
+                    )
+
+                options = {
+                    key: value
+                    for key, value in request_options.items()
+                    if key not in retry_keys and key != "response_handler"
+                }
+                base_url = getattr(owner, "base_url", "") if owner is not None else ""
+
+                # Bind values only for URL interpolation. Request options such
+                # as ``params`` and ``headers`` remain regular Session kwargs.
+                try:
+                    bound = signature.bind_partial(*args, **kwargs)
+                    format_values = {
+                        key: value
+                        for key, value in bound.arguments.items()
+                        if key != "self"
+                    }
+                except TypeError:
+                    format_values = {
+                        key: value for key, value in kwargs.items()
+                        if key not in {"params", "data", "json", "headers", "timeout", "auth_cfg", "blocking"}
+                    }
+                try:
+                    endpoint = url.format(**format_values)
+                except (KeyError, IndexError, ValueError):
+                    endpoint = url
+                if base_url and endpoint.startswith("/"):
+                    endpoint = base_url.rstrip("/") + endpoint
+
+                dynamic = dict(kwargs)
+                for key in ("params", "data", "json", "headers", "timeout", "auth_cfg", "blocking"):
+                    if key in dynamic:
+                        options[key] = dynamic.pop(key)
+
+                response = client.request(method, endpoint, **options)
+                if not response_handler:
+                    return response
+
+                # The explicit response handler receives the generated response
+                # and no longer needs to know about the request's path/options.
+                if owner is not None:
+                    return func(owner, response)
+                return func(response)
+
+            wrapper.__qgis_sdk_request__ = {
+                "method": method,
+                "url": url,
+                "options": dict(request_options),
+            }
+            return wrapper
+
+        return decorate
+
+    def get(self, url: str, **options):
+        return self.request("GET", url, **options)
+
+    def post(self, url: str, **options):
+        return self.request("POST", url, **options)
+
+    def put(self, url: str, **options):
+        return self.request("PUT", url, **options)
+
+    def patch(self, url: str, **options):
+        return self.request("PATCH", url, **options)
+
+    def delete(self, url: str, **options):
+        return self.request("DELETE", url, **options)
+
+    def head(self, url: str, **options):
+        return self.request("HEAD", url, **options)
+
+
+http = _HttpDecorators()
 
 
 # ── Top-level requests-like functions ───────────────────────────────────────
@@ -901,6 +1170,7 @@ def download(url: str, dest: Union[str, Path], **kwargs) -> Path:
 
 
 __all__ = [
+    "RetryPolicy",
     "NetworkManager",
     "NetworkAccessManager",
     "ContentFetcher",
@@ -912,6 +1182,8 @@ __all__ = [
     "Timeout",
     "TooManyRedirects",
     "Session",
+    "session",
+    "http",
     "request",
     "get",
     "post",

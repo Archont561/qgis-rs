@@ -12,7 +12,17 @@ Now with Rust-native CLI and acceleration:
 
 from __future__ import annotations
 
-from .algorithm import Algorithm, OutputSpec, ParamSpec, output, parameter
+from .algorithm import (
+    Algorithm,
+    AlgorithmRegistry,
+    AlgorithmSpec,
+    OutputSpec,
+    ParamSpec,
+    algorithm,
+    algorithm_registry,
+    output,
+    parameter,
+)
 from .metadata import METADATA_FIELDS, VALID_CATEGORIES, render_metadata, write_metadata, validate_metadata
 from .plugin import ActionSpec, Plugin, action, class_factory, menu, toolbar, plugin, setting, registry, task as plugin_task
 from .plugin import task as task_decorator  # declarative @task
@@ -186,8 +196,11 @@ try:
         NetworkError,
         NetworkManager,
         NetworkResponse,
+        RetryPolicy,
         RequestException,
         Session,
+        http,
+        session,
         Timeout,
         TooManyRedirects,
         delete,
@@ -204,14 +217,16 @@ try:
         request,
     )
 except ImportError:
-    ContentFetcher = NetworkAccessManager = NetworkError = NetworkManager = NetworkResponse = None  # type: ignore
+    ContentFetcher = NetworkAccessManager = NetworkError = NetworkManager = NetworkResponse = RetryPolicy = None  # type: ignore
     RequestException = HTTPError = ConnectionError = Timeout = TooManyRedirects = Session = None  # type: ignore
+    http = session = None  # type: ignore
     download = fetch = fetch_json = fetch_text = get = post = put = patch = delete = head = options = request = None  # type: ignore
 
 try:
     from .tasks import (
         AsyncResult,
         Chain,
+        GroupResult,
         ProcessingAlgRunnerTask,
         Signature,
         Task,
@@ -231,7 +246,7 @@ try:
     # Keep celery task available as shared_task/celery_task, but top-level `task` is declarative
     task = task_decorator  # declarative @task from plugin
 except ImportError:
-    ProcessingAlgRunnerTask = Task = TaskManager = TaskWrapper = AsyncResult = Signature = Chain = None  # type: ignore
+    ProcessingAlgRunnerTask = Task = TaskManager = TaskWrapper = AsyncResult = Signature = Chain = GroupResult = None  # type: ignore
     add_task = cancel_all = run_task = shared_task = celery_task = app = celery_app = chain = group = celery_task_decorator = None  # type: ignore
     # task stays as declarative if available
     try:
@@ -244,6 +259,10 @@ __all__ = [
     "VALID_CATEGORIES",
     "ActionSpec",
     "Algorithm",
+    "AlgorithmSpec",
+    "AlgorithmRegistry",
+    "algorithm",
+    "algorithm_registry",
     "OutputSpec",
     "ParamSpec",
     "Plugin",
@@ -350,6 +369,7 @@ __all__ = [
     "NetworkAccessManager",
     "ContentFetcher",
     "NetworkResponse",
+    "RetryPolicy",
     "NetworkError",
     "RequestException",
     "HTTPError",
@@ -357,6 +377,8 @@ __all__ = [
     "Timeout",
     "TooManyRedirects",
     "Session",
+    "session",
+    "http",
     "request",
     "get",
     "post",
@@ -376,6 +398,7 @@ __all__ = [
     "AsyncResult",
     "Signature",
     "Chain",
+    "GroupResult",
     "ProcessingAlgRunnerTask",
     "task",
     "shared_task",

@@ -30,7 +30,91 @@ from collections.abc import Iterator
 from dataclasses import dataclass
 from typing import Any, ClassVar, Dict, List
 
-__all__ = ["Algorithm", "OutputSpec", "ParamSpec", "output", "parameter"]
+__all__ = [
+    "Algorithm",
+    "AlgorithmSpec",
+    "AlgorithmRegistry",
+    "algorithm_registry",
+    "algorithm",
+    "OutputSpec",
+    "ParamSpec",
+    "output",
+    "parameter",
+]
+
+
+@dataclass(frozen=True)
+class AlgorithmSpec:
+    """Metadata registered by the :func:`algorithm` decorator."""
+
+    cls: type
+    id: str
+    name: str
+    group: str = ""
+    provider_id: str = ""
+    description: str = ""
+
+
+class AlgorithmRegistry:
+    """Small process-local registry for declarative Processing algorithms."""
+
+    def __init__(self) -> None:
+        self._items: dict[str, AlgorithmSpec] = {}
+
+    def register(self, cls: type) -> AlgorithmSpec:
+        spec = AlgorithmSpec(
+            cls=cls,
+            id=getattr(cls, "id", ""),
+            name=getattr(cls, "name", cls.__name__),
+            group=getattr(cls, "group", ""),
+            provider_id=getattr(cls, "provider_id", ""),
+            description=getattr(cls, "description", ""),
+        )
+        if not spec.id:
+            raise ValueError(f"{cls.__name__} needs an id before it can be registered")
+        self._items[spec.id] = spec
+        return spec
+
+    def get(self, algorithm_id: str) -> type | None:
+        spec = self._items.get(algorithm_id)
+        return spec.cls if spec else None
+
+    def all(self) -> list[AlgorithmSpec]:
+        return list(self._items.values())
+
+    def clear(self) -> None:
+        self._items.clear()
+
+
+algorithm_registry = AlgorithmRegistry()
+
+
+def algorithm(_cls: type | None = None, **metadata: Any):
+    """Declare and register a QGIS Processing algorithm.
+
+    It can be used with or without arguments::
+
+        @algorithm
+        class Buffer(Algorithm):
+            id = "demo:buffer"
+
+        @algorithm(id="demo:clip", group="Vector")
+        class Clip(Algorithm):
+            ...
+
+    Keyword arguments override class attributes and are also available through
+    :data:`algorithm_registry`. The class remains a normal ``Algorithm`` class,
+    so ``run()``, ``defaults()`` and ``to_qgis()`` keep working.
+    """
+
+    def decorate(cls: type) -> type:
+        for key, value in metadata.items():
+            setattr(cls, key, value)
+        algorithm_registry.register(cls)
+        cls._qgis_sdk_algorithm = algorithm_registry._items[cls.id]
+        return cls
+
+    return decorate(_cls) if _cls is not None else decorate
 
 
 @dataclass(frozen=True)
