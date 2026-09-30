@@ -7,8 +7,8 @@
 # A required entry ending in `/` is checked as a directory; an entry containing
 # `*` is checked as a glob that must match at least once.
 set -euo pipefail
-# shellcheck source=scripts/_common.sh
-source "$(dirname "$0")/_common.sh"
+# shellcheck source=scripts/lib.sh
+source "$(dirname "$0")/lib.sh"
 
 pkg_dir="${1:?usage: scripts/npm-pack-check.sh <package-dir> <required...>}"
 shift

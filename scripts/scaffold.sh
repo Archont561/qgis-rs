@@ -6,8 +6,8 @@
 # Usage: scripts/scaffold.sh <layer> <concept> <QgisClass> <short_name>
 # Example: scripts/scaffold.sh core geometry QgsGeometry geometry
 set -euo pipefail
-# shellcheck source=scripts/_common.sh
-source "$(dirname "$0")/_common.sh"
+# shellcheck source=scripts/lib.sh
+source "$(dirname "$0")/lib.sh"
 
 LAYER="${1:?usage: scripts/scaffold.sh <layer> <concept> <QgisClass> <short_name>}"
 CONCEPT="${2:?missing <concept>}"

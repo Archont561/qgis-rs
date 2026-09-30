@@ -4,8 +4,8 @@
 # purpose — so a bare run checks exactly those two. Arguments (staged files
 # from lefthook) override that list.
 set -euo pipefail
-# shellcheck source=scripts/_common.sh
-source "$(dirname "$0")/_common.sh"
+# shellcheck source=scripts/lib.sh
+source "$(dirname "$0")/lib.sh"
 
 if [ "$#" -gt 0 ]; then
   taplo fmt --check "$@"

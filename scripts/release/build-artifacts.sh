@@ -9,8 +9,8 @@
 #
 # Usage: scripts/release/build-artifacts.sh
 set -euo pipefail
-# shellcheck source=scripts/_common.sh
-source "$(dirname "$0")/../_common.sh"
+# shellcheck source=scripts/lib.sh
+source "$(dirname "$0")/../lib.sh"
 
 rm -rf dist
 mkdir -p dist/pypi dist/npm dist/conda

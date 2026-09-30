@@ -10,8 +10,8 @@
 #
 # Usage: scripts/ci.sh [--no-coverage]
 set -euo pipefail
-# shellcheck source=scripts/_common.sh
-source "$(dirname "$0")/_common.sh"
+# shellcheck source=scripts/lib.sh
+source "$(dirname "$0")/lib.sh"
 
 coverage=1
 for arg in "$@"; do

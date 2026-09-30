@@ -4,8 +4,8 @@
 #
 # Usage: scripts/release/verify-version.sh v1.2.3
 set -euo pipefail
-# shellcheck source=scripts/_common.sh
-source "$(dirname "$0")/../_common.sh"
+# shellcheck source=scripts/lib.sh
+source "$(dirname "$0")/../lib.sh"
 
 tag="${1:?usage: scripts/release/verify-version.sh <vX.Y.Z>}"
 version="$(pixi run -e bun version | tail -1)"

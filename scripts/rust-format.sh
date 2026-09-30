@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Writes formatting for the Rust and C++ trees. `--cpp` limits it to clang-format.
 set -euo pipefail
-# shellcheck source=scripts/_common.sh
-source "$(dirname "$0")/_common.sh"
+# shellcheck source=scripts/lib.sh
+source "$(dirname "$0")/lib.sh"
 
 cpp_only=0
 [ "${1-}" = --cpp ] && cpp_only=1

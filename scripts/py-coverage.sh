@@ -5,8 +5,8 @@
 #
 # Usage: scripts/py-coverage.sh py-packages/qgis-rs qgis_rs
 set -euo pipefail
-# shellcheck source=scripts/_common.sh
-source "$(dirname "$0")/_common.sh"
+# shellcheck source=scripts/lib.sh
+source "$(dirname "$0")/lib.sh"
 
 pkg_dir="${1:?usage: scripts/py-coverage.sh <py-packages/NAME> <import_name>}"
 module="${2:?usage: scripts/py-coverage.sh <py-packages/NAME> <import_name>}"

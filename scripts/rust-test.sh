@@ -8,8 +8,8 @@
 # Both force `--test-threads=1`: QgsApplication is a process-global singleton
 # and parallel test threads race its lifecycle.
 set -euo pipefail
-# shellcheck source=scripts/_common.sh
-source "$(dirname "$0")/_common.sh"
+# shellcheck source=scripts/lib.sh
+source "$(dirname "$0")/lib.sh"
 
 mode=fast
 case "${1-}" in

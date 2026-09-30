@@ -7,8 +7,8 @@
 #
 # Requires NODE_AUTH_TOKEN and RUNNER_TEMP.
 set -euo pipefail
-# shellcheck source=scripts/_common.sh
-source "$(dirname "$0")/../_common.sh"
+# shellcheck source=scripts/lib.sh
+source "$(dirname "$0")/../lib.sh"
 
 : "${NODE_AUTH_TOKEN:?NODE_AUTH_TOKEN is not set}"
 config="${RUNNER_TEMP:-/tmp}/github-packages.npmrc"

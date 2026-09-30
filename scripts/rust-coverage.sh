@@ -10,8 +10,8 @@
 # llvm-profdata/llvm-cov pair in its sysroot, which is what cargo-llvm-cov
 # shells out to.
 set -euo pipefail
-# shellcheck source=scripts/_common.sh
-source "$(dirname "$0")/_common.sh"
+# shellcheck source=scripts/lib.sh
+source "$(dirname "$0")/lib.sh"
 
 pixi run -e default setup >/dev/null
 mkdir -p target/coverage

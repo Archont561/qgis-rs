@@ -13,8 +13,8 @@
 # headers live under include/qt or include/qt6 depending on the build, and the
 # GCC internal include dir carrying stddef.h is version-stamped).
 set -euo pipefail
-# shellcheck source=scripts/_common.sh
-source "$(dirname "$0")/_common.sh"
+# shellcheck source=scripts/lib.sh
+source "$(dirname "$0")/lib.sh"
 
 bun x biome check crates/package.json
 

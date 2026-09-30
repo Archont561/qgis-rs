@@ -2,8 +2,8 @@
 # One SHA256SUMS over every release asset, in a stable (LC_ALL=C) order so the
 # file is reproducible across runners.
 set -euo pipefail
-# shellcheck source=scripts/_common.sh
-source "$(dirname "$0")/../_common.sh"
+# shellcheck source=scripts/lib.sh
+source "$(dirname "$0")/../lib.sh"
 
 find dist -type f -not -name SHA256SUMS -print0 |
   LC_ALL=C sort -z |

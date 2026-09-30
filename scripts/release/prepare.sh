@@ -7,8 +7,8 @@
 # Usage: scripts/release/prepare.sh [X.Y.Z]
 # With no argument, convco picks the bump from the commits since the last tag.
 set -euo pipefail
-# shellcheck source=scripts/_common.sh
-source "$(dirname "$0")/../_common.sh"
+# shellcheck source=scripts/lib.sh
+source "$(dirname "$0")/../lib.sh"
 
 next="${1-}"
 if [ -z "$next" ]; then

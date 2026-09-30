@@ -12,8 +12,8 @@
 #
 # Requires CARGO_REGISTRY_TOKEN in the environment.
 set -euo pipefail
-# shellcheck source=scripts/_common.sh
-source "$(dirname "$0")/../_common.sh"
+# shellcheck source=scripts/lib.sh
+source "$(dirname "$0")/../lib.sh"
 
 : "${CARGO_REGISTRY_TOKEN:?CARGO_REGISTRY_TOKEN is not set}"
 

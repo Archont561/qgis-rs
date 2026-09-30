@@ -3,8 +3,8 @@
 # files (lefthook passes the staged ones); with none it checks the whole tree.
 # Assumes it already runs inside the `default` pixi environment.
 set -euo pipefail
-# shellcheck source=scripts/_common.sh
-source "$(dirname "$0")/_common.sh"
+# shellcheck source=scripts/lib.sh
+source "$(dirname "$0")/lib.sh"
 
 if [ "$#" -gt 0 ]; then
   clang-format --dry-run --Werror "$@"

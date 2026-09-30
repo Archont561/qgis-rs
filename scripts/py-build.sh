@@ -19,8 +19,8 @@
 # prefix has no such requirement — which is why there is no venv step anywhere
 # in this repo.
 set -euo pipefail
-# shellcheck source=scripts/_common.sh
-source "$(dirname "$0")/_common.sh"
+# shellcheck source=scripts/lib.sh
+source "$(dirname "$0")/lib.sh"
 
 pkg_dir="${1:?usage: scripts/py-build.sh <py-packages/NAME> [maturin args...]}"
 shift || true
