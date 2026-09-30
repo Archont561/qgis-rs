@@ -41,7 +41,7 @@ pkg_dir="${1:?usage: scripts/py-build.sh <py-packages/NAME> [maturin args...]}"
 shift || true
 [ -f "$pkg_dir/pyproject.toml" ] || { echo "no pyproject.toml in $pkg_dir" >&2; exit 1; }
 
-exec pixi run -e default bash -c '
+pixi run -e default bash -c '
   set -eu
   cd "$1"; shift
   # A stale wheel from an earlier version would make dist/*.whl ambiguous for
@@ -50,3 +50,16 @@ exec pixi run -e default bash -c '
   maturin develop --release "$@"
   maturin build --release --out dist "$@"
 ' _ "$pkg_dir" "$@"
+
+# Prove the native extension is importable from the same working directory the
+# test suite uses. Both packages fall back to a pure-Python implementation when
+# `._core` will not import, and that fallback is silent by design — so without
+# this check a broken extension shows up much later as a bare
+# `assert True is False` in test_native_extension_is_used_in_ci, with the
+# ImportError that caused it thrown away.
+module="$(basename "$pkg_dir" | tr - _)"
+pixi run -e default bash -c '
+  set -eu
+  cd "$1"
+  python -c "import importlib, sys; m = sys.argv[1]; c = importlib.import_module(m + \"._core\"); print(\"native extension:\", c.__file__); p = importlib.import_module(m); print(\"package resolved from:\", p.__file__)" "$2"
+' _ "$pkg_dir" "$module"
