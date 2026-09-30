@@ -13,9 +13,9 @@
         "typescript": "^5.4.5",
       },
     },
-    "apps/docs": {
+    "docs": {
       "name": "qgis-rs-docs",
-      "version": "0.0.1",
+      "version": "0.2.0",
       "dependencies": {
         "@astrojs/check": "^0.9.4",
         "@astrojs/starlight": "^0.29.2",
@@ -26,19 +26,19 @@
     },
     "crates": {
       "name": "@qgis/rust",
-      "version": "0.1.0",
+      "version": "0.2.0",
     },
     "py-packages/qgis-rs": {
       "name": "qgis-rs-py",
-      "version": "0.1.0",
+      "version": "0.2.0",
     },
     "py-packages/qgis-sdk": {
       "name": "qgis-sdk-py",
-      "version": "0.1.0",
+      "version": "0.2.0",
     },
     "ts-packages/qgis-node": {
       "name": "qgis-rs",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "bin": {
         "qgis-cli": "./bin/qgis-cli.js",
         "qgis-plugin": "./bin/qgis-plugin.js",
@@ -987,7 +987,7 @@
 
     "qgis-rs": ["qgis-rs@workspace:ts-packages/qgis-node"],
 
-    "qgis-rs-docs": ["qgis-rs-docs@workspace:apps/docs"],
+    "qgis-rs-docs": ["qgis-rs-docs@workspace:docs"],
 
     "qgis-rs-py": ["qgis-rs-py@workspace:py-packages/qgis-rs"],
 

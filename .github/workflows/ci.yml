@@ -1,8 +1,26 @@
-# One required CI job. The gate itself is a single pixi task (`pixi run ci`)
-# that sequences the repo lints and the turbo-fanned package gates; this
-# workflow only sets up toolchains and caches (pixi environments, cargo,
-# turborepo), then runs the coverage producers and uploads to Codecov.
-# The same gate runs locally with `pixi run ci`.
+# One required CI job, and it runs one command: `pixi run ci`
+# (scripts/ci.sh). Everything this workflow does besides that is toolchain
+# setup and caching, which is the only thing a CI file should own — if a step
+# here knew how to build or test something, the local gate and CI could
+# disagree, and CI would be the only place you could find out.
+#
+# What this file deliberately does NOT do any more, and why:
+#
+#   * no actions/setup-python — pixi's `default` environment already carries
+#     the interpreter QGIS was compiled against (3.12.*). A second interpreter
+#     on PATH is how you get a wheel built for one ABI and imported by another.
+#   * no dtolnay/rust-toolchain, no llvm-tools-preview — conda-forge's `rust`
+#     ships cargo plus a version-matched llvm-profdata/llvm-cov pair in its
+#     sysroot, which is everything cargo-llvm-cov shells out to.
+#   * no `python -m venv` + `pip install maturin pytest pytest-cov` — the pixi
+#     environment IS the target interpreter, maturin/pytest/pytest-cov are
+#     declared in pixi.toml, and scripts/py-build.sh installs the built wheel
+#     into the prefix with pip. A venv layered on top would only hide QGIS's
+#     own site-packages.
+#   * no per-package `maturin develop` / `pytest` steps — the turbo `build`
+#     task for each Python distribution builds *and* installs its wheel, and
+#     `test`/`coverage` depend on it. CI used to recompile those crates a
+#     second time after turbo had already built them.
 name: CI
 
 on:
@@ -21,8 +39,32 @@ concurrency:
 
 env:
   CARGO_TERM_COLOR: always
+  # Fetch prebuilt registry indexes instead of cloning the whole crates.io git
+  # index on a cold cache.
+  CARGO_NET_GIT_FETCH_WITH_CLI: "true"
+  CARGO_INCREMENTAL: "0"
 
 jobs:
+  # Cheap, independent, and therefore parallel: this needs neither the QGIS
+  # environment nor the Bun workspace, so it reports a broken publish contract
+  # in under a minute instead of waiting behind a 3-hour native build.
+  sandbox-plan:
+    name: Sandbox publish plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up the pinned pixi-sandbox release binary
+        uses: Archont561/pixi-sandbox/setup@da230c2db2dff8a242c40a89c3a4c66de7777518 # v0.3.2
+        id: sandbox-setup
+        with:
+          version: v0.3.2
+          token: ${{ github.token }}
+
+      - name: Validate the reviewed publish plan
+        run: '"${{ steps.sandbox-setup.outputs.path }}" plan --config .pixi-sandbox.toml --json'
+
   ci:
     name: CI
     runs-on: ubuntu-latest
@@ -38,10 +80,10 @@ jobs:
           run-install: false
           cache: false
 
-      # Environment cache keyed on the lockfile: restores skip the heavy
-      # QGIS/rust solve+download entirely on lockfile-cache hits. The exact
-      # sha in the key means a partially-written cache is never poisoned:
-      # actions/cache only saves on a full key miss.
+      # Environment cache keyed on the lockfile: a hit skips the heavy
+      # QGIS/rust solve and download entirely. The exact sha in the key means a
+      # partially written cache is never poisoned — actions/cache only saves on
+      # a full key miss.
       - name: Cache the pixi environments
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -54,48 +96,25 @@ jobs:
       - name: Install the pixi environments
         run: pixi install --locked -e default -e bun
 
-      # Validate the independently-published sandbox contract before the full
-      # native/QGIS suite. This exercises the pinned v0.3.2 release action and
-      # its plan shape even when a later application-level test fails.
-      - name: Set up the pinned pixi-sandbox release binary
-        uses: Archont561/pixi-sandbox/setup@da230c2db2dff8a242c40a89c3a4c66de7777518 # v0.3.2
-        id: sandbox-setup
-        with:
-          version: v0.3.2
-          token: ${{ github.token }}
-
-      - name: Validate the reviewed publish plan
-        run: '"${{ steps.sandbox-setup.outputs.path }}" plan --config .pixi-sandbox.toml --json'
-
-      - name: Set up Python
-        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.0.0
-        with:
-          # Must be the python QGIS is bundled with — the same value as
-          # `python` in pixi.toml and `requires-python` in py-packages/*/pyproject.toml.
-          python-version: "3.12"
-
-      # Coverage no longer needs this component: the pixi `default` environment
-      # now provides `cargo-llvm-cov`, and conda-forge's `rust` package ships
-      # its own matching llvm-profdata / llvm-cov inside the sysroot
-      # (verified on rust 1.96.1 — llvm 22.1.2-rust-1.96.1-stable), so the
-      # coverage step is self-contained. This step is kept for the ordinary
-      # toolchain rustup shims and the cache step below.
-      - name: Set up Rust
-        uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de # master
-        with:
-          toolchain: stable
-          components: llvm-tools-preview
-
-      # Caches ~/.cargo (registry) and target/ (includes qgis-sys's C++
-      # compile), keyed on Cargo.lock; restores shrink the cold build to
-      # minutes.
+      # Registry downloads and build output, including qgis-sys's C++ compile.
+      # Plain actions/cache rather than Swatinem/rust-cache: cargo lives inside
+      # the pixi environment here, not on the runner's PATH, and rust-cache
+      # shells out to it during setup.
       - name: Cache cargo and target
-        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          cache-on-failure: true
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            target
+          key: cargo-${{ runner.os }}-${{ hashFiles('Cargo.lock') }}-${{ github.sha }}
+          restore-keys: |
+            cargo-${{ runner.os }}-${{ hashFiles('Cargo.lock') }}-
+            cargo-${{ runner.os }}-
 
-      # Turbo's content-hash cache in .turbo/cache lets `pixi run ci` skip
-      # packages whose inputs did not change between runs.
+      # Turbo's content-hash cache lets the gate skip packages whose inputs did
+      # not change since the last run on this branch.
       - name: Cache the turborepo task cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -105,106 +124,35 @@ jobs:
             turbo-${{ runner.os }}-${{ hashFiles('bun.lock') }}-
             turbo-${{ runner.os }}-
 
-      # The Bun workspace still installs from the root lockfile (the bun pixi
-      # environment itself arrived in the setup step above). Bun cannot live
-      # in `default`: conda-forge qgis needs icu >=78.3 while bun needs
-      # icu >=75.1,<76, so the two never solve together.
+      # Bun cannot live in `default`: conda-forge qgis needs icu >=78.3 while
+      # bun needs icu >=75.1,<76, so the two never solve together.
       - name: Install the Bun workspace from the root lockfile
         run: pixi run -e bun bun-install
 
-      # maturin develop installs into an active virtual environment.
-      - name: Create Python virtual environment
-        run: |
-          python -m venv .venv
-          echo "VIRTUAL_ENV=$GITHUB_WORKSPACE/.venv" >> "$GITHUB_ENV"
-          echo "$GITHUB_WORKSPACE/.venv/bin" >> "$GITHUB_PATH"
+      - name: Verify every manifest states the same version
+        run: pixi run -e bun version-check
 
-      - name: Install Python test tools
-        run: python -m pip install "maturin>=1.7,<2" "pytest>=8,<9" "pytest-cov>=5,<7"
-
-      # The whole gate as one pixi task: repo lints, turbo lint, format drift
-      # gate, every package's tests (same-package builds are pulled in by
-      # turbo's test dependency), pack:check. Same as `pixi run ci` locally.
+      # THE gate. Identical to what a contributor runs before pushing.
+      # Produces target/coverage/{rust-lcov.info,python-*.xml} on the way.
       - name: Run the CI gate
         run: pixi run ci
 
-      # With the `python` Cargo feature disabled, PyO3 links to the interpreter
-      # for Rust test binaries instead of leaving extension-module symbols open.
-      #
-      # `cargo-llvm-cov` is a `default`-environment dependency now (see the
-      # `rust-tools` feature in pixi.toml), so there is no `cargo install` step
-      # and no PATH juggling: the conda toolchain supplies both the driver and
-      # the llvm-profdata / llvm-cov pair it shells out to. Running under pixi
-      # also means the QGIS activation env (QGIS_PREFIX_PATH,
-      # QT_QPA_PLATFORM=offscreen) is present, matching `pixi run coverage` in
-      # crates/package.json — which is the same command for local runs.
-      - name: Generate Rust coverage report
-        run: |
-          mkdir -p target/coverage
-          pixi run -e default bash -c '
-            PROJ_DATA=$CONDA_PREFIX/share/proj \
-            QGIS_PLUGINPATH=$CONDA_PREFIX/lib/qgis/plugins \
-            cargo llvm-cov \
-              --workspace \
-              --exclude qgis-sys \
-              --no-default-features \
-              --lcov \
-              --output-path target/coverage/rust-lcov.info \
-              -- --test-threads=1
-          '
-
-      - name: Upload Rust coverage report
+      - name: Upload coverage reports
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: rust-coverage
-          path: target/coverage/rust-lcov.info
+          name: coverage
+          path: target/coverage/
           if-no-files-found: ignore
           retention-days: 7
 
-      - name: Build and install qgis-rs
-        working-directory: py-packages/qgis-rs
-        run: maturin develop
-
-      - name: Test qgis-rs Python API and FFI with coverage
-        env:
-          QGIS_REQUIRE_NATIVE: "1"
-        run: |
-          mkdir -p target/coverage
-          python -m pytest py-packages/qgis-rs/tests -v \
-            --cov=qgis_rs \
-            --cov-report=term-missing \
-            --cov-report=xml:target/coverage/python-qgis-rs.xml
-
-      - name: Build and install qgis-sdk
-        working-directory: py-packages/qgis-sdk
-        run: maturin develop
-
-      - name: Test qgis-sdk Python API and FFI with coverage
-        env:
-          QGIS_REQUIRE_NATIVE: "1"
-        run: |
-          mkdir -p target/coverage
-          python -m pytest py-packages/qgis-sdk/tests -v \
-            --cov=qgis_sdk \
-            --cov-report=term-missing \
-            --cov-report=xml:target/coverage/python-qgis-sdk.xml
-
-      - name: Upload Python coverage reports
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: python-coverage
-          path: target/coverage/python-*.xml
-          if-no-files-found: ignore
-          retention-days: 7
-
-      # Uploads the lcov + pytest XML reports. Works tokenless on public
-      # repos; CODECOV_TOKEN covers private mirrors. A Codecov outage must
-      # never turn a green gate red, so upload failures stay non-fatal.
+      # Tokenless on public repos; CODECOV_TOKEN covers private mirrors. A
+      # Codecov outage must never turn a green gate red, so this stays
+      # non-fatal.
       - name: Upload coverage to Codecov
+        if: always()
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
-          files: target/coverage/rust-lcov.info,target/coverage/python-qgis-rs.xml,target/coverage/python-qgis-sdk.xml
+          directory: target/coverage
           fail_ci_if_error: false
           token: ${{ secrets.CODECOV_TOKEN }}

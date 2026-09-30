@@ -1,0 +1,171 @@
+# release
+#
+# Triggered only by an immutable version tag (created by autorelease.yml). One
+# protected job verifies the version, re-runs the gate on the tagged commit,
+# builds every artifact, then attempts each external registry independently and
+# always creates the GitHub Release when verification and the builds succeeded.
+#
+# The asymmetry is deliberate: a build failure is release-blocking, a registry
+# outage is not. The GitHub Release holds the exact bytes either way, so a
+# maintainer can retry one service from the same tag.
+name: release
+
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+
+# Publishing the same tag twice would race immutable registry versions and the
+# GitHub Release itself.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    name: publish ${{ github.ref_name }}
+    runs-on: ubuntu-latest
+    environment: release
+    timeout-minutes: 240
+    # The protected environment gates this union of capabilities. Each
+    # credential is used only by the step that needs it: OIDC for prefix.dev,
+    # PyPI and npmjs; packages for the GitHub npm registry; contents for the
+    # final GitHub Release.
+    permissions:
+      contents: write
+      id-token: write
+      packages: write
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up pixi
+        uses: prefix-dev/setup-pixi@d3f436a425481402e6a95a1d1fc10331c708cd9e # v0.10.2
+        with:
+          pixi-version: v0.81.0
+          run-install: false
+          cache: false
+
+      - name: Cache the pixi environments
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .pixi/envs
+          key: pixi-envs-${{ runner.os }}-${{ hashFiles('pixi.lock') }}-${{ github.sha }}
+          restore-keys: |
+            pixi-envs-${{ runner.os }}-${{ hashFiles('pixi.lock') }}-
+            pixi-envs-${{ runner.os }}-
+
+      - name: Install the pixi environments
+        run: pixi install --locked -e default -e bun
+
+      - name: Install the Bun workspace from the root lockfile
+        run: pixi run -e bun bun-install
+
+      # The tag, the workspace manifest and every package manifest must
+      # describe one release.
+      - name: Verify release version
+        run: bash scripts/release/verify-version.sh "${GITHUB_REF_NAME}"
+
+      # Re-run the gate on the tagged commit: a tag can be created from a
+      # commit that never passed the run associated with main.
+      - name: Run the release gates
+        run: pixi run gates
+
+      - name: Build every release artifact
+        run: bash scripts/release/build-artifacts.sh
+
+      - name: Write checksums
+        run: bash scripts/release/checksums.sh
+
+      # pixi exchanges GitHub's short-lived OIDC identity for channel access.
+      - name: Publish to prefix.dev
+        id: prefix
+        continue-on-error: true
+        run: pixi upload prefix --channel '@archont561/qgis-rs' --generate-attestation dist/conda/*.conda
+
+      # PyPI exchanges this job's OIDC identity for a short-lived upload token.
+      # Configure the qgis-rs and qgis-sdk projects on PyPI to trust
+      # Archont561/qgis-rs, release.yml, environment release before the first
+      # upload; no PYPI_TOKEN belongs in GitHub secrets.
+      - name: Publish to PyPI
+        id: pypi
+        continue-on-error: true
+        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # release/v1
+        with:
+          packages-dir: dist/pypi
+
+      # npm Trusted Publishing needs npm >=11.5.1 and Node >=22.14. Bun remains
+      # the project runtime and built the packages above; this isolated npm CLI
+      # exists only because Bun does not yet support npm's Actions OIDC
+      # exchange. Do not add an npm token.
+      - name: Install npm CLI for trusted publishing
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
+          package-manager-cache: false
+
+      - name: Verify npm Trusted Publishing support
+        run: |
+          set -euo pipefail
+          npm --version
+          npm --version | awk -F. '($1 > 11) || ($1 == 11 && $2 >= 5) { exit 0 } { exit 1 }'
+
+      - name: Publish to npmjs
+        id: npm
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          for tarball in dist/npm/*.tgz; do
+            npm publish --access public --provenance "$tarball"
+          done
+
+      - name: Publish to GitHub Packages
+        id: github_packages
+        continue-on-error: true
+        env:
+          NODE_AUTH_TOKEN: ${{ github.token }}
+        run: bash scripts/release/publish-github-packages.sh
+
+      - name: Publish Rust crates to crates.io
+        id: crates
+        continue-on-error: true
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
+        run: bash scripts/release/publish-crates.sh
+
+      # Registry failures stay visible without making the verified release
+      # disappear.
+      - name: Summarize external publication
+        if: ${{ always() }}
+        run: |
+          {
+            echo "### External registry publication"
+            echo
+            echo "| Target | Result |"
+            echo "| --- | --- |"
+            echo "| prefix.dev | ${{ steps.prefix.outcome }} |"
+            echo "| PyPI | ${{ steps.pypi.outcome }} |"
+            echo "| npmjs | ${{ steps.npm.outcome }} |"
+            echo "| GitHub Packages | ${{ steps.github_packages.outcome }} |"
+            echo "| crates.io | ${{ steps.crates.outcome }} |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # Required and last: it holds the exact build outputs whether or not a
+      # third-party registry accepted its copy. Do not make it optional and do
+      # not give it `if: always()`.
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            --verify-tag \
+            --generate-notes \
+            --title "qgis-rs ${GITHUB_REF_NAME#v}" \
+            dist/conda/*.conda dist/pypi/* dist/npm/*.tgz dist/SHA256SUMS

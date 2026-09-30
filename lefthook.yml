@@ -52,10 +52,13 @@ commit-msg:
 
 pre-push:
   jobs:
-    - name: turbo-lint
-      # The repo-wide packages' gates, fanned out by turborepo. `lint` covers
-      # biome, cargo fmt --check, clang-format and clippy; `test` covers the
-      # Rust suites, both Python packages, the napi addon and the bridge.
-      run: pixi run -e bun bun x turbo run lint
-    - name: turbo-test
-      run: pixi run -e bun bun x turbo run test
+    # One call, the same file CI runs (scripts/ci.sh): repo lints, the turbo
+    # lint fan-out, the format-drift gate, every package's tests and
+    # pack:check. `gates` is `ci` minus the coverage producers, which are the
+    # expensive half and are only useful once they can be uploaded.
+    - name: gates
+      run: pixi run gates
+    # Cheap, and the one failure that cannot be fixed after a release is cut.
+    - name: version-check
+      glob: "{pixi.toml,Cargo.toml,**/package.json,**/pyproject.toml}"
+      run: pixi run -e bun version-check

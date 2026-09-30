@@ -15,7 +15,7 @@
 #            tooling (cargo-llvm-cov / nextest / deny). Everything that touches
 #            QGIS lives here, and this is what the published sandbox branch
 #            ships.
-#   bun      Bun, for apps/docs (Astro Starlight), the JS test suites, and the
+#   bun      Bun, for docs/ (Astro Starlight), the JS test suites, and the
 #            napi addon build.
 #
 # WHY BUN CANNOT JOIN `default` — do not "simplify" this back into one
@@ -58,6 +58,11 @@
 
 [workspace]
 name = "qgis-rs"
+# THE release version. Every other manifest in the repository restates or
+# inherits this number and is checked against it by `pixi run version-check`
+# (scripts/version.ts), which the CI gate runs. Bump it with
+# `pixi run version-set X.Y.Z`, never by hand.
+version = "0.2.0"
 channels = ["conda-forge"]
 platforms = ["linux-64"]
 # Enables the `[package]` section used by py-packages/qgis-sdk, which the workspace
@@ -203,7 +208,7 @@ rust = { workspace = true }
 bun = { cmd = "bun", default-environment = "bun" }
 
 # One install for the whole Bun workspace at the repository root: package.json
-# declares `workspaces: ["ts-packages/*", "apps/*"]`, so this covers the docs
+# declares `workspaces: ["ts-packages/*", "docs", ...]`, so this covers the docs
 # app, the napi package and the SDK bridge. Members carry no lockfile of their
 # own; root bun.lock is the single resolution record.
 bun-install = { cmd = "bun install --frozen-lockfile", description = "Install the Bun workspace from the root lockfile", default-environment = "bun" }
@@ -259,180 +264,43 @@ bun = { features = ["bun"] }
 # ---------------------------------------------------------------------------
 [tasks]
 
-# ── internal ──────────────────────────────────────────────────────────────────
-setup = { cmd = "bash -c 'L=\"$CONDA_PREFIX/lib\"; if [ -e \"$L/libqca-qt6.so.2\" ]; then ln -sf \"$L/libqca-qt6.so.2\" \"$L/libqca-qt5.so.2\"; elif [ -e \"$L/libqca-qt5.so.2.3.12\" ]; then ln -sf libqca-qt5.so.2.3.12 \"$L/libqca-qt5.so.2\"; else exit 1; fi'", description = "Link libqca under the Qt5 soname QGIS still asks for, whichever flavor the env provides", default-environment = "default" }
-# ── internal (hook plumbing) ───────────────────────────────────────────────────
-# Optional args: lefthook passes only the staged C++ files (`pixi run check-cpp
-# -- a.cpp b.h`); with no args the whole tree is checked via `find`. This task
-# stays here as hook plumbing; the @qgis/rust facade carries its own inline
-# equivalent inside its package lint task.
-check-cpp = { cmd = """bash -c '
-  if [ $# -gt 0 ]; then
-    clang-format --dry-run --Werror "$@"
-  else
-    clang-format --dry-run --Werror $(find crates/qgis-sys/src crates/qgis-sys/include -name "*.cpp" -o -name "*.h")
-  fi' _""", default-environment = "default" }
+# Every task below is one line. Anything longer lives in scripts/ and is called
+# from here — see scripts/README.md for why (a multi-line command embedded in
+# TOML is unreviewable, un-lintable, and cannot be run outside this manifest,
+# which is exactly how a local gate and a CI gate drift apart).
 
-# ── lint tooling (lefthook + CI share these) ──────────────────────────────────
-# Conventional-commit check for the `commit-msg` hook; reads the proposed
-# message from stdin (git passes it via {1} in lefthook.yml).
-lint-commit = { cmd = "convco check --from-stdin", default-environment = "default" }
-# Conventional-commit changelog preview for the pending release. Write it with
-# `convco changelog -o CHANGELOG.md`; the checked-in .versionrc configures
-# convco's changelog tool.
+# ── environment repair ────────────────────────────────────────────────────────
+setup = { cmd = "bash scripts/setup-qca.sh", description = "Link libqca under the Qt5 soname QGIS still asks for", default-environment = "default" }
+
+# ── the gate ──────────────────────────────────────────────────────────────────
+# One call, run identically by a contributor before pushing and by ci.yml:
+# repo lints, turbo lint, format-drift gate, tests, pack:check, coverage.
+ci = { cmd = "bash scripts/ci.sh", description = "The full gate: repo lints, turbo lint/format/test/pack:check, coverage", default-environment = "bun" }
+gates = { cmd = "bash scripts/ci.sh --no-coverage", description = "`ci` without the coverage producers — the fast pre-push loop", default-environment = "bun" }
+
+# ── lint tooling (lefthook, the gate and CI share these) ──────────────────────
+# Optional arguments are staged files from lefthook; with none they check the
+# whole relevant tree.
+check-cpp = { cmd = "bash scripts/check-cpp.sh", description = "clang-format gate for the C++ shim (staged files, or the whole tree)", default-environment = "default" }
+lint-toml = { cmd = "bash scripts/lint-toml.sh", description = "taplo canonicality check for pixi.toml and .pixi-sandbox.toml", default-environment = "default" }
+lint-actions = { cmd = "actionlint", description = "Lint .github/workflows/*.yml", default-environment = "default" }
+lint-commit = { cmd = "convco check --from-stdin", description = "Validate a commit message against the conventional-commit spec", default-environment = "default" }
+
+# ── release plumbing ──────────────────────────────────────────────────────────
+# `[workspace] version` at the top of this file is the single source of truth;
+# these three read, verify and rewrite it. See scripts/version.ts.
+version = { cmd = "bun scripts/version.ts", description = "Print the release version", depends-on = ["bun-install"], default-environment = "bun" }
+version-check = { cmd = "bun scripts/version.ts --check", description = "Fail if any manifest disagrees with the workspace version", depends-on = ["bun-install"], default-environment = "bun" }
+version-set = { cmd = "bun scripts/version.ts --set", description = "Rewrite every manifest to a new X.Y.Z (used by prepare-release)", depends-on = ["bun-install"], default-environment = "bun" }
 changelog = { cmd = "convco changelog", description = "Preview the conventional-commit changelog for the pending release", default-environment = "default" }
 
-# The one-call CI gate (and the same command locally before pushing). Package
-# verbs stay in each package's package.json; this task only sequences the
-# steps and lets turbo skip cached work. The docs site builds in docs.yml.
-ci = { cmd = """bash -c '
-  set -eu
-  pixi run -e default lint-toml
-  pixi run -e default lint-actions
-  pixi run -e bun bun x turbo run lint --filter="!qgis-rs-docs"
-  pixi run -e bun bun x turbo run format --filter="!qgis-rs-docs"
-  if ! git diff --exit-code --quiet; then
-    echo "unformatted files — run bun x turbo run format and commit" >&2
-    exit 1
-  fi
-  pixi run -e bun bun x turbo run test --filter="!qgis-rs-docs"
-  pixi run -e bun bun x turbo run pack:check
-'""", description = "Repo lints + turbo lint/format-gate/test/pack:check (excludes the docs site)", default-environment = "bun" }
-# Optional args like check-cpp: hooks check only staged manifests
-# (`pixi run lint-toml -- a.toml b.toml`); bare `pixi run lint-toml` checks the
-# workspace manifest and the sandbox publish plan alone. Only those two files
-# are kept in taplo's canonical form — the rest of the repo uses the aligned-`=`
-# style, so it is deliberately not taplo-enforced.
-lint-toml = { cmd = """bash -c '
-  if [ $# -gt 0 ]; then
-    taplo fmt --check "$@"
-  else
-    taplo fmt --check pixi.toml .pixi-sandbox.toml
-  fi' _""", default-environment = "default" }
-# Scans .github/workflows/*.yml by default.
-lint-actions = { cmd = "actionlint", default-environment = "default" }
-
-# ── packaging ─────────────────────────────────────────────────────────────────
-# The sandbox bundle (`default` + `bun`) is packed and published by the generated
-# publish-sandbox workflow, not by a local task here. Validate the reviewed plan
-# config with `pixi run lint-toml` (taplo); restore the published transport
-# offline with `scripts/restore.sh`, which lives outside pixi because the whole
-# point is that pixi is not installed on the machine that runs it.
-
-# ── scaffold ──────────────────────────────────────────────────────────────────
-# Usage: pixi run scaffold <layer> <concept> <qgis_class> <short_name>
-# Example: pixi run scaffold core geometry QgsGeometry geometry
-scaffold = { args = [
-  { arg = "layer" },
-  { arg = "concept" },
-  { arg = "qgis_class" },
-  { arg = "short_name" },
-], cmd = """bash -c '
-  CRATE=crates/qgis-sys
-  LAYER="{{ layer }}"
-  CONCEPT="{{ concept }}"
-  QCLASS="{{ qgis_class }}"
-  SHORT="{{ short_name }}"
-  HANDLE="${QCLASS}Handle"
-  DIR="$CRATE/src/$LAYER/$CONCEPT"
-
-  mkdir -p "$DIR"
-
-  # ── header ──────────────────────────────────────────────────────────────
-  cat > "$CRATE/include/$LAYER/$CONCEPT.h" << EOF
-#pragma once
-
-#include "rust/cxx.h"
-#include "qgis-sys/include/core/handle.h"
-
-namespace qgis_shim::$LAYER {
-
-QGIS_DECLARE_HANDLE($HANDLE);
-
-} // namespace qgis_shim::$LAYER
-
-#include "qgis-sys/src/$LAYER/$CONCEPT/$SHORT.rs.h"
-
-namespace qgis_shim::$LAYER {
-
-// TODO: declare FFI functions here
-
-} // namespace qgis_shim::$LAYER
-EOF
-
-  # ── rust bridge ─────────────────────────────────────────────────────────
-  cat > "$DIR/$SHORT.rs" << EOF
-#[cxx::bridge(namespace = "qgis_shim::$LAYER")]
-pub mod ffi {
-    unsafe extern "C++" {
-        include!("qgis-sys/include/$LAYER/$CONCEPT.h");
-
-        type $HANDLE;
-
-        // TODO: declare FFI functions here
-    }
-}
-EOF
-
-  # ── cpp shim ────────────────────────────────────────────────────────────
-  cat > "$DIR/$SHORT.cpp" << EOF
-#include "qgis-sys/include/$LAYER/$CONCEPT.h"
-#include "qgis-sys/include/core/convert.h"
-
-// TODO: #include <qgs....h>
-
-// QGIS_DEFINE_HANDLE_DTOR(qgis_shim::$LAYER, $HANDLE, ::$QCLASS)
-
-namespace {
-
-// QGIS_HANDLE_CAST(qgis_shim::$LAYER::$HANDLE, ::$QCLASS)
-
-} // namespace
-
-namespace qgis_shim::$LAYER {
-
-// TODO: implement FFI functions here
-
-} // namespace qgis_shim::$LAYER
-EOF
-
-  # ── mod.rs ──────────────────────────────────────────────────────────────
-  cat > "$DIR/mod.rs" << EOF
-pub mod $SHORT;
-EOF
-
-  # ── wire into parent mod.rs ─────────────────────────────────────────────
-  PARENT_MOD="$CRATE/src/$LAYER/mod.rs"
-  if ! grep -q "pub mod $CONCEPT;" "$PARENT_MOD" 2>/dev/null; then
-    echo "pub mod $CONCEPT;" >> "$PARENT_MOD"
-  fi
-
-  # ── wire into lib.rs ────────────────────────────────────────────────────
-  LIB_RS="$CRATE/src/lib.rs"
-  ALIAS="${SHORT}_ffi"
-  USE_LINE="pub use $LAYER::$CONCEPT::$SHORT::ffi as $ALIAS;"
-  if ! grep -q "$ALIAS" "$LIB_RS" 2>/dev/null; then
-    echo "$USE_LINE" >> "$LIB_RS"
-  fi
-
-  echo ""
-  echo "✅ scaffolded $LAYER/$CONCEPT"
-  echo "   header:  $CRATE/include/$LAYER/$CONCEPT.h"
-  echo "   bridge:  $DIR/$SHORT.rs"
-  echo "   shim:    $DIR/$SHORT.cpp"
-  echo "   mod:     $DIR/mod.rs"
-  echo ""
-  echo "Next steps:"
-  echo "  1. Edit the header — declare FFI functions"
-  echo "  2. Edit the .rs    — declare matching Rust signatures"
-  echo "  3. Edit the .cpp   — implement the functions"
-  echo "  4. cargo build -p qgis-sys"
-'""", default-environment = "default" }
+# ── codegen ───────────────────────────────────────────────────────────────────
+# Usage: pixi run scaffold <layer> <concept> <QgisClass> <short_name>
+scaffold = { cmd = "bash scripts/scaffold.sh", description = "Scaffold a qgis-sys binding: header + cxx bridge + C++ shim + wiring", default-environment = "default" }
 
 # ── internal staged-file plumbing ─────────────────────────────────────────────
-# lefthook's js-biome job checks exactly the files being committed via this
-# task with the global biome config. Repo-wide lint/format runs through turbo
-# (`bun x turbo run lint` / `format`), not through this manifest.
-_biome = { cmd = "bash -c 'bun x biome check \"$@\"' _", depends-on = [
+# lefthook's js-biome job checks exactly the files being committed. Repo-wide
+# enforcement runs through turbo (`bun x turbo run lint`), not through here.
+_biome = { cmd = "bun x biome check", depends-on = [
   "bun-install",
 ], description = "Internal: biome check on explicit files (lefthook staged-files path)", default-environment = "bun" }

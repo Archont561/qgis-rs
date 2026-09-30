@@ -30,7 +30,9 @@ okf_version: "0.2"
 * [Lefthook](/lefthook.md) — Pre-commit and commit-msg hooks for formatting, linting, and conventional commits.
 * [Scaffold Task](/scaffold.md) — The pixi run scaffold code-generation task for adding new QGIS type bindings.
 * [Testing](/testing.md) — Test structure, fixtures, environment variables, and QT_QPA_PLATFORM requirements.
-* [Documentation Site](/documentation-site.md) — Astro Starlight documentation site in apps/docs/ with Bun runtime.
+* [Documentation Site](/documentation-site.md) — Astro Starlight documentation site in docs/ with Bun runtime.
+
+* [Release Model](/release.md) — One version, one tag, one set of artifacts across crates.io, PyPI, npm, GitHub Packages and prefix.dev.
 
 # Strategy and Decisions
 

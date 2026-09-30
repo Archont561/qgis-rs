@@ -54,22 +54,19 @@ dist/
 .turbo/
 
 # docs app (Bun / Astro)
-apps/docs/node_modules/
+docs/node_modules/
 # The Bun workspace at the root owns JS resolution and its root bun.lock is the
 # single lockfile. A root npm lock, or a member lock under ts-packages/, is a
 # mistake: two lockfiles for one dependency graph resolve differently.
 /package-lock.json
 ts-packages/*/package-lock.json
-apps/*/package-lock.json
-apps/docs/dist/
-apps/docs/.astro/
+docs/package-lock.json
+docs/dist/
+docs/.astro/
 
 # bun / node / napi — every JS package lives in ts-packages/
 node_modules/
 ts-packages/*/dist/
-apps/*/node_modules/
-apps/*/dist/
-apps/docs/.astro/
 # the compiled addon napi build drops next to the package.json
 ts-packages/qgis-node/*.node
 

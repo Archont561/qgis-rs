@@ -7,7 +7,8 @@
 	},
 	"files": {
 		"includes": [
-			"apps/**",
+			"scripts/*.ts",
+			"docs/**",
 			"ts-packages/**",
 			"package.json",
 			"bunfig.toml",
@@ -23,7 +24,9 @@
 	},
 	"overrides": [
 		{
-			"includes": ["ts-packages/qgis-sdk-bridge/src/react.ts"],
+			"includes": [
+				"ts-packages/qgis-sdk-bridge/src/react.ts"
+			],
 			"linter": {
 				"rules": {
 					"correctness": {
