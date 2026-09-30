@@ -2,46 +2,25 @@
 	"$schema": "https://turbo.build/schema.json",
 	"tasks": {
 		"build": {
-			"dependsOn": [
-				"^build"
-			],
-			"outputs": [
-				"dist/**",
-				"*.node"
-			],
-			"inputs": [
-				"src/**",
-				"package.json",
-				"tsconfig.json"
-			]
+			"dependsOn": ["^build"],
+			"outputs": ["dist/**", "*.node"],
+			"inputs": ["src/**", "package.json", "tsconfig.json"]
 		},
 		"test": {
-			"dependsOn": [
-				"build",
-				"^build"
-			],
+			"dependsOn": ["build", "^build"],
 			"outputs": [],
-			"inputs": [
-				"src/**",
-				"tests/**",
-				"bin/**",
-				"package.json"
-			]
+			"inputs": ["src/**", "tests/**", "bin/**", "package.json"]
 		},
 		"lint": {
 			"outputs": []
 		},
 		"coverage": {
-			"dependsOn": [
-				"build"
-			],
+			"dependsOn": ["build"],
 			"outputs": [],
 			"cache": false
 		},
 		"pack:check": {
-			"dependsOn": [
-				"build"
-			],
+			"dependsOn": ["build"],
 			"outputs": []
 		},
 		"format": {
@@ -74,10 +53,7 @@
 				"../../Cargo.toml",
 				"../../Cargo.lock"
 			],
-			"outputs": [
-				"qgis-rs.*.node",
-				".napi-generated.d.ts"
-			]
+			"outputs": ["qgis-rs.*.node", ".napi-generated.d.ts"]
 		},
 		"qgis-rs#test": {
 			"inputs": [
@@ -91,9 +67,7 @@
 				"../../crates/qgis-server/**",
 				"../../crates/qgis-styles/**"
 			],
-			"dependsOn": [
-				"build"
-			]
+			"dependsOn": ["build"]
 		},
 		"qgis-rs-py#build": {
 			"inputs": [
@@ -105,9 +79,7 @@
 				"../../Cargo.toml",
 				"../../Cargo.lock"
 			],
-			"outputs": [
-				"dist/**"
-			],
+			"outputs": ["dist/**"],
 			"cache": false
 		},
 		"qgis-sdk-py#build": {
@@ -120,9 +92,7 @@
 				"../../Cargo.toml",
 				"../../Cargo.lock"
 			],
-			"outputs": [
-				"dist/**"
-			],
+			"outputs": ["dist/**"],
 			"cache": false
 		},
 		"@qgis/rust#build": {

@@ -18,7 +18,7 @@
  * Run with bun (the `bun` pixi environment), which is where every other JS tool
  * in this repository already lives.
  */
-import { readFileSync, readdirSync, writeFileSync, existsSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 
 /**
@@ -32,16 +32,23 @@ import { dirname, join, relative, resolve } from "node:path";
  * manifests with no workspace table, and picking one of those would silently
  * produce the wrong number.
  */
-export function workspaceManifestPath(startDir: string = process.cwd()): string {
+export function workspaceManifestPath(
+	startDir: string = process.cwd(),
+): string {
 	let dir = resolve(startDir);
 	for (;;) {
 		const candidate = join(dir, "pixi.toml");
-		if (existsSync(candidate) && /^\[workspace\]$/m.test(readFileSync(candidate, "utf8"))) {
+		if (
+			existsSync(candidate) &&
+			/^\[workspace\]$/m.test(readFileSync(candidate, "utf8"))
+		) {
 			return candidate;
 		}
 		const parent = dirname(dir);
 		if (parent === dir) {
-			throw new Error(`no pixi.toml with a [workspace] table at or above ${startDir}`);
+			throw new Error(
+				`no pixi.toml with a [workspace] table at or above ${startDir}`,
+			);
 		}
 		dir = parent;
 	}
@@ -68,7 +75,10 @@ function versionInTable(manifestPath: string, table: string): string {
 	// Anchored on `^[table]$` so `[workspace]` never matches `[workspace.package]`.
 	// The `(?:^\[|$(?![\s\S]))` tail lets the last table in a file be read too.
 	const body = manifest.match(
-		new RegExp(`^\\[${tablePattern}\\]$([\\s\\S]*?)(?:^\\[|$(?![\\s\\S]))`, "m"),
+		new RegExp(
+			`^\\[${tablePattern}\\]$([\\s\\S]*?)(?:^\\[|$(?![\\s\\S]))`,
+			"m",
+		),
 	)?.[1];
 	const value = body?.match(/^version\s*=\s*"([^"]+)"/m)?.[1];
 	if (!value) throw new Error(`no version in [${table}] of ${manifestPath}`);
@@ -77,7 +87,9 @@ function versionInTable(manifestPath: string, table: string): string {
 
 /** `version` out of a `package.json`. */
 function npmVersion(packageJsonPath: string): string {
-	const parsed = JSON.parse(readFileSync(packageJsonPath, "utf8")) as { version?: string };
+	const parsed = JSON.parse(readFileSync(packageJsonPath, "utf8")) as {
+		version?: string;
+	};
 	if (!parsed.version) throw new Error(`no version in ${packageJsonPath}`);
 	return parsed.version;
 }
@@ -92,15 +104,22 @@ function npmVersion(packageJsonPath: string): string {
  * bumping them would upload crates that ask the registry for their own
  * previous version.
  */
-function cargoInternalDependencyVersions(root: string): { path: string; version: string }[] {
+function cargoInternalDependencyVersions(
+	root: string,
+): { path: string; version: string }[] {
 	const manifest = readFileSync(join(root, "Cargo.toml"), "utf8");
-	const body = manifest.match(/^\[workspace\.dependencies\]$([\s\S]*?)(?:^\[|$(?![\s\S]))/m)?.[1] ?? "";
-	return [...body.matchAll(/^(qgis-[a-z]+)\s*=\s*\{[^\n]*version\s*=\s*"([^"]+)"[^\n]*\}/gm)].map(
-		(match) => ({
-			path: `Cargo.toml [workspace.dependencies].${match[1]}`,
-			version: match[2] as string,
-		}),
-	);
+	const body =
+		manifest.match(
+			/^\[workspace\.dependencies\]$([\s\S]*?)(?:^\[|$(?![\s\S]))/m,
+		)?.[1] ?? "";
+	return [
+		...body.matchAll(
+			/^(qgis-[a-z]+)\s*=\s*\{[^\n]*version\s*=\s*"([^"]+)"[^\n]*\}/gm,
+		),
+	].map((match) => ({
+		path: `Cargo.toml [workspace.dependencies].${match[1]}`,
+		version: match[2] as string,
+	}));
 }
 
 /** Read `[workspace] version` out of the workspace manifest. */
@@ -117,7 +136,9 @@ export function workspaceVersion(startDir: string = process.cwd()): string {
  * the check below would then have to notice, and the entire point of
  * `[workspace.package]` is that there is nothing to notice.
  */
-export function hardcodedCargoVersions(startDir: string = process.cwd()): string[] {
+export function hardcodedCargoVersions(
+	startDir: string = process.cwd(),
+): string[] {
 	const root = repoRoot(startDir);
 	// A plain readdir rather than a glob helper: this module is also read by
 	// tooling that is not bun, and `crates/` is one directory deep by
@@ -129,7 +150,9 @@ export function hardcodedCargoVersions(startDir: string = process.cwd()): string
 		.sort()
 		.filter((manifest) => {
 			const body =
-				readFileSync(manifest, "utf8").match(/^\[package\]$([\s\S]*?)^\[/m)?.[1] ?? "";
+				readFileSync(manifest, "utf8").match(
+					/^\[package\]$([\s\S]*?)^\[/m,
+				)?.[1] ?? "";
 			return !/^version\.workspace\s*=\s*true\s*$/m.test(body);
 		});
 }
@@ -152,7 +175,10 @@ export function publishedVersions(startDir: string = process.cwd()): {
 		path: `${path} [${table}]`,
 		version: versionInTable(join(root, path), table),
 	});
-	const json = (path: string) => ({ path, version: npmVersion(join(root, path)) });
+	const json = (path: string) => ({
+		path,
+		version: npmVersion(join(root, path)),
+	});
 	return {
 		expected: workspaceVersion(startDir),
 		surfaces: [
@@ -181,10 +207,17 @@ export function publishedVersions(startDir: string = process.cwd()): {
 }
 
 /** Replace one literal version in a named TOML table. */
-function setTomlVersion(manifestPath: string, table: string, version: string): void {
+function setTomlVersion(
+	manifestPath: string,
+	table: string,
+	version: string,
+): void {
 	const manifest = readFileSync(manifestPath, "utf8");
 	const tablePattern = table.replaceAll(".", "\\.");
-	const pattern = new RegExp(`(^\\[${tablePattern}\\]$[\\s\\S]*?^version\\s*=\\s*)"[^"]+"`, "m");
+	const pattern = new RegExp(
+		`(^\\[${tablePattern}\\]$[\\s\\S]*?^version\\s*=\\s*)"[^"]+"`,
+		"m",
+	);
 	if (!pattern.test(manifest)) {
 		throw new Error(`no literal version in [${table}] of ${manifestPath}`);
 	}
@@ -192,7 +225,10 @@ function setTomlVersion(manifestPath: string, table: string, version: string): v
 }
 
 /** Keep the crates.io version of every internal path dependency on the release version. */
-function setCargoInternalDependencyVersions(root: string, version: string): void {
+function setCargoInternalDependencyVersions(
+	root: string,
+	version: string,
+): void {
 	const path = join(root, "Cargo.toml");
 	const manifest = readFileSync(path, "utf8");
 	writeFileSync(
@@ -206,23 +242,39 @@ function setCargoInternalDependencyVersions(root: string, version: string): void
 
 /** Write `version` into a package.json, preserving tab indentation (biome's style here). */
 function setNpmVersion(packageJsonPath: string, version: string): void {
-	const parsed = JSON.parse(readFileSync(packageJsonPath, "utf8")) as Record<string, unknown>;
+	const parsed = JSON.parse(readFileSync(packageJsonPath, "utf8")) as Record<
+		string,
+		unknown
+	>;
 	parsed.version = version;
 	writeFileSync(packageJsonPath, `${JSON.stringify(parsed, null, "\t")}\n`);
 }
 
 /** Rewrite every manifest that owns a literal; the Cargo crates inherit and follow. */
-export function setVersion(version: string, startDir: string = process.cwd()): void {
+export function setVersion(
+	version: string,
+	startDir: string = process.cwd(),
+): void {
 	if (!/^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$/.test(version)) {
-		throw new Error(`release version must be stable semver (X.Y.Z), got ${version}`);
+		throw new Error(
+			`release version must be stable semver (X.Y.Z), got ${version}`,
+		);
 	}
 	const root = repoRoot(startDir);
 	setTomlVersion(join(root, "pixi.toml"), "workspace", version);
 	setTomlVersion(join(root, "Cargo.toml"), "workspace.package", version);
 	setCargoInternalDependencyVersions(root, version);
 	for (const dist of ["qgis-rs", "qgis-sdk"]) {
-		setTomlVersion(join(root, `py-packages/${dist}/pixi.toml`), "package", version);
-		setTomlVersion(join(root, `py-packages/${dist}/pyproject.toml`), "project", version);
+		setTomlVersion(
+			join(root, `py-packages/${dist}/pixi.toml`),
+			"package",
+			version,
+		);
+		setTomlVersion(
+			join(root, `py-packages/${dist}/pyproject.toml`),
+			"project",
+			version,
+		);
 	}
 	for (const path of [
 		"package.json",
@@ -244,7 +296,9 @@ function check(startDir: string = process.cwd()): number {
 	// misleading about the cause.
 	const hardcoded = hardcodedCargoVersions(startDir);
 	if (hardcoded.length > 0) {
-		process.stderr.write("hardcoded Cargo versions (use version.workspace = true):\n");
+		process.stderr.write(
+			"hardcoded Cargo versions (use version.workspace = true):\n",
+		);
 		for (const manifest of hardcoded) {
 			process.stderr.write(`  ${relative(repoRoot(startDir), manifest)}\n`);
 		}
@@ -263,7 +317,9 @@ function check(startDir: string = process.cwd()): number {
 	for (const surface of drifted) {
 		process.stderr.write(`  ${surface.path} says ${surface.version}\n`);
 	}
-	process.stderr.write("Run `pixi run version-set <X.Y.Z>` to make every manifest agree.\n");
+	process.stderr.write(
+		"Run `pixi run version-set <X.Y.Z>` to make every manifest agree.\n",
+	);
 	return 1;
 }
 
