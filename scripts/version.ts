@@ -18,7 +18,7 @@
  * Run with bun (the `bun` pixi environment), which is where every other JS tool
  * in this repository already lives.
  */
-import { readFileSync, writeFileSync, existsSync } from "node:fs";
+import { readFileSync, readdirSync, writeFileSync, existsSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 
 /**
@@ -28,8 +28,9 @@ import { dirname, join, relative, resolve } from "node:path";
  * keeps working when a bundler inlines it, and so it behaves the same whether
  * the caller is a pixi task at the repository root or a human in a subdirectory.
  * The `[workspace]` test is what makes "nearest ancestor" safe: the
- * `py-packages/*/pixi.toml` manifests are package manifests with no workspace
- * table, and picking one of those would silently produce the wrong number.
+ * per-distribution pixi.toml manifests under py-packages are package
+ * manifests with no workspace table, and picking one of those would silently
+ * produce the wrong number.
  */
 export function workspaceManifestPath(startDir: string = process.cwd()): string {
 	let dir = resolve(startDir);
@@ -118,15 +119,19 @@ export function workspaceVersion(startDir: string = process.cwd()): string {
  */
 export function hardcodedCargoVersions(startDir: string = process.cwd()): string[] {
 	const root = repoRoot(startDir);
-	const glob = new Bun.Glob("crates/*/Cargo.toml");
-	return [...glob.scanSync(root)]
+	// A plain readdir rather than a glob helper: this module is also read by
+	// tooling that is not bun, and `crates/` is one directory deep by
+	// construction (see the header of the root Cargo.toml).
+	return readdirSync(join(root, "crates"), { withFileTypes: true })
+		.filter((entry) => entry.isDirectory())
+		.map((entry) => join(root, "crates", entry.name, "Cargo.toml"))
+		.filter((manifest) => existsSync(manifest))
 		.sort()
-		.filter((rel) => {
+		.filter((manifest) => {
 			const body =
-				readFileSync(join(root, rel), "utf8").match(/^\[package\]$([\s\S]*?)^\[/m)?.[1] ?? "";
+				readFileSync(manifest, "utf8").match(/^\[package\]$([\s\S]*?)^\[/m)?.[1] ?? "";
 			return !/^version\.workspace\s*=\s*true\s*$/m.test(body);
-		})
-		.map((rel) => join(root, rel));
+		});
 }
 
 /**
