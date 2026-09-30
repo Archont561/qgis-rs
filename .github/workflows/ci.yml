@@ -121,8 +121,25 @@ jobs:
 
       # The whole gate: repo lints, turbo lint, format drift gate, every
       # package's tests (builds are pulled in transitively), pack:check.
-      - name: Run the CI gate
-        run: pixi run ci
+      # Temporarily expanded from `pixi run ci` to locate a CI-only failure.
+      - name: Gate — repo lints
+        run: |
+          pixi run -e default lint-toml
+          pixi run -e default lint-actions
+
+      - name: Gate — turbo lint
+        run: pixi run -e bun bun x turbo run lint --filter="!qgis-rs-docs"
+
+      - name: Gate — format drift
+        run: |
+          pixi run -e bun bun x turbo run format --filter="!qgis-rs-docs"
+          git diff --exit-code --quiet || { echo "unformatted files" >&2; exit 1; }
+
+      - name: Gate — turbo test
+        run: pixi run -e bun bun x turbo run test --filter="!qgis-rs-docs"
+
+      - name: Gate — pack:check
+        run: pixi run -e bun bun x turbo run pack:check
 
       # With the `python` Cargo feature disabled, PyO3 links to the interpreter
       # for Rust test binaries instead of leaving extension-module symbols open.
