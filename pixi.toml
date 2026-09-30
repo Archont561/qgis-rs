@@ -289,9 +289,15 @@ lint-commit = { cmd = "convco check --from-stdin", description = "Validate a com
 # ── release plumbing ──────────────────────────────────────────────────────────
 # `[workspace] version` at the top of this file is the single source of truth;
 # these three read, verify and rewrite it. See scripts/version.ts.
-version = { cmd = "bun scripts/version.ts", description = "Print the release version", depends-on = ["bun-install"], default-environment = "bun" }
-version-check = { cmd = "bun scripts/version.ts --check", description = "Fail if any manifest disagrees with the workspace version", depends-on = ["bun-install"], default-environment = "bun" }
-version-set = { cmd = "bun scripts/version.ts --set", description = "Rewrite every manifest to a new X.Y.Z (used by prepare-release)", depends-on = ["bun-install"], default-environment = "bun" }
+version = { cmd = "bun scripts/version.ts", description = "Print the release version", depends-on = [
+  "bun-install",
+], default-environment = "bun" }
+version-check = { cmd = "bun scripts/version.ts --check", description = "Fail if any manifest disagrees with the workspace version", depends-on = [
+  "bun-install",
+], default-environment = "bun" }
+version-set = { cmd = "bun scripts/version.ts --set", description = "Rewrite every manifest to a new X.Y.Z (used by prepare-release)", depends-on = [
+  "bun-install",
+], default-environment = "bun" }
 changelog = { cmd = "convco changelog", description = "Preview the conventional-commit changelog for the pending release", default-environment = "default" }
 
 # ── codegen ───────────────────────────────────────────────────────────────────
