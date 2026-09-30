@@ -48,6 +48,9 @@ Currently Linux-only due to QGIS conda-forge availability.
 | `convco`       | ≥0.6, <0.7    | Conventional commit checker       |
 | `taplo`        | —             | TOML format check (`lint-toml`)   |
 | `actionlint`   | —             | GitHub Actions lint (`lint-actions`) |
+| `cargo-llvm-cov` | ≥0.9.1, <0.10 | Rust coverage driver            |
+| `cargo-nextest`  | ≥0.9.146, <0.10 | Rust test runner              |
+| `cargo-deny`     | ≥0.20.2, <0.21  | Cargo dependency/license audit |
 
 ### Feature Layers
 
@@ -61,6 +64,7 @@ deliberately empty. The feature set:
 | `cxx`       | `cxx-compiler`, `clang-tools`                   |
 | `qgis`      | `qgis`                                          |
 | `utils`     | `lefthook`, `convco`, `taplo`, `actionlint`     |
+| `rust-tools`| `cargo-llvm-cov`, `cargo-nextest`, `cargo-deny` (`default` only — not in `bun`) |
 | `py-runtime`| `python` (3.12.*), `maturin`, `pip`, `pytest`, `pytest-cov` + PyQGIS activation env |
 | `py`        | task-only grouping (`py-build`, `py-develop`, `py-test`) |
 | `sdk`       | task-only grouping (`sdk-build`, `sdk-develop`, `sdk-test`, `sdk-doctor`) |
@@ -75,10 +79,31 @@ qgis = ">=3.44.9,<4"
 
 The QGIS dependency is in a feature so that lightweight tasks (formatting, linting Rust code) don't require downloading the entire QGIS stack.
 
-`default` is the implicit environment and activates the `rust`, `cxx`, `qgis`,
-`py-runtime`, `utils`, `py` and `sdk` features, so bare `pixi run <task>`
-resolves without a flag; tasks in the `bun` environment pin
+`default` is the implicit environment and activates the `rust`, `cxx`,
+`rust-tools`, `qgis`, `py-runtime`, `utils`, `py` and `sdk` features, so bare
+`pixi run <task>` resolves without a flag; tasks in the `bun` environment pin
 `default-environment = "bun"`. CI passes `-e` explicitly.
+
+### Feature: `rust-tools`
+
+`cargo-llvm-cov`, `cargo-nextest` and `cargo-deny` — cargo subcommands with no
+build-time QGIS involvement, which conda-forge ships as ordinary packages.
+They used to be `cargo install`-ed beside pixi (CI did exactly that for
+`cargo-llvm-cov`); they are pixi dependencies now like everything else.
+
+They are deliberately **not** part of `[feature.rust]`. That feature is also
+pulled into the `bun` environment, because `napi build` shells out to cargo, and
+`.pixi-sandbox.toml` packs both environments — so folding them in would add
+~40MB of tool binaries to the published transport. A separate feature keeps
+them `default`-only.
+
+**Coverage needs no rustup component.** conda-forge's `rust` package ships its
+own `llvm-profdata` and `llvm-cov` in the sysroot, version-matched to the
+compiler (verified on rust 1.96.1: `llvm 22.1.2-rust-1.96.1-stable`, at
+`$CONDA_PREFIX/lib/rustlib/x86_64-unknown-linux-gnu/bin/`). Since
+`cargo-llvm-cov` finds them through `rustc --print sysroot`, running it inside
+`pixi run -e default` is fully self-contained — which is why `.github/workflows/ci.yml`
+no longer has a `cargo install cargo-llvm-cov` step.
 
 ### Feature: `py-runtime`
 
@@ -113,7 +138,7 @@ developed in place with `maturin develop` instead, which is what CI does.
 
 | Environment | Features                                         | Solve group | Purpose |
 |-------------|--------------------------------------------------|-------------|---------|
-| `default`   | `rust`, `cxx`, `qgis`, `py-runtime`, `utils`, `py`, `sdk` | one | Rust/C++/Python development and tests; what the sandbox branch packs |
+| `default`   | `rust`, `cxx`, `rust-tools`, `qgis`, `py-runtime`, `utils`, `py`, `sdk` | one | Rust/C++/Python development and tests; what the sandbox branch packs |
 | `bun`       | `bun`                                            | one | Bun for the docs app, the bridge suites and the napi addon build |
 
 `default` and `bun` are the only two environments, and the split is forced by

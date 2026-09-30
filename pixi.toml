@@ -11,9 +11,10 @@
 # TWO environments, and the split between them is forced by conda-forge:
 #
 #   default  QGIS + Rust + C++ toolchain + Python + the packaged Python
-#            distributions (qgis-rs, qgis-sdk) + lint tooling. Everything that
-#            touches QGIS lives here, and this is what the published sandbox
-#            branch ships.
+#            distributions (qgis-rs, qgis-sdk) + lint tooling + the cargo test
+#            tooling (cargo-llvm-cov / nextest / deny). Everything that touches
+#            QGIS lives here, and this is what the published sandbox branch
+#            ships.
 #   bun      Bun, for apps/docs (Astro Starlight), the JS test suites, and the
 #            napi addon build.
 #
@@ -104,6 +105,33 @@ rust = { workspace = true }
 cxx-compiler = ">=1.11.0,<2"
 clang-tools = ">=22.1.8,<23"
 
+[feature.rust-tools.dependencies]
+# Rust test/lint tooling that used to be `cargo install`-ed next to pixi (CI
+# installed cargo-llvm-cov this way) or assumed to be on the developer's PATH.
+# They are ordinary cargo subcommands with no build-time QGIS involvement, so
+# conda-forge ships them and pixi owns them like everything else.
+#
+# Deliberately NOT part of [feature.rust]: that feature is also pulled into the
+# `bun` environment (napi build shells out to cargo), and both environments are
+# packed by .pixi-sandbox.toml. Keeping these here makes them `default`-only and
+# keeps them out of the published transport.
+#
+# Lower bounds track the versions the tools were adopted at — the repo pins the
+# bottom of each range and lets the solver float within the minor, so a
+# `pixi lock` picks up patch and minor fixes without a manifest edit.
+#
+# NOTE on coverage: these are the cargo-* drivers only, but that is enough.
+# cargo-llvm-cov shells out to llvm-profdata / llvm-cov, which it finds through
+# `rustc --print sysroot` — and conda-forge's `rust` package ships a
+# version-matched pair there, so coverage is self-contained inside `pixi run
+# -e default` with no rustup `llvm-tools-preview` component involved
+# (verified on rust 1.96.1: llvm 22.1.2-rust-1.96.1-stable, under
+# $CONDA_PREFIX/lib/rustlib/x86_64-unknown-linux-gnu/bin/). That is why
+# .github/workflows/ci.yml no longer `cargo install`s cargo-llvm-cov.
+cargo-llvm-cov = ">=0.9.1,<0.10"
+cargo-nextest = ">=0.9.146,<0.10"
+cargo-deny = ">=0.20.2,<0.21"
+
 [feature.qgis.dependencies]
 qgis = { workspace = true }
 
@@ -153,8 +181,8 @@ QT_QPA_PLATFORM = "offscreen"
 [feature.utils.dependencies]
 lefthook = ">=2.1.9,<3"
 convco = ">=0.6.4,<0.7"
-taplo = "*"
-actionlint = "*"
+taplo = ">=0.10.0,<0.11"
+actionlint = ">=1.7.12,<2"
 
 [feature.bun.dependencies]
 # 1.2+ is required to read the text-format root bun.lock.
@@ -201,7 +229,14 @@ skills = { cmd = "bun x skills", depends-on = [
 [environments]
 # See the header: two environments, split by an icu conflict that no single
 # solve can satisfy. `default` is what the published sandbox branch packs.
-default = { features = ["rust", "cxx", "qgis", "py-runtime", "utils"] }
+default = { features = [
+  "rust",
+  "cxx",
+  "rust-tools",
+  "qgis",
+  "py-runtime",
+  "utils",
+] }
 # QGIS-free on purpose: crates/qgis-node and everything it depends on are pure
 # Rust, so adding `qgis` here would reintroduce the icu conflict.
 bun = { features = ["bun"] }

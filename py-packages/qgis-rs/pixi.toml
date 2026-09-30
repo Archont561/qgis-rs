@@ -28,7 +28,7 @@ channels = [
 
 [package.host-dependencies]
 # Build backend + Rust toolchain + maturin
-hatchling = "*"
+hatchling = ">=1.32.4,<2"
 maturin = ">=1.7,<2"
 rust = ">=1.96.0,<1.97"
 

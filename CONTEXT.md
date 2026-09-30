@@ -193,9 +193,11 @@ edges. Purely internal crates stay Cargo-only; QGIS-dependent tasks are
 `cache: false` in `turbo.json` (QGIS runtime data is not hashable).
 
 Coverage mirrors the CI upload paths under `target/coverage/`. The Rust
-façade's `coverage` needs `cargo-llvm-cov` next to pixi (CI installs it
-system-wide; the conda Rust toolchain carries no llvm-tools-preview
-component).
+façade's `coverage` runs entirely inside the pixi `default` environment:
+`cargo-llvm-cov` is a declared dependency (the `rust-tools` feature) rather
+than a `cargo install` beside pixi, and the conda `rust` package ships its
+own matching `llvm-profdata` / `llvm-cov` inside the sysroot, so no rustup
+`llvm-tools-preview` component is required.
 
 ### Adding a New QGIS Class
 

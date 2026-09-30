@@ -74,7 +74,13 @@ jobs:
           # `python` in pixi.toml and `requires-python` in py-packages/*/pyproject.toml.
           python-version: "3.12"
 
-      - name: Set up Rust with LLVM coverage tools
+      # Coverage no longer needs this component: the pixi `default` environment
+      # now provides `cargo-llvm-cov`, and conda-forge's `rust` package ships
+      # its own matching llvm-profdata / llvm-cov inside the sysroot
+      # (verified on rust 1.96.1 — llvm 22.1.2-rust-1.96.1-stable), so the
+      # coverage step is self-contained. This step is kept for the ordinary
+      # toolchain rustup shims and the cache step below.
+      - name: Set up Rust
         uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de # master
         with:
           toolchain: stable
@@ -106,9 +112,6 @@ jobs:
       - name: Install the Bun workspace from the root lockfile
         run: pixi run -e bun bun-install
 
-      - name: Install cargo-llvm-cov
-        run: cargo install cargo-llvm-cov --version 0.9.1 --locked
-
       # maturin develop installs into an active virtual environment.
       - name: Create Python virtual environment
         run: |
@@ -127,16 +130,28 @@ jobs:
 
       # With the `python` Cargo feature disabled, PyO3 links to the interpreter
       # for Rust test binaries instead of leaving extension-module symbols open.
+      #
+      # `cargo-llvm-cov` is a `default`-environment dependency now (see the
+      # `rust-tools` feature in pixi.toml), so there is no `cargo install` step
+      # and no PATH juggling: the conda toolchain supplies both the driver and
+      # the llvm-profdata / llvm-cov pair it shells out to. Running under pixi
+      # also means the QGIS activation env (QGIS_PREFIX_PATH,
+      # QT_QPA_PLATFORM=offscreen) is present, matching `pixi run coverage` in
+      # crates/package.json — which is the same command for local runs.
       - name: Generate Rust coverage report
         run: |
           mkdir -p target/coverage
-          cargo llvm-cov \
-            --workspace \
-            --exclude qgis-sys \
-            --no-default-features \
-            --lcov \
-            --output-path target/coverage/rust-lcov.info \
-            -- --test-threads=1
+          pixi run -e default bash -c '
+            PROJ_DATA=$CONDA_PREFIX/share/proj \
+            QGIS_PLUGINPATH=$CONDA_PREFIX/lib/qgis/plugins \
+            cargo llvm-cov \
+              --workspace \
+              --exclude qgis-sys \
+              --no-default-features \
+              --lcov \
+              --output-path target/coverage/rust-lcov.info \
+              -- --test-threads=1
+          '
 
       - name: Upload Rust coverage report
         if: always()
