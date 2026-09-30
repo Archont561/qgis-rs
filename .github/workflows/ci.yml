@@ -150,11 +150,11 @@ jobs:
             echo '### CI gate failed'
             echo
             echo '```'
-            tail -n 120 gate.log
+            tail -n 400 gate.log
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
           printf '::error title=CI gate failed::%s\n' \
-            "$(tail -n 40 gate.log | sed -e 's/%/%25/g' -e 's/\r/%0D/g' | awk '{printf "%s%%0A", $0}')"
+            "$(tail -n 300 gate.log | sed -e 's/%/%25/g' -e 's/\r/%0D/g' | awk '{printf "%s%%0A", $0}')"
 
       - name: Upload the gate log
         if: always()
