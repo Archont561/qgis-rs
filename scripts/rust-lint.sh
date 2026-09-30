@@ -42,7 +42,13 @@ pixi run -e default bash -c '
 
   GCC_INC="$(find "$CONDA_PREFIX/lib/gcc" -name stddef.h | head -1 | xargs dirname)"
 
-  find qgis-sys/src -name "*.cpp" -print0 | xargs -0 --no-run-if-empty clang-tidy \
+  # The sources must come BEFORE the `--` separator; everything after it is
+  # the compiler command line. Piping them through xargs would append them
+  # after it, and clang-tidy would answer with its own --help and exit 123.
+  mapfile -d "" SRCS < <(find qgis-sys/src -name "*.cpp" -print0)
+  [ "${#SRCS[@]}" -gt 0 ] || { echo "clang-tidy: no sources under qgis-sys/src" >&2; exit 1; }
+
+  clang-tidy "${SRCS[@]}" \
     --extra-arg="--sysroot=$CONDA_PREFIX/x86_64-conda-linux-gnu/sysroot" \
     --extra-arg="-I$GCC_INC" \
     -- -std=c++17 \
