@@ -145,16 +145,7 @@ jobs:
       # a red run diagnosable from a terminal, a bot, or a phone.
       - name: Summarize the failure
         if: ${{ failure() && steps.gate.outcome == 'failure' }}
-        run: |
-          {
-            echo '### CI gate failed'
-            echo
-            echo '```'
-            tail -n 400 gate.log
-            echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
-          printf '::error title=CI gate failed::%s\n' \
-            "$(tail -n 300 gate.log | sed -e 's/%/%25/g' -e 's/\r/%0D/g' | awk '{printf "%s%%0A", $0}')"
+        run: bash scripts/ci-failure-summary.sh gate.log
 
       - name: Upload the gate log
         if: always()
