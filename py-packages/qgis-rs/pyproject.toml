@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "qgis-rs"
-version = "0.2.0"
+version = "0.1.0"
 description = "Python bindings and CLI for qgis-rs — native-speed QGIS rendering, tiling, and server tools"
 readme = "README.md"
 # The Python this wheel supports is the one QGIS is bundled with, not a range of

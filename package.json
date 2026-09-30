@@ -1,7 +1,7 @@
 {
 	"name": "qgis-rs",
 	"private": true,
-	"version": "0.2.0",
+	"version": "0.1.0",
 	"description": "QGIS SDK — Python + Rust + Bun JS bridge with complete QGIS Web API",
 	"workspaces": [
 		"ts-packages/*",

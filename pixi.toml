@@ -62,7 +62,7 @@ name = "qgis-rs"
 # inherits this number and is checked against it by `pixi run version-check`
 # (scripts/version.ts), which the CI gate runs. Bump it with
 # `pixi run version-set X.Y.Z`, never by hand.
-version = "0.2.0"
+version = "0.1.0"
 channels = ["conda-forge"]
 platforms = ["linux-64"]
 # Enables the `[package]` section used by py-packages/qgis-sdk, which the workspace

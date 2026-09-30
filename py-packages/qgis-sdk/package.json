@@ -1,7 +1,7 @@
 {
 	"name": "qgis-sdk-py",
 	"private": true,
-	"version": "0.2.0",
+	"version": "0.1.0",
 	"description": "Bun/Turbo facade for the qgis-sdk Python distribution. `build` is the whole maturin story: `maturin develop --release` (installs into pixi's default environment and puts the extension next to the mixed-layout Python sources pytest imports) plus `maturin build --release` for the shippable wheel, from one compilation. `test` and `coverage` therefore only run pytest, and CI needs no separate maturin or virtualenv step.",
 	"scripts": {
 		"build": "bash ../../scripts/py-build.sh py-packages/qgis-sdk",

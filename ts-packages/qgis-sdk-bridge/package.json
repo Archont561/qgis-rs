@@ -1,6 +1,6 @@
 {
 	"name": "@qgis-sdk/bridge",
-	"version": "0.2.0",
+	"version": "0.1.0",
 	"description": "Typed QWebChannel bridge for QGIS plugins — window-like EventTarget, complete QGIS Web API (layers, tasks, network, messageBar), React/Vue/Svelte/Web Components adapters, description loader (no codegen), built with bun",
 	"main": "dist/index.js",
 	"types": "dist/index.d.ts",
