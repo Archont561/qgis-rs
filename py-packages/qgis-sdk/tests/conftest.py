@@ -23,6 +23,10 @@ from typing import Any, Iterator
 
 import pytest
 
+# Make the reusable SDK fixtures available when this suite is run directly from
+# source, before the package entry point has been installed.
+pytest_plugins = ["qgis_sdk.testing"]
+
 # qgis_sdk.ui reads this; set it before any binding is imported so the platform
 # plugin is chosen while the interpreter is still single-threaded.
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
