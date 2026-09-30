@@ -135,18 +135,17 @@ jobs:
           pixi run -e bun bun x turbo run format --filter="!qgis-rs-docs"
           git diff --exit-code --quiet || { echo "unformatted files" >&2; exit 1; }
 
-      # Diagnostic build: --force bypasses the restored task cache, so a fresh
-      # napi build tells apart "bad cached binary" from "broken build env". On
-      # failure, require the addon directly to surface the loader error in the
-      # job annotations.
-      - name: Gate — turbo test (diagnostic --force + load trace)
+      # Diagnostic build: force-runs the test pipeline, then ALWAYS fails so
+      # the job annotation tail carries the loader trace (the only readable
+      # log channel from this sandbox).
+      - name: Gate — turbo test (load-trace diagnostic)
         run: |
-          if ! pixi run -e bun bun x turbo run test --filter="!qgis-rs-docs" --force; then
-            cd ts-packages/qgis-node
-            ls -la ./*.node || true
-            pixi run -e bun bun -e 'try { const m = require("./qgis-rs.linux-x64-gnu.node"); console.error("NATIVE LOAD OK", Object.keys(m).slice(0,5)); } catch (e) { console.error("NATIVE LOAD ERROR:", e && e.message ? e.message : e); process.exit(3); }' || true
-            exit 1
-          fi
+          pixi run -e bun bun x turbo run test --filter="!qgis-rs-docs" --force || true
+          cd ts-packages/qgis-node
+          ls -la . | tail -12
+          echo "── raw require of the platform addon:"
+          pixi run -e bun bun -e 'try { require("./qgis-rs.linux-x64-gnu.node"); console.log("LOAD OK"); } catch (e) { console.log("LOAD ERROR: " + ((e && e.stack) || e)); }'
+          exit 1
 
       - name: Gate — pack:check
         run: pixi run -e bun bun x turbo run pack:check
