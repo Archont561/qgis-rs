@@ -246,6 +246,23 @@ lint-commit = { cmd = "convco check --from-stdin", default-environment = "defaul
 # `convco changelog -o CHANGELOG.md`; the checked-in .versionrc configures
 # convco's changelog tool.
 changelog = { cmd = "convco changelog", description = "Preview the conventional-commit changelog for the pending release", default-environment = "default" }
+
+# The one-call CI gate (and the same command locally before pushing). Package
+# verbs stay in each package's package.json; this task only sequences the
+# steps and lets turbo skip cached work. The docs site builds in docs.yml.
+ci = { cmd = """bash -c '
+  set -eu
+  pixi run -e default lint-toml
+  pixi run -e default lint-actions
+  pixi run -e bun bun x turbo run lint --filter="!qgis-rs-docs"
+  pixi run -e bun bun x turbo run format --filter="!qgis-rs-docs"
+  if ! git diff --exit-code --quiet; then
+    echo "unformatted files — run bun x turbo run format and commit" >&2
+    exit 1
+  fi
+  pixi run -e bun bun x turbo run test --filter="!qgis-rs-docs"
+  pixi run -e bun bun x turbo run pack:check
+'""", description = "Repo lints + turbo lint/format-gate/test/pack:check (excludes the docs site)", default-environment = "bun" }
 # Optional args like check-cpp: hooks check only staged manifests
 # (`pixi run lint-toml -- a.toml b.toml`); bare `pixi run lint-toml` checks the
 # workspace manifest and the sandbox publish plan alone. Only those two files

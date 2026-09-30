@@ -1,8 +1,8 @@
-# One required CI job runs the repo lints, the turbo-fanned package gates
-# (lint, format drift, build, test), Rust/QGIS coverage, the Python package
-# suites and reusable sandbox-plan validation. Package logic lives in each
-# package's package.json scripts; root pixi only provides environments and
-# repo-management tasks.
+# One required CI job. The gate itself is a single pixi task (`pixi run ci`)
+# that sequences the repo lints and the turbo-fanned package gates; this
+# workflow only sets up toolchains and caches (pixi environments, cargo,
+# turborepo), then runs the coverage producers and uploads to Codecov.
+# The same gate runs locally with `pixi run ci`.
 name: CI
 
 on:
@@ -31,12 +31,14 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
+      # Restores .pixi/envs keyed on pixi.lock, so the heavy QGIS/rust envs
+      # survive across runs. `run-install: false` keeps installs explicit.
       - name: Set up pixi
         uses: prefix-dev/setup-pixi@d3f436a425481402e6a95a1d1fc10331c708cd9e # v0.10.2
         with:
           pixi-version: v0.81.0
           run-install: false
-          cache: false
+          cache: true
 
       # Validate the independently-published sandbox contract before the full
       # native/QGIS suite. This exercises the pinned v0.3.2 release action and
@@ -64,6 +66,25 @@ jobs:
           toolchain: stable
           components: llvm-tools-preview
 
+      # Caches ~/.cargo (registry) and target/ (includes qgis-sys's C++
+      # compile), keyed on Cargo.lock; restores shrink the cold build to
+      # minutes.
+      - name: Cache cargo and target
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          cache-on-failure: true
+
+      # Turbo's content-hash cache in .turbo/cache lets `pixi run ci` skip
+      # packages whose inputs did not change between runs.
+      - name: Cache the turborepo task cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .turbo/cache
+          key: turbo-${{ runner.os }}-${{ hashFiles('bun.lock') }}-${{ github.sha }}
+          restore-keys: |
+            turbo-${{ runner.os }}-${{ hashFiles('bun.lock') }}-
+            turbo-${{ runner.os }}-
+
       - name: Install default environment
         run: pixi install -e default --locked
 
@@ -90,32 +111,10 @@ jobs:
       - name: Install Python test tools
         run: python -m pip install "maturin>=1.7,<2" "pytest>=8,<9" "pytest-cov>=5,<7"
 
-      # Repo-management lints (root tasks): TOML style + GitHub Actions.
-      - name: Repo lints
-        run: |
-          pixi run -e default lint-toml
-          pixi run -e default lint-actions
-
-      # Package gates fanned out by turbo: biome lint, cargo fmt --check,
-      # clang-format --dry-run, clippy, qgis-sdk doctor, bridge tsc.
-      - name: Lint all packages
-        run: pixi run -e bun bun x turbo run lint
-
-      # Format gate: every package rewrites its own sources (biome, cargo fmt,
-      # clang-format, ruff format), then any diff fails CI. @qgis/rust's cpp
-      # formatter additionally gates on a nonempty diff itself.
-      - name: Format gate
-        run: |
-          pixi run -e bun bun x turbo run format
-          if ! git diff --exit-code --quiet; then
-            echo "unformatted files — run 'bun x turbo run format' and commit" >&2
-            exit 1
-          fi
-
-      # Rust unit + full QGIS lifecycle/vector-layer suites (the façade's
-      # `test` embeds `pixi run setup` for the libqca soname fix).
-      - name: Test the Rust workspace
-        run: pixi run -e bun bun x turbo run test --filter=@qgis/rust
+      # The whole gate: repo lints, turbo lint, format drift gate, every
+      # package's tests (builds are pulled in transitively), pack:check.
+      - name: Run the CI gate
+        run: pixi run ci
 
       # With the `python` Cargo feature disabled, PyO3 links to the interpreter
       # for Rust test binaries instead of leaving extension-module symbols open.
@@ -167,20 +166,6 @@ jobs:
             --cov-report=term-missing \
             --cov-report=xml:target/coverage/python-qgis-sdk.xml
 
-      # `napi build` takes --cargo-cwd (not --manifest-path) in @napi-rs/cli
-      # 2.x. The bridge build is its tsc typecheck/build.
-      - name: Build the TypeScript packages
-        run: pixi run -e bun bun x turbo run build --filter=qgis-rs --filter=@qgis-sdk/bridge
-
-      - name: Test the TypeScript packages
-        run: pixi run -e bun bun x turbo run test --filter=qgis-rs --filter=@qgis-sdk/bridge
-
-      # Not `bun pm pack`: it always packs the root workspace (no --filter) and
-      # the root package shares the member's name, so it would validate the
-      # wrong package and still exit 0. See the pack:check script.
-      - name: Check the npm publishable file set
-        run: pixi run -e bun bun x turbo run pack:check
-
       - name: Upload Python coverage reports
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -189,3 +174,13 @@ jobs:
           path: target/coverage/python-*.xml
           if-no-files-found: ignore
           retention-days: 7
+
+      # Uploads the lcov + pytest XML reports. Works tokenless on public
+      # repos; CODECOV_TOKEN covers private mirrors. A Codecov outage must
+      # never turn a green gate red, so upload failures stay non-fatal.
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
+        with:
+          files: target/coverage/rust-lcov.info,target/coverage/python-qgis-rs.xml,target/coverage/python-qgis-sdk.xml
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}

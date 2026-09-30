@@ -359,9 +359,8 @@ pixi run bun-install
 # Format everything (each package formats its own tree)
 bun x turbo run format
 
-# Run the complete local gate (lint, build and every test suite)
-bun x turbo run lint
-bun x turbo run test
+# Run the complete local gate — the same one call CI makes
+pixi run ci
 
 # Use the repo-wide agent tools
 pixi run skills
@@ -389,8 +388,7 @@ inside the container, install it when needed:
 ```bash
 pixi install -e default -e bun
 pixi run bun-install
-bun x turbo run lint
-bun x turbo run test
+pixi run ci
 ```
 
 A model refresh needs network access and OpenCode may use its bundled catalog

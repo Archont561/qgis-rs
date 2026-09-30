@@ -163,6 +163,7 @@ tasks (`backlog`, `skills`, `changelog`, `setup`, `scaffold`, `lint-commit`,
 
 ```bash
 pixi run bun-install     # once after checkout / when bun.lock changes
+pixi run ci              # the whole gate: repo lints + turbo lint/format/test/pack:check
 
 # Repo-wide gates, fanned out by turborepo (or drop the `pixi run bun --`
 # prefix when bun is already on PATH):
