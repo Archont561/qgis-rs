@@ -31,14 +31,18 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      # Restores .pixi/envs keyed on pixi.lock, so the heavy QGIS/rust envs
-      # survive across runs. `run-install: false` keeps installs explicit.
+      # Installs both environments (`default` for Rust/C++/QGIS, `bun` for
+      # JS/turbo) and restores them from cache keyed on pixi.lock, so the
+      # heavy QGIS solve only runs when the lockfile changes.
       - name: Set up pixi
         uses: prefix-dev/setup-pixi@d3f436a425481402e6a95a1d1fc10331c708cd9e # v0.10.2
         with:
           pixi-version: v0.81.0
-          run-install: false
+          locked: true
           cache: true
+          environments: |
+            default
+            bun
 
       # Validate the independently-published sandbox contract before the full
       # native/QGIS suite. This exercises the pinned v0.3.2 release action and
@@ -85,18 +89,12 @@ jobs:
             turbo-${{ runner.os }}-${{ hashFiles('bun.lock') }}-
             turbo-${{ runner.os }}-
 
-      - name: Install default environment
-        run: pixi install -e default --locked
-
-      # Every JS/turbo step runs in the `bun` environment. Bun is not installed
-      # in `default` and cannot be: conda-forge qgis needs icu >=78.3 while bun
-      # needs icu >=75.1,<76, so the two never solve together. The Rust side of
-      # the addon still builds because the `bun` environment carries the rust
-      # toolchain that `napi build` shells out to.
-      - name: Install the Bun environment from the root lockfile
-        run: |
-          pixi install -e bun --locked
-          pixi run -e bun bun-install
+      # The Bun workspace still installs from the root lockfile (the bun pixi
+      # environment itself arrived in the setup step above). Bun cannot live
+      # in `default`: conda-forge qgis needs icu >=78.3 while bun needs
+      # icu >=75.1,<76, so the two never solve together.
+      - name: Install the Bun workspace from the root lockfile
+        run: pixi run -e bun bun-install
 
       - name: Install cargo-llvm-cov
         run: cargo install cargo-llvm-cov --version 0.9.1 --locked
