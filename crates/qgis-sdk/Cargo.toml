@@ -19,7 +19,11 @@ keywords = ["qgis", "gis", "plugin", "pyqgis", "cli", "rust"]
 categories = ["science::geo", "development-tools"]
 
 [lib]
-name = "_core"
+# Unique artifact name — see the note in crates/qgis-py/Cargo.toml: sharing
+# `name = "_core"` made both cdylibs resolve to one lib_core.so file that the
+# two crates overwrote in turns. The Python import stays `qgis_sdk._core`
+# because the #[pymodule] fn is named `_core`.
+name = "qgis_sdk_core"
 crate-type = ["cdylib"]
 path = "src/lib.rs"
 
