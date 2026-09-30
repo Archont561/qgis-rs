@@ -37,6 +37,9 @@ _*
 # cargo
 /target
 !.cargo
+# Local pixi-sandbox vendor redirect (machine-local); never commit it —
+# CI must resolve crates from crates.io.
+.cargo/config.toml
 
 # cpp
 !.clang*

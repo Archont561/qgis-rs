@@ -11,13 +11,13 @@ Documentation site for qgis-rs, built with [Astro Starlight](https://starlight.a
 pixi shell -e bun
 
 # Start dev server
-pixi run docs-dev
+bun x turbo run dev --filter=qgis-rs-docs
 
 # Build for production
-pixi run docs-build
+bun x turbo run build --filter=qgis-rs-docs
 
 # Preview production build
-pixi run docs-preview
+bun run --cwd apps/docs preview
 ```
 
 ### Using Bun directly (without Pixi)
@@ -122,11 +122,9 @@ Until then the `deploy` job fails with *"Get Pages site failed"*.
 ### Building locally
 
 ```bash
-pixi run -e bun docs-build     # output in apps/docs/dist/
-pixi run -e bun docs-preview   # serve dist/ at http://localhost:4321/qgis-rs
+bun x turbo run build --filter=qgis-rs-docs   # output in apps/docs/dist/
+bun run --cwd apps/docs preview               # serve dist/ at http://localhost:4321/qgis-rs
 ```
-
-Or with Bun directly: `bun run build` / `bun run preview`.
 
 The output in `dist/` is plain static files, so it can equally be uploaded to
 Netlify, Vercel, or Cloudflare Pages — just keep `site`/`base` in

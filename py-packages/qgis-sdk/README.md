@@ -300,8 +300,8 @@ Fakes: `FakeIface`, `FakeAction`, `FakeDialog`, `FakeWebView`, `FakeBridge`, `mo
 From the repository root:
 
 ```bash
-pixi run -e default sdk-test      # pytest (35 tests, no QGIS needed)
-pixi run -e default sdk-doctor    # prove `import qgis.core` resolves
+bun x turbo run test --filter=qgis-sdk              # pytest (35 tests, no QGIS needed)
+cd py-packages/qgis-sdk && bun run doctor && cd ../..  # prove `import qgis.core` resolves
 ```
 
 Or without pixi, if Python and the package are already installed:

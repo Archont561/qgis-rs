@@ -54,6 +54,7 @@
 		"build:types": "tsc --emitDeclarationOnly",
 		"dev": "bun --watch build",
 		"test": "bun test",
+		"coverage": "bun test --coverage",
 		"test:watch": "bun test --watch",
 		"lint": "bunx biome check .",
 		"format": "bunx biome format --write .",

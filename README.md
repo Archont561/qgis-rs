@@ -141,13 +141,13 @@ See [Python docs](https://archont561.github.io/qgis-rs/getting-started/python/) 
 git clone https://github.com/Archont561/qgis-rs.git
 cd qgis-rs
 
-# Install the development environment
-pixi install -e default
+# Install the development environments and the Bun workspace
+pixi install -e default -e bun
+pixi run bun-install
 
-# Build and run the headless and QGIS-backed tests
-pixi run -e default build
-pixi run -e default test
-pixi run -e default test-full
+# Build the Rust workspace and run the headless and QGIS-backed tests
+bun x turbo run build --filter=@qgis/rust
+bun x turbo run test --filter=@qgis/rust
 ```
 
 #### Using Cargo
@@ -352,17 +352,18 @@ Contributions are welcome! See [AGENTS.md](AGENTS.md) for repository conventions
 git clone https://github.com/Archont561/qgis-rs.git
 cd qgis-rs
 
-# Install the development environment
-pixi install -e default
-
-# Format Rust and C++ code
-pixi run -e default fmt
-
-# Run the complete local gate (formatting, linting, and QGIS tests)
-pixi run -e default ci-full
-
-# Install the Bun workspace and use the repo-wide agent tools
+# Install the development environments and the Bun workspace
+pixi install -e default -e bun
 pixi run bun-install
+
+# Format everything (each package formats its own tree)
+bun x turbo run format
+
+# Run the complete local gate (lint, build and every test suite)
+bun x turbo run lint
+bun x turbo run test
+
+# Use the repo-wide agent tools
 pixi run skills
 pixi run backlog task list --plain
 ```
@@ -386,8 +387,10 @@ The large QGIS/Rust Pixi environment is **not** installed automatically. Once
 inside the container, install it when needed:
 
 ```bash
-pixi install -e default
-pixi run -e default ci-full
+pixi install -e default -e bun
+pixi run bun-install
+bun x turbo run lint
+bun x turbo run test
 ```
 
 A model refresh needs network access and OpenCode may use its bundled catalog
@@ -400,10 +403,10 @@ when offline. Retry with `opencode models --refresh` when connected.
 pixi shell -e bun
 
 # Start dev server (serves at http://localhost:4321/qgis-rs)
-pixi run docs-dev
+bun x turbo run dev --filter=qgis-rs-docs
 
 # Build for production
-pixi run docs-build
+bun x turbo run build --filter=qgis-rs-docs
 ```
 
 The site is published to [archont561.github.io/qgis-rs](https://archont561.github.io/qgis-rs/)

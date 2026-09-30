@@ -1,5 +1,8 @@
-# One required CI job runs the full Rust/QGIS gate, coverage, native package
-# smoke tests, TypeScript bridge tests, and reusable sandbox-plan validation.
+# One required CI job runs the repo lints, the turbo-fanned package gates
+# (lint, format drift, build, test), Rust/QGIS coverage, the Python package
+# suites and reusable sandbox-plan validation. Package logic lives in each
+# package's package.json scripts; root pixi only provides environments and
+# repo-management tasks.
 name: CI
 
 on:
@@ -64,6 +67,16 @@ jobs:
       - name: Install default environment
         run: pixi install -e default --locked
 
+      # Every JS/turbo step runs in the `bun` environment. Bun is not installed
+      # in `default` and cannot be: conda-forge qgis needs icu >=78.3 while bun
+      # needs icu >=75.1,<76, so the two never solve together. The Rust side of
+      # the addon still builds because the `bun` environment carries the rust
+      # toolchain that `napi build` shells out to.
+      - name: Install the Bun environment from the root lockfile
+        run: |
+          pixi install -e bun --locked
+          pixi run -e bun bun-install
+
       - name: Install cargo-llvm-cov
         run: cargo install cargo-llvm-cov --version 0.9.1 --locked
 
@@ -77,10 +90,32 @@ jobs:
       - name: Install Python test tools
         run: python -m pip install "maturin>=1.7,<2" "pytest>=8,<9" "pytest-cov>=5,<7"
 
-      # The repository task is the single source of truth for Rust/C++
-      # formatting and linting plus Rust unit/integration tests, including QGIS.
-      - name: Run the full CI gate
-        run: pixi run -e default ci-full
+      # Repo-management lints (root tasks): TOML style + GitHub Actions.
+      - name: Repo lints
+        run: |
+          pixi run -e default lint-toml
+          pixi run -e default lint-actions
+
+      # Package gates fanned out by turbo: biome lint, cargo fmt --check,
+      # clang-format --dry-run, clippy, qgis-sdk doctor, bridge tsc.
+      - name: Lint all packages
+        run: pixi run -e bun bun x turbo run lint
+
+      # Format gate: every package rewrites its own sources (biome, cargo fmt,
+      # clang-format, ruff format), then any diff fails CI. @qgis/rust's cpp
+      # formatter additionally gates on a nonempty diff itself.
+      - name: Format gate
+        run: |
+          pixi run -e bun bun x turbo run format
+          if ! git diff --exit-code --quiet; then
+            echo "unformatted files — run 'bun x turbo run format' and commit" >&2
+            exit 1
+          fi
+
+      # Rust unit + full QGIS lifecycle/vector-layer suites (the façade's
+      # `test` embeds `pixi run setup` for the libqca soname fix).
+      - name: Test the Rust workspace
+        run: pixi run -e bun bun x turbo run test --filter=@qgis/rust
 
       # With the `python` Cargo feature disabled, PyO3 links to the interpreter
       # for Rust test binaries instead of leaving extension-module symbols open.
@@ -126,40 +161,25 @@ jobs:
         env:
           QGIS_REQUIRE_NATIVE: "1"
         run: |
+          mkdir -p target/coverage
           python -m pytest py-packages/qgis-sdk/tests -v \
             --cov=qgis_sdk \
             --cov-report=term-missing \
             --cov-report=xml:target/coverage/python-qgis-sdk.xml
 
-      # Every JS step below runs in the `bun` environment. Bun is not installed
-      # in `default` and cannot be: conda-forge qgis needs icu >=78.3 while bun
-      # needs icu >=75.1,<76, so the two never solve together. The Rust side of
-      # the addon still builds because the `bun` environment carries the rust
-      # toolchain that `napi build` shells out to.
-      - name: Install the Bun environment from the root lockfile
-        run: |
-          pixi install -e bun --locked
-          pixi run -e bun bun-install
-
-      # biome gate for JS/TS/JSON formatting and lint rules; mirrors the
-      # lefthook js-biome job, which lints the staged files on commit.
-      - name: JS lint and format gate
-        run: pixi run -e bun lint-js
-
       # `napi build` takes --cargo-cwd (not --manifest-path) in @napi-rs/cli
-      # 2.x. The package script supplies the output directory positionally and
-      # preserves the package's custom JS wrapper and declarations.
-      - name: Build the native addon
-        run: pixi run -e bun node-build
+      # 2.x. The bridge build is its tsc typecheck/build.
+      - name: Build the TypeScript packages
+        run: pixi run -e bun bun x turbo run build --filter=qgis-rs --filter=@qgis/sdk-bridge
 
-      - name: Test the native FFI
-        run: pixi run -e bun node-test
+      - name: Test the TypeScript packages
+        run: pixi run -e bun bun x turbo run test --filter=qgis-rs --filter=@qgis/sdk-bridge
 
       # Not `bun pm pack`: it always packs the root workspace (no --filter) and
       # the root package shares the member's name, so it would validate the
-      # wrong package and still exit 0. See the pack-check task.
+      # wrong package and still exit 0. See the pack:check script.
       - name: Check the npm publishable file set
-        run: pixi run -e bun pack-check
+        run: pixi run -e bun bun x turbo run pack:check
 
       - name: Upload Python coverage reports
         if: always()
@@ -169,14 +189,3 @@ jobs:
           path: target/coverage/python-*.xml
           if-no-files-found: ignore
           retention-days: 7
-
-      - name: Run TypeScript bridge tests
-        run: pixi run -e bun bun test ts-packages/qgis-sdk-bridge
-
-      # `bridge-build` rather than `pixi run bun run build` with a
-      # `working-directory:` above it: pixi runs tasks in the manifest's
-      # directory, so the step's working-directory is ignored and the root
-      # package.json's `bun run --filter '*' build` runs instead — every
-      # workspace member, not just the bridge. The task carries its own cwd.
-      - name: Build TypeScript bridge
-        run: pixi run -e bun bridge-build

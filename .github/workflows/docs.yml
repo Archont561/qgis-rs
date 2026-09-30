@@ -53,11 +53,12 @@ jobs:
       - name: Install the Bun environment
         run: pixi install -e bun --locked
 
-      # apps/docs is a member of the root Bun workspace, so `bun-install` runs at
-      # the workspace root against the committed bun.lock. `docs-build` depends on
-      # it, so this one task covers both the install and the build.
+      # apps/docs is a member of the root Bun workspace; install from the root
+      # lockfile first, then let turbo run the package's own build script.
       - name: Build documentation
-        run: pixi run -e bun docs-build
+        run: |
+          pixi run -e bun bun-install
+          pixi run -e bun bun x turbo run build --filter=qgis-rs-docs
 
       - name: Configure GitHub Pages
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'

@@ -14,6 +14,15 @@
 		"lint": {
 			"outputs": []
 		},
+		"coverage": {
+			"dependsOn": ["build"],
+			"outputs": [],
+			"cache": false
+		},
+		"pack:check": {
+			"dependsOn": ["build"],
+			"outputs": []
+		},
 		"format": {
 			"outputs": [],
 			"cache": false
@@ -100,6 +109,10 @@
 		},
 		"qgis-sdk-py#test": {
 			"cache": false
+		},
+		"dev": {
+			"cache": false,
+			"persistent": true
 		}
 	}
 }

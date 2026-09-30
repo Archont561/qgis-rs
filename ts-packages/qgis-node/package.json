@@ -13,6 +13,8 @@
 		"build": "napi build --platform --release --cargo-cwd ../../crates/qgis-node --js false --dts .napi-generated.d.ts .",
 		"build:debug": "napi build --platform --cargo-cwd ../../crates/qgis-node --js false --dts .napi-generated.d.ts .",
 		"test": "QGIS_REQUIRE_NATIVE=1 bun test tests/contract.test.js",
+		"coverage": "QGIS_REQUIRE_NATIVE=1 bun test --coverage tests/contract.test.js",
+		"pack:check": "bash -c 'set -eu; fail=0; for f in index.js index.d.ts README.md; do [ -e \"$f\" ] || { echo \"missing from package: $f\" >&2; fail=1; }; done; [ -d bin ] || { echo \"missing from package: bin/\" >&2; fail=1; }; set -- qgis-rs.*.node; [ -e \"$1\" ] || { echo \"missing from package: qgis-rs.*.node (did napi build run?)\" >&2; fail=1; }; [ \"$fail\" = 0 ] || exit 1; echo \"package files present:\" index.js index.d.ts README.md bin/ \"$@\"'",
 		"lint": "bunx biome check .",
 		"format": "bunx biome format --write .",
 		"prepublishOnly": "napi prepublish -t npm",
