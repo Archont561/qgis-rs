@@ -50,8 +50,14 @@ def test_layout_helpers():
     assert len(l) == 3
 
 
-def test_dialog_declarative():
+def test_dialog_declarative(monkeypatch):
+    # exec() must exercise the documented fallback path: with a real Qt
+    # binding it would open a modal event loop that a headless test cannot
+    # answer (and aborts outright without a QApplication), so the unit test
+    # pins the fallback result instead of driving UI.
     from qgis_sdk.ui import Dialog, field, layout, Button, dialog
+
+    monkeypatch.setattr(Dialog, "exec", lambda self: Dialog.Accepted)
 
     dlg = Dialog(
         title="Test Dialog",
@@ -76,8 +82,11 @@ def test_dialog_declarative():
     assert result == Dialog.Accepted
 
 
-def test_dialog_decorator():
-    from qgis_sdk.ui import dialog, field
+def test_dialog_decorator(monkeypatch):
+    from qgis_sdk.ui import Dialog, dialog, field
+
+    # See test_dialog_declarative: pin the fallback, never a real modal loop.
+    monkeypatch.setattr(Dialog, "exec", lambda self: Dialog.Accepted)
 
     @dialog(title="Settings", persist=False)
     def settings_dialog():
@@ -93,8 +102,11 @@ def test_dialog_decorator():
     assert dlg.exec() == 1
 
 
-def test_web_dialog():
+def test_web_dialog(monkeypatch):
     from qgis_sdk.ui import WebDialog
+
+    # See test_dialog_declarative: pin the fallback, never a real modal loop.
+    monkeypatch.setattr(WebDialog, "exec", lambda self: 1)
 
     html = "<html><body><h1>Hello</h1></body></html>"
     dlg = WebDialog(title="Web Test", html=html, width=800, height=600)

@@ -154,25 +154,48 @@ cargo test
 
 ### Common Tasks
 
+Every buildable/testable thing is a Bun-workspace package owning its logic in
+`package.json` scripts; root orchestration calls turbo, which fans the verbs
+out across the package graph (content-hash caching, parallel scheduling,
+`--filter` scoping). Root pixi keeps ONLY environments plus repo-management
+tasks (`backlog`, `skills`, `changelog`, `setup`, `scaffold`, `lint-commit`,
+`lint-toml`, `lint-actions`) — no package build/test/lint tasks.
+
 ```bash
-# Format code
-pixi run fmt
+pixi run bun-install     # once after checkout / when bun.lock changes
+pixi run ci              # the whole gate: repo lints + turbo lint/format/test/pack:check
 
-# Lint code
-pixi run lint
+# Repo-wide gates, fanned out by turborepo (or drop the `pixi run bun --`
+# prefix when bun is already on PATH):
+pixi run bun x turbo run lint       # biome, cargo fmt --check, clang-format,
+                                    # clippy, qgis-sdk doctor, bridge tsc
+pixi run bun x turbo run format     # biome --write, cargo fmt, clang-format -i,
+                                    # ruff format (+ C++ drift gate)
+pixi run bun x turbo run build      # Rust workspace, wheels, napi addon, docs
+pixi run bun x turbo run test       # Rust suites, Python packages, napi FFI, bridge
+pixi run bun x turbo run coverage   # Rust lcov + Python XML + JS coverage
 
-# Run tests
-pixi run test
-
-# Run full tests (with QGIS environment)
-pixi run test-full
-
-# Build documentation
-pixi run docs-build
-
-# Start docs dev server
-pixi run docs-dev
+# Scoped runs for day-to-day iteration:
+pixi run bun x turbo run build --filter=qgis-rs      # napi addon, cached
+pixi run bun x turbo run test --filter=@qgis/rust    # Rust unit + full QGIS suites
+pixi run bun x turbo run test --filter=qgis-rs --filter=@qgis-sdk/bridge
 ```
+
+Workspace façades: `crates/package.json` (`@qgis/rust`, the whole Cargo
+workspace as one package), `py-packages/*` (maturin/pytest), `ts-packages/*`,
+`apps/docs`. Lint/format rules live in ONE global `biome.json` — biome
+discovers the root config upward (gitignore scoping, rule overrides) — and
+every package's own `lint`/`format` script applies it to its tree; the Rust
+façade chains biome for its package.json plus cargo fmt/clippy. Layering:
+turbo decides *whether* a task runs, pixi *how* it runs (env activation via
+`pixi run -e default …` inside the scripts), Cargo/maturin own internal
+edges. Purely internal crates stay Cargo-only; QGIS-dependent tasks are
+`cache: false` in `turbo.json` (QGIS runtime data is not hashable).
+
+Coverage mirrors the CI upload paths under `target/coverage/`. The Rust
+façade's `coverage` needs `cargo-llvm-cov` next to pixi (CI installs it
+system-wide; the conda Rust toolchain carries no llvm-tools-preview
+component).
 
 ### Adding a New QGIS Class
 

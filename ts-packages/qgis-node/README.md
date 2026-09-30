@@ -33,11 +33,11 @@ cd qgis-rs
 pixi run bun-install
 
 # Build native addon (napi build, driven by bun)
-pixi run node-build
+# (run from the repository root — turbo delegates to this package's scripts)
+bun x turbo run build --filter=qgis-rs
 
 # Smoke-test the compiled NAPI API
-# (`pixi run node-test` from the repository root wires build + test together)
-pixi run -e bun bun test tests/contract.test.js
+bun x turbo run test --filter=qgis-rs
 
 # Inspect the CLI wrapper
 pixi run -e bun bunx qgis-cli --help

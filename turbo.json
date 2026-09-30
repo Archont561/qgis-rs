@@ -1,0 +1,119 @@
+{
+	"$schema": "https://turbo.build/schema.json",
+	"tasks": {
+		"build": {
+			"dependsOn": ["^build"],
+			"outputs": ["dist/**", "*.node"],
+			"inputs": ["src/**", "package.json", "tsconfig.json"]
+		},
+		"test": {
+			"dependsOn": ["build", "^build"],
+			"outputs": [],
+			"inputs": ["src/**", "tests/**", "bin/**", "package.json"]
+		},
+		"lint": {
+			"outputs": []
+		},
+		"coverage": {
+			"dependsOn": ["build"],
+			"outputs": [],
+			"cache": false
+		},
+		"pack:check": {
+			"dependsOn": ["build"],
+			"outputs": []
+		},
+		"format": {
+			"outputs": [],
+			"cache": false
+		},
+		"//#lint": {
+			"outputs": []
+		},
+		"//#format": {
+			"outputs": [],
+			"cache": false
+		},
+		"develop": {
+			"cache": false,
+			"persistent": false
+		},
+		"qgis-rs#build": {
+			"inputs": [
+				"index.js",
+				"index.d.ts",
+				"fallback.js",
+				"bin/**",
+				"package.json",
+				"../../crates/qgis-node/**",
+				"../../crates/qgis-render/**",
+				"../../crates/qgis-server/**",
+				"../../crates/qgis-styles/**",
+				"../../crates/qgis-cli/**",
+				"../../Cargo.toml",
+				"../../Cargo.lock"
+			],
+			"outputs": ["qgis-rs.*.node", ".napi-generated.d.ts"]
+		},
+		"qgis-rs#test": {
+			"inputs": [
+				"index.js",
+				"fallback.js",
+				"bin/**",
+				"tests/**",
+				"package.json",
+				"../../crates/qgis-node/**",
+				"../../crates/qgis-render/**",
+				"../../crates/qgis-server/**",
+				"../../crates/qgis-styles/**"
+			],
+			"dependsOn": ["build"]
+		},
+		"qgis-rs-py#build": {
+			"inputs": [
+				"pyproject.toml",
+				"python/**",
+				"tests/**",
+				"../../crates/qgis-py/**",
+				"../../crates/qgis-render/**",
+				"../../Cargo.toml",
+				"../../Cargo.lock"
+			],
+			"outputs": ["dist/**"]
+		},
+		"qgis-sdk-py#build": {
+			"inputs": [
+				"pyproject.toml",
+				"src/**",
+				"tests/**",
+				"scripts/**",
+				"../../crates/qgis-sdk/**",
+				"../../Cargo.toml",
+				"../../Cargo.lock"
+			],
+			"outputs": ["dist/**"]
+		},
+		"@qgis/rust#build": {
+			"cache": false
+		},
+		"@qgis/rust#test": {
+			"cache": false
+		},
+		"@qgis/rust#lint": {
+			"cache": false
+		},
+		"@qgis/rust#format": {
+			"cache": false
+		},
+		"qgis-rs-py#test": {
+			"cache": false
+		},
+		"qgis-sdk-py#test": {
+			"cache": false
+		},
+		"dev": {
+			"cache": false,
+			"persistent": true
+		}
+	}
+}

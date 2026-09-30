@@ -78,18 +78,18 @@ tests/
 
 ### Running Tests
 
+Packages own their test scripts; run them repo-wide or scoped via turbo.
+
 ```bash
-# Basic tests (no QGIS data needed)
-pixi run test
+# Everything (Rust workspaces, Python packages, napi FFI, bridge)
+bun x turbo run test
 
-# Full tests (requires QGIS environment)
-pixi run test-full
+# Rust workspace only — the @qgis/rust façade chains both suites:
+# application_info first (no QGIS data), then the full lifecycle/vector tests
+bun x turbo run test --filter=@qgis/rust
 
-# Specific package
-pixi run test qgis-sys
-
-# Python plugin SDK (py-packages/qgis-sdk — runs without QGIS)
-pixi run -e default sdk-test
+# Python plugin SDK alone (runs without QGIS)
+bun x turbo run test --filter=qgis-sdk
 ```
 
 ### Test Requirements
@@ -126,9 +126,9 @@ Enforced by `lefthook` pre-commit hooks.
 
 ### Before Opening a PR
 
-1. Run `pixi run fmt` to format code
-2. Run `pixi run lint` to check for issues
-3. Run `pixi run test` to ensure tests pass
+1. Run `bun x turbo run format` to format code
+2. Run `bun x turbo run lint` to check for issues
+3. Run `bun x turbo run test` to ensure tests pass
 4. Update documentation if changing public APIs
 5. Add tests for new functionality
 

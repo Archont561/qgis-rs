@@ -1,15 +1,13 @@
-# lefthook — local git hooks. Every hook calls a pixi task so hooks and CI
-# cannot drift: the task definitions in pixi.toml are the single source of
-# truth for what the check commands are.
+# lefthook — local git hooks. The hook environment always comes from pixi
+# (contributors may not have bun/cargo on PATH otherwise). Package-specific
+# checks invoke the environment's tools directly (the commands are owned by
+# the packages' package.json scripts; hooks only need the staged-file form).
+# Repo-management checks share the root tasks so hooks and CI cannot drift.
 # https://lefthook.dev
 #
 # Only *staged* files are considered: the `glob` filters which files wake a
 # hook, and `{staged_files}` expands to the staged paths pixi passes through to
-# the task (check-cpp returns a formatted diff for staged files and falls back
-# to the whole tree; lint-toml likewise, defaulting to pixi.toml). Tasks
-# default to the `default` environment; hooks still spell it out with `-e default`
-# so a future extra environment cannot silently change what a hook runs.
-# regardless.
+# the task or command.
 
 min_version: "2.0.0"
 
@@ -18,11 +16,11 @@ pre-commit:
   jobs:
     - name: rust-fmt
       glob: "*.rs"
-      run: pixi run -e default fmt-check
+      run: pixi run -e default cargo fmt --all --check
 
     - name: rust-clippy
       glob: "*.rs"
-      run: pixi run -e default clippy
+      run: pixi run -e default cargo clippy --workspace --all-targets -- -D warnings
 
     - name: cpp-fmt
       glob: "*.{cpp,h}"
@@ -39,6 +37,13 @@ pre-commit:
       glob: ".github/workflows/*.{yml,yaml}"
       run: pixi run -e default lint-actions
 
+    - name: js-biome
+      # Whole-repo enforcement is each package's own lint task fanned out by
+      # turbo; the hook checks exactly the staged files instead — same global
+      # biome config, focused output.
+      glob: "*.{js,ts,mts,mjs,cjs,json,jsonc,css}"
+      run: pixi run -e bun -- _biome {staged_files}
+
 commit-msg:
   jobs:
     - name: convco
@@ -47,5 +52,10 @@ commit-msg:
 
 pre-push:
   jobs:
-    - name: gates
-      run: pixi run -e default gates
+    - name: turbo-lint
+      # The repo-wide packages' gates, fanned out by turborepo. `lint` covers
+      # biome, cargo fmt --check, clang-format and clippy; `test` covers the
+      # Rust suites, both Python packages, the napi addon and the bridge.
+      run: pixi run -e bun bun x turbo run lint
+    - name: turbo-test
+      run: pixi run -e bun bun x turbo run test

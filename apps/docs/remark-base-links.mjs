@@ -16,25 +16,25 @@
  * @param {string} base Astro `base`, e.g. `/qgis-rs`.
  */
 export default function remarkBaseLinks(base) {
-  const prefix = base && base !== '/' ? base.replace(/\/+$/, '') : '';
+	const prefix = base && base !== "/" ? base.replace(/\/+$/, "") : "";
 
-  const visit = (node) => {
-    const url = node.url;
-    // Only touch root-absolute URLs: `/foo`, not `https://…`, `//cdn…`, `#anchor`,
-    // `mailto:…` or already-prefixed `/qgis-rs/…`.
-    if (
-      typeof url === 'string' &&
-      url.startsWith('/') &&
-      !url.startsWith('//') &&
-      url !== `${prefix}/` &&
-      !url.startsWith(`${prefix}/`)
-    ) {
-      node.url = prefix + url;
-    }
-    for (const child of node.children ?? []) visit(child);
-  };
+	const visit = (node) => {
+		const url = node.url;
+		// Only touch root-absolute URLs: `/foo`, not `https://…`, `//cdn…`, `#anchor`,
+		// `mailto:…` or already-prefixed `/qgis-rs/…`.
+		if (
+			typeof url === "string" &&
+			url.startsWith("/") &&
+			!url.startsWith("//") &&
+			url !== `${prefix}/` &&
+			!url.startsWith(`${prefix}/`)
+		) {
+			node.url = prefix + url;
+		}
+		for (const child of node.children ?? []) visit(child);
+	};
 
-  return () => (tree) => {
-    if (prefix) visit(tree);
-  };
+	return () => (tree) => {
+		if (prefix) visit(tree);
+	};
 }

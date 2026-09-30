@@ -1,0 +1,15 @@
+{
+	"name": "qgis-sdk-py",
+	"private": true,
+	"version": "0.1.0",
+	"description": "Bun/Turbo facade for the qgis-sdk Python package. All of its build, test, lint, format and coverage commands are defined HERE; they run through pixi because maturin and the interpreter with the QGIS-matched ABI exist only in pixi's default environment.",
+	"scripts": {
+		"build": "pixi run -e default maturin build --release -o dist",
+		"develop": "pixi run -e default maturin develop",
+		"test": "pixi run -e default bash -c 'maturin develop >/dev/null 2>&1 && QGIS_REQUIRE_NATIVE=1 python -m pytest -q'",
+		"lint": "bunx biome check package.json",
+		"format": "bunx biome format --write package.json",
+		"coverage": "pixi run -e default bash -c 'maturin develop >/dev/null 2>&1 && mkdir -p ../../target/coverage && QGIS_REQUIRE_NATIVE=1 python -m pytest -q --cov=qgis_sdk --cov-report=term-missing --cov-report=xml:../../target/coverage/python-qgis-sdk.xml'",
+		"doctor": "pixi run -e default bash -c 'maturin develop >/dev/null 2>&1 && QGIS_REQUIRE_NATIVE=1 python scripts/doctor.py'"
+	}
+}

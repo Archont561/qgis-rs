@@ -24,7 +24,7 @@ pnpm add qgis-rs
 
 Pre-built binaries for Linux x64 (gnu + musl) and Linux arm64 (gnu). Falls back to pure JS if no native binary, and you can build from source with `bun run build` (requires Rust ≥1.96).
 
-From source (the addon builds and tests with [bun](https://bun.sh) — in this repository `pixi run node-test` wires both up):
+From source (the addon builds and tests with [bun](https://bun.sh) — in this repository turbo runs the package's own build/test scripts):
 
 ```bash
 git clone https://github.com/Archont561/qgis-rs
@@ -33,8 +33,8 @@ cd qgis-rs
 # The Bun workspace at the root owns resolution; ts-packages/qgis-node is a
 # member of it, so there is nothing to install in the package directory.
 pixi run bun-install
-pixi run node-build
-bun test ts-packages/qgis-node/tests/contract.test.js
+bun x turbo run build --filter=qgis-rs
+bun x turbo run test --filter=qgis-rs
 ```
 
 ## TypeScript API

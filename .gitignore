@@ -37,6 +37,9 @@ _*
 # cargo
 /target
 !.cargo
+# Local pixi-sandbox vendor redirect (machine-local); never commit it —
+# CI must resolve crates from crates.io.
+.cargo/config.toml
 
 # cpp
 !.clang*
@@ -46,6 +49,9 @@ symbology-style.db
 # pixi-sandbox
 .pixi-sandbox/
 dist/
+
+# turbo (local task cache)
+.turbo/
 
 # docs app (Bun / Astro)
 apps/docs/node_modules/
