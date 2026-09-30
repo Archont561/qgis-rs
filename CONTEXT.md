@@ -177,7 +177,7 @@ pixi run bun x turbo run coverage   # Rust lcov + Python XML + JS coverage
 # Scoped runs for day-to-day iteration:
 pixi run bun x turbo run build --filter=qgis-rs      # napi addon, cached
 pixi run bun x turbo run test --filter=@qgis/rust    # Rust unit + full QGIS suites
-pixi run bun x turbo run test --filter=qgis-rs --filter=@qgis/sdk-bridge
+pixi run bun x turbo run test --filter=qgis-rs --filter=@qgis-sdk/bridge
 ```
 
 Workspace façades: `crates/package.json` (`@qgis/rust`, the whole Cargo

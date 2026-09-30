@@ -170,10 +170,10 @@ jobs:
       # `napi build` takes --cargo-cwd (not --manifest-path) in @napi-rs/cli
       # 2.x. The bridge build is its tsc typecheck/build.
       - name: Build the TypeScript packages
-        run: pixi run -e bun bun x turbo run build --filter=qgis-rs --filter=@qgis/sdk-bridge
+        run: pixi run -e bun bun x turbo run build --filter=qgis-rs --filter=@qgis-sdk/bridge
 
       - name: Test the TypeScript packages
-        run: pixi run -e bun bun x turbo run test --filter=qgis-rs --filter=@qgis/sdk-bridge
+        run: pixi run -e bun bun x turbo run test --filter=qgis-rs --filter=@qgis-sdk/bridge
 
       # Not `bun pm pack`: it always packs the root workspace (no --filter) and
       # the root package shares the member's name, so it would validate the
