@@ -4,20 +4,35 @@
 #
 # Usage: scripts/py-build.sh py-packages/qgis-rs
 #
-# WHY IT ALSO INSTALLS. `maturin build` produces a wheel nobody can import, and
-# `maturin develop` produces an import nobody can ship — so every consumer used
-# to run both, and CI grew a separate "Build and install" step per package on
-# top of the turbo `build` task that had already compiled the same crate. Here
-# the release wheel is built once and then *that exact artifact* is installed
-# into the environment. One compile, and the thing under test is the thing that
-# gets published.
+# WHY IT DOES BOTH. `maturin build` produces a wheel nobody can import, and
+# `maturin develop` produces an import nobody can ship, so every consumer used
+# to run both by hand — turbo's `build` task, then a separate "Build and
+# install" step per package in CI, recompiling what turbo had already built.
+# Here one task does both, cargo compiles once, and `test` / `coverage` only
+# have to run pytest.
 #
-# WHY NOT `maturin develop`. `develop` requires an activated virtualenv and
-# shells out to pip anyway; the pixi `default` environment already is the
-# target interpreter (it is the one QGIS was compiled against), so a venv layered
-# on top of it would only hide QGIS's own site-packages. `pip install` into the
-# prefix has no such requirement — which is why there is no venv step anywhere
-# in this repo.
+#   1. maturin develop --release
+#      Installs into the environment AND — this is the part a plain
+#      `pip install` of the wheel cannot do — drops the compiled
+#      `qgis_rs._core` / `qgis_sdk._core` extension next to the pure-Python
+#      sources in this mixed-layout project. Both distributions set
+#      `python-source` and list `python` (resp. `src`) in pytest's `testpaths`,
+#      so pytest puts the SOURCE tree on sys.path and imports the package from
+#      there. Without the extension sitting in that tree, the package silently
+#      falls back to its pure-Python implementation and
+#      `test_native_extension_is_used_in_ci` fails — which is exactly what it
+#      is there to catch.
+#
+#   2. maturin build --release --out dist
+#      The shippable wheel. Same profile and features as step 1, so cargo
+#      reuses the compilation and this is a re-link and a zip.
+#
+# WHY THERE IS NO VIRTUALENV STEP. `maturin develop` wants an activated
+# environment, and the pixi `default` environment already is one: it exports
+# CONDA_PREFIX, and maturin treats a conda prefix as the install target. It is
+# also the interpreter QGIS was compiled against, so a venv layered on top
+# would only hide QGIS's own site-packages. This is why CI no longer runs
+# `python -m venv` or `pip install maturin pytest pytest-cov`.
 set -euo pipefail
 # shellcheck source=scripts/lib.sh
 source "$(dirname "$0")/lib.sh"
@@ -29,10 +44,9 @@ shift || true
 exec pixi run -e default bash -c '
   set -eu
   cd "$1"; shift
-  # A stale wheel from an earlier version would make the glob below ambiguous.
+  # A stale wheel from an earlier version would make dist/*.whl ambiguous for
+  # anything that globs it.
   rm -rf dist
+  maturin develop --release "$@"
   maturin build --release --out dist "$@"
-  # --no-deps: every runtime dependency is a conda package owned by pixi, and
-  # letting pip resolve them would shadow the QGIS-matched builds with PyPI ones.
-  python -m pip install --force-reinstall --no-deps --no-index dist/*.whl
 ' _ "$pkg_dir" "$@"

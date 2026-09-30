@@ -368,10 +368,15 @@ a broken publish contract in under a minute instead of queueing behind a native 
 
 ### Do you need a separate venv step? No.
 
-`maturin develop` is the only thing that ever wanted one, and nothing calls it any more. The pixi
-`default` environment *is* the target interpreter, so [`scripts/py-build.sh`](scripts/py-build.sh)
-builds the release wheel once and installs **that same artifact** into the prefix with
-`pip install --force-reinstall --no-deps`:
+`maturin develop` is the only thing that ever wanted one — and the pixi `default` environment
+already *is* an activated environment: it exports `CONDA_PREFIX`, which maturin accepts as the
+install target, and it is the interpreter QGIS was compiled against, so a venv layered on top would
+only hide QGIS's own `site-packages`.
+
+So [`scripts/py-build.sh`](scripts/py-build.sh) runs `maturin develop --release` (installs, and
+drops the compiled `_core` next to the mixed-layout Python sources that pytest actually imports)
+followed by `maturin build --release --out dist` for the shippable wheel — one cargo compilation,
+reused:
 
 ```jsonc
 // py-packages/qgis-rs/package.json
@@ -379,8 +384,7 @@ builds the release wheel once and installs **that same artifact** into the prefi
 "test":  "bash ../../scripts/py-test.sh  py-packages/qgis-rs"   // turbo: test dependsOn build
 ```
 
-One compile instead of two, the thing under test is the thing that gets published, and a venv layered
-on top of the conda prefix would only hide QGIS's own `site-packages`.
+One compile instead of two, and CI no longer repeats per package what turbo already did.
 
 ## 🗂️ Scripts
 

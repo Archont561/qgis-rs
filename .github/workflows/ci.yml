@@ -14,8 +14,8 @@
 #     sysroot, which is everything cargo-llvm-cov shells out to.
 #   * no `python -m venv` + `pip install maturin pytest pytest-cov` — the pixi
 #     environment IS the target interpreter, maturin/pytest/pytest-cov are
-#     declared in pixi.toml, and scripts/py-build.sh installs the built wheel
-#     into the prefix with pip. A venv layered on top would only hide QGIS's
+#     declared in pixi.toml, and `maturin develop` accepts the CONDA_PREFIX
+#     that environment exports. A venv layered on top would only hide QGIS's
 #     own site-packages.
 #   * no per-package `maturin develop` / `pytest` steps — the turbo `build`
 #     task for each Python distribution builds *and* installs its wheel, and
