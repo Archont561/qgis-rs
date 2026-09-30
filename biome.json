@@ -1,0 +1,35 @@
+{
+	"$schema": "https://biomejs.dev/schemas/2.5.14/schema.json",
+	"vcs": {
+		"enabled": true,
+		"clientKind": "git",
+		"useIgnoreFile": true
+	},
+	"files": {
+		"includes": [
+			"apps/**",
+			"ts-packages/**",
+			"package.json",
+			"bunfig.toml",
+			"turbo.json",
+			"crates/package.json",
+			"py-packages/*/package.json",
+			"!**/dist",
+			"!skills-lock.json",
+			"!**/.napi-cache",
+			"!**/qgis-rs.*.node"
+		]
+	},
+	"overrides": [
+		{
+			"includes": ["ts-packages/qgis-sdk-bridge/src/react.ts"],
+			"linter": {
+				"rules": {
+					"correctness": {
+						"useHookAtTopLevel": "off"
+					}
+				}
+			}
+		}
+	]
+}
