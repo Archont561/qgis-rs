@@ -25,6 +25,10 @@ _*
 # knowledge bundle
 !.knowledge/
 
+# agent skills and conventional-release config
+!.agents/
+!.versionrc
+
 # pixi
 !.pixi/config.toml
 # sandbox publish plan (committed; .pixi-sandbox/ below is the generated transport)

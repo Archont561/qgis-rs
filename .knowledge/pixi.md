@@ -262,6 +262,15 @@ umbrella task is what CI is expected to reproduce locally.
 - `ci` — `gates` + `check-cpp`
 - `ci-full` — `ci` + `lint-cpp` + `test-full` (needs the `default` env installed)
 
+### Agent tooling
+The root Bun workspace carries the same developer packages as `pixi-sandbox`:
+`backlog.md` 1.53 and `skills` 1.7. They run through the separate `bun`
+environment so their Node shebangs are executed by Bun:
+
+- `bun-install` — install the frozen root workspace
+- `backlog` — `bun x backlog` for Markdown tasks in `backlog/`
+- `skills` — `bun x skills` for the versioned `.agents/skills/` collection
+
 There is no `sandbox-restore` task: the `sandbox` feature went away with the
 environment consolidation. Restoring the published transport is
 `scripts/restore.sh`, run directly — see [env-provisioning.md](/env-provisioning.md).
@@ -299,6 +308,9 @@ pixi run lint               # lint everything
 pixi run test               # run basic tests
 pixi run test-full          # run all tests
 pixi run scaffold core raster QgsRasterLayer raster
+pixi run bun-install
+pixi run skills list --json
+pixi run backlog task list --plain
 
 pixi install -e default         # install the QGIS-bearing environment
 pixi run -e default sdk-test    # pytest for py-packages/qgis-sdk

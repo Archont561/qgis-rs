@@ -25,6 +25,19 @@ The `.knowledge/` directory contains design documents, decision records, and arc
 
 **Always consult the knowledge base before making architectural decisions.**
 
+## Agent Tooling
+
+The repository carries the same agent workflow used by `pixi-sandbox`:
+
+- Skills are versioned under `.agents/skills/` and their provenance is recorded in `skills-lock.json`.
+- Install the root Bun workspace with `pixi run bun-install`.
+- Run the skills CLI with `pixi run skills` (equivalent to `bun x skills`).
+- Manage project work as Markdown tasks with `pixi run backlog` (equivalent to `bun x backlog`).
+- Read backlog output non-interactively, for example `pixi run backlog task list --plain`.
+
+Do not hand-edit backlog task metadata when the CLI can make the change; use the backlog skill's
+workflow so IDs, dependencies, acceptance criteria, and status remain consistent.
+
 ## Code Style
 
 ### Rust
