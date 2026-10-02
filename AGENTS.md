@@ -78,7 +78,7 @@ workflow so IDs, dependencies, acceptance criteria, and status remain consistent
 - Everything on the wire is `snake_case`, including operation names. The
   JavaScript client renames to camelCase at its own edge; Python does not rename.
 - The ergonomic classes live in the host languages
-  (`py-packages/qgis-rs/python/qgis_rs/_api.py`, `ts-packages/qgis-node/index.js`),
+  (`py-packages/qgis-rs/python/qgis_rs/_api.py`, `ts-packages/qgis-node/src/index.js`),
   never in the binding crates. There are no pure-Python or pure-JS fallbacks.
 
 ### Repository automation
@@ -89,6 +89,12 @@ there — with a unit test — rather than a `scripts/*.sh`; `pixi run xtask <su
 reaches it without a new pixi task. Per-package verbs (`build`, `test`, `lint`,
 `format`, `coverage`, `pack:check`) stay in the package's own `package.json`
 and are fanned out by turbo.
+
+Source has to be visible to git. `.gitignore` ignores `.*` and `_*`, which once
+swallowed the whole Python client (`_api.py`, `_transport.py`) without a word
+from `git status`; `pixi run xtask check-sources` now fails the gate when a
+file under `crates/`, `py-packages/`, `ts-packages/` or `scripts/` looks like
+source and is ignored.
 
 ## Testing
 
