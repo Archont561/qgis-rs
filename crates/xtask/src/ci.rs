@@ -24,7 +24,10 @@ const NOT_DOCS: &str = "--filter=!qgis-rs-docs";
 /// suites. Coverage runs last because it is the most expensive producer and
 /// its artifacts are only interesting once everything else is green.
 pub fn gate(coverage: bool) -> Result<()> {
-    step("repo lints (taplo, actionlint)");
+    step("repo lints (ignored sources, taplo, actionlint)");
+    // First, and in-process: a source file hidden by .gitignore makes every
+    // later step test a tree the next clone will not have.
+    crate::lints::check_sources()?;
     pixi("default", ["xtask", "lint-toml"])?;
     pixi("default", ["actionlint"])?;
 

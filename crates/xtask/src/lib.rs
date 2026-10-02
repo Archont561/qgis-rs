@@ -63,6 +63,8 @@ pub enum Command {
         /// Files to check; with none, every .cpp/.h under crates/qgis-sys.
         files: Vec<String>,
     },
+    /// Fail if a source file inside a package tree is hidden by .gitignore.
+    CheckSources,
     /// taplo canonicality check for the manifests kept in canonical form.
     LintToml {
         /// Files to check; with none, pixi.toml and pixi-sandbox.toml.
@@ -107,6 +109,7 @@ pub fn run(command: Command) -> Result<()> {
     match command {
         Command::Ci { no_coverage } => ci::gate(!no_coverage),
         Command::CheckCpp { files } => lints::check_cpp(&files),
+        Command::CheckSources => lints::check_sources(),
         Command::LintToml { files } => lints::lint_toml(&files),
         Command::PackCheck {
             package_dir,

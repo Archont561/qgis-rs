@@ -402,6 +402,7 @@ Everything a human, a hook or CI does to the **repository as a whole** is a subc
 ```bash
 pixi run xtask ci [--no-coverage]            # the gate
 pixi run xtask check-cpp [files...]          # clang-format on the C++ shim
+pixi run xtask check-sources                 # no source file hidden by .gitignore
 pixi run xtask lint-toml  [files...]         # taplo canonicality
 pixi run xtask pack-check <dir> <required…>  # the published tarball has what `files` promises
 pixi run xtask scaffold <layer> <concept> <QgisClass> <short>

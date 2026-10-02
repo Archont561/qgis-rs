@@ -113,6 +113,104 @@ pub fn glob_matches(directory: &Path, pattern: &str) -> Result<bool> {
     Ok(false)
 }
 
+/// The trees that hold hand-written source, as opposed to build output.
+///
+/// Public for `tests/lints.rs`: which directories count as source is the whole
+/// content of [`check_sources`].
+pub const SOURCE_TREES: &[&str] = &["crates", "py-packages", "ts-packages", "scripts"];
+
+/// Directory segments inside those trees that are *not* source.
+const BUILD_OUTPUT: &[&str] = &[
+    "node_modules/",
+    "__pycache__/",
+    "/dist/",
+    "/build/",
+    "/target/",
+    "/.pixi/",
+    "/.venv/",
+];
+
+/// File extensions a reader would call source.
+const SOURCE_EXTENSIONS: &[&str] = &[
+    ".py", ".pyi", ".rs", ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".cpp", ".h", ".hpp",
+];
+
+/// Whether `path` is a source file that belongs in the repository.
+///
+/// Dot-prefixed names are excluded: a generated `.napi-generated.d.ts` sits
+/// next to the addon it describes and is ignored on purpose. Public because
+/// this predicate, not the git plumbing around it, is what the test pins.
+#[must_use]
+pub fn looks_like_source(path: &str) -> bool {
+    let name = path.rsplit('/').next().unwrap_or(path);
+    if name.starts_with('.') {
+        return false;
+    }
+    if BUILD_OUTPUT.iter().any(|segment| path.contains(segment)) {
+        return false;
+    }
+    SOURCE_EXTENSIONS
+        .iter()
+        .any(|extension| name.ends_with(extension))
+}
+
+/// Fail if a source file inside a package tree is ignored by git.
+///
+/// This exists because it already happened: `.gitignore` ignores `_*` so that
+/// build droppings stay out, re-included a list of Python module names by
+/// hand, and the day `_api.py` and `_transport.py` were written nobody
+/// remembered to extend the list. Both files were real source, both were
+/// invisible to `git status`, and the whole Python client was pushed as a
+/// package that could not import itself — a local gate that ran against the
+/// files on disk said nothing, because on disk they were there.
+///
+/// An ignored file that is *not* source — a wheel, an addon, a generated
+/// `.d.ts` — is exactly what the ignore rules are for and is not reported.
+pub fn check_sources() -> Result<()> {
+    let root = repo_root();
+    if !root.join(".git").exists() {
+        println!("check-sources: not a git checkout, nothing to compare");
+        return Ok(());
+    }
+
+    let mut args = vec![
+        "ls-files".to_string(),
+        "--others".to_string(),
+        "--ignored".to_string(),
+        "--exclude-standard".to_string(),
+        "--".to_string(),
+    ];
+    args.extend(SOURCE_TREES.iter().map(ToString::to_string));
+    let listed = crate::util::capture("git", args)?;
+    if !listed.status.success() {
+        bail!(
+            "git ls-files failed: {}",
+            String::from_utf8_lossy(&listed.stderr)
+        );
+    }
+
+    let hidden: Vec<&str> = std::str::from_utf8(&listed.stdout)
+        .context("git listed a path that is not UTF-8")?
+        .lines()
+        .filter(|path| looks_like_source(path))
+        .collect();
+
+    if !hidden.is_empty() {
+        for path in &hidden {
+            eprintln!("ignored but looks like source: {path}");
+        }
+        bail!(
+            "{} source file(s) are hidden by .gitignore — commit them, or narrow the ignore rule",
+            hidden.len()
+        );
+    }
+    println!(
+        "check-sources: every source file in {} trees is visible to git",
+        SOURCE_TREES.len()
+    );
+    Ok(())
+}
+
 /// Link libqca under the Qt5 soname QGIS still dlopens, whichever flavour
 /// conda-forge installed. Idempotent, so every task that needs a live QGIS can
 /// call it unconditionally.
