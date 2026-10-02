@@ -1,18 +1,18 @@
 {
+	"extends": "../../tsconfig.base.json",
 	"compilerOptions": {
-		"target": "ES2022",
-		"module": "ESNext",
-		"moduleResolution": "bundler",
-		"lib": ["ES2022", "DOM", "DOM.Iterable"],
-		"declaration": true,
-		"emitDeclarationOnly": false,
+		// `DOM` is this package's to add, not the base's: the package is a browser bridge and
+		// nothing else in the workspace is. `DOM.Iterable` comes with it because the loader
+		// walks `channel.objects`.
+		"lib": ["ES2023", "DOM", "DOM.Iterable"],
+		"types": ["bun"],
 		"outDir": "dist",
-		"rootDir": "src",
-		"strict": true,
-		"esModuleInterop": true,
-		"skipLibCheck": true,
-		"forceConsistentCasingInFileNames": true
+		"rootDir": "src"
 	},
-	"include": ["src/**/*"],
-	"exclude": ["node_modules", "dist", "tests"]
+	"include": ["src/**/*.ts"],
+	// Tests are typechecked by `tsconfig.test.json` instead of being excluded silently: this
+	// package's suite exercises the published surface through `bun test`, and the tests
+	// import the source with a `.ts` extension, which `allowImportingTsExtensions` forbids
+	// for a project that emits.
+	"exclude": ["node_modules", "dist"]
 }

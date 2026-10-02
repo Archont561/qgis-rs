@@ -31,7 +31,8 @@ export function loadQWebChannel(customSources?: string[]): Promise<void> {
 		let idx = 0;
 
 		function tryLoad() {
-			if (idx >= sources.length) {
+			const src = sources[idx];
+			if (src === undefined) {
 				reject(
 					new Error(
 						`Failed to load qwebchannel.js from any source: ${sources.join(", ")}`,
@@ -39,8 +40,6 @@ export function loadQWebChannel(customSources?: string[]): Promise<void> {
 				);
 				return;
 			}
-
-			const src = sources[idx];
 			const script = document.createElement("script");
 			script.src = src;
 			script.onload = () => {

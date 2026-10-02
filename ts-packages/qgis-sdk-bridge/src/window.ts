@@ -236,7 +236,7 @@ export class QgisBridge extends EventTarget {
 
 	// EventSource-like — already inherits addEventListener/removeEventListener from EventTarget
 	// But we provide typed overloads
-	addEventListener(
+	override addEventListener(
 		type: string,
 		listener: EventListenerOrEventListenerObject | null,
 		options?: boolean | AddEventListenerOptions,
@@ -248,7 +248,7 @@ export class QgisBridge extends EventTarget {
 		}
 	}
 
-	removeEventListener(
+	override removeEventListener(
 		type: string,
 		listener: EventListenerOrEventListenerObject | null,
 		options?: boolean | EventListenerOptions,
@@ -289,28 +289,38 @@ export class QgisBridge extends EventTarget {
 			try {
 				const lastArg = args[args.length - 1];
 				const hasCallback = typeof lastArg === "function";
-				if (hasCallback) {
-					rawMethod.apply(this._rawBridge, args);
-				} else {
-					rawMethod.apply(this._rawBridge, [
-						...args,
-						(result: any) => {
+				const settle = (result: unknown): void => {
+					try {
+						if (typeof result === "string") {
 							try {
-								if (typeof result === "string") {
-									try {
-										const parsed = JSON.parse(result);
-										resolve(parsed as T);
-										return;
-									} catch {
-										// Not JSON
-									}
-								}
-								resolve(result as T);
-							} catch (e) {
-								reject(e);
+								const parsed = JSON.parse(result);
+								resolve(parsed as T);
+								return;
+							} catch {
+								// Not JSON
 							}
+						}
+						resolve(result as T);
+					} catch (e) {
+						reject(e);
+					}
+				};
+
+				if (hasCallback) {
+					// The caller brought its own callback, so hand it the result untouched — but
+					// through a proxy that settles this promise too. Forwarding the callback
+					// directly left the returned promise pending forever, which turned
+					// `await bridge.method(args, cb)` into a hang rather than a call.
+					const callerCallback = lastArg as (result: unknown) => void;
+					rawMethod.apply(this._rawBridge, [
+						...args.slice(0, -1),
+						(result: unknown) => {
+							settle(result);
+							callerCallback(result);
 						},
 					]);
+				} else {
+					rawMethod.apply(this._rawBridge, [...args, settle]);
 				}
 			} catch (e) {
 				reject(e);
@@ -319,7 +329,7 @@ export class QgisBridge extends EventTarget {
 	}
 
 	// Convenience for dispatching from Python
-	dispatchEvent(event: Event): boolean {
+	override dispatchEvent(event: Event): boolean {
 		const result = super.dispatchEvent(event);
 		// Also call on* handlers
 		if (event.type === "open" && this.onopen) {

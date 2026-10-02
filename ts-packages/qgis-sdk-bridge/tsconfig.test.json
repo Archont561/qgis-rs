@@ -1,0 +1,22 @@
+{
+	// Typechecks the suite as `bun test` actually loads it.
+	//
+	// `tsconfig.json` excludes `tests/` because that project emits `.d.ts` for
+	// `src/`, and the suite imports the source with an explicit `.ts` extension —
+	// which `allowImportingTsExtensions` forbids unless the project sets
+	// `noEmit`. Splitting the two lets both hold: `tsconfig.json` keeps its
+	// declaration emit, and this one typechecks the tests with no emit at all.
+	"extends": "./tsconfig.json",
+	"compilerOptions": {
+		"noEmit": true,
+		"allowImportingTsExtensions": true,
+		"emitDeclarationOnly": false,
+		"declaration": false,
+		// The emit config pins `rootDir` at `src/`, which this program — it includes
+		// `tests/` — is not under. Nothing is emitted here, so widen it to the package.
+		"rootDir": ".",
+		"types": ["bun"]
+	},
+	"include": ["src/**/*.ts", "tests/**/*.ts"],
+	"exclude": ["node_modules", "dist"]
+}

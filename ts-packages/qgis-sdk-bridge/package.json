@@ -53,9 +53,10 @@
 		"build": "bun build src/index.ts --outdir dist --target browser --format esm && bun build src/react.ts --outdir dist --target browser --format esm && bun build src/vue.ts --outdir dist --target browser --format esm && bun build src/svelte.ts --outdir dist --target browser --format esm && bun build src/webcomponents.ts --outdir dist --target browser --format esm && bun build src/loader.ts --outdir dist --target browser --format esm && bun build src/qgis.ts --outdir dist --target browser --format esm && bun build src/window.ts --outdir dist --target browser --format esm && bun build src/description.ts --outdir dist --target browser --format esm && tsc --emitDeclarationOnly",
 		"build:types": "tsc --emitDeclarationOnly",
 		"dev": "bun --watch build",
-		"test": "bun test",
-		"coverage": "bun test --coverage",
-		"test:watch": "bun test --watch",
+		"test": "bun test ./tests",
+		"coverage": "bun test ./tests --coverage",
+		"test:watch": "bun test ./tests --watch",
+		"typecheck": "tsc --noEmit --project tsconfig.test.json",
 		"lint": "bunx biome check .",
 		"format": "bunx biome format --write .",
 		"prepublishOnly": "bun run build"
@@ -85,7 +86,9 @@
 	},
 	"homepage": "https://archont561.github.io/qgis-rs/",
 	"devDependencies": {
+		"@qgis/test-utils": "workspace:*",
 		"@types/bun": "latest",
+		"fast-check": "^4.10.2",
 		"typescript": "^5.4.5"
 	},
 	"peerDependencies": {

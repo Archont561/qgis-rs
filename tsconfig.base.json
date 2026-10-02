@@ -1,0 +1,40 @@
+{
+	// Shared compiler settings for the workspace's TypeScript packages.
+	//
+	// A package `extends` this and adds only what is genuinely its own — its `lib`,
+	// its `types`, its `rootDir`/`outDir`. Anything that is a house-wide decision
+	// (strictness, module system, casing) belongs here, so two packages cannot
+	// disagree about what `strict` means.
+	//
+	// `lib` deliberately carries no DOM: the only browser-targeted package is
+	// qgis-sdk-bridge, and handing DOM to a package that does not target a browser
+	// would let it typecheck against an environment it never runs in. Same
+	// reasoning for leaving `types` unset here.
+	"compilerOptions": {
+		"target": "ES2023",
+		"lib": ["ES2023"],
+		"module": "ESNext",
+		"moduleResolution": "bundler",
+
+		// Strictness. The two flags below are not part of `strict`, and both earn
+		// their place: `exactOptionalPropertyTypes` separates "absent" from
+		// "explicitly undefined", and `noUncheckedIndexedAccess` stops an unchecked
+		// index read from typing as a defined value.
+		"strict": true,
+		"exactOptionalPropertyTypes": true,
+		"noUncheckedIndexedAccess": true,
+		"noImplicitOverride": true,
+		"noFallthroughCasesInSwitch": true,
+		"forceConsistentCasingInFileNames": true,
+
+		"esModuleInterop": true,
+		"skipLibCheck": true,
+		"isolatedModules": true,
+		"verbatimModuleSyntax": true,
+
+		// The bridge's build is `bun build` plus a separate `tsc --emitDeclarationOnly`
+		// pass, so declarations are wanted while JS emit is not this config's job.
+		"declaration": true,
+		"emitDeclarationOnly": false
+	}
+}

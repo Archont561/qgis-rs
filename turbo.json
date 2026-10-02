@@ -4,12 +4,37 @@
 		"build": {
 			"dependsOn": ["^build"],
 			"outputs": ["dist/**", "*.node"],
-			"inputs": ["src/**", "package.json", "tsconfig.json"]
+			"inputs": [
+				"src/**",
+				"package.json",
+				"tsconfig.json",
+				"tsconfig.*.json",
+				"../../tsconfig.base.json"
+			]
 		},
 		"test": {
 			"dependsOn": ["build", "^build"],
 			"outputs": [],
-			"inputs": ["src/**", "tests/**", "bin/**", "package.json"]
+			"inputs": [
+				"src/**",
+				"tests/**",
+				"bin/**",
+				"package.json",
+				"tsconfig.json",
+				"tsconfig.*.json",
+				"../../tsconfig.base.json"
+			]
+		},
+		"typecheck": {
+			"outputs": [],
+			"inputs": [
+				"src/**",
+				"tests/**",
+				"package.json",
+				"tsconfig.json",
+				"tsconfig.*.json",
+				"../../tsconfig.base.json"
+			]
 		},
 		"lint": {
 			"outputs": []

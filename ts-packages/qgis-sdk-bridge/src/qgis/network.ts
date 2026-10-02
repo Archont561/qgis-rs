@@ -71,8 +71,12 @@ export class NetworkAPI {
 		opts: {
 			method?: string;
 			headers?: any;
-			body?: string;
-			authCfg?: string;
+			// `| undefined` rather than optional alone: `post(url, body?)` hands this straight
+			// through, and an optional property under `exactOptionalPropertyTypes` may not
+			// receive `undefined` explicitly. The value is read as `opts.body || null` below,
+			// so "absent" and "undefined" already mean the same thing here.
+			body?: string | undefined;
+			authCfg?: string | undefined;
 		} = {},
 	): Promise<QgisNetworkResponse> {
 		const res = await this._call(
@@ -104,7 +108,7 @@ export class NetworkAPI {
 
 	async get(
 		url: string,
-		opts: { headers?: any; authCfg?: string } = {},
+		opts: { headers?: any; authCfg?: string | undefined } = {},
 	): Promise<QgisNetworkResponse> {
 		return this.fetch(url, { method: "GET", ...opts });
 	}
@@ -112,7 +116,7 @@ export class NetworkAPI {
 	async post(
 		url: string,
 		body?: string,
-		opts: { headers?: any; authCfg?: string } = {},
+		opts: { headers?: any; authCfg?: string | undefined } = {},
 	): Promise<QgisNetworkResponse> {
 		return this.fetch(url, { method: "POST", body, ...opts });
 	}

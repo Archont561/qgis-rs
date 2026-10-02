@@ -1,0 +1,14 @@
+{
+	"extends": "../../tsconfig.base.json",
+	"compilerOptions": {
+		"types": ["bun"],
+		// This package ships its TypeScript as-is (`exports` points at `src/index.ts`)
+		// and consumers run it through bun, so it never emits. That is what makes the
+		// `.ts` specifiers in its own imports legal.
+		"noEmit": true,
+		"allowImportingTsExtensions": true,
+		"declaration": false
+	},
+	"include": ["src/**/*.ts", "tests/**/*.ts"],
+	"exclude": ["node_modules", "dist"]
+}

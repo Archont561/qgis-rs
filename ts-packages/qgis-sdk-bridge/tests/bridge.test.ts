@@ -1,150 +1,34 @@
+/**
+ * The bridge, tested against a scripted QWebChannel rather than against Qt.
+ *
+ * The channel, `qt`, `window` and both descriptions used to be a hundred lines of
+ * module-level assignments at the top of this file, installed once and never taken down. Two
+ * things were wrong with that: the globals outlived the suites that needed them, so a suite
+ * about `loadDescription` inherited a channel it never touched, and there was no way for a
+ * later suite in this process to install its own without first undoing these by hand.
+ *
+ * They are now `@qgis/test-utils`' `installBridgeGlobals`, wired through `createFixture` in
+ * `"file"` scope. File scope because every suite here reads the same descriptions and the
+ * channel answers nothing until a test calls it — so per-test freshness would buy isolation
+ * this file does not need while costing a rebuild per test. The `restore()` teardown is the
+ * part the old version had no answer for: after this file, the process looks the way it did
+ * before it ran.
+ */
+
 import { describe, expect, it } from "bun:test";
+import { createFixture, installBridgeGlobals } from "@qgis/test-utils";
+
 import { loadDescription, loadQgisApiDescription } from "../src/description.ts";
 import { QgisBridge } from "../src/window.ts";
 
-// Mock QWebChannel for testing without QGIS
-(globalThis as any).QWebChannel = class {
-	constructor(_transport: any, cb: any) {
-		const makeCb = (args: any[], result: any) => {
-			const last = args[args.length - 1];
-			if (typeof last === "function") last(result);
-		};
-		// Simulate channel with mock objects
-		const mockBridge = {
-			get_layer: (...args: any[]) =>
-				makeCb(args, JSON.stringify({ name: args[0], count: 42 })),
-			log: (...args: any[]) => makeCb(args, "ok"),
-			layers_list: (...args: any[]) =>
-				makeCb(
-					args,
-					JSON.stringify([{ id: "layer1", name: "Roads", type: "vector" }]),
-				),
-			layers_add_vector: (...args: any[]) => {
-				const [path, name] = args;
-				makeCb(
-					args,
-					JSON.stringify({
-						id: "layer_new",
-						name: name || "Roads",
-						type: "vector",
-						path,
-					}),
-				);
-			},
-			tasks_run: (...args: any[]) =>
-				makeCb(args, JSON.stringify({ task_id: "task123", name: args[0] })),
-			message_info: (...args: any[]) => makeCb(args, true),
-			network_fetch: (...args: any[]) =>
-				makeCb(
-					args,
-					JSON.stringify({
-						ok: true,
-						status: 200,
-						url: args[0],
-						body: JSON.stringify({ mock: true }),
-						headers: {},
-					}),
-				),
-		};
-		const mockQgis = {
-			layers_list: (...args: any[]) =>
-				makeCb(args, JSON.stringify([{ id: "layer1", name: "Roads" }])),
-			layers_add_vector: (...args: any[]) => {
-				const [_path, name] = args;
-				makeCb(
-					args,
-					JSON.stringify({
-						id: "layer_new",
-						name: name || "Roads",
-						type: "vector",
-					}),
-				);
-			},
-			tasks_run: (...args: any[]) =>
-				makeCb(args, JSON.stringify({ task_id: "task123", name: args[0] })),
-			message_info: (...args: any[]) => makeCb(args, true),
-			network_fetch: (...args: any[]) =>
-				makeCb(
-					args,
-					JSON.stringify({
-						ok: true,
-						status: 200,
-						url: args[0],
-						body: JSON.stringify({ mock: true }),
-						headers: {},
-					}),
-				),
-		};
-		const channel = {
-			objects: {
-				bridge: mockBridge,
-				my_bridge: mockBridge,
-				qgis: mockQgis,
-			},
-		};
-		cb(channel);
-	}
-};
+const globals = createFixture(
+	installBridgeGlobals,
+	(installed) => installed.restore(),
+	"file",
+);
 
-(globalThis as any).qt = {
-	webChannelTransport: {},
-};
-
-(globalThis as any).window = globalThis;
-(globalThis as any).__QGIS_BRIDGE_DESCRIPTION__ = {
-	name: "my_bridge",
-	version: "0.1.0",
-	methods: [
-		{
-			name: "get_layer",
-			args: ["layer_id"],
-			arg_types: ["string"],
-			return_type: "object",
-		},
-		{
-			name: "log",
-			args: ["msg"],
-			arg_types: ["string"],
-			return_type: "string",
-		},
-	],
-	signals: [
-		{ name: "layer_changed", args: ["layer_id"], arg_types: ["string"] },
-	],
-};
-
-(globalThis as any).__QGIS_API_DESCRIPTION__ = {
-	name: "qgis",
-	version: "0.1.0",
-	methods: [
-		{ name: "layers_list", args: [], arg_types: [], return_type: "object" },
-		{
-			name: "layers_add_vector",
-			args: ["path", "name", "provider"],
-			arg_types: ["string", "string", "string"],
-			return_type: "object",
-		},
-		{
-			name: "tasks_run",
-			args: ["name", "params"],
-			arg_types: ["string", "object"],
-			return_type: "object",
-		},
-		{
-			name: "message_info",
-			args: ["title", "text", "duration"],
-			arg_types: ["string", "string", "number"],
-			return_type: "boolean",
-		},
-		{
-			name: "network_fetch",
-			args: ["url", "options"],
-			arg_types: ["string", "object"],
-			return_type: "object",
-		},
-	],
-	signals: [],
-};
+/** The installed channel, for a suite that needs to add an answer or read the call log. */
+const channel = createFixture(() => globals().channel, undefined, "file");
 
 describe("QgisBridge - EventTarget/WebSocket-like", () => {
 	it("should have WebSocket readyState constants", () => {
@@ -227,7 +111,11 @@ describe("QgisAPI - complete QGIS Web API", () => {
 		const { qgis } = await createQgisBridge("my_bridge");
 		const layers = await qgis.layers.list();
 		expect(Array.isArray(layers)).toBe(true);
-		expect(layers[0].name).toBe("Roads");
+		// Assert the length before indexing rather than writing `layers[0]!.name`: an empty list
+		// is the more likely failure than a sparse one, and saying so gives a better message
+		// than "cannot read properties of undefined".
+		expect(layers.length).toBeGreaterThan(0);
+		expect(layers[0]?.name).toBe("Roads");
 	});
 
 	it("should add vector layer via qgis.layers.addVector", async () => {
