@@ -24,9 +24,11 @@ the Python-facing half sits in `py-packages/qgis-rs/`.
 ```
 crates/qgis-py/               # this crate — pure Rust, no Python files
 ├── Cargo.toml                # cdylib _core + bin qgis-cli
-└── src/
-    ├── lib.rs                # PyO3 bindings for qgis-render
-    └── bin/qgis-cli.rs       # Binary entry point (calls qgis_cli::main_entry)
+├── src/
+│   ├── lib.rs                # the one #[pyfunction]: invoke(request_json)
+│   └── bin/qgis-cli.rs       # Binary entry point (calls qgis_cli::main_entry)
+└── tests/
+    └── adapter.rs            # the adapter adds nothing to the request (D11)
 
 py-packages/qgis-rs/          # the Python distribution
 ├── pyproject.toml            # maturin build, console scripts qgis-cli / qgis-rs

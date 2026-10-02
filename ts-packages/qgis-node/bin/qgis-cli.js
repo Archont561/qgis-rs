@@ -54,7 +54,7 @@ function findBinary(name) {
 
 function runWithFallback(args) {
 	// Pure JS fallback for commands that don't need QGIS
-	const qgisRs = require("../index.js");
+	const qgisRs = require("../src/index.js");
 
 	const command = args[0];
 

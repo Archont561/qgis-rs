@@ -31,6 +31,22 @@
   `qgis-protocol` and `qgis-engine` alongside the original six crates and
   shells to `pixi run version` rather than reimplementing `scripts/version.ts`.
   Rationale: `.knowledge/decisions/D10-xtask-over-shell-scripts.md`.
+* **Change (testing)**: `src/` is code and `tests/` is tests, in every crate and
+  every package. 21 `#[cfg(test)] mod tests` blocks (~1100 lines) moved out of
+  `crates/*/src/` into `crates/*/tests/<topic>.rs`; the same 120 tests still
+  run, now as integration tests that use each crate the way a consumer does.
+  Consequences: `crates/xtask` is a library plus a six-line `main.rs` (a
+  `[[bin]]` cannot be linked from `tests/`); the items the tests need are now
+  `pub` with a doc comment saying so (`CRATES`/`already_published`,
+  `split_list`/`what_is_served`/`tiles`, the `#[tool]` handlers plus a public
+  `QgisMcpServer::tools()` for the router the macro generates privately);
+  `crates/qgis-node` gained the adapter test `crates/qgis-py` already had; and
+  `ts-packages/qgis-node` — the one package whose sources sat at its root —
+  moved `index.js`/`index.d.ts` into `src/`, with `main`, `types`, `files` and
+  `pack:check` following. Rationale:
+  `.knowledge/decisions/D11-tests-outside-src.md`. The next step, adopting
+  proptest/rstest, hypothesis, fast-check + `@qgis/test-utils` and
+  GoogleTest/RapidCheck, is backlog TASK-23.
 * **Change (sdk)**: `ts-packages/qgis-sdk-bridge` gained the `README.md` its
   `files` field already promised and a `pack:check` script, so `turbo run
   pack:check` now covers both npm packages instead of one.

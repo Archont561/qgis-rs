@@ -23,7 +23,10 @@ use crate::util::{capture, pixi, repo_root, run_in, step};
 /// download nobody can link against. qgis-protocol and qgis-engine ARE here —
 /// they are ordinary libraries, and the transport is the thing a third-party
 /// binding would want to depend on.
-const CRATES: &[&str] = &[
+/// Public so `tests/release.rs` can assert the order and the exclusions: this
+/// list is a dependency graph flattened by hand, and the test is what keeps it
+/// honest.
+pub const CRATES: &[&str] = &[
     "qgis-sys",
     "qgis-styles",
     "qgis-render",
@@ -347,7 +350,7 @@ fn publish_one(crate_name: &str) -> Result<()> {
 }
 
 /// Whether a `cargo publish` rejection means "this version is already there".
-fn already_published(output: &str) -> bool {
+pub fn already_published(output: &str) -> bool {
     let lowered = output.to_lowercase();
     lowered.contains("already exists")
         || (lowered.contains("already") && lowered.contains("uploaded"))
@@ -399,44 +402,4 @@ fn publish_github_packages() -> Result<()> {
         }
     }
     Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn the_publish_order_puts_a_crate_after_everything_it_depends_on() {
-        let position = |name: &str| {
-            CRATES
-                .iter()
-                .position(|crate_name| *crate_name == name)
-                .unwrap_or_else(|| panic!("{name} is not published"))
-        };
-        assert!(position("qgis-protocol") < position("qgis-engine"));
-        assert!(position("qgis-render") < position("qgis-engine"));
-        assert!(position("qgis-render") < position("qgis-cli"));
-        assert!(position("qgis-styles") < position("qgis-render"));
-    }
-
-    #[test]
-    fn the_published_set_excludes_the_language_binding_cores() {
-        for excluded in ["qgis-py", "qgis-node", "qgis-sdk", "xtask"] {
-            assert!(
-                !CRATES.contains(&excluded),
-                "{excluded} must not be published"
-            );
-        }
-    }
-
-    #[test]
-    fn a_duplicate_upload_is_recognised_however_cargo_words_it() {
-        assert!(already_published(
-            "error: crate version `0.1.0` is already uploaded"
-        ));
-        assert!(already_published("the crate already exists on crates.io"));
-        assert!(!already_published(
-            "error: failed to verify package tarball"
-        ));
-    }
 }

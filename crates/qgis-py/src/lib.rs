@@ -50,15 +50,3 @@ fn _core(module: &Bound<'_, PyModule>) -> PyResult<()> {
     module.add("TRANSPORT_VERSION", qgis_engine::TRANSPORT_VERSION)?;
     Ok(())
 }
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn the_adapter_forwards_to_the_engine_verbatim() {
-        // No interpreter here: what is under test is that this crate adds
-        // nothing to the request on its way across the boundary.
-        let request = r#"{"transport_version":1,"operation":"ping","payload":"hello"}"#;
-        assert_eq!(qgis_engine::invoke(request), qgis_engine::invoke(request));
-        assert!(qgis_engine::invoke(request).contains("\"echo\":\"hello\""));
-    }
-}

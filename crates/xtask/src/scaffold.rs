@@ -83,7 +83,7 @@ fn write(path: &Path, contents: &str) -> Result<()> {
 ///
 /// The parent `mod.rs` and `lib.rs` accumulate one line per binding; running
 /// the scaffolder twice for the same concept must not duplicate them.
-fn append_once(path: &Path, marker: &str, line: &str) -> Result<()> {
+pub fn append_once(path: &Path, marker: &str, line: &str) -> Result<()> {
     let existing = fs::read_to_string(path).unwrap_or_default();
     if existing.contains(marker) {
         return Ok(());
@@ -96,7 +96,7 @@ fn append_once(path: &Path, marker: &str, line: &str) -> Result<()> {
     write(path, &updated)
 }
 
-fn header_source(layer: &str, concept: &str, short_name: &str, handle: &str) -> String {
+pub fn header_source(layer: &str, concept: &str, short_name: &str, handle: &str) -> String {
     format!(
         "#pragma once\n\n\
          #include \"rust/cxx.h\"\n\
@@ -111,7 +111,7 @@ fn header_source(layer: &str, concept: &str, short_name: &str, handle: &str) -> 
     )
 }
 
-fn bridge_source(layer: &str, concept: &str, handle: &str) -> String {
+pub fn bridge_source(layer: &str, concept: &str, handle: &str) -> String {
     format!(
         "#[cxx::bridge(namespace = \"qgis_shim::{layer}\")]\n\
          pub mod ffi {{\n    \
@@ -124,7 +124,7 @@ fn bridge_source(layer: &str, concept: &str, handle: &str) -> String {
     )
 }
 
-fn shim_source(layer: &str, concept: &str, qgis_class: &str, handle: &str) -> String {
+pub fn shim_source(layer: &str, concept: &str, qgis_class: &str, handle: &str) -> String {
     format!(
         "#include \"qgis-sys/include/{layer}/{concept}.h\"\n\
          #include \"qgis-sys/include/core/convert.h\"\n\n\
@@ -137,39 +137,4 @@ fn shim_source(layer: &str, concept: &str, qgis_class: &str, handle: &str) -> St
          // TODO: implement FFI functions here\n\n\
          }} // namespace qgis_shim::{layer}\n"
     )
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn the_generated_files_name_each_other_consistently() {
-        let header = header_source("core", "geometry", "geometry", "QgsGeometryHandle");
-        let bridge = bridge_source("core", "geometry", "QgsGeometryHandle");
-        let shim = shim_source("core", "geometry", "QgsGeometry", "QgsGeometryHandle");
-
-        // The cxx bridge includes the header, and the header includes the
-        // bridge's generated counterpart — a mismatch here is a build failure
-        // in a place that does not name the cause.
-        assert!(header.contains("qgis-sys/src/core/geometry/geometry.rs.h"));
-        assert!(bridge.contains("include!(\"qgis-sys/include/core/geometry.h\")"));
-        assert!(shim.contains("#include \"qgis-sys/include/core/geometry.h\""));
-        assert!(shim.contains("::QgsGeometry"));
-        assert!(bridge.contains("type QgsGeometryHandle;"));
-    }
-
-    #[test]
-    fn appending_a_module_line_is_idempotent() {
-        let directory = std::env::temp_dir().join("qgis-xtask-scaffold-append");
-        fs::create_dir_all(&directory).expect("create dir");
-        let path = directory.join("mod.rs");
-        fs::write(&path, "pub mod application;\n").expect("seed");
-
-        append_once(&path, "pub mod geometry;", "pub mod geometry;\n").expect("first append");
-        append_once(&path, "pub mod geometry;", "pub mod geometry;\n").expect("second append");
-
-        let contents = fs::read_to_string(&path).expect("read back");
-        assert_eq!(contents.matches("pub mod geometry;").count(), 1);
-    }
 }

@@ -32,9 +32,12 @@ function candidates() {
 		"darwin-arm64",
 		"win32-x64-msvc",
 	];
-	const ids = ["./qgis-rs.node"];
+	// `../` because the addon is built next to package.json (that is where
+	// `napi build .` puts it and what the `files` list publishes), while this
+	// client lives in src/.
+	const ids = ["../qgis-rs.node"];
 	for (const triple of triples) {
-		ids.push(`./qgis-rs.${triple}.node`);
+		ids.push(`../qgis-rs.${triple}.node`);
 		ids.push(`@qgis-rs/node-${triple}`);
 	}
 	return ids;

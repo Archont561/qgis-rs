@@ -267,6 +267,10 @@ scripts/       the few shell entry points that are still shell (see scripts/READ
 .knowledge/    design documents and decision records
 ```
 
+Inside each of them the same split holds: **`src/` is code, `tests/` is tests** —
+no `#[cfg(test)]` modules in Rust sources, no test files beside the module they
+exercise ([D11](.knowledge/decisions/D11-tests-outside-src.md)).
+
 ### Crate / package structure
 
 | Crate / Package | Purpose | Status |

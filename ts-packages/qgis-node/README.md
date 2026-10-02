@@ -142,8 +142,10 @@ execSync('npx qgis-cli info map.qgs --json', { stdio: 'inherit' });
 ```
 qgis-rs npm package
 ├── qgis-rs.<platform>.node  → NAPI addon (Rust cdylib) — native speed
-├── index.js                 → JS wrapper (Extent, Crs, TilePlan, etc.) over one `invoke(json)` call
-├── index.d.ts               → TypeScript types
+├── src/
+│   ├── index.js             → JS wrapper (Extent, Crs, TilePlan, etc.) over one `invoke(json)` call
+│   └── index.d.ts           → TypeScript types
+├── tests/                   → the contract suite, run against the real addon
 ├── bin/
 │   ├── qgis-cli.js          → Node wrapper that tries Rust binary, falls back to JS
 │   ├── qgis-plugin.js       → same for plugin SDK
@@ -152,7 +154,7 @@ qgis-rs npm package
 ```
 
 - Rust: `crates/qgis-render` (pure Rust), `crates/qgis-cli`, `crates/qgis-sdk` (plugin CLI)
-- Node: `ts-packages/qgis-node/` — package.json, `index.js`, `bin/` wrappers; the NAPI crate it builds is `crates/qgis-node/` (`napi build --cargo-cwd ../../crates/qgis-node .`), and that crate exposes exactly one function, `invoke(requestJson) -> responseJson` (see `.knowledge/decisions/D09-wire-protocol-over-ffi.md`)
+- Node: `ts-packages/qgis-node/` — package.json, `src/index.js`, `bin/` wrappers; the NAPI crate it builds is `crates/qgis-node/` (`napi build --cargo-cwd ../../crates/qgis-node .`), and that crate exposes exactly one function, `invoke(requestJson) -> responseJson` (see `.knowledge/decisions/D09-wire-protocol-over-ffi.md`)
 - Python: `py-packages/qgis-rs/` and `py-packages/qgis-sdk/` — same Rust code via PyO3
 
 ## Conda-forge (Node.js)

@@ -19,7 +19,7 @@ The `.knowledge/` directory contains design documents, decision records, and arc
 - **INDEX.md** — Entry point to all knowledge documents
 - **architecture.md** — System architecture and component overview
 - **ROADMAP.md** — Development roadmap and priorities
-- **decisions/** — Architecture Decision Records (D01-D10)
+- **decisions/** — Architecture Decision Records (D01-D11)
 - **api-design.md** — Public API specification
 - **qgis-plugin-sdk.md** — Plugin framework design
 
@@ -94,8 +94,24 @@ and are fanned out by turbo.
 
 ### Test Structure
 
+**`src/` holds code, `tests/` holds tests — in every crate and every package.**
+There are no `#[cfg(test)] mod tests` blocks in `src/`; a Rust test is an
+integration test in `crates/<crate>/tests/<topic>.rs` that uses the crate the
+way any other consumer would. The same split already holds for the Python
+distributions (`py-packages/*/tests/`) and the npm packages
+(`ts-packages/*/tests/`). See
+[D11](.knowledge/decisions/D11-tests-outside-src.md).
+
+Two consequences worth knowing before you write one:
+
+- If a test needs an item, that item is **public**, with a doc comment saying
+  the test is why. If making it public feels wrong, the test is usually
+  asserting an implementation detail rather than a behaviour.
+- A crate that is only a binary needs a library to be testable, so
+  `crates/xtask` is `src/lib.rs` plus a six-line `src/main.rs`.
+
 ```
-tests/
+crates/qgis-sys/tests/
 ├── application_info.rs      # Basic QGIS initialization
 ├── application_lifecycle.rs # RAII patterns, cleanup
 └── vector_layer.rs          # Layer operations
@@ -122,7 +138,7 @@ bun x turbo run test --filter=qgis-sdk
 - All tests must set `QT_QPA_PLATFORM=offscreen` for headless execution
 - Use `--test-threads=1` to avoid Qt threading issues
 - Tests should be idempotent and not modify shared state
-- Prefer unit tests over integration tests when possible
+- Name a test after the behaviour it pins down, not the function it calls
 
 ## Commit Messages
 

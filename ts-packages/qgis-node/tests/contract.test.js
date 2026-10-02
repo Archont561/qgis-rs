@@ -9,7 +9,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 
-const qgis = require("../index.js");
+const qgis = require("../src/index.js");
 
 const BOUNDS = "14,50,15,51";
 const ZOOMS = "10-14";

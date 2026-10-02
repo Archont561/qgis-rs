@@ -32,7 +32,8 @@ pub fn check_cpp(files: &[String]) -> Result<()> {
 ///
 /// Only these two are: the rest of the repository uses the aligned-`=` style
 /// on purpose, and running taplo over them would rewrite a deliberate choice.
-const CANONICAL_TOML: &[&str] = &["pixi.toml", "pixi-sandbox.toml"];
+/// Public for `tests/lints.rs`, which asserts both files still exist.
+pub const CANONICAL_TOML: &[&str] = &["pixi.toml", "pixi-sandbox.toml"];
 
 /// taplo canonicality check. Arguments (staged files) override the list above.
 pub fn lint_toml(files: &[String]) -> Result<()> {
@@ -87,7 +88,7 @@ pub fn pack_check(package_dir: &str, required: &[String]) -> Result<()> {
 /// file-name part, optionally under a subdirectory (`qgis-rs.*.node`,
 /// `dist/*.whl`) — which is why this is twenty lines instead of a glob
 /// dependency nobody else in the workspace needs.
-fn glob_matches(directory: &Path, pattern: &str) -> Result<bool> {
+pub fn glob_matches(directory: &Path, pattern: &str) -> Result<bool> {
     let (sub_directory, file_pattern) = match pattern.rsplit_once('/') {
         Some((parent, name)) => (directory.join(parent), name),
         None => (directory.to_path_buf(), pattern),
@@ -139,42 +140,4 @@ pub fn setup_qca() -> Result<()> {
         .with_context(|| format!("cannot link {} -> {}", target.display(), source.display()))?;
     println!("{} -> {}", target.display(), source.display());
     Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn globs_match_the_way_the_npm_files_list_means_them() {
-        let package = repo_root().join("crates/xtask");
-        assert!(glob_matches(&package, "src/*.rs").expect("readable"));
-        assert!(glob_matches(&package.join("src"), "li*.rs").expect("readable"));
-        assert!(!glob_matches(&package, "*.node").expect("readable"));
-        // A glob under a directory that does not exist is a miss, not a crash.
-        assert!(!glob_matches(&package, "nowhere/*.node").expect("readable"));
-    }
-
-    #[test]
-    fn pack_check_reports_what_is_missing_rather_than_the_first_failure() {
-        let error = pack_check("crates/xtask", &["Cargo.toml".into(), "nope".into()])
-            .expect_err("the package is missing an entry");
-        assert!(error.to_string().contains("1 entries missing"));
-    }
-
-    #[test]
-    fn pack_check_passes_on_a_complete_package() {
-        pack_check(
-            "crates/xtask",
-            &["Cargo.toml".into(), "src/".into(), "src/*.rs".into()],
-        )
-        .expect("xtask ships its own sources");
-    }
-
-    #[test]
-    fn the_canonical_manifests_are_the_two_pixi_files() {
-        for name in CANONICAL_TOML {
-            assert!(repo_root().join(name).is_file(), "{name} is gone");
-        }
-    }
 }

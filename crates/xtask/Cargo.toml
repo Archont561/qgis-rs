@@ -18,6 +18,12 @@ edition.workspace = true
 license.workspace = true
 publish = false
 
+# A library plus a six-line binary: the tests live in tests/, outside src/, and
+# an integration test can only link a lib target.
+[lib]
+name = "xtask"
+path = "src/lib.rs"
+
 [[bin]]
 name = "xtask"
 path = "src/main.rs"
