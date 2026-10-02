@@ -770,6 +770,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "qgis-engine"
+version = "0.1.0"
+dependencies = [
+ "qgis-protocol",
+ "qgis-render",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "qgis-mcp"
 version = "0.1.0"
 dependencies = [
@@ -785,32 +795,30 @@ dependencies = [
 name = "qgis-node"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "clap",
  "napi",
  "napi-build",
  "napi-derive",
  "qgis-cli",
- "qgis-render",
- "qgis-server",
+ "qgis-engine",
+]
+
+[[package]]
+name = "qgis-protocol"
+version = "0.1.0"
+dependencies = [
  "serde",
  "serde_json",
- "thiserror",
 ]
 
 [[package]]
 name = "qgis-py"
 version = "0.1.0"
 dependencies = [
- "anyhow",
- "clap",
  "pyo3",
  "qgis-cli",
+ "qgis-engine",
  "qgis-mcp",
- "qgis-render",
- "qgis-server",
- "serde_json",
- "thiserror",
  "tokio",
 ]
 
@@ -1406,6 +1414,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ae137229bcbd6cdf0f7b80a31df61766145077ddf49416a728b02cb3921ff3fc"
 dependencies = [
  "windows-link",
+]
+
+[[package]]
+name = "xtask"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "walkdir",
 ]
 
 [[package]]

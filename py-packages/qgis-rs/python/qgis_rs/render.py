@@ -1,13 +1,11 @@
-"""
-Rendering helpers — thin Python wrappers over Rust core.
+"""Rendering helpers.
+
+A convenience namespace — the types are defined once in :mod:`qgis_rs._api`
+and re-exported here.
 """
 
 from __future__ import annotations
 
-from . import _core
+from ._api import Crs, Extent, Project, RenderedMap, RenderSettings
 
-# Re-export for convenience
-Extent = _core.Extent
-Crs = _core.Crs
-RenderSettings = _core.RenderSettings
-Project = _core.Project
+__all__ = ["Crs", "Extent", "Project", "RenderSettings", "RenderedMap"]

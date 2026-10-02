@@ -1,94 +1,138 @@
 /**
- * qgis-rs — TypeScript definitions for native-speed QGIS bindings
+ * Type definitions for qgis-rs.
+ *
+ * The addon exposes one function; everything here is the JavaScript client
+ * written against it (see index.js and
+ * .knowledge/decisions/D09-wire-protocol-over-ffi.md).
  */
 
-export const MAX_LATITUDE: number;
-export const MAX_ZOOM: number;
+/** The envelope version this package speaks. */
+export declare const TRANSPORT_VERSION: number;
 
-/** Accessor form of the two constants above (the addon exposes getters). */
-export function getMaxLatitude(): number;
-export function getMaxZoom(): number;
+/** The deepest zoom level the engine will plan for. */
+export declare const MAX_ZOOM: number;
 
-export class Extent {
-	constructor(minX: number, minY: number, maxX: number, maxY: number);
-	constructor(extentString: string);
+/** The latitude beyond which Web Mercator is undefined. */
+export declare const MAX_LATITUDE: number;
 
+/** Always `true`: without the addon this module cannot load at all. */
+export declare const _hasNative: boolean;
+
+/** The machine-readable classification carried by every engine refusal. */
+export type EngineErrorKind =
+	| "invalid_request"
+	| "unsupported_transport"
+	| "invalid_payload"
+	| "io"
+	| "project_not_found"
+	| "unsupported_project"
+	| "invalid_extent"
+	| "invalid_zoom_range"
+	| "unknown_crs"
+	| "unknown_image_format"
+	| "unimplemented";
+
+/** A request the engine understood and refused. */
+export declare class EngineError extends Error {
+	kind: EngineErrorKind;
+	detail: Record<string, unknown>;
+}
+
+/** What the engine behind this addon is, and what it can do. */
+export interface EngineInfo {
+	engine: string;
+	version: string;
+	transport_version: number;
+	max_zoom: number;
+	max_latitude: number;
+	operations: string[];
+}
+
+/** The four edges, in the engine's own spelling. */
+export interface ExtentObject {
+	min_x: number;
+	min_y: number;
+	max_x: number;
+	max_y: number;
+}
+
+/** Anything this package will read as an extent. */
+export type ExtentLike = Extent | string | number[] | ExtentObject;
+
+/** Anything this package will read as a zoom range. */
+export type ZoomLike =
+	| ZoomRange
+	| string
+	| number
+	| { min: number; max: number };
+
+/** An axis-aligned rectangle, in whatever CRS produced it. */
+export declare class Extent {
+	constructor(
+		minX: number | string,
+		minY?: number,
+		maxX?: number,
+		maxY?: number,
+	);
 	static parse(text: string): Extent;
-
-	get minX(): number;
-	get minY(): number;
-	get maxX(): number;
-	get maxY(): number;
-	get min_x(): number;
-	get min_y(): number;
-	get max_x(): number;
-	get max_y(): number;
-
+	static fromWire(edges: ExtentObject): Extent;
+	readonly minX: number;
+	readonly minY: number;
+	readonly maxX: number;
+	readonly maxY: number;
+	readonly min_x: number;
+	readonly min_y: number;
+	readonly max_x: number;
+	readonly max_y: number;
+	toObject(): ExtentObject;
+	toArray(): [number, number, number, number];
 	width(): number;
 	height(): number;
 	isValid(): boolean;
-	is_valid(): boolean;
 	contains(x: number, y: number): boolean;
-	intersects(other: Extent): boolean;
+	intersects(other: ExtentLike): boolean;
 	toString(): string;
-	toArray(): [number, number, number, number];
-	toTuple(): [number, number, number, number];
-	equals(other: Extent): boolean;
 }
 
-export class Crs {
+/** A coordinate reference system, addressed by authority code. */
+export declare class Crs {
 	constructor(authId: string);
-
 	static fromAuthId(authId: string): Crs;
 	static fromEpsg(code: number): Crs;
-	static from_auth_id(authId: string): Crs;
-	static from_epsg(code: number): Crs;
 	static wgs84(): Crs;
 	static webMercator(): Crs;
-	static web_mercator(): Crs;
-
-	get authId(): string;
-	get auth_id(): string;
-
+	readonly authId: string;
+	readonly auth_id: string;
 	name(): string | null;
+	units(): "degrees" | "meters" | "unknown";
 	isGeographic(): boolean;
 	isProjected(): boolean;
-	is_geographic(): boolean;
-	is_projected(): boolean;
 	toString(): string;
-	equals(other: Crs): boolean;
 }
 
-export class Tile {
+/** One tile in an XYZ pyramid. */
+export declare class Tile {
 	constructor(z: number, x: number, y: number);
-
 	static fromLonLat(z: number, lon: number, lat: number): Tile;
-	static from_lon_lat(z: number, lon: number, lat: number): Tile;
-
-	get z(): number;
-	get x(): number;
-	get y(): number;
-
+	readonly z: number;
+	readonly x: number;
+	readonly y: number;
 	bounds(): Extent;
 	toString(): string;
-	equals(other: Tile): boolean;
 }
 
-export class ZoomRange {
-	constructor(min: number, max: number);
-	constructor(rangeString: string);
-
+/** An inclusive range of zoom levels. */
+export declare class ZoomRange {
+	constructor(min: number, max?: number);
 	static parse(text: string): ZoomRange;
-
-	get min(): number;
-	get max(): number;
-
+	readonly min: number;
+	readonly max: number;
 	count(): number;
 	toString(): string;
-	equals(other: ZoomRange): boolean;
 }
 
-export interface ZoomLevelPlan {
+/** The tile columns and rows that cover an extent at one zoom level. */
+export declare class ZoomLevelPlan {
 	readonly zoom: number;
 	readonly xMin: number;
 	readonly xMax: number;
@@ -98,75 +142,85 @@ export interface ZoomLevelPlan {
 	readonly x_max: number;
 	readonly y_min: number;
 	readonly y_max: number;
+	readonly tile_count: number;
 	tileCount(): number;
-	tile_count(): number;
 }
 
-export class TilePlan {
-	constructor(bounds: Extent, zooms: ZoomRange);
-
-	get bounds(): Extent;
-	get zooms(): ZoomRange;
-
-	level(zoom: number): ZoomLevelPlan;
+/** Every tile covering an EPSG:4326 extent between two zoom levels. */
+export declare class TilePlan {
+	constructor(bounds: ExtentLike, zooms: ZoomLike);
+	readonly bounds: Extent;
+	readonly zooms: ZoomRange;
 	levels(): ZoomLevelPlan[];
+	level(zoom: number): ZoomLevelPlan;
 	tileCount(): number;
-	tile_count(): number;
 	iterTiles(): Tile[];
-	iter_tiles(): Tile[];
 }
 
-export class Project {
-	static open(path: string): Project;
-
-	get path(): string;
-	get format(): string;
-
-	info(): ProjectInfo;
-	render(
-		output: string,
-		options?: { width?: number; height?: number; dpi?: number },
-	): RenderedMap;
-}
-
+/** What qgis-rs can say about a project; optional fields need QGIS. */
 export interface ProjectInfo {
-	readonly path: string;
-	readonly format: string;
-	readonly sizeBytes: number;
-	readonly size_bytes: number;
-	readonly crs: Crs | null;
-	readonly layerCount: number | null;
-	readonly layer_count: number | null;
-	readonly note: string | null;
-	toJson(): string;
-	to_json(): string;
+	path: string;
+	format: "qgs" | "qgz";
+	size_bytes: number;
+	crs: { auth_id: string } | null;
+	layer_count: number | null;
+	extent: ExtentObject | null;
+	note: string | null;
 }
 
+/** A layer inside a project. */
+export interface LayerSummary {
+	name: string;
+	provider: string;
+	crs: { auth_id: string } | null;
+	feature_count: number | null;
+	geometry_type: string | null;
+}
+
+/** How to render a project; omitted fields keep the engine's defaults. */
+export interface RenderOptions {
+	width?: number;
+	height?: number;
+	dpi?: number;
+	crs?: Crs | string;
+	extent?: ExtentLike;
+	layers?: string[];
+	layout?: string;
+}
+
+/** A rendered image, once rendering exists. */
 export interface RenderedMap {
+	path: string;
+	format: string;
+	bytes: number;
+}
+
+/** A QGIS project on disk. */
+export declare class Project {
+	static open(path: string): Project;
 	readonly path: string;
-	readonly bytes: number;
+	readonly format: "qgs" | "qgz";
+	info(): ProjectInfo;
+	layers(): LayerSummary[];
+	render(output: string, options?: RenderOptions): RenderedMap;
 }
 
-export interface TilePlanResult {
-	total: number;
-	levels: {
-		zoom: number;
-		xMin: number;
-		xMax: number;
-		yMin: number;
-		yMax: number;
-		tileCount: number;
-		x_min: number;
-		x_max: number;
-		y_min: number;
-		y_max: number;
-		tile_count: number;
-	}[];
-}
+/** Plan a pyramid and return the plain shape. */
+export declare function planTiles(
+	bounds: ExtentLike,
+	zooms: ZoomLike,
+): { total: number; levels: ZoomLevelPlan[] };
 
-export function planTiles(bounds: string, zoom: string): TilePlanResult;
-export function plan_tiles(bounds: string, zoom: string): TilePlanResult;
-export function version(): string;
+/** The qgis-rs release this addon was built from. */
+export declare function version(): string;
 
-export const _hasNative: boolean;
-export const _binding: any;
+/** What the engine behind this addon is, and what it can do. Cached. */
+export declare function engineInfo(): EngineInfo;
+
+/**
+ * Run one engine operation and return its `result`.
+ *
+ * The escape hatch: an operation this client has no class for is still
+ * reachable, which is what keeps a newer engine usable from an older package.
+ */
+export declare function invoke(operation: string, payload?: unknown): unknown;

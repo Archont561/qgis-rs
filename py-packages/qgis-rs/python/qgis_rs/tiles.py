@@ -1,15 +1,11 @@
-"""
-Tiling helpers — pure Rust, native speed.
+"""Tiling helpers.
+
+A convenience namespace — the types are defined once in :mod:`qgis_rs._api`
+and re-exported here so ``from qgis_rs.tiles import TilePlan`` keeps working.
 """
 
 from __future__ import annotations
 
-from . import _core
+from ._api import Tile, TilePlan, ZoomLevelPlan, ZoomRange, plan_tiles
 
-Tile = _core.Tile
-TilePlan = _core.TilePlan
-ZoomRange = _core.ZoomRange
-ZoomLevelPlan = _core.ZoomLevelPlan
-plan_tiles = _core.plan_tiles
-
-__all__ = ["Tile", "TilePlan", "ZoomRange", "ZoomLevelPlan", "plan_tiles"]
+__all__ = ["Tile", "TilePlan", "ZoomLevelPlan", "ZoomRange", "plan_tiles"]

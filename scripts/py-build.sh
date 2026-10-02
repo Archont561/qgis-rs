@@ -52,11 +52,12 @@ pixi run -e default bash -c '
 ' _ "$pkg_dir" "$@"
 
 # Prove the native extension is importable from the same working directory the
-# test suite uses. Both packages fall back to a pure-Python implementation when
-# `._core` will not import, and that fallback is silent by design — so without
-# this check a broken extension shows up much later as a bare
-# `assert True is False` in test_native_extension_is_used_in_ci, with the
-# ImportError that caused it thrown away.
+# test suite uses. `qgis_rs` raises on a missing `._core` these days, but
+# `qgis_sdk` still falls back to a pure-Python implementation, and that
+# fallback is silent by design — so without this check a broken extension shows
+# up much later as a bare `assert True is False` in
+# test_native_extension_is_used_in_ci, with the ImportError that caused it
+# thrown away.
 module="$(basename "$pkg_dir" | tr - _)"
 pixi run -e default bash -c '
   set -eu

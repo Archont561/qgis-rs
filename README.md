@@ -259,11 +259,11 @@ graph TB
 ### Repository layout
 
 ```text
-crates/        every Rust crate — engine crates plus the PyO3 / NAPI cores
+crates/        every Rust crate — protocol + engine, the QGIS stack, the PyO3 / NAPI cores, xtask
 py-packages/   maturin projects: pyproject.toml + Python sources + tests
 ts-packages/   Bun/npm projects: package.json + TS sources + tests
 docs/          the Astro Starlight documentation site
-scripts/       every task longer than one line, as a bash script
+scripts/       the few shell entry points that are still shell (see scripts/README.md)
 .knowledge/    design documents and decision records
 ```
 
@@ -271,6 +271,8 @@ scripts/       every task longer than one line, as a bash script
 
 | Crate / Package | Purpose | Status |
 |-----------------|---------|--------|
+| `qgis-protocol` | The wire format spoken across every FFI boundary: `EngineRequest`/`EngineResponse`, the closed `Operation` enum, `TRANSPORT_VERSION` | ✅ Active |
+| `qgis-engine` | `invoke(request_json) -> response_json` — one dispatch arm per operation, and the only thing the bindings call | ✅ Active |
 | `qgis-sys` | Low-level CXX bindings | ✅ Active |
 | `qgis-render` | High-level rendering API | 🔨 Scaffolded (pure geometry works; QGIS backend pending) |
 | `qgis-server` | HTTP server (WMS/WFS/OGC) | 🔨 Scaffolded (routing works; listener pending) |
@@ -279,6 +281,7 @@ scripts/       every task longer than one line, as a bash script
 | `qgis-sdk` (Rust core) | Native helpers behind the Python SDK: `qgis_sdk._core` + the `qgis-plugin`/`qgis-sdk` CLIs (`crates/qgis-sdk`) | ✅ Active |
 | `qgis-py` (Rust core) | PyO3 module `qgis_rs._core` + the `qgis-cli` binary shipped by the Python wheel (`crates/qgis-py`) | ✅ Active |
 | `qgis-node` (Rust core) | NAPI addon + CLI binaries shipped by the npm package (`crates/qgis-node`) | ✅ Active |
+| `xtask` | Repository automation as a typed binary: the gate, the lints, the scaffolder, the release pipeline (`pixi run xtask …`) | ✅ Active |
 | `qgis-sdk` (Python) | Plugin development SDK — dist at `py-packages/qgis-sdk`, PyPI/conda | ✅ Active |
 | `qgis-rs` (Python) | Python bindings + CLI — dist at `py-packages/qgis-rs`, PyPI/conda | ✅ Active |
 | `qgis-rs` (npm) | TypeScript/Node.js bindings + CLI — dist at `ts-packages/qgis-node` | ✅ Active |
@@ -292,7 +295,7 @@ A release is an **explicit, immutable version tag** — never a side effect of m
 conventional commits on main
         │
         ▼  workflow_dispatch: "prepare release"        .github/workflows/autorelease.yml
-convco derives the next SemVer ──► scripts/release/prepare.sh
+convco derives the next SemVer ──► pixi run xtask release prepare
         │   rewrites every manifest (pixi.toml is the source of truth)
         │   regenerates CHANGELOG.md, refreshes bun.lock / Cargo.lock / pixi.lock
         ▼
@@ -323,7 +326,7 @@ the job summary, so a PyPI outage cannot delete a verified release:
 | [PyPI](https://pypi.org/project/qgis-rs/) | OIDC Trusted Publishing | `dist/pypi/*` |
 | [npmjs](https://www.npmjs.com/package/qgis-rs) | OIDC Trusted Publishing + provenance | `dist/npm/*.tgz` |
 | GitHub Packages | workflow token (throwaway npmrc) | `dist/npm/*.tgz` |
-| [crates.io](https://crates.io/crates/qgis-render) | `CRATES_IO_TOKEN` | `qgis-sys → qgis-styles → qgis-render → qgis-server → qgis-mcp → qgis-cli` |
+| [crates.io](https://crates.io/crates/qgis-render) | `CRATES_IO_TOKEN` | `qgis-sys → qgis-styles → qgis-render → qgis-protocol → qgis-engine → qgis-server → qgis-mcp → qgis-cli` |
 | **GitHub Release** | workflow token | everything above **+ `SHA256SUMS`** |
 
 The GitHub Release is required and runs last: it holds the exact bytes whether or not a third-party
@@ -334,13 +337,14 @@ registry accepted its copy, so a maintainer can retry one service from the same 
 One required job, and it runs one command:
 
 ```bash
-pixi run ci     # == bash scripts/ci.sh, the same file GitHub Actions runs
+pixi run ci     # == xtask ci (crates/xtask), the same code GitHub Actions runs
 pixi run gates  # the same gate without the coverage producers (pre-push hook)
 ```
 
 `ci.yml` therefore owns only toolchain setup and caching — pixi environments, cargo registry +
-`target/`, and the turbo task cache, each keyed on its own lockfile. Everything else is a script, so
-"green locally" and "green in Actions" cannot mean different things.
+`target/`, and the turbo task cache, each keyed on its own lockfile. Everything else is a
+subcommand of `crates/xtask`, so "green locally" and "green in Actions" cannot mean different
+things.
 
 The gate, in order (cheap failures first):
 
@@ -386,25 +390,41 @@ reused:
 
 One compile instead of two, and CI no longer repeats per package what turbo already did.
 
-## 🗂️ Scripts
+## 🗂️ Automation: `xtask`, not `scripts/`
 
-Every task longer than one line lives in [`scripts/`](scripts/README.md) as a bash script; the
-manifests only call them. A multi-line command embedded in TOML or JSON is unreviewable, un-lintable,
-impossible to run outside its manifest — and that is exactly how a local gate and a CI gate drift
-apart.
+Everything a human, a hook or CI does to the **repository as a whole** is a subcommand of
+[`crates/xtask`](crates/xtask), reached through one pixi task:
 
-| Script | Called by |
-| --- | --- |
-| `ci.sh` | `pixi run ci`, `pixi run gates`, `ci.yml` |
-| `rust-build.sh`, `rust-test.sh`, `rust-lint.sh`, `rust-format.sh`, `rust-coverage.sh` | `@qgis/rust` package scripts (turbo) |
-| `py-build.sh`, `py-test.sh`, `py-coverage.sh`, `py-doctor.sh` | `qgis-rs-py` / `qgis-sdk-py` package scripts |
-| `npm-pack-check.sh` | the npm package's `pack:check` |
-| `check-cpp.sh`, `lint-toml.sh` | lefthook (staged files) and the gate |
-| `scaffold.sh` | `pixi run scaffold <layer> <concept> <QgisClass> <short>` |
-| `setup-qca.sh` | `pixi run setup` (the libqca soname QGIS still asks for) |
-| `version.ts` | `pixi run version[-check\|-set]` |
-| `release/*.sh` | `autorelease.yml`, `release.yml` |
-| `restore.sh`, `restore.ps1` | offline sandbox restore (deliberately outside pixi) |
+```bash
+pixi run xtask ci [--no-coverage]            # the gate
+pixi run xtask check-cpp [files...]          # clang-format on the C++ shim
+pixi run xtask lint-toml  [files...]         # taplo canonicality
+pixi run xtask pack-check <dir> <required…>  # the published tarball has what `files` promises
+pixi run xtask scaffold <layer> <concept> <QgisClass> <short>
+pixi run xtask setup-qca
+pixi run xtask release <step>
+```
+
+A bash file that four manifests call by path is a dependency none of them can type-check: its
+arguments are documented only in a comment, nothing tests it, and the day it grows a `case`
+statement it is a program written in the one language in this repository with no compiler. A
+subcommand is parsed by clap, compiled by the cargo this project already needs, linted by clippy and
+covered by `cargo test -p xtask` — the gate lints itself. See
+[`D10-xtask-over-shell-scripts.md`](.knowledge/decisions/D10-xtask-over-shell-scripts.md).
+
+What xtask deliberately does **not** own: per-package `build` / `test` / `lint` / `format` /
+`coverage`. Those stay in each package's own `package.json`, fanned out by turbo, so the command
+that builds a package is in the manifest a reader of that package already has open.
+
+The shell that remains, and why ([`scripts/README.md`](scripts/README.md)):
+
+| Script | Called by | Why still shell |
+| --- | --- | --- |
+| `restore.sh`, `restore.ps1` | a human, offline | bootstrap — it runs *before* there is a cargo to build xtask with |
+| `version.ts` | `pixi run version[-check\|-set]` | the one tool that rewrites every manifest; `xtask release` calls it rather than reimplementing it |
+| `rust-*.sh` | `@qgis/rust` package scripts (turbo) | package verbs, owned by the package |
+| `py-build.sh`, `py-test.sh`, `py-coverage.sh`, `py-doctor.sh` | `qgis-rs-py` / `qgis-sdk-py` package scripts | same |
+| `lib.sh` | the scripts above | three lines that find the repo root |
 
 ## Documentation
 

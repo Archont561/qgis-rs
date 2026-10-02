@@ -1,5 +1,5 @@
 # One required CI job, and it runs one command: `pixi run ci`
-# (scripts/ci.sh). Everything this workflow does besides that is toolchain
+# (`xtask ci`, crates/xtask). Everything this workflow does besides that is toolchain
 # setup and caching, which is the only thing a CI file should own — if a step
 # here knew how to build or test something, the local gate and CI could
 # disagree, and CI would be the only place you could find out.
@@ -160,7 +160,7 @@ jobs:
       # a red run diagnosable from a terminal, a bot, or a phone.
       - name: Summarize the failure
         if: ${{ failure() && steps.gate.outcome == 'failure' }}
-        run: bash scripts/ci-failure-summary.sh gate.log
+        run: pixi run xtask ci-failure-summary gate.log
 
       - name: Upload the gate log
         if: always()

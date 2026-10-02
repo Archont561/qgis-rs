@@ -12,9 +12,9 @@ Expose the QGIS SDK CLI tool (`qgis-cli`) as a Rust-based binary inside a Python
 
 1. **Rust binary `qgis-cli`** — standalone executable, built with `cargo build --release -p qgis-py --bin qgis-cli`. Does argument parsing with `clap` and dispatches to `qgis-render` / `qgis-server`. When installed via `pip install qgis-rs`, maturin places this binary on PATH (`$VENV/bin/qgis-cli` or `$CONDA_PREFIX/bin/qgis-cli`).
 
-2. **Rust cdylib `_core`** — PyO3 extension module `qgis_rs._core` (`_core.so` / `.pyd`). Exposes pure-Rust types (`Extent`, `Crs`, `Tile`, `TilePlan`, `ZoomRange`, `Project`, etc.) at native speed. Python wrappers in `python/qgis_rs/` import from `_core` and provide high-level API.
+2. **Rust cdylib `_core`** — PyO3 extension module `qgis_rs._core` (`_core.so` / `.pyd`). It exposes **one function**, `invoke(request_json) -> response_json`, which is `qgis_engine::invoke` and nothing else. No `#[pyclass]` per domain type: the FFI surface is the wire protocol of `crates/qgis-protocol` (see `.knowledge/decisions/D09-wire-protocol-over-ffi.md`), and the ergonomic `Extent`/`Crs`/`TilePlan`/`Project` classes are plain Python in `python/qgis_rs/_api.py` over that one call.
 
-Both artifacts share the same Rust code: `crates/qgis-render` (pure Rust, no QGIS) and `crates/qgis-cli` (now a lib + bin, so `qgis-rs` package can reuse its `cli` and `commands` modules).
+Both artifacts share the same Rust code: `crates/qgis-engine` (the dispatcher), `crates/qgis-render` (pure Rust, no QGIS) and `crates/qgis-cli` (a lib + bin, so the `qgis-rs` package can reuse its `cli` and `commands` modules).
 
 ### Python package layout
 
@@ -32,11 +32,12 @@ py-packages/qgis-rs/          # the Python distribution
 ├── pyproject.toml            # maturin build, console scripts qgis-cli / qgis-rs
 │                             # [tool.maturin].manifest-path = ../../crates/qgis-py/Cargo.toml
 ├── python/qgis_rs/
-│   ├── __init__.py         # Tries _core, falls back to _fallback.py
-│   ├── _fallback.py        # Pure-Python implementation (dev without cargo)
-│   ├── _core.pyi           # Type stubs
-│   ├── cli.py              # Python CLI wrapper (uses _core directly, no subprocess)
-│   ├── project.py          # High-level Project wrapper
+│   ├── __init__.py         # Public API surface (re-exports from _api)
+│   ├── _transport.py       # invoke(): JSON in, JSON out, errors -> exceptions
+│   ├── _api.py             # Extent, Crs, Tile, TilePlan, ZoomRange, Project
+│   ├── _core.pyi           # Type stubs for the one native function
+│   ├── cli.py              # Python CLI wrapper (uses _api directly, no subprocess)
+│   ├── project.py          # re-exports
 │   ├── render.py           # re-exports
 │   └── tiles.py            # re-exports
 ├── tests/
@@ -57,15 +58,18 @@ py-packages/qgis-rs/          # the Python distribution
 
 - **pixi**: `pixi.toml` defines `qgis-rs` as source dependency built with `pixi-build-python` (maturin backend). Environments `py` (pure) and `py-qgis` (with QGIS) for testing.
 
-### Fallback for development without cargo
+### No fallback
 
-When `_core` extension is not built (e.g., in sandbox without cargo), `__init__.py` falls back to `_fallback.py` — pure-Python implementation of same API, slower but functional. This allows `pytest` to pass without Rust toolchain, and `python -m qgis_rs.cli` to work.
-
-In production wheels, `_core` is always present, so fallback is never used — users get native speed.
+There used to be a `_fallback.py` re-implementing the API in Python for
+environments without cargo. It is gone: a second implementation of tiling maths
+is a second set of answers, and the whole point of this package is that the
+answers come from Rust. Importing `qgis_rs` without a built `_core` now raises
+immediately, with the ImportError that caused it, instead of quietly serving
+numbers from a different codebase.
 
 ### Native speed guarantees
 
-- **API**: `Extent.parse`, `TilePlan`, `ZoomRange`, `Crs`, `plan_tiles`, `Project.open`, etc. are Rust structs exposed via PyO3 `#[pyclass]` — no Python overhead for geometry math.
+- **API**: every value — `Extent.parse`, `TilePlan`, `ZoomRange`, `Crs`, `plan_tiles`, `Project.open` — is computed by Rust and crosses the boundary once, as JSON. The Python classes hold the decoded result; they never recompute it.
 - **CLI**: `qgis-cli` binary is Rust executable (no Python interpreter). `qgis_rs.cli:main` Python wrapper calls Rust extension directly (no subprocess), so `python -m qgis_rs.cli` is also native speed.
 
 ### Future: QGIS backend
@@ -79,7 +83,8 @@ Currently `qgis-render` is pure Rust (no `libqgis_core`). Rendering methods retu
 ### Testing
 
 - `cargo test -p qgis-render -p qgis-cli -p qgis-py -p qgis-sdk -p qgis-node` — Rust logic, CLI, and binding-adapter tests (QGIS is only needed for `qgis-sys` integration tests)
-- `maturin develop && QGIS_REQUIRE_NATIVE=1 python -m pytest py-packages/qgis-rs/tests -v` — Python API and PyO3 boundary smoke tests after building the extension
+- `cargo test -p qgis-protocol -p qgis-engine` — the wire protocol and one test per operation, at the JSON level the bindings see
+- `maturin develop && python -m pytest py-packages/qgis-rs/tests -v` — the Python client against the real `_core`
 - `pixi run -e default py-test` — builds the extension, then runs the native Python tests
 - `qgis-cli` behavior is covered by Rust integration tests in `crates/qgis-cli/tests/cli.rs`; plugin CLI behavior is covered in `crates/qgis-sdk/tests/plugin_cli.rs`
 

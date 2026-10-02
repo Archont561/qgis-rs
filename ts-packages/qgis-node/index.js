@@ -1,450 +1,465 @@
 /**
- * qgis-rs — Node.js / TypeScript bindings for qgis-rs
+ * qgis-rs — Node.js / TypeScript bindings for qgis-rs.
  *
- * Native-speed QGIS rendering, tiling, and plugin tools via NAPI-RS.
+ * Native-speed QGIS rendering, tiling and project inspection. The addon this
+ * package loads exposes exactly one function — `invoke(requestJson)` — and
+ * everything below is a *client* of it: a class here holds values and asks the
+ * Rust engine every question that has an answer. Parsing an extent, validating
+ * a zoom range, counting the tiles in a pyramid: all of that happens in Rust,
+ * once, and is reached over a versioned JSON transport.
  *
- * Install:
- *   npm install qgis-rs
+ * That is why the pure-JS fallback this package used to ship is gone. It was a
+ * second implementation of the same arithmetic, it could not render anything,
+ * and it answered differently from the engine the moment the two drifted. A
+ * missing addon is now an error that tells you to build it.
+ *
+ * See .knowledge/decisions/D09-wire-protocol-over-ffi.md.
  *
  * Usage:
  *   const { Project, Extent, TilePlan, ZoomRange } = require('qgis-rs');
- *   // or
- *   import { Project, Extent } from 'qgis-rs';
  */
 
 const { platform, arch } = process;
 
-// Try to load native addon
-let nativeBinding = null;
-let loadError = null;
+/** Candidate module ids for the compiled addon, most specific first. */
+function candidates() {
+	const triples = [
+		`${platform}-${arch}`,
+		"linux-x64-gnu",
+		"linux-arm64-gnu",
+		"linux-x64-musl",
+		"darwin-x64",
+		"darwin-arm64",
+		"win32-x64-msvc",
+	];
+	const ids = ["./qgis-rs.node"];
+	for (const triple of triples) {
+		ids.push(`./qgis-rs.${triple}.node`);
+		ids.push(`@qgis-rs/node-${triple}`);
+	}
+	return ids;
+}
 
-function loadNative() {
-	if (nativeBinding) return nativeBinding;
-
-	try {
-		// Try local build first (for development)
-		nativeBinding = require("./qgis-rs.node");
-		return nativeBinding;
-	} catch (e) {
-		// Try platform-specific packages
-		const triples = [
-			`${platform}-${arch}`,
-			`linux-x64-gnu`,
-			`linux-arm64-gnu`,
-			`darwin-x64`,
-			`darwin-arm64`,
-			`win32-x64-msvc`,
-		];
-
-		for (const triple of triples) {
-			try {
-				nativeBinding = require(`./qgis-rs.${triple}.node`);
-				return nativeBinding;
-			} catch (_) {
-				// continue
-			}
-			try {
-				nativeBinding = require(`@qgis-rs/node-${triple}`);
-				return nativeBinding;
-			} catch (_) {
-				// continue
-			}
+function loadBinding() {
+	const failures = [];
+	for (const id of candidates()) {
+		try {
+			return require(id);
+		} catch (error) {
+			failures.push(`${id}: ${error.message}`);
 		}
+	}
+	throw new Error(
+		"qgis-rs: the native addon is not available, and this package is a client " +
+			"of it — there is no JavaScript fallback.\n" +
+			"  bun run build   # from ts-packages/qgis-node\n" +
+			`Tried:\n  ${failures.join("\n  ")}`,
+	);
+}
 
-		loadError = e;
-		// Fallback to pure JS implementation
-		console.warn(
-			`qgis-rs: native binding not found (${e.message}), using pure JS fallback. ` +
-				`For native speed, build with: npm run build`,
-		);
-		nativeBinding = require("./fallback.js");
-		return nativeBinding;
+const binding = loadBinding();
+
+/** The envelope version this addon speaks. */
+const TRANSPORT_VERSION = binding.transportVersion();
+
+/**
+ * A request the engine understood and refused.
+ *
+ * `kind` is the machine-readable classification from the wire, so callers
+ * branch on it instead of matching on English error prose.
+ */
+class EngineError extends Error {
+	constructor(kind, message, detail) {
+		super(message);
+		this.name = "EngineError";
+		this.kind = kind;
+		this.detail = detail ?? {};
 	}
 }
 
-// Load on require
-const binding = loadNative();
+/** Run one engine operation and return its `result`. */
+function invoke(operation, payload = null) {
+	const request = JSON.stringify({
+		transport_version: TRANSPORT_VERSION,
+		operation,
+		payload,
+	});
+	const response = JSON.parse(binding.invoke(request));
 
-// Re-export with JS-friendly wrappers
+	if (response.transport_version !== TRANSPORT_VERSION) {
+		throw new EngineError(
+			"unsupported_transport",
+			`engine speaks transport version ${response.transport_version}, this client speaks ${TRANSPORT_VERSION}`,
+		);
+	}
+	if (response.ok) return response.result;
+
+	const detail = response.result ?? {};
+	throw new EngineError(
+		detail.kind ?? "invalid_request",
+		detail.error ?? "the engine refused the request",
+		detail,
+	);
+}
+
+let engineInfoCache = null;
+/** What the engine behind this addon is, and what it can do. Cached. */
+function engineInfo() {
+	if (engineInfoCache === null) engineInfoCache = invoke("engine_info");
+	return engineInfoCache;
+}
+
+/** The qgis-rs release this addon was built from. */
+function version() {
+	return engineInfo().version;
+}
+
+/** Anything extent-shaped, in the form the wire accepts. */
+function extentPayload(value) {
+	if (value instanceof Extent) return value.toObject();
+	if (typeof value === "string") return value;
+	if (Array.isArray(value)) {
+		if (value.length !== 4)
+			throw new TypeError(`an extent needs four numbers, got ${value.length}`);
+		const [minX, minY, maxX, maxY] = value.map(Number);
+		return { min_x: minX, min_y: minY, max_x: maxX, max_y: maxY };
+	}
+	if (value && typeof value === "object") return value;
+	throw new TypeError(`cannot read ${typeof value} as an extent`);
+}
+
+/** Anything zoom-shaped, in the form the wire accepts. */
+function zoomPayload(value) {
+	if (value instanceof ZoomRange) return { min: value.min, max: value.max };
+	return value;
+}
+
+/**
+ * An axis-aligned rectangle, in whatever CRS produced it.
+ *
+ * Both spellings of each edge are exposed — `minX` for JavaScript callers and
+ * `min_x` for code that reads the engine's own JSON — because this class is
+ * where the two naming conventions meet.
+ */
 class Extent {
 	constructor(minX, minY, maxX, maxY) {
-		if (typeof minX === "string") {
-			// Parse from string like "14,50,15,51"
-			this._inner = binding.ExtentWrapper.parse(minX);
-		} else if (minX instanceof binding.ExtentWrapper) {
-			this._inner = minX;
-		} else {
-			this._inner = new binding.ExtentWrapper(minX, minY, maxX, maxY);
-		}
+		// Either four numbers or the `minx,miny,maxx,maxy` text a user typed.
+		// Both go to the engine's parser, which is also what validates them —
+		// an out-of-order extent throws here rather than becoming a value that
+		// is wrong later.
+		const request =
+			typeof minX === "string"
+				? minX
+				: { min_x: minX, min_y: minY, max_x: maxX, max_y: maxY };
+		const edges = invoke("describe_extent", { extent: request }).extent;
+		this.minX = edges.min_x;
+		this.minY = edges.min_y;
+		this.maxX = edges.max_x;
+		this.maxY = edges.max_y;
+		this.min_x = edges.min_x;
+		this.min_y = edges.min_y;
+		this.max_x = edges.max_x;
+		this.max_y = edges.max_y;
+		Object.freeze(this);
 	}
 
+	static fromWire(edges) {
+		return new Extent(edges.min_x, edges.min_y, edges.max_x, edges.max_y);
+	}
+
+	/** Parse `minx,miny,maxx,maxy`, as `--extent` and `--bounds` do. */
 	static parse(text) {
-		const inner = binding.ExtentWrapper.parse(text);
-		const e = Object.create(Extent.prototype);
-		e._inner = inner;
-		return e;
+		return Extent.fromWire(invoke("describe_extent", { extent: text }).extent);
 	}
 
-	get minX() {
-		return this._inner.minX;
+	toObject() {
+		return {
+			min_x: this.minX,
+			min_y: this.minY,
+			max_x: this.maxX,
+			max_y: this.maxY,
+		};
 	}
-	get minY() {
-		return this._inner.minY;
+
+	toArray() {
+		return [this.minX, this.minY, this.maxX, this.maxY];
 	}
-	get maxX() {
-		return this._inner.maxX;
-	}
-	get maxY() {
-		return this._inner.maxY;
-	}
-	get min_x() {
-		return this._inner.minX;
-	}
-	get min_y() {
-		return this._inner.minY;
-	}
-	get max_x() {
-		return this._inner.maxX;
-	}
-	get max_y() {
-		return this._inner.maxY;
+
+	describe() {
+		return invoke("describe_extent", { extent: this.toObject() });
 	}
 
 	width() {
-		return this._inner.width();
+		return this.describe().width;
 	}
+
 	height() {
-		return this._inner.height();
+		return this.describe().height;
 	}
+
 	isValid() {
-		return this._inner.isValid();
+		return this.describe().is_valid;
 	}
-	is_valid() {
-		return this._inner.isValid();
-	}
+
 	contains(x, y) {
-		return this._inner.contains(x, y);
+		return invoke("extent_contains", { extent: this.toObject(), x, y })
+			.contains;
 	}
+
 	intersects(other) {
-		return this._inner.intersects(other._inner);
+		return invoke("extent_intersects", {
+			extent: this.toObject(),
+			other: extentPayload(other),
+		}).intersects;
 	}
+
 	toString() {
-		return this._inner.toString();
-	}
-	toArray() {
-		return this._inner.toArray();
-	}
-	toTuple() {
-		return this._inner.toArray();
-	}
-	equals(other) {
-		return this._inner.equals(other._inner);
+		return `${this.minX},${this.minY},${this.maxX},${this.maxY}`;
 	}
 }
 
+/** A coordinate reference system, addressed by authority code. */
 class Crs {
 	constructor(authId) {
-		if (authId instanceof binding.CrsWrapper) {
-			this._inner = authId;
-		} else {
-			this._inner = new binding.CrsWrapper(authId);
-		}
+		const described = invoke("describe_crs", { text: String(authId) });
+		this.authId = described.auth_id;
+		this.auth_id = described.auth_id;
+		Object.freeze(this);
 	}
 
 	static fromAuthId(authId) {
-		const inner = binding.CrsWrapper.fromAuthId(authId);
-		const c = Object.create(Crs.prototype);
-		c._inner = inner;
-		return c;
+		return new Crs(authId);
 	}
 
 	static fromEpsg(code) {
-		const inner = binding.CrsWrapper.fromEpsg(code);
-		const c = Object.create(Crs.prototype);
-		c._inner = inner;
-		return c;
-	}
-
-	static from_epsg(code) {
-		return Crs.fromEpsg(code);
-	}
-	static from_auth_id(authId) {
-		return Crs.fromAuthId(authId);
+		return new Crs(`EPSG:${code}`);
 	}
 
 	static wgs84() {
-		const inner = binding.CrsWrapper.wgs84();
-		const c = Object.create(Crs.prototype);
-		c._inner = inner;
-		return c;
+		return new Crs("EPSG:4326");
 	}
 
 	static webMercator() {
-		const inner = binding.CrsWrapper.webMercator();
-		const c = Object.create(Crs.prototype);
-		c._inner = inner;
-		return c;
+		return new Crs("EPSG:3857");
 	}
 
-	static web_mercator() {
-		return Crs.webMercator();
+	describe() {
+		return invoke("describe_crs", { text: this.authId });
 	}
 
-	get authId() {
-		return this._inner.authId;
-	}
-	get auth_id() {
-		return this._inner.authId;
-	}
 	name() {
-		return this._inner.name();
+		return this.describe().name;
 	}
+
+	units() {
+		return this.describe().units;
+	}
+
 	isGeographic() {
-		return this._inner.isGeographic();
+		return this.describe().is_geographic;
 	}
+
 	isProjected() {
-		return this._inner.isProjected();
+		return this.units() === "meters";
 	}
-	is_geographic() {
-		return this._inner.isGeographic();
-	}
-	is_projected() {
-		return this._inner.isProjected();
-	}
+
 	toString() {
-		return this._inner.toString();
-	}
-	equals(other) {
-		return this._inner.equals(other._inner);
+		return this.authId;
 	}
 }
 
+/** One tile in an XYZ pyramid. */
 class Tile {
 	constructor(z, x, y) {
-		if (z instanceof binding.TileWrapper) {
-			this._inner = z;
-		} else {
-			this._inner = new binding.TileWrapper(z, x, y);
-		}
+		this.z = z;
+		this.x = x;
+		this.y = y;
+		Object.freeze(this);
 	}
 
+	/** The tile covering a longitude/latitude pair, latitude clamped. */
 	static fromLonLat(z, lon, lat) {
-		const inner = binding.TileWrapper.fromLonLat(z, lon, lat);
-		const t = Object.create(Tile.prototype);
-		t._inner = inner;
-		return t;
+		const { tile } = invoke("tile_from_lon_lat", { z, lon, lat });
+		return new Tile(tile.z, tile.x, tile.y);
 	}
 
-	static from_lon_lat(z, lon, lat) {
-		return Tile.fromLonLat(z, lon, lat);
-	}
-
-	get z() {
-		return this._inner.z;
-	}
-	get x() {
-		return this._inner.x;
-	}
-	get y() {
-		return this._inner.y;
-	}
-
+	/** The tile's extent in EPSG:4326. */
 	bounds() {
-		const inner = this._inner.bounds();
-		const e = Object.create(Extent.prototype);
-		e._inner = inner;
-		return e;
+		const { bounds } = invoke("tile_bounds", {
+			tile: { z: this.z, x: this.x, y: this.y },
+		});
+		return Extent.fromWire(bounds);
 	}
 
 	toString() {
-		return this._inner.toString();
-	}
-	equals(other) {
-		return this._inner.equals(other._inner);
+		return `${this.z}/${this.x}/${this.y}`;
 	}
 }
 
+/** An inclusive range of zoom levels. */
 class ZoomRange {
 	constructor(min, max) {
-		if (min instanceof binding.ZoomRangeWrapper) {
-			this._inner = min;
-		} else if (typeof min === "string") {
-			this._inner = binding.ZoomRangeWrapper.parse(min);
-		} else {
-			this._inner = new binding.ZoomRangeWrapper(min, max);
-		}
+		const described = invoke("describe_zoom_range", {
+			zooms: { min, max: max ?? min },
+		});
+		this.min = described.zooms.min;
+		this.max = described.zooms.max;
+		Object.freeze(this);
 	}
 
+	/** Parse `12` or `10-14`. */
 	static parse(text) {
-		const inner = binding.ZoomRangeWrapper.parse(text);
-		const z = Object.create(ZoomRange.prototype);
-		z._inner = inner;
-		return z;
+		const described = invoke("describe_zoom_range", { zooms: text });
+		return new ZoomRange(described.zooms.min, described.zooms.max);
 	}
 
-	get min() {
-		return this._inner.min;
-	}
-	get max() {
-		return this._inner.max;
-	}
 	count() {
-		return this._inner.count();
+		return invoke("describe_zoom_range", {
+			zooms: { min: this.min, max: this.max },
+		}).count;
 	}
+
 	toString() {
-		return this._inner.toString();
-	}
-	equals(other) {
-		return this._inner.equals(other._inner);
+		return this.min === this.max ? `${this.min}` : `${this.min}-${this.max}`;
 	}
 }
 
+/** The tile columns and rows that cover an extent at one zoom level. */
+class ZoomLevelPlan {
+	constructor(level) {
+		this.zoom = level.zoom;
+		this.xMin = level.x_min;
+		this.xMax = level.x_max;
+		this.yMin = level.y_min;
+		this.yMax = level.y_max;
+		this.x_min = level.x_min;
+		this.x_max = level.x_max;
+		this.y_min = level.y_min;
+		this.y_max = level.y_max;
+		this.tile_count = level.tile_count;
+		Object.freeze(this);
+	}
+
+	tileCount() {
+		return this.tile_count;
+	}
+}
+
+/**
+ * Every tile covering an EPSG:4326 extent between two zoom levels.
+ *
+ * One engine call plans the pyramid; the levels and the total are read off
+ * that answer rather than recomputed per question.
+ */
 class TilePlan {
 	constructor(bounds, zooms) {
-		const b = bounds instanceof Extent ? bounds._inner : bounds;
-		const z = zooms instanceof ZoomRange ? zooms._inner : zooms;
-		this._inner = new binding.TilePlanWrapper(b, z);
+		this._planned = invoke("plan_tiles", {
+			bounds: extentPayload(bounds),
+			zooms: zoomPayload(zooms),
+		});
+		this.bounds = Extent.fromWire(this._planned.bounds);
+		this.zooms = new ZoomRange(
+			this._planned.zooms.min,
+			this._planned.zooms.max,
+		);
 	}
 
-	get bounds() {
-		const inner = this._inner.bounds;
-		const e = Object.create(Extent.prototype);
-		e._inner = inner;
-		return e;
-	}
-
-	get zooms() {
-		const inner = this._inner.zooms;
-		const z = Object.create(ZoomRange.prototype);
-		z._inner = inner;
-		return z;
+	levels() {
+		return this._planned.levels.map((level) => new ZoomLevelPlan(level));
 	}
 
 	level(zoom) {
-		return this._inner.level(zoom);
+		const found = this.levels().find((level) => level.zoom === zoom);
+		if (!found) throw new RangeError(`zoom ${zoom} is not in ${this.zooms}`);
+		return found;
 	}
-	levels() {
-		return this._inner.levels();
-	}
+
 	tileCount() {
-		return this._inner.tileCount();
+		return this._planned.tile_count;
 	}
-	tile_count() {
-		return this._inner.tileCount();
-	}
+
+	/** Every tile in the plan — a separate ask, because a plan only counts. */
 	iterTiles() {
-		return this._inner.iterTiles().map((t) => {
-			const tile = Object.create(Tile.prototype);
-			tile._inner = t;
-			return tile;
+		const enumerated = invoke("plan_tiles", {
+			bounds: this.bounds.toObject(),
+			zooms: { min: this.zooms.min, max: this.zooms.max },
+			include_tiles: true,
 		});
-	}
-	iter_tiles() {
-		return this.iterTiles();
+		return enumerated.tiles.map((tile) => new Tile(tile.z, tile.x, tile.y));
 	}
 }
 
+/** A QGIS project on disk. */
 class Project {
-	constructor(inner) {
-		this._inner = inner;
+	constructor(info) {
+		this._info = info;
+		this.path = info.path;
+		this.format = info.format;
 	}
 
 	static open(path) {
-		const inner = binding.ProjectWrapper.open(path);
-		return new Project(inner);
+		return new Project(invoke("project_info", { path: String(path) }));
 	}
 
-	get path() {
-		return this._inner.path;
-	}
-	get format() {
-		return this._inner.format;
-	}
-
+	/** Describe the project; the optional fields need the QGIS backend. */
 	info() {
-		return this._inner.info();
+		return invoke("project_info", { path: this.path });
 	}
 
+	/** List the project's layers. Throws `unimplemented` until QGIS lands. */
+	layers() {
+		return invoke("project_layers", { path: this.path }).layers;
+	}
+
+	/** Render the project. Throws `unimplemented` until QGIS lands. */
 	render(output, options = {}) {
-		return this._inner.render(
-			output,
-			options.width,
-			options.height,
-			options.dpi,
-		);
+		const payload = { path: this.path, output: String(output) };
+		if (options.width != null) payload.width = options.width;
+		if (options.height != null) payload.height = options.height;
+		if (options.dpi != null) payload.dpi = options.dpi;
+		if (options.crs != null)
+			payload.crs =
+				options.crs instanceof Crs ? options.crs.authId : options.crs;
+		if (options.extent != null) payload.extent = extentPayload(options.extent);
+		if (options.layers?.length) payload.layers = options.layers;
+		if (options.layout != null) payload.layout = options.layout;
+		return invoke("render_project", payload);
 	}
 }
 
-function planTiles(bounds, zoom) {
-	const result = binding.planTiles(bounds, zoom);
+/**
+ * Plan a pyramid and return the plain shape: `{ total, levels }`.
+ *
+ * Each level carries `tileCount` and `tile_count`, like `ZoomLevelPlan`.
+ */
+function planTiles(bounds, zooms) {
+	const planned = invoke("plan_tiles", {
+		bounds: extentPayload(bounds),
+		zooms: zoomPayload(zooms),
+	});
 	return {
-		total: result.total,
-		levels: result.levels.map((level) => {
-			// Keep both spellings consistent if NAPI and the JS fallback marshal
-			// Rust's snake_case fields differently.
-			const xMin = level.xMin ?? level.x_min;
-			const xMax = level.xMax ?? level.x_max;
-			const yMin = level.yMin ?? level.y_min;
-			const yMax = level.yMax ?? level.y_max;
-			const tileCount = level.tileCount ?? level.tile_count;
-			return {
-				...level,
-				xMin,
-				xMax,
-				yMin,
-				yMax,
-				tileCount,
-				x_min: xMin,
-				x_max: xMax,
-				y_min: yMin,
-				y_max: yMax,
-				tile_count: tileCount,
-			};
-		}),
+		total: planned.tile_count,
+		levels: planned.levels.map((level) => new ZoomLevelPlan(level)),
 	};
 }
 
-function plan_tiles(bounds, zoom) {
-	return planTiles(bounds, zoom);
-}
-
-function version() {
-	return binding.version();
-}
-
-const MAX_LATITUDE = binding.getMaxLatitude
-	? binding.getMaxLatitude()
-	: 85.0511287798066;
-const MAX_ZOOM = binding.getMaxZoom ? binding.getMaxZoom() : 22;
-
-// Accessor form, kept as the addon exposes `get_max_latitude` / `get_max_zoom`
-// (napi generates no constants from Rust `pub const`s). Both spellings resolve
-// through here so the fallback and the native addon agree.
-function getMaxLatitude() {
-	return MAX_LATITUDE;
-}
-function getMaxZoom() {
-	return MAX_ZOOM;
-}
-
 module.exports = {
-	Extent,
 	Crs,
-	Tile,
-	ZoomRange,
-	TilePlan,
+	EngineError,
+	Extent,
 	Project,
+	Tile,
+	TilePlan,
+	ZoomLevelPlan,
+	ZoomRange,
+	MAX_LATITUDE: engineInfo().max_latitude,
+	MAX_ZOOM: engineInfo().max_zoom,
+	TRANSPORT_VERSION,
+	engineInfo,
+	invoke,
 	planTiles,
-	plan_tiles,
 	version,
-	MAX_LATITUDE,
-	MAX_ZOOM,
-	getMaxLatitude,
-	getMaxZoom,
-	// Raw binding for advanced use
-	_binding: binding,
-	_hasNative: !loadError,
+	// Kept for the contract suite and for consumers that probed it: the addon
+	// is now the only way this module can load at all, so it is always true.
+	_hasNative: true,
 };
-
-// ES module interop
-module.exports.default = module.exports;

@@ -19,7 +19,7 @@ The `.knowledge/` directory contains design documents, decision records, and arc
 - **INDEX.md** — Entry point to all knowledge documents
 - **architecture.md** — System architecture and component overview
 - **ROADMAP.md** — Development roadmap and priorities
-- **decisions/** — Architecture Decision Records (D01-D08)
+- **decisions/** — Architecture Decision Records (D01-D10)
 - **api-design.md** — Public API specification
 - **qgis-plugin-sdk.md** — Plugin framework design
 
@@ -59,11 +59,36 @@ workflow so IDs, dependencies, acceptance criteria, and status remain consistent
 
 ### FFI Boundaries
 
+**Rust ↔ C++** (`crates/qgis-sys`):
+
 - All C++ ↔ Rust communication goes through CXX bridges
 - Use `#[cxx::bridge]` modules in `.rs` files
 - Declare C++ types as opaque handles
 - Convert strings at the boundary (QString ↔ Rust String)
 - Never expose Qt types to Rust (convert to primitives)
+
+**Rust ↔ Python / Node** (`crates/qgis-py`, `crates/qgis-node` — see
+[D09](.knowledge/decisions/D09-wire-protocol-over-ffi.md)):
+
+- Each binding crate exposes **one** function, `invoke(request_json) -> response_json`.
+  Do not add a `#[pyclass]` or a `#[napi]` struct per domain type.
+- A new capability is a variant of `Operation` in `crates/qgis-protocol`, a
+  payload struct and a match arm in `crates/qgis-engine` — plus a test in
+  `crates/qgis-engine/tests/engine.rs`, which is where the boundary is covered.
+- Everything on the wire is `snake_case`, including operation names. The
+  JavaScript client renames to camelCase at its own edge; Python does not rename.
+- The ergonomic classes live in the host languages
+  (`py-packages/qgis-rs/python/qgis_rs/_api.py`, `ts-packages/qgis-node/index.js`),
+  never in the binding crates. There are no pure-Python or pure-JS fallbacks.
+
+### Repository automation
+
+Repository-wide automation is `crates/xtask`, not shell
+([D10](.knowledge/decisions/D10-xtask-over-shell-scripts.md)). Add a subcommand
+there — with a unit test — rather than a `scripts/*.sh`; `pixi run xtask <sub>`
+reaches it without a new pixi task. Per-package verbs (`build`, `test`, `lint`,
+`format`, `coverage`, `pack:check`) stay in the package's own `package.json`
+and are fanned out by turbo.
 
 ## Testing
 

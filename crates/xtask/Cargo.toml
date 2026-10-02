@@ -1,0 +1,30 @@
+# crates/xtask — the repository's automation, as a program instead of a
+# scripts/ directory.
+#
+# Every verb here used to be a bash file that pixi, lefthook, package.json and
+# a workflow all called. They are subcommands now, so: one `pixi run xtask
+# <subcommand>` entry point, arguments parsed and documented by clap, logic
+# that is compiled, clippy-linted and testable, and no second shell dialect to
+# keep POSIX-clean. See .knowledge/decisions/D10-xtask-over-shell-scripts.md.
+#
+# Not a workspace member by accident: `cargo run -p xtask` has to resolve from
+# the repository root, and the gate itself runs through it.
+
+[package]
+name = "xtask"
+description = "Repository automation for qgis-rs: the gate, the lints, the scaffolder and the release pipeline"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[[bin]]
+name = "xtask"
+path = "src/main.rs"
+
+[dependencies]
+# Deliberately small: anything heavier would make `pixi run xtask` a build
+# before it is a command. All three are already in the workspace lockfile.
+anyhow = { workspace = true }
+clap = { workspace = true }
+walkdir = { workspace = true }

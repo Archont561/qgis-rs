@@ -52,7 +52,7 @@ commit-msg:
 
 pre-push:
   jobs:
-    # One call, the same file CI runs (scripts/ci.sh): repo lints, the turbo
+    # One call, the same code CI runs (`xtask ci`): repo lints, the turbo
     # lint fan-out, the format-drift gate, every package's tests and
     # pack:check. `gates` is `ci` minus the coverage producers, which are the
     # expensive half and are only useful once they can be uploaded.

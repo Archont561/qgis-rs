@@ -14,7 +14,7 @@
 		"build:debug": "napi build --platform --cargo-cwd ../../crates/qgis-node --js false --dts .napi-generated.d.ts .",
 		"test": "QGIS_REQUIRE_NATIVE=1 bun test tests/contract.test.js",
 		"coverage": "QGIS_REQUIRE_NATIVE=1 bun test --coverage tests/contract.test.js",
-		"pack:check": "bash ../../scripts/npm-pack-check.sh ts-packages/qgis-node index.js index.d.ts README.md bin/ 'qgis-rs.*.node'",
+		"pack:check": "cargo run -q -p xtask --manifest-path ../../Cargo.toml -- pack-check ts-packages/qgis-node index.js index.d.ts README.md bin/ 'qgis-rs.*.node'",
 		"lint": "bunx biome check .",
 		"format": "bunx biome format --write .",
 		"prepublishOnly": "napi prepublish -t npm",

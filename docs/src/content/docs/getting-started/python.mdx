@@ -128,17 +128,24 @@ qgis-rs info map.qgs  # alias
 ```
 qgis-rs wheel
 ├── qgis_rs/
-│   ├── __init__.py      → high-level API
-│   ├── _core.so         → Rust cdylib (PyO3) — native speed
-│   ├── cli.py           → Python CLI wrapper (uses _core)
-│   └── _fallback.py     → pure-Python fallback when _core not built
+│   ├── __init__.py      → the public API
+│   ├── _api.py          → Extent, Crs, Tile, TilePlan, ZoomRange, Project
+│   ├── _transport.py    → invoke(): one JSON call into Rust, errors → exceptions
+│   ├── _core.so         → Rust cdylib (PyO3) — exposes exactly one function, invoke()
+│   └── cli.py           → Python CLI wrapper (uses _api, no subprocess)
 └── bin/qgis-cli         → Rust binary (same logic, standalone)
 ```
 
+There is no pure-Python fallback: every number this package returns is computed
+by Rust, and a second implementation would be a second set of answers. Without
+a built `_core`, importing `qgis_rs` raises.
+
+- `crates/qgis-protocol` — the request/response envelope and the closed list of operations
+- `crates/qgis-engine` — `invoke(request_json) -> response_json`, one arm per operation
 - `crates/qgis-render` — pure Rust, no QGIS needed
 - `crates/qgis-cli` — CLI library + binary (reused by Python package)
-- `py-packages/qgis-rs` — the Python distribution (wrappers, tests, maturin config)
-- `crates/qgis-py` — the PyO3 bindings + `qgis-cli` binary it compiles
+- `py-packages/qgis-rs` — the Python distribution (client, tests, maturin config)
+- `crates/qgis-py` — the PyO3 adapter + `qgis-cli` binary it compiles
 
 ## Conda-forge
 

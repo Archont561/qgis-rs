@@ -5,9 +5,9 @@
 #     (built by maturin, driven from ../../py-packages/qgis-rs/pyproject.toml)
 #   * as the standalone `qgis-cli` binary, shipped on PATH by that same wheel
 #
-# The Python package itself — `qgis_rs/__init__.py`, the `_fallback` module,
-# tests, conda recipe and pixi `[package]` manifest — lives in
-# ../../py-packages/qgis-rs/.
+# The lib target is ~40 lines: it forwards one JSON string to `qgis-engine` and
+# hands one back (D09). The ergonomic Python API, the tests, the conda recipe
+# and the pixi `[package]` manifest live in ../../py-packages/qgis-rs/.
 
 [package]
 name = "qgis-py"
@@ -34,14 +34,11 @@ name = "qgis-cli"
 path = "src/bin/qgis-cli.rs"
 
 [dependencies]
-qgis-render = { workspace = true }
-qgis-server = { workspace = true }
+# The extension module needs nothing but the engine: no domain crate, no serde,
+# no error type. Everything else here belongs to the `qgis-cli` binary target.
+qgis-engine = { workspace = true }
 qgis-cli = { workspace = true }
 qgis-mcp = { workspace = true, optional = true }
-anyhow = { workspace = true }
-clap = { workspace = true }
-serde_json = { workspace = true }
-thiserror = { workspace = true }
 tokio = { workspace = true, optional = true }
 
 pyo3 = { version = "0.22" }

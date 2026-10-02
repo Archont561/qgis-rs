@@ -109,7 +109,7 @@ qgis-rs/
 │   └── qgis-sdk/              # Python dist: pyproject.toml, src/qgis_sdk/, tests/, pixi [package]
 │
 ├── ts-packages/
-│   ├── qgis-node/             # npm dist: package.json, index.js, fallback.js, bin/ wrappers
+│   ├── qgis-node/             # npm dist: package.json, index.js, bin/ wrappers
 │   └── qgis-sdk-bridge/       # @qgis-sdk/bridge — Bun workspace, TypeScript sources + bun:test
 │
 ├── docs/                      # Documentation site (Astro Starlight)
