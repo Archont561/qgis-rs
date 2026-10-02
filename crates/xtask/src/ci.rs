@@ -38,8 +38,11 @@ pub fn gate(coverage: bool) -> Result<()> {
     step("tests (turbo fan-out; each package builds what it needs)");
     turbo(&["test", NOT_DOCS])?;
 
+    // Filtered like every other fan-out: the docs site publishes nothing, and
+    // without the filter turbo pulls its Astro build into the gate as a
+    // dependency of a task it does not even define.
     step("publishable-package contents");
-    turbo(&["pack:check"])?;
+    turbo(&["pack:check", NOT_DOCS])?;
 
     if coverage {
         step("coverage (rust lcov + python xml + js)");

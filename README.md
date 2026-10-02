@@ -352,7 +352,7 @@ The gate, in order (cheap failures first):
 2. `turbo run lint` — biome, `cargo fmt --check`, clang-format, clippy, clang-tidy
 3. format-drift gate — `turbo run format`, then fail on a dirty tree
 4. `turbo run test` — Rust suites, both Python distributions, the NAPI addon, the bridge
-5. `turbo run pack:check` — the npm package really contains what it claims
+5. `turbo run pack:check` — each publishable package really contains what its `files` list claims
 6. `turbo run coverage` — Rust lcov + Python Cobertura XML into `target/coverage/`, uploaded to Codecov
 
 **What was removed, and why it was safe.** The workflow used to also set up a second Python, a rustup
