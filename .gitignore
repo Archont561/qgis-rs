@@ -31,8 +31,9 @@ _*
 
 # pixi
 !.pixi/config.toml
-# sandbox publish plan (committed; .pixi-sandbox/ below is the generated transport)
-!.pixi-sandbox.toml
+# The sandbox publish plan is `pixi-sandbox.toml` (no leading dot as of
+# pixi-sandbox v0.4.0, which made the dotted name a legacy fallback). The
+# general `.*` rule above therefore no longer hides it and needs no un-ignore.
 
 # cargo
 /target

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# taplo canonicality check. Only pixi.toml and .pixi-sandbox.toml are kept in
+# taplo canonicality check. Only pixi.toml and pixi-sandbox.toml are kept in
 # taplo's canonical form — the rest of the repo uses the aligned-`=` style on
 # purpose — so a bare run checks exactly those two. Arguments (staged files
 # from lefthook) override that list.
@@ -10,5 +10,5 @@ source "$(dirname "$0")/lib.sh"
 if [ "$#" -gt 0 ]; then
   taplo fmt --check "$@"
 else
-  taplo fmt --check pixi.toml .pixi-sandbox.toml
+  taplo fmt --check pixi.toml pixi-sandbox.toml
 fi

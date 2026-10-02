@@ -39,6 +39,7 @@ concurrency:
 
 env:
   CARGO_TERM_COLOR: always
+  PIXI_SANDBOX_VERSION: 0.4.3
   # Fetch prebuilt registry indexes instead of cloning the whole crates.io git
   # index on a cold cache.
   CARGO_NET_GIT_FETCH_WITH_CLI: "true"
@@ -55,15 +56,29 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Set up the pinned pixi-sandbox release binary
-        uses: Archont561/pixi-sandbox/setup@da230c2db2dff8a242c40a89c3a4c66de7777518 # v0.3.2
-        id: sandbox-setup
+      # v0.4.0 retired the v0.3.x composite `setup`/`publish` actions, so the CLI
+      # is installed the same way the generated publish-sandbox workflow does it:
+      # from its own channel into pixi's global environment, which is independent
+      # of this repository's conda-forge-only project solve. Exercising it here
+      # means the plan shape is checked even when a later application-level test
+      # fails. `run-install: false`/`cache: false` — this job never solves the
+      # project, and pixi-sandbox owns any `pixi install` during packing.
+      - uses: prefix-dev/setup-pixi@d3f436a425481402e6a95a1d1fc10331c708cd9e # v0.10.2
         with:
-          version: v0.3.2
-          token: ${{ github.token }}
+          pixi-version: v0.81.0
+          run-install: false
+          cache: false
+
+      - name: Install the pinned pixi-sandbox release
+        run: |
+          pixi global install \
+            --channel https://prefix.dev/archont561/pixi-sandbox \
+            --channel conda-forge \
+            "pixi-sandbox==${{ env.PIXI_SANDBOX_VERSION }}"
+          echo "PIXI_SANDBOX_VERSION=${{ env.PIXI_SANDBOX_VERSION }}" >> "$GITHUB_ENV"
 
       - name: Validate the reviewed publish plan
-        run: '"${{ steps.sandbox-setup.outputs.path }}" plan --config .pixi-sandbox.toml --json'
+        run: pixi-sandbox plan --config pixi-sandbox.toml --json
 
   ci:
     name: CI

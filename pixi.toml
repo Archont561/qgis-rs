@@ -118,7 +118,7 @@ clang-tools = ">=22.1.8,<23"
 #
 # Deliberately NOT part of [feature.rust]: that feature is also pulled into the
 # `bun` environment (napi build shells out to cargo), and both environments are
-# packed by .pixi-sandbox.toml. Keeping these here makes them `default`-only and
+# packed by pixi-sandbox.toml. Keeping these here makes them `default`-only and
 # keeps them out of the published transport.
 #
 # Lower bounds track the versions the tools were adopted at — the repo pins the
@@ -282,7 +282,7 @@ gates = { cmd = "bash scripts/ci.sh --no-coverage", description = "`ci` without 
 # Optional arguments are staged files from lefthook; with none they check the
 # whole relevant tree.
 check-cpp = { cmd = "bash scripts/check-cpp.sh", description = "clang-format gate for the C++ shim (staged files, or the whole tree)", default-environment = "default" }
-lint-toml = { cmd = "bash scripts/lint-toml.sh", description = "taplo canonicality check for pixi.toml and .pixi-sandbox.toml", default-environment = "default" }
+lint-toml = { cmd = "bash scripts/lint-toml.sh", description = "taplo canonicality check for pixi.toml and pixi-sandbox.toml", default-environment = "default" }
 lint-actions = { cmd = "actionlint", description = "Lint .github/workflows/*.yml", default-environment = "default" }
 lint-commit = { cmd = "convco check --from-stdin", description = "Validate a commit message against the conventional-commit spec", default-environment = "default" }
 
