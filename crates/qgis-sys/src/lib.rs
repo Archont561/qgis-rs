@@ -1,8 +1,9 @@
-pub mod core;
+//! The Rust side of the native QGIS manager boundary.
+//!
+//! RFC 19 deliberately exposes one JSON C ABI instead of a collection of
+//! per-class CXX shims. QGIS objects remain owned by the manager's dedicated
+//! thread and callers receive copied protocol values or structured errors.
+
 pub mod native_manager;
 
-pub use core::application::app::ffi as application_ffi;
-pub use core::application::info::ffi as application_info_ffi;
-pub use core::fields::fields::ffi as fields_ffi;
-pub use core::vector_layer::layer::ffi as vector_layer_ffi;
 pub use native_manager as native_manager_ffi;

@@ -13,8 +13,6 @@ edition  = "2021"
 license  = "GPL-2.0-or-later"
 
 [workspace.dependencies]
-cxx = "1.0.194"
-cxx-build = "1.0.194"
 anyhow = "1"
 serde_json = "1"
 walkdir = "2"

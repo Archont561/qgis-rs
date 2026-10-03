@@ -4,12 +4,13 @@ title: Bind QgsProject with ownership transfer semantics and QgsFeatureRequest
 status: To Do
 assignee: []
 created_date: '2026-09-30 20:48'
-updated_date: '2026-10-03 08:31'
+updated_date: '2026-10-03 18:36'
 labels:
   - qgis-sys
   - qgis
   - project
   - editing
+  - deprecated
 milestone: m-2
 dependencies:
   - TASK-8
@@ -33,3 +34,13 @@ Implement QgsProject CXX bindings and safe Rust Project wrapper adhering to D02 
 - [ ] #3 Project::layer(&self, name_or_id) returns a borrowed layer reference
 - [ ] #4 FeatureRequest builder supports bounding box rect and attribute expression filters
 <!-- AC:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Arena agent
+created: 2026-10-03 18:36
+---
+Deprecated: superseded by RFC 19 native-manager operations; this legacy direct qgis-sys shim path is no longer planned.
+---
+<!-- COMMENTS:END -->

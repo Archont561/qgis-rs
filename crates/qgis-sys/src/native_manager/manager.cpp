@@ -1,4 +1,4 @@
-#include "qgis-sys/include/native_manager/manager.h"
+#include "native_manager/manager.h"
 
 // The manager deliberately crosses a C ABI (malloc/free), uses Qt/QGIS
 // macro-heavy headers, and owns a process-lifetime executor. The QGIS build
@@ -8,6 +8,8 @@
 #include <qgsconfig.h>
 #include <qgsfield.h>
 #include <qgsfields.h>
+#include <qgsfeature.h>
+#include <qgsfeatureiterator.h>
 #include <qgsvectorlayer.h>
 #include <qgswkbtypes.h>
 
@@ -19,7 +21,9 @@
 #include <QJsonValue>
 #include <QString>
 #include <QSysInfo>
+#include <QVariant>
 #include <QtGlobal>
+#include <algorithm>
 #include <condition_variable>
 #include <cstdlib>
 #include <cstring>
@@ -33,16 +37,9 @@
 #include <utility>
 #include <vector>
 
-#include "qgis-sys/include/core/application.h"
-#include "qgis-sys/include/core/application_info.h"
-#include "qgis-sys/include/core/convert.h"
-#include "qgis-sys/include/core/fields.h"
-#include "qgis-sys/include/core/vector_layer.h"
-
 // Including qgsapplication.h triggers a static initializer in some QGIS
-// conda-forge builds. Keep the same narrow declaration used by the legacy
-// application shim while making this manager translation unit the only owner
-// of QGIS operations on the C ABI path.
+// conda-forge builds. Keep a narrow declaration here so this manager
+// translation unit remains the only owner of QGIS operations on the C ABI path.
 class QgsApplication {
    public:
     static void setPrefixPath(const QString& prefix_path, bool use_default_paths);
@@ -50,207 +47,6 @@ class QgsApplication {
     static void initQgis();
     static void exitQgis();
 };
-
-QGIS_DEFINE_HANDLE_DTOR(qgis_shim::core, QgsApplication, QApplication)
-QGIS_DEFINE_HANDLE_DTOR(qgis_shim::core, QgsFieldsHandle, ::QgsFields)
-QGIS_DEFINE_HANDLE_DTOR(qgis_shim::core, QgsVectorLayerHandle, ::QgsVectorLayer)
-
-namespace {
-
-QGIS_HANDLE_CAST(qgis_shim::core::QgsFieldsHandle, ::QgsFields)
-QGIS_HANDLE_CAST(qgis_shim::core::QgsVectorLayerHandle, ::QgsVectorLayer)
-
-int s_argc = 1;
-char s_argv0[] = "qgis-rs";
-char* s_argv[] = {s_argv0, nullptr};
-
-}  // namespace
-
-namespace qgis_shim::core {
-
-::std::unique_ptr<QgsApplication> application_new(rust::Str prefix_path) noexcept {
-    try {
-        const QString prefix =
-            QString::fromUtf8(prefix_path.data(), static_cast<int>(prefix_path.size()));
-        ::QgsApplication::setPrefixPath(
-            prefix.isEmpty() ? ::QgsApplication::prefixPath() : prefix, true);
-        auto* app = new QApplication(s_argc, s_argv);
-        return ::std::make_unique<qgis_shim::core::QgsApplication>(
-            static_cast<void*>(app));
-    } catch (...) {
-        return nullptr;
-    }
-}
-
-void application_init_qgis(QgsApplication& app) noexcept {
-    try {
-        if (app.ptr == nullptr) {
-            return;
-        }
-        ::QgsApplication::initQgis();
-    } catch (...) {
-    }
-}
-
-void application_exit_qgis(QgsApplication& app) noexcept {
-    try {
-        if (app.ptr == nullptr) {
-            return;
-        }
-        ::QgsApplication::exitQgis();
-        app.ptr = nullptr;
-    } catch (...) {
-    }
-}
-
-AppInfo application_info() noexcept {
-    AppInfo out{};
-    try {
-        out.version = rust::String(_QGIS_VERSION);
-        out.qt_version = rust::String(qVersion());
-        out.platform = to_rust(QSysInfo::prettyProductName());
-    } catch (...) {
-    }
-    return out;
-}
-
-::std::unique_ptr<QgsVectorLayerHandle> vector_layer_new(rust::Str uri, rust::Str name,
-                                                         rust::Str provider) noexcept {
-    try {
-        auto* layer =
-            new ::QgsVectorLayer(from_rust(uri), from_rust(name), from_rust(provider));
-        return ::std::make_unique<QgsVectorLayerHandle>(static_cast<void*>(layer));
-    } catch (...) {
-        return nullptr;
-    }
-}
-
-bool vector_layer_is_valid(const QgsVectorLayerHandle& handle) noexcept {
-    try {
-        if (handle.ptr == nullptr) {
-            return false;
-        }
-        return real_const(handle)->isValid();
-    } catch (...) {
-        return false;
-    }
-}
-
-rust::String vector_layer_name(const QgsVectorLayerHandle& handle) noexcept {
-    try {
-        if (handle.ptr == nullptr) {
-            return rust::String();
-        }
-        return to_rust(real_const(handle)->name());
-    } catch (...) {
-        return rust::String();
-    }
-}
-
-int64_t vector_layer_feature_count(const QgsVectorLayerHandle& handle) noexcept {
-    try {
-        if (handle.ptr == nullptr) {
-            return -1;
-        }
-        return static_cast<int64_t>(real_const(handle)->featureCount());
-    } catch (...) {
-        return -1;
-    }
-}
-
-rust::String vector_layer_crs_authid(const QgsVectorLayerHandle& handle) noexcept {
-    try {
-        if (handle.ptr == nullptr) {
-            return rust::String();
-        }
-        return to_rust(real_const(handle)->crs().authid());
-    } catch (...) {
-        return rust::String();
-    }
-}
-
-rust::String vector_layer_geometry_type_name(
-    const QgsVectorLayerHandle& handle) noexcept {
-    try {
-        if (handle.ptr == nullptr) {
-            return rust::String();
-        }
-        return to_rust(::QgsWkbTypes::displayString(real_const(handle)->wkbType()));
-    } catch (...) {
-        return rust::String();
-    }
-}
-
-::std::unique_ptr<QgsFieldsHandle> vector_layer_fields(
-    const QgsVectorLayerHandle& handle) noexcept {
-    try {
-        if (handle.ptr == nullptr) {
-            return nullptr;
-        }
-        auto* fields = new ::QgsFields(real_const(handle)->fields());
-        return ::std::make_unique<QgsFieldsHandle>(static_cast<void*>(fields));
-    } catch (...) {
-        return nullptr;
-    }
-}
-
-::std::unique_ptr<QgsFieldsHandle> fields_new_empty() noexcept {
-    try {
-        return ::std::make_unique<QgsFieldsHandle>(
-            static_cast<void*>(new ::QgsFields()));
-    } catch (...) {
-        return nullptr;
-    }
-}
-
-int64_t fields_count(const QgsFieldsHandle& handle) noexcept {
-    try {
-        if (handle.ptr == nullptr) {
-            return 0;
-        }
-        return static_cast<int64_t>(real_const(handle)->count());
-    } catch (...) {
-        return 0;
-    }
-}
-
-rust::String fields_name(const QgsFieldsHandle& handle, int64_t index) noexcept {
-    try {
-        if (handle.ptr == nullptr || index < 0 || index >= real_const(handle)->count()) {
-            return rust::String();
-        }
-        const ::QgsField field = real_const(handle)->at(static_cast<int>(index));
-        return to_rust(field.name());
-    } catch (...) {
-        return rust::String();
-    }
-}
-
-rust::String fields_type(const QgsFieldsHandle& handle, int64_t index) noexcept {
-    try {
-        if (handle.ptr == nullptr || index < 0 || index >= real_const(handle)->count()) {
-            return rust::String();
-        }
-        const ::QgsField field = real_const(handle)->at(static_cast<int>(index));
-        return to_rust(field.typeName());
-    } catch (...) {
-        return rust::String();
-    }
-}
-
-int64_t fields_precision(const QgsFieldsHandle& handle, int64_t index) noexcept {
-    try {
-        if (handle.ptr == nullptr || index < 0 || index >= real_const(handle)->count()) {
-            return -1;
-        }
-        const ::QgsField field = real_const(handle)->at(static_cast<int>(index));
-        return static_cast<int64_t>(field.precision());
-    } catch (...) {
-        return -1;
-    }
-}
-
-}  // namespace qgis_shim::core
 
 namespace {
 
@@ -436,12 +232,27 @@ class ManagerHost {
         if (operation == QStringLiteral("app_init")) {
             return compact_json(initialize());
         }
+        if (operation == QStringLiteral("app_shutdown")) {
+            return compact_json(shutdown());
+        }
         if (!initialized_) {
             return compact_json(failure(
                 "not_initialized", "app_init must succeed before a QGIS operation"));
         }
         if (operation == QStringLiteral("engine_info")) {
             return compact_json(engine_info());
+        }
+        if (operation == QStringLiteral("layer_open")) {
+            return compact_json(layer_open(payload));
+        }
+        if (operation == QStringLiteral("layer_info")) {
+            return compact_json(layer_info(payload));
+        }
+        if (operation == QStringLiteral("layer_close")) {
+            return compact_json(layer_close(payload));
+        }
+        if (operation == QStringLiteral("layer_features")) {
+            return compact_json(layer_features(payload));
         }
         if (operation == QStringLiteral("layer_new")) {
             return compact_json(layer_new(payload));
@@ -485,10 +296,25 @@ class ManagerHost {
             QJsonObject{{"initialized", true}, {"already_initialized", false}});
     }
 
+    QJsonObject shutdown() {
+        const quint64 released_layer_count =
+            static_cast<quint64>(owned_layers_.size());
+        shutdown_qgis();
+        stopping_ = true;
+        return success(QJsonObject{{"shutdown", true},
+                                   {"released_layer_count",
+                                    static_cast<qint64>(released_layer_count)}});
+    }
+
     QJsonObject engine_info() const {
         QJsonArray operations;
         operations.append(QStringLiteral("app_init"));
+        operations.append(QStringLiteral("app_shutdown"));
         operations.append(QStringLiteral("engine_info"));
+        operations.append(QStringLiteral("layer_open"));
+        operations.append(QStringLiteral("layer_info"));
+        operations.append(QStringLiteral("layer_close"));
+        operations.append(QStringLiteral("layer_features"));
         operations.append(QStringLiteral("layer_new"));
         operations.append(QStringLiteral("layer_is_valid"));
         operations.append(QStringLiteral("layer_name"));
@@ -507,12 +333,22 @@ class ManagerHost {
                         {"operations", operations}});
     }
 
+    QJsonObject layer_open(const QJsonObject& payload) {
+        return create_layer(payload, "layer_open");
+    }
+
     QJsonObject layer_new(const QJsonObject& payload) {
+        return create_layer(payload, "layer_new");
+    }
+
+    QJsonObject create_layer(const QJsonObject& payload, const char* operation) {
         const QString uri = payload.value(QStringLiteral("uri")).toString();
         const QString name = payload.value(QStringLiteral("name")).toString();
         const QString provider = payload.value(QStringLiteral("provider")).toString();
         if (uri.isEmpty() || provider.isEmpty()) {
-            return failure("invalid_payload", "layer_new requires uri and provider");
+            return failure("invalid_payload",
+                           QString::fromLatin1(operation) +
+                               QStringLiteral(" requires uri and provider"));
         }
 
         auto layer = std::make_unique<::QgsVectorLayer>(uri, name, provider);
@@ -529,6 +365,105 @@ class ManagerHost {
         return success(QJsonObject{{"layer_id", static_cast<qint64>(id)},
                                    {"is_valid", valid},
                                    {"name", display_name}});
+    }
+
+    QJsonObject layer_info(const QJsonObject& payload) const {
+        const auto layer = lookup(payload);
+        if (!layer.second) {
+            return layer.first;
+        }
+
+        const ::QgsVectorLayer* vector_layer = layer.second;
+        return success(QJsonObject{
+            {"layer_id", static_cast<qint64>(json_layer_id(payload))},
+            {"is_valid", vector_layer->isValid()},
+            {"name", vector_layer->name()},
+            {"feature_count", static_cast<qint64>(vector_layer->featureCount())},
+            {"crs_authid", vector_layer->crs().authid()},
+            {"geometry_type_name",
+             ::QgsWkbTypes::displayString(vector_layer->wkbType())},
+            {"fields", fields_json(vector_layer)}});
+    }
+
+    QJsonObject layer_close(const QJsonObject& payload) {
+        quint64 id = 0;
+        if (!json_id(payload, &id)) {
+            return failure("invalid_object_id", "layer_id must be a positive integer");
+        }
+
+        const auto iterator = layers_.find(id);
+        if (iterator == layers_.end()) {
+            return failure("invalid_object_id", "the layer_id is not live");
+        }
+
+        ::QgsVectorLayer* layer = iterator.value();
+        layers_.erase(iterator);
+        const auto owner = std::find_if(
+            owned_layers_.begin(), owned_layers_.end(),
+            [layer](const std::unique_ptr<::QgsVectorLayer>& candidate) {
+                return candidate.get() == layer;
+            });
+        if (owner != owned_layers_.end()) {
+            owned_layers_.erase(owner);
+        }
+        return success(QJsonObject{{"layer_id", static_cast<qint64>(id)},
+                                   {"closed", true}});
+    }
+
+    QJsonObject layer_features(const QJsonObject& payload) const {
+        const auto layer = lookup(payload);
+        if (!layer.second) {
+            return layer.first;
+        }
+
+        quint64 offset = 0;
+        if (!json_optional_integer(payload, QStringLiteral("offset"), &offset)) {
+            return failure("invalid_payload", "offset must be a non-negative integer");
+        }
+
+        quint64 limit = 100;
+        if (!json_optional_integer(payload, QStringLiteral("limit"), &limit) ||
+            limit == 0 || limit > 1000) {
+            return failure("invalid_payload", "limit must be an integer between 1 and 1000");
+        }
+
+        const ::QgsVectorLayer* vector_layer = layer.second;
+        ::QgsFeatureIterator iterator = vector_layer->getFeatures();
+        ::QgsFeature feature;
+        quint64 skipped = 0;
+        while (skipped < offset && iterator.nextFeature(feature)) {
+            ++skipped;
+        }
+
+        QJsonArray features;
+        while (features.size() < static_cast<int>(limit) && iterator.nextFeature(feature)) {
+            QJsonObject attributes;
+            const ::QgsAttributes values = feature.attributes();
+            const ::QgsFields schema = vector_layer->fields();
+            const int count = std::min(values.count(), schema.count());
+            for (int index = 0; index < count; ++index) {
+                attributes.insert(schema.at(index).name(),
+                                  QJsonValue::fromVariant(values.at(index)));
+            }
+
+            features.append(QJsonObject{
+                {"id", static_cast<qint64>(feature.id())},
+                {"attributes", attributes},
+                {"geometry_wkt", feature.geometry().asWkt()}});
+        }
+
+        const qint64 total = static_cast<qint64>(vector_layer->featureCount());
+        QJsonValue next_offset = QJsonValue::Null;
+        if (total >= 0 && offset + static_cast<quint64>(features.size()) <
+                              static_cast<quint64>(total)) {
+            next_offset = static_cast<qint64>(offset + features.size());
+        }
+        return success(QJsonObject{{"layer_id", static_cast<qint64>(json_layer_id(payload))},
+                                   {"offset", static_cast<qint64>(offset)},
+                                   {"limit", static_cast<qint64>(limit)},
+                                   {"next_offset", next_offset},
+                                   {"total", total},
+                                   {"features", features}});
     }
 
     QJsonObject layer_is_valid(const QJsonObject& payload) const {
@@ -579,15 +514,44 @@ class ManagerHost {
             return layer.first;
         }
 
+        return success(QJsonObject{{"fields", fields_json(layer.second)}});
+    }
+
+    static quint64 json_layer_id(const QJsonObject& payload) {
+        quint64 id = 0;
+        json_id(payload, &id);
+        return id;
+    }
+
+    static bool json_optional_integer(const QJsonObject& payload, const QString& key,
+                                      quint64* value) {
+        const QJsonValue candidate = payload.value(key);
+        if (candidate.isUndefined() || candidate.isNull()) {
+            return true;
+        }
+        if (!candidate.isDouble()) {
+            return false;
+        }
+        const double number = candidate.toDouble();
+        if (number < 0.0 ||
+            number > static_cast<double>(std::numeric_limits<quint64>::max()) ||
+            number != static_cast<double>(static_cast<quint64>(number))) {
+            return false;
+        }
+        *value = static_cast<quint64>(number);
+        return true;
+    }
+
+    static QJsonArray fields_json(const ::QgsVectorLayer* layer) {
         QJsonArray fields;
-        const ::QgsFields schema = layer.second->fields();
+        const ::QgsFields schema = layer->fields();
         for (int index = 0; index < schema.count(); ++index) {
             const ::QgsField field = schema.at(index);
             fields.append(QJsonObject{{"name", field.name()},
                                       {"type", field.typeName()},
                                       {"precision", field.precision()}});
         }
-        return success(QJsonObject{{"fields", fields}});
+        return fields;
     }
 
     std::pair<QJsonObject, const ::QgsVectorLayer*> lookup(
@@ -613,7 +577,10 @@ class ManagerHost {
                 QgsApplication::exitQgis();
                 initialized_ = false;
             }
-            application_.reset();
+            // QGIS owns process-wide Qt/plugin state. After exitQgis(), keep
+            // the QApplication allocation leaked rather than running its
+            // destructor during shared-library teardown.
+            application_.release();
         } catch (...) {
         }
     }
@@ -644,7 +611,7 @@ ManagerHost& manager() {
     // QGIS installs process-wide Qt/plugin state during initQgis(). Keeping the
     // host alive until process exit matches the existing qgis-sys lifecycle
     // helper and avoids running Qt teardown after shared-library destructors.
-    // An explicit shutdown operation will own an orderly stop in a later phase.
+    // The explicit app_shutdown operation performs orderly owner-thread teardown.
     static ManagerHost* instance = new ManagerHost();
     return *instance;
 }

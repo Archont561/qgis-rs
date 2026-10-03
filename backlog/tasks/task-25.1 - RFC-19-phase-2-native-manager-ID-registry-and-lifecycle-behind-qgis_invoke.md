@@ -4,7 +4,7 @@ title: 'RFC 19 phase 2: native manager, ID registry and lifecycle behind qgis_in
 status: Done
 assignee: []
 created_date: '2026-10-02 23:23'
-updated_date: '2026-10-03 18:08'
+updated_date: '2026-10-03 18:37'
 labels:
   - rfc
   - ffi
@@ -66,6 +66,16 @@ Decide the concurrency model before writing the mutex: one global lock around qg
 
 2026-10-03: Full pixi run gates reached the repository lint and format stages, then stopped in qgis-rs build because the bun environment could not fetch crates.io config for anyhow due repeated TLS unexpected EOF errors. This is an environment network blocker; focused Rust/C++ verification for this task remains green.
 <!-- SECTION:NOTES:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Arena agent
+created: 2026-10-03 18:37
+---
+2026-10-03: Follow-up cleanup removed the superseded per-class CXX/qgis-sys shim tree and its dependencies. The native manager is now the sole QGIS boundary; the old compatibility functions are retired.
+---
+<!-- COMMENTS:END -->
 
 ## Final Summary
 

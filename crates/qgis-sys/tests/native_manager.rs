@@ -109,3 +109,90 @@ fn concurrent_callers_are_serialized_by_the_manager_owner() {
 fn transport_version_is_available_without_starting_qgis() {
     assert_eq!(manager::transport_version(), 1);
 }
+
+#[test]
+fn manager_opens_reports_batches_and_closes_a_layer() {
+    ok("app_init", Value::Null);
+    let opened = ok(
+        "layer_open",
+        json!({
+            "uri": format!("{}/tests/fixtures/points.gpkg", env!("CARGO_MANIFEST_DIR")),
+            "provider": "ogr",
+            "name": "points",
+        }),
+    );
+    let layer_id = opened["layer_id"].as_u64().expect("integer layer id");
+    assert_eq!(opened["is_valid"], true);
+    assert_eq!(opened["name"], "points");
+
+    let info = ok("layer_info", json!({"layer_id": layer_id}));
+    assert_eq!(info["layer_id"], layer_id);
+    assert_eq!(info["feature_count"], 3);
+    assert_eq!(info["crs_authid"], "EPSG:4326");
+    assert!(info["geometry_type_name"]
+        .as_str()
+        .unwrap()
+        .contains("Point"));
+    assert_eq!(
+        info["fields"][0],
+        json!({"name": "fid", "type": "Integer64", "precision": 0})
+    );
+    assert_eq!(
+        info["fields"][1],
+        json!({"name": "name", "type": "String", "precision": 0})
+    );
+
+    let page = ok(
+        "layer_features",
+        json!({"layer_id": layer_id, "offset": 0, "limit": 2}),
+    );
+    assert_eq!(page["layer_id"], layer_id);
+    assert_eq!(page["offset"], 0);
+    assert_eq!(page["limit"], 2);
+    assert_eq!(page["total"], 3);
+    assert_eq!(page["next_offset"], 2);
+    assert_eq!(page["features"].as_array().unwrap().len(), 2);
+    assert_eq!(
+        page["features"][0],
+        json!({
+            "id": 1,
+            "attributes": {"fid": 1, "name": "alpha"},
+            "geometry_wkt": "Point (0 0)"
+        })
+    );
+    assert_eq!(
+        page["features"][1],
+        json!({
+            "id": 2,
+            "attributes": {"fid": 2, "name": "beta"},
+            "geometry_wkt": "Point (1 1)"
+        })
+    );
+
+    let tail = ok(
+        "layer_features",
+        json!({"layer_id": layer_id, "offset": 2, "limit": 2}),
+    );
+    assert_eq!(tail["features"].as_array().unwrap().len(), 1);
+    assert_eq!(tail["next_offset"], Value::Null);
+
+    assert_eq!(
+        ok("layer_close", json!({"layer_id": layer_id}))["closed"],
+        true
+    );
+    let closed = response(json!({
+        "transport_version": 1,
+        "operation": "layer_info",
+        "payload": {"layer_id": layer_id}
+    }));
+    assert_eq!(closed["ok"], false);
+    assert_eq!(closed["result"]["kind"], "invalid_object_id");
+
+    let closed_twice = response(json!({
+        "transport_version": 1,
+        "operation": "layer_close",
+        "payload": {"layer_id": layer_id}
+    }));
+    assert_eq!(closed_twice["ok"], false);
+    assert_eq!(closed_twice["result"]["kind"], "invalid_object_id");
+}

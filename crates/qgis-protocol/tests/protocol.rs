@@ -76,3 +76,57 @@ fn responses_carry_this_builds_transport_version() {
     );
     assert!(!EngineResponse::failure(json!({})).ok);
 }
+
+#[test]
+fn layer_lifecycle_types_match_the_shared_golden_fixture() {
+    let fixture: Value =
+        serde_json::from_str(include_str!("../../../test-fixtures/layer-lifecycle.json"))
+            .expect("shared layer fixture is valid JSON");
+
+    let open_request: EngineRequest =
+        serde_json::from_value(fixture["operations"]["layer_open"]["request"].clone())
+            .expect("layer.open request uses the protocol");
+    assert_eq!(open_request.operation, Operation::LayerOpen);
+    let typed_open: LayerOpenRequest =
+        serde_json::from_value(open_request.payload).expect("typed layer.open payload");
+    assert_eq!(typed_open.provider, "ogr");
+    assert_eq!(typed_open.name.as_deref(), Some("points"));
+    let open_response: LayerOpenResponse =
+        serde_json::from_value(fixture["operations"]["layer_open"]["result"].clone())
+            .expect("typed layer.open result");
+    assert_eq!(open_response.layer_id, 7);
+
+    let info: LayerInfoResponse =
+        serde_json::from_value(fixture["operations"]["layer_info"]["result"].clone())
+            .expect("typed layer.info result");
+    assert_eq!(
+        serde_json::to_value(&info).expect("serialisable"),
+        fixture["operations"]["layer_info"]["result"]
+    );
+    assert_eq!(info.fields[0].type_name, "Integer64");
+
+    let info_request: LayerIdRequest =
+        serde_json::from_value(fixture["operations"]["layer_info"]["request"]["payload"].clone())
+            .expect("typed layer.info payload");
+    assert_eq!(info_request.layer_id, 7);
+
+    let feature_page: LayerFeaturesResponse =
+        serde_json::from_value(fixture["operations"]["layer_features"]["result"].clone())
+            .expect("typed layer.features result");
+    assert_eq!(feature_page.features.len(), 2);
+    assert_eq!(feature_page.next_offset, Some(2));
+    assert_eq!(feature_page.features[0].attributes["name"], "alpha");
+
+    let close: LayerCloseResponse =
+        serde_json::from_value(fixture["operations"]["layer_close"]["result"].clone())
+            .expect("typed layer.close result");
+    assert!(close.closed);
+}
+
+#[test]
+fn layer_feature_requests_apply_the_bounded_default() {
+    let request: LayerFeaturesRequest =
+        serde_json::from_value(json!({"layer_id": 7})).expect("defaults deserialize");
+    assert_eq!(request.offset, 0);
+    assert_eq!(request.limit, 100);
+}

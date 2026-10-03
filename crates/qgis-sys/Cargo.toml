@@ -5,11 +5,9 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
-cxx = { workspace = true }
 qgis-protocol = { workspace = true }
 
 [build-dependencies]
-cxx-build = { workspace = true }
 cc        = { workspace = true }
 anyhow    = { workspace = true }
 walkdir   = { workspace = true }

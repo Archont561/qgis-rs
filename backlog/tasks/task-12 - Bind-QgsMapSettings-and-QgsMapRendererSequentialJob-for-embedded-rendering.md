@@ -4,11 +4,12 @@ title: Bind QgsMapSettings and QgsMapRendererSequentialJob for embedded renderin
 status: To Do
 assignee: []
 created_date: '2026-09-30 20:48'
-updated_date: '2026-10-03 08:31'
+updated_date: '2026-10-03 18:36'
 labels:
   - qgis-sys
   - rendering
   - qgis-render
+  - deprecated
 milestone: m-2
 dependencies:
   - TASK-10
@@ -33,3 +34,13 @@ Implement headless C++ map rendering via QgsMapSettings and synchronous QgsMapRe
 - [ ] #3 Rendered QImage output is exported to PNG/JPEG byte buffers
 - [ ] #4 Standalone rendering test renders a styled .qgs/.qgz project to a valid PNG in offscreen mode
 <!-- AC:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Arena agent
+created: 2026-10-03 18:36
+---
+Deprecated: superseded by RFC 19 native-manager operations; this legacy direct qgis-sys shim path is no longer planned.
+---
+<!-- COMMENTS:END -->

@@ -1,10 +1,10 @@
 ---
 id: TASK-25.2
 title: 'RFC 19 phase 3: layer open, info, close and a batched layer.features'
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-10-02 23:23'
-updated_date: '2026-10-03 08:57'
+updated_date: '2026-10-03 18:39'
 labels:
   - rfc
   - ffi
@@ -40,8 +40,20 @@ Every operation added here is an operation on the wire, so it needs the same tre
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 layer.open, layer.info and layer.close are live operations backed by the registry, and closing twice answers with an error envelope rather than crashing
-- [ ] #2 layer.features returns a page of features in one crossing, and the per-feature round trip is not reintroduced anywhere
-- [ ] #3 The new operations have protocol types, closed enum arms and golden values asserted from Rust, Python and TypeScript alike
-- [ ] #4 A layer left open at shutdown is released by the manager, proven by a test
+- [x] #1 layer.open, layer.info and layer.close are live operations backed by the registry, and closing twice answers with an error envelope rather than crashing
+- [x] #2 layer.features returns a page of features in one crossing, and the per-feature round trip is not reintroduced anywhere
+- [x] #3 The new operations have protocol types, closed enum arms and golden values asserted from Rust, Python and TypeScript alike
+- [x] #4 A layer left open at shutdown is released by the manager, proven by a test
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Implemented RFC 19 phase 3 through the dedicated native QGIS manager. Added layer_open, layer_info, layer_close, bounded layer_features pages, explicit owner-thread app_shutdown release accounting, protocol types, shared lifecycle fixtures, and Rust/Python/TypeScript golden coverage. Retired the superseded qgis-sys CXX/per-class shim tree and marked its backlog tasks deprecated.
+<!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+RFC 19 phase 3 is complete: layer lifecycle and batched feature access are registry-backed, bounded, copied over one manager crossing, and covered by cross-language protocol fixtures. Closed-layer errors and owner-thread shutdown release are tested.
+<!-- SECTION:FINAL_SUMMARY:END -->

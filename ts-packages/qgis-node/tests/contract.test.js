@@ -8,6 +8,8 @@
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
 
 const qgis = require("../src/index.js");
 
@@ -151,4 +153,48 @@ test("the raw transport is reachable for operations this client has no class for
 
 	assert.deepEqual(echoed.echo, { any: "payload" });
 	assert.equal(echoed.engine, "qgis-engine");
+});
+
+test("layer lifecycle golden values match the shared wire fixture", () => {
+	const fixture = JSON.parse(
+		fs.readFileSync(
+			path.resolve(__dirname, "../../../test-fixtures/layer-lifecycle.json"),
+			"utf8",
+		),
+	);
+	const { operations } = qgis.engineInfo();
+
+	for (const name of [
+		"layer_open",
+		"layer_info",
+		"layer_close",
+		"layer_features",
+	]) {
+		assert.ok(operations.includes(name), `engine does not serve ${name}`);
+		assert.equal(
+			fixture.operations[name].request.transport_version,
+			qgis.TRANSPORT_VERSION,
+		);
+		assert.equal(fixture.operations[name].request.operation, name);
+	}
+
+	assert.deepEqual(fixture.operations.layer_open.result, {
+		layer_id: 7,
+		is_valid: true,
+		name: "points",
+	});
+	assert.deepEqual(
+		fixture.operations.layer_info.result.fields.map((field) => field.name),
+		["fid", "name"],
+	);
+
+	const page = fixture.operations.layer_features.result;
+	assert.equal(page.limit, 2);
+	assert.equal(page.next_offset, 2);
+	assert.equal(page.features.length, 2);
+	assert.deepEqual(page.features[0].attributes, { fid: 1, name: "alpha" });
+	assert.deepEqual(fixture.errors, {
+		closed_layer: "invalid_object_id",
+		invalid_layer: "invalid_object_id",
+	});
 });

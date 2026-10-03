@@ -4,11 +4,12 @@ title: Bind QgsFields and QgsField schema types in qgis-sys
 status: Done
 assignee: []
 created_date: '2026-09-30 20:48'
-updated_date: '2026-10-03 17:34'
+updated_date: '2026-10-03 18:36'
 labels:
   - qgis-sys
   - core
   - schema
+  - deprecated
 milestone: m-1
 dependencies: []
 documentation:
@@ -43,6 +44,16 @@ Bind QgsFields and QgsField in qgis-sys with CXX handles to inspect layer attrib
 
 2026-10-03: Updated .knowledge/qgis-vector-layer.md with the new field schema surface and ownership behavior.
 <!-- SECTION:NOTES:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Arena agent
+created: 2026-10-03 18:36
+---
+Deprecated: superseded by RFC 19 native-manager operations; this legacy direct qgis-sys shim path is no longer planned.
+---
+<!-- COMMENTS:END -->
 
 ## Final Summary
 

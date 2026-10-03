@@ -8,6 +8,9 @@ exception a caller would try to catch.
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 import pytest
 
 import qgis_rs
@@ -142,3 +145,38 @@ def test_a_raw_request_can_be_sent_when_a_client_type_is_missing() -> None:
 
     assert echoed["echo"] == {"any": "payload"}
     assert echoed["engine"] == "qgis-engine"
+
+
+def _layer_lifecycle_fixture() -> dict:
+    fixture = Path(__file__).resolve().parents[3] / "test-fixtures" / "layer-lifecycle.json"
+    return json.loads(fixture.read_text(encoding="utf-8"))
+
+
+def test_layer_lifecycle_golden_values_match_the_shared_wire_fixture() -> None:
+    fixture = _layer_lifecycle_fixture()
+    operations = qgis_rs.engine_info()["operations"]
+
+    for operation in ("layer_open", "layer_info", "layer_close", "layer_features"):
+        assert operation in operations
+        request = fixture["operations"][operation]["request"]
+        assert request["transport_version"] == qgis_rs.TRANSPORT_VERSION
+        assert request["operation"] == operation
+
+    assert fixture["operations"]["layer_open"]["result"] == {
+        "layer_id": 7,
+        "is_valid": True,
+        "name": "points",
+    }
+    info = fixture["operations"]["layer_info"]["result"]
+    assert info["feature_count"] == 3
+    assert [field["name"] for field in info["fields"]] == ["fid", "name"]
+
+    page = fixture["operations"]["layer_features"]["result"]
+    assert page["limit"] == 2
+    assert page["next_offset"] == 2
+    assert len(page["features"]) == 2
+    assert page["features"][0]["attributes"] == {"fid": 1, "name": "alpha"}
+    assert fixture["errors"] == {
+        "closed_layer": "invalid_object_id",
+        "invalid_layer": "invalid_object_id",
+    }

@@ -83,6 +83,11 @@ fn run(request: &EngineRequest) -> EngineResponse {
             "operations": Operation::all(),
         })),
         Operation::AppInit
+        | Operation::AppShutdown
+        | Operation::LayerOpen
+        | Operation::LayerInfo
+        | Operation::LayerClose
+        | Operation::LayerFeatures
         | Operation::LayerNew
         | Operation::LayerIsValid
         | Operation::LayerName

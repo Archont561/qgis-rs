@@ -1,0 +1,103 @@
+{
+  "transport_version": 1,
+  "operations": {
+    "layer_open": {
+      "request": {
+        "transport_version": 1,
+        "operation": "layer_open",
+        "payload": {
+          "uri": "tests/fixtures/points.gpkg",
+          "provider": "ogr",
+          "name": "points"
+        }
+      },
+      "result": {
+        "layer_id": 7,
+        "is_valid": true,
+        "name": "points"
+      }
+    },
+    "layer_info": {
+      "request": {
+        "transport_version": 1,
+        "operation": "layer_info",
+        "payload": {
+          "layer_id": 7
+        }
+      },
+      "result": {
+        "layer_id": 7,
+        "is_valid": true,
+        "name": "points",
+        "feature_count": 3,
+        "crs_authid": "EPSG:4326",
+        "geometry_type_name": "Point",
+        "fields": [
+          {
+            "name": "fid",
+            "type": "Integer64",
+            "precision": 0
+          },
+          {
+            "name": "name",
+            "type": "String",
+            "precision": 0
+          }
+        ]
+      }
+    },
+    "layer_close": {
+      "request": {
+        "transport_version": 1,
+        "operation": "layer_close",
+        "payload": {
+          "layer_id": 7
+        }
+      },
+      "result": {
+        "layer_id": 7,
+        "closed": true
+      }
+    },
+    "layer_features": {
+      "request": {
+        "transport_version": 1,
+        "operation": "layer_features",
+        "payload": {
+          "layer_id": 7,
+          "offset": 0,
+          "limit": 2
+        }
+      },
+      "result": {
+        "layer_id": 7,
+        "offset": 0,
+        "limit": 2,
+        "next_offset": 2,
+        "total": 3,
+        "features": [
+          {
+            "id": 1,
+            "attributes": {
+              "fid": 1,
+              "name": "alpha"
+            },
+            "geometry_wkt": "Point (0 0)"
+          },
+          {
+            "id": 2,
+            "attributes": {
+              "fid": 2,
+              "name": "beta"
+            },
+            "geometry_wkt": "Point (1 1)"
+          }
+        ]
+      }
+    }
+  },
+  "errors": {
+    "closed_layer": "invalid_object_id",
+    "invalid_layer": "invalid_object_id"
+  }
+}

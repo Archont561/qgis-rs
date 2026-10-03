@@ -4,12 +4,13 @@ title: Bind QgsFeatureIterator and QgsCoordinateReferenceSystem in qgis-sys
 status: To Do
 assignee: []
 created_date: '2026-09-30 20:48'
-updated_date: '2026-10-03 08:31'
+updated_date: '2026-10-03 18:36'
 labels:
   - qgis-sys
   - core
   - iteration
   - crs
+  - deprecated
 milestone: m-1
 dependencies:
   - TASK-6
@@ -33,3 +34,13 @@ Bind QgsFeatureIterator for streaming features from vector layers and QgsCoordin
 - [ ] #3 QgsCoordinateReferenceSystem handle exposes authid, srsid, description, and toWkt
 - [ ] #4 Rust integration test demonstrates iterating all features in a vector layer and reading attributes
 <!-- AC:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Arena agent
+created: 2026-10-03 18:36
+---
+Deprecated: superseded by RFC 19 native-manager operations; this legacy direct qgis-sys shim path is no longer planned.
+---
+<!-- COMMENTS:END -->

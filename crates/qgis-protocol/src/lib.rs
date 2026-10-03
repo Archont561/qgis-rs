@@ -89,6 +89,16 @@ pub enum Operation {
     EngineInfo,
     /// Initialize the standalone native QGIS manager.
     AppInit,
+    /// Release all managed QGIS objects and stop the native manager.
+    AppShutdown,
+    /// Open a managed vector layer and return its opaque integer ID.
+    LayerOpen,
+    /// Read all supported metadata for a managed vector layer.
+    LayerInfo,
+    /// Release a managed vector layer from the registry.
+    LayerClose,
+    /// Read one bounded page of features from a managed vector layer.
+    LayerFeatures,
     /// Create a managed vector layer and return its opaque integer ID.
     LayerNew,
     /// Check whether a managed vector layer is valid.
@@ -138,6 +148,11 @@ impl Operation {
             "ping",
             "engine_info",
             "app_init",
+            "app_shutdown",
+            "layer_open",
+            "layer_info",
+            "layer_close",
+            "layer_features",
             "layer_new",
             "layer_is_valid",
             "layer_name",
@@ -158,6 +173,98 @@ impl Operation {
             "render_project",
         ]
     }
+}
+
+/// Arguments for opening a vector layer in the native manager.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LayerOpenRequest {
+    pub uri: String,
+    pub provider: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+}
+
+/// Arguments shared by layer metadata and close operations.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LayerIdRequest {
+    pub layer_id: u64,
+}
+
+fn default_layer_feature_limit() -> u32 {
+    100
+}
+
+/// Arguments for one bounded, batched feature page.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LayerFeaturesRequest {
+    pub layer_id: u64,
+    #[serde(default)]
+    pub offset: u64,
+    #[serde(default = "default_layer_feature_limit")]
+    pub limit: u32,
+}
+
+/// A copied field description returned as part of layer metadata.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LayerFieldInfo {
+    pub name: String,
+    #[serde(rename = "type")]
+    pub type_name: String,
+    pub precision: i32,
+}
+
+/// The metadata returned by `layer.info`.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct LayerInfoResponse {
+    pub layer_id: u64,
+    pub is_valid: bool,
+    pub name: String,
+    pub feature_count: i64,
+    pub crs_authid: String,
+    pub geometry_type_name: String,
+    pub fields: Vec<LayerFieldInfo>,
+}
+
+/// The result returned by `layer.open`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LayerOpenResponse {
+    pub layer_id: u64,
+    pub is_valid: bool,
+    pub name: String,
+}
+
+/// The result returned by `layer.close`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LayerCloseResponse {
+    pub layer_id: u64,
+    pub closed: bool,
+}
+
+/// One feature copied into the transport response. No QGIS pointer or Qt
+/// value crosses the manager boundary.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct LayerFeature {
+    pub id: i64,
+    pub attributes: Value,
+    pub geometry_wkt: String,
+}
+
+/// The result returned by one batched `layer.features` request.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct LayerFeaturesResponse {
+    pub layer_id: u64,
+    pub offset: u64,
+    pub limit: u32,
+    pub next_offset: Option<u64>,
+    pub total: i64,
+    pub features: Vec<LayerFeature>,
+}
+
+/// The result returned by an explicit manager shutdown.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AppShutdownResponse {
+    pub shutdown: bool,
+    pub released_layer_count: u64,
 }
 
 /// One response from the engine.

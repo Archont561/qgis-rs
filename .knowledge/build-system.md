@@ -1,9 +1,9 @@
 ---
 type: Build
 title: Build System
-description: How build.rs orchestrates cxx-build, cc shim compilation, and compile_commands.json.
+description: How build.rs compiles the native manager with cc and writes compile_commands.json.
 status: stable
-tags: [build, cxx-build, cc, compile-commands]
+tags: [build, native-manager, cc, compile-commands]
 generated: { by: arena-agent/qgis-rs-kb-init, at: 2026-09-17T20:00:00Z }
 ---
 
@@ -11,23 +11,17 @@ generated: { by: arena-agent/qgis-rs-kb-init, at: 2026-09-17T20:00:00Z }
 
 ## Overview
 
-The build pipeline has two deliberately separate layers:
+The build pipeline has one native implementation path:
 
-- `crates/qgis-sys/build.rs` still owns the Rust-consumer shim compiled into `qgis-sys`.
-- The Pixi C++ feature now declares CMake, Ninja, GTest, and RapidCheck for standalone native targets and tests; the dependency and environment work is tracked in [TASK-24](../backlog/tasks/task-24%20-%20Add-cmake-and-ninja-to-the-C-toolchain-dependencies.md).
-
-The build pipeline in `crates/qgis-sys/build.rs` has three stages:
-
-1. **CXX bridge generation** — `cxx_build::bridges()` generates C++ code from `#[cxx::bridge]` modules
-2. **Shim compilation** — `cc::Build` compiles the hand-written C++ shim files, including the native manager
-3. **Linking** — `println!("cargo:rustc-link-lib=...")` links against `libqgis_core` and Qt
+- `crates/qgis-sys/build.rs` compiles the native-manager translation unit with `cc`.
+- The Pixi C++ feature declares CMake, Ninja, GTest, and RapidCheck for future standalone native targets and tests; the dependency and environment work is tracked in [TASK-24](../backlog/tasks/task-24%20-%20Add-cmake-and-ninja-to-the-C-toolchain-dependencies.md).
+- No CXX bridge or per-class shim is built by `qgis-sys`.
 
 ## Native manager boundary
 
 `crates/qgis-sys/src/native_manager/manager.cpp` is the sole translation unit
-that includes QGIS headers. It owns the QGIS-compatible CXX shim definitions as
-well as the RFC 19 manager, so the legacy CXX declarations remain available
-without creating another QGIS-header-owning translation unit.
+that includes QGIS headers. It owns the RFC 19 manager, its registry, and the
+JSON codecs; the retired per-class CXX declarations are not part of the build.
 
 The Rust-consumer path compiles the manager into the existing qgis-sys static
 archive. `build.rs` applies `-fvisibility=hidden` to the C++ shim compilation,
@@ -56,47 +50,24 @@ The build script uses `walkdir` to glob for source files:
 
 | Extension | Directory   | Purpose                      |
 |-----------|-------------|------------------------------|
-| `.rs`     | `src/`      | CXX bridge modules           |
-| `.h`      | `include/`  | Public headers               |
-| `.cpp`    | `src/`      | C++ shim implementations     |
+| `.h`      | `include/`  | Native-manager C ABI headers |
+| `.cpp`    | `src/`      | Native-manager implementation |
 
-Files named `lib.rs` and `mod.rs` are excluded from bridge discovery.
+The build script discovers the manager translation unit and headers directly;
+there is no bridge-generation stage.
 
-## CXX Bridge Stage
-
-```rust
-cxx_build::bridges(&bridges)
-    .std("c++17")
-    .include("include")
-    .compile("qgis-sys-cxx");
-```
-
-This generates C++ code in `OUT_DIR/cxxbridge/` with two subdirectories:
-- `cxxbridge/include/` — generated headers (`rust/cxx.h`, type declarations)
-- `cxxbridge/crate/` — generated `.cpp` files implementing the Rust side
-
-## Shim Compilation Stage
+## Manager compilation stage
 
 ```rust
-let mut shim = cc::Build::new();
-shim.cpp(true)
-    .std("c++17")
-    .include("include")
-    .include(&cxxbridge_include)
-    .include(&cxxbridge_crate)
-    .include(&qgis_inc)
-    .include(&qt_inc);
-
-for module in QT_MODULES {
-    shim.include(qt_inc.join(module));
-}
-
-shim.flag_if_supported("-Wall")
-    .flag_if_supported("-Wextra")
-    .flag_if_supported("-Werror");
+let mut manager = cc::Build::new();
+manager.cpp(true).std("c++17").include("include");
+manager.file("src/native_manager/manager.cpp");
 ```
 
-The shim is compiled as a static archive `libqgis-sys-shim.a` and linked into the final binary.
+The manager is compiled as a static archive and linked into the Rust consumer.
+`-fvisibility=hidden` is applied to the translation unit, while the three C ABI
+declarations in `include/native_manager/manager.h` opt back into default
+visibility.
 
 ## Linking
 
@@ -118,7 +89,7 @@ The build script generates `compile_commands.json` at the workspace root for cla
 ## Rerun Triggers
 
 ```rust
-cargo:rerun-if-changed=<file>    // for each bridge, header, and shim
+cargo:rerun-if-changed=<file>    // for each manager source and header
 cargo:rerun-if-env-changed=CONDA_PREFIX
 cargo:rerun-if-env-changed=QGIS_INCLUDE_DIR
 cargo:rerun-if-env-changed=QT_INCLUDE_DIR
