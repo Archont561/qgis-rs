@@ -615,14 +615,18 @@ things:
 Rules the server follows:
 
 * **stdout belongs to the protocol.** Diagnostics go to stderr.
-* **Validate before refusing.** `render_map` and `export_features` check the
-  project path, output format, extent and CRS, and only then report that the
-  operation needs the QGIS backend — so clients can be written against the
-  final shape today.
+* **Validate before dispatch.** `render_map` and `export_features` check the
+  project path, output format, extent and CRS before crossing the native-manager
+  boundary. The loaded backend then writes the requested artifact and returns
+  path-based metadata; a build without QGIS reports the tools as unavailable.
 * **Say what is live.** `capabilities` returns the catalogue with a
-  `needs_qgis_backend` flag per tool, generated from the router itself so it
+  `available` status per tool, computed from the loaded native backend so it
   cannot drift from the registered tools.
 * **Errors are JSON-RPC errors**, with the `qgis-render` message as the detail.
+* **Artifacts stay on disk.** Rendered images and feature exports return a
+  filesystem `path`, `format`, `bytes`, and operation-specific metadata rather
+  than inline or base64 bytes. The caller owns the path; manager shutdown does
+  not delete it.
 
 Client configuration (Claude Desktop):
 

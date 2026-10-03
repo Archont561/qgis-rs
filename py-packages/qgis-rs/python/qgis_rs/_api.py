@@ -557,13 +557,15 @@ class ProjectInfo:
 class RenderedMap:
     """An image the engine wrote to disk."""
 
-    __slots__ = ("_wire", "bytes", "format", "path")
+    __slots__ = ("_wire", "bytes", "format", "height", "path", "width")
 
     def __init__(self, rendered: Mapping[str, Any]) -> None:
         self._wire = dict(rendered)
         self.path = str(rendered["path"])
         self.format = str(rendered["format"])
         self.bytes = int(rendered["bytes"])
+        self.width = int(rendered["width"]) if "width" in rendered else None
+        self.height = int(rendered["height"]) if "height" in rendered else None
 
     def to_dict(self) -> Dict[str, Any]:
         """The engine's own answer, verbatim."""
@@ -604,7 +606,7 @@ class RenderSettings:
         self.layout = layout
 
     def to_payload(self) -> Dict[str, Any]:
-        """The ``render_project`` payload these settings describe, minus the path."""
+        """The native ``render_map`` payload these settings describe, minus the project path."""
         payload: Dict[str, Any] = {"output": self.output}
         if self.width is not None:
             payload["width"] = int(self.width)
@@ -652,7 +654,7 @@ class Project:
     def layers(self) -> List[LayerSummary]:
         """List the project's layers.
 
-        :raises Unimplemented: until the QGIS backend is wired up.
+        :raises Unimplemented: until the project-layer operation is routed through the native manager.
         """
         return [LayerSummary(layer) for layer in invoke("project_layers", {"path": self.path})["layers"]]
 
@@ -671,7 +673,7 @@ class Project:
     ) -> RenderedMap:
         """Render the project to an image.
 
-        :raises Unimplemented: until the QGIS backend is wired up.
+        The output is written by QGIS and the response contains its path and metadata.
         """
         chosen = settings or RenderSettings(
             output,
@@ -683,9 +685,9 @@ class Project:
             layers=layers,
             layout=layout,
         )
-        payload = {"path": self.path}
+        payload = {"project": self.path}
         payload.update(chosen.to_payload())
-        return RenderedMap(invoke("render_project", payload))
+        return RenderedMap(invoke("render_map", payload))
 
     def __repr__(self) -> str:
         return f"Project({self.path!r}, format={self.format!r})"

@@ -1,3 +1,4 @@
+#[cfg(feature = "qgis")]
 use std::{
     ffi::{CStr, CString},
     os::raw::c_char,
@@ -5,6 +6,7 @@ use std::{
 
 pub use qgis_protocol::TRANSPORT_VERSION as MANAGER_TRANSPORT_VERSION;
 
+#[cfg(feature = "qgis")]
 unsafe extern "C" {
     fn qgis_invoke(request_json: *const c_char) -> *mut c_char;
     fn qgis_free(response_json: *mut c_char);
@@ -24,6 +26,7 @@ fn error_response(kind: &str, error: &str) -> String {
 /// The request is copied into a `CString` before entering the C ABI. The
 /// response pointer is always released with the manager's paired `qgis_free`
 /// function before this returns.
+#[cfg(feature = "qgis")]
 #[must_use]
 pub fn invoke(request: &str) -> String {
     let request = match CString::new(request) {
@@ -49,10 +52,23 @@ pub fn invoke(request: &str) -> String {
     response
 }
 
+#[cfg(not(feature = "qgis"))]
+#[must_use]
+pub fn invoke(_request: &str) -> String {
+    error_response("backend_unavailable", "this build was compiled without the QGIS backend")
+}
+
 /// Return the native manager's transport version without starting QGIS.
+#[cfg(feature = "qgis")]
 #[must_use]
 pub fn transport_version() -> u32 {
     // SAFETY: this function has no pointer arguments and is a pure version
     // query by contract.
     unsafe { qgis_transport_version() }
+}
+
+#[cfg(not(feature = "qgis"))]
+#[must_use]
+pub const fn transport_version() -> u32 {
+    MANAGER_TRANSPORT_VERSION
 }

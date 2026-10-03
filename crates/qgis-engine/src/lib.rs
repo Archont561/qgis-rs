@@ -23,7 +23,7 @@ use serde::de::DeserializeOwned;
 use serde_json::{json, Value};
 
 use crate::payload::{
-    ExtentContains, ExtentInput, ExtentIntersects, PlanTiles, ProjectPath, RenderProject,
+    ExtentContains, ExtentInput, ExtentIntersects, PlanTiles, ProjectPath,
     TextInput, TileBounds, TileFromLonLat, ZoomInput,
 };
 
@@ -82,9 +82,10 @@ fn run(request: &EngineRequest) -> EngineResponse {
             "max_latitude": qgis_render::MAX_LATITUDE,
             "operations": Operation::all(),
         })),
-        Operation::AppInit
-        | Operation::AppShutdown
-        | Operation::LayerOpen
+        Operation::RenderMap | Operation::ExportFeatures => {
+            native_operation(request.operation, payload)
+        }
+        Operation::AppInit | Operation::AppShutdown | Operation::LayerOpen
         | Operation::LayerInfo
         | Operation::LayerClose
         | Operation::LayerFeatures
@@ -144,11 +145,52 @@ fn run(request: &EngineRequest) -> EngineResponse {
         Operation::ProjectLayers => with_payload(payload, |input: ProjectPath| {
             Ok(json!({ "layers": Project::open(&input.path)?.layers()? }))
         }),
-        Operation::RenderProject => with_payload(payload, |input: RenderProject| {
-            let project = Project::open(&input.path)?;
-            let settings = input.into_settings()?;
-            Ok(json!(project.render(&settings)?))
-        }),
+        Operation::RenderProject => {
+            let mut native_payload = payload.clone();
+            if let Some(object) = native_payload.as_object_mut() {
+                if let Some(path) = object.remove("path") {
+                    object.insert("project".to_string(), path);
+                }
+            }
+            native_operation(Operation::RenderMap, &native_payload)
+        },
+    }
+}
+
+fn native_operation(operation: Operation, payload: &Value) -> EngineResponse {
+    #[cfg(feature = "qgis")]
+    {
+        let init = json!({
+            "transport_version": TRANSPORT_VERSION,
+            "operation": "app_init",
+            "payload": null,
+        });
+        let init_response: EngineResponse = serde_json::from_str(
+            &qgis_sys::native_manager_ffi::invoke(&init.to_string()),
+        )
+        .expect("native manager answers the shared transport envelope");
+        if !init_response.ok {
+            return init_response;
+        }
+        let request = json!({
+            "transport_version": TRANSPORT_VERSION,
+            "operation": operation,
+            "payload": payload,
+        });
+        return serde_json::from_str(&qgis_sys::native_manager_ffi::invoke(
+            &request.to_string(),
+        ))
+        .expect("native manager answers the shared transport envelope");
+    }
+
+    #[cfg(not(feature = "qgis"))]
+    {
+        let _ = (operation, payload);
+        failure(
+            ErrorKind::Qgis,
+            "the QGIS backend is not loaded in this build",
+            Value::Null,
+        )
     }
 }
 

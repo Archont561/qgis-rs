@@ -16,9 +16,16 @@ generated: { by: arena-agent/qgis-rs-kb-init, at: 2026-09-17T20:00:00Z }
 Repository-wide gates are owned by `crates/xtask` ([D10](decisions/D10-xtask-over-shell-scripts.md)):
 
 - `pixi run gates` — Rust, C++, package, and non-coverage checks.
-- `pixi run -- cargo test -p qgis-sys --test application_info` — QGIS-free/application information coverage.
-- `pixi run -- cargo test -p qgis-sys --test application_lifecycle -- --test-threads=1` — QGIS lifecycle coverage.
-- `pixi run -- cargo test -p qgis-sys --test vector_layer -- --test-threads=1` — real vector-layer coverage.
+- `pixi run -- cargo test -p qgis-mcp --no-default-features` — QGIS-free capability
+  reporting and backend-unavailable behavior.
+- `pixi run -- cargo test -p qgis-engine --no-default-features` — QGIS-free native
+  operation errors.
+- `pixi run -- cargo test -p qgis-sys --no-default-features` — QGIS-free manager
+  adapter build.
+- `pixi run -- cargo test -p qgis-sys --test native_manager -- --test-threads=1` —
+  native-manager lifecycle, dispatch, and layer coverage.
+- `pixi run -- cargo test -p qgis-sys --test native_manager_shutdown -- --test-threads=1` —
+  owner-thread shutdown coverage.
 
 The old `pixi run test` and `pixi run test-full` names are historical and are not current root tasks.
 

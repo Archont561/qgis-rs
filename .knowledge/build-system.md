@@ -11,11 +11,14 @@ generated: { by: arena-agent/qgis-rs-kb-init, at: 2026-09-17T20:00:00Z }
 
 ## Overview
 
-The build pipeline has one native implementation path:
+The build pipeline has one optional native implementation path:
 
-- `crates/qgis-sys/build.rs` compiles the native-manager translation unit with `cc`.
+- The default `qgis` feature makes `crates/qgis-sys/build.rs` compile the native-manager translation unit with `cc`.
 - The Pixi C++ feature declares CMake, Ninja, GTest, and RapidCheck for future standalone native targets and tests; the dependency and environment work is tracked in [TASK-24](../backlog/tasks/task-24%20-%20Add-cmake-and-ninja-to-the-C-toolchain-dependencies.md).
 - No CXX bridge or per-class shim is built by `qgis-sys`.
+- `qgis-sys --no-default-features` skips the native translation unit and
+  returns a structured `backend_unavailable` response. `qgis-engine` and
+  `qgis-mcp` expose the same split through their `qgis` features.
 
 ## Native manager boundary
 

@@ -130,3 +130,30 @@ fn layer_feature_requests_apply_the_bounded_default() {
     assert_eq!(request.offset, 0);
     assert_eq!(request.limit, 100);
 }
+
+
+#[test]
+fn native_artifact_contract_is_path_based() {
+    let render = RenderMapResponse {
+        path: "/tmp/map.png".to_string(),
+        format: "png".to_string(),
+        bytes: 42,
+        width: 1024,
+        height: 768,
+    };
+    let export = ExportFeaturesResponse {
+        path: "/tmp/points.geojson".to_string(),
+        format: "geojson".to_string(),
+        bytes: 84,
+        layer: "points".to_string(),
+        feature_count: 3,
+    };
+    let render_json = serde_json::to_value(&render).expect("render response serialises");
+    let export_json = serde_json::to_value(&export).expect("export response serialises");
+    assert_eq!(render_json["path"], "/tmp/map.png");
+    assert_eq!(render_json["bytes"], 42);
+    assert_eq!(export_json["path"], "/tmp/points.geojson");
+    assert_eq!(export_json["feature_count"], 3);
+    assert!(render_json.get("data").is_none());
+    assert!(export_json.get("features").is_none());
+}

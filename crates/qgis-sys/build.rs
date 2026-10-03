@@ -10,6 +10,11 @@ use walkdir::WalkDir;
 const QT_MODULES: &[&str] = &["QtCore", "QtGui", "QtWidgets", "QtXml"];
 
 fn main() -> Result<()> {
+    if env::var_os("CARGO_FEATURE_QGIS").is_none() {
+        println!("cargo:warning=qgis-sys built without the QGIS backend");
+        return Ok(());
+    }
+
     let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR")?);
 
     let conda = env::var("CONDA_PREFIX")

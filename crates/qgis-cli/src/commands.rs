@@ -256,11 +256,7 @@ fn export(args: ExportArgs) -> Result<()> {
 pub fn mcp(args: crate::cli::McpArgs) -> Result<()> {
     if args.list_tools {
         for tool in qgis_mcp::QgisMcpServer::capabilities_report().tools {
-            let marker = if tool.needs_qgis_backend {
-                "[needs QGIS] "
-            } else {
-                ""
-            };
+            let marker = if tool.available { "" } else { "[backend unavailable] " };
             println!("{:<16} {marker}{}", tool.name, tool.description);
         }
         return Ok(());

@@ -41,4 +41,4 @@ and are asserted by the Rust protocol, Python, and TypeScript suites.
 the registry on that owner thread before calling `exitQgis`, and reports how
 many open layers it released. `native_manager_shutdown.rs` proves that anbandoned layer is released rather than leaked through process teardown.
 
-Future manager work includes rendering and feature export in [TASK-25.3](../backlog/tasks/task-25.3%20-%20RFC-19-phase-4-render_map-and-export_features-against-real-QGIS-no-NEEDS_QGIS.md).
+Future manager work includes rendering and feature export in [TASK-25.3](../backlog/tasks/task-25.3%20-%20RFC-19-phase-4-render_map-and-export_features-against-real-QGIS.md).

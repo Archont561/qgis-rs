@@ -133,7 +133,11 @@ pub enum Operation {
     ProjectInfo,
     /// List the layers of a project.
     ProjectLayers,
-    /// Render a project to an image.
+    /// Render a QGIS project to a path-based image artifact.
+    RenderMap,
+    /// Export one QGIS vector layer to a path-based feature artifact.
+    ExportFeatures,
+    /// Legacy pure-engine project render operation.
     RenderProject,
 }
 
@@ -170,6 +174,8 @@ impl Operation {
             "plan_tiles",
             "project_info",
             "project_layers",
+            "render_map",
+            "export_features",
             "render_project",
         ]
     }
@@ -265,6 +271,61 @@ pub struct LayerFeaturesResponse {
 pub struct AppShutdownResponse {
     pub shutdown: bool,
     pub released_layer_count: u64,
+}
+
+/// Arguments for the native `render_map` operation.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct RenderMapRequest {
+    pub project: String,
+    pub output: String,
+    #[serde(default)]
+    pub width: Option<u32>,
+    #[serde(default)]
+    pub height: Option<u32>,
+    #[serde(default)]
+    pub dpi: Option<f64>,
+    #[serde(default)]
+    pub crs: Option<String>,
+    #[serde(default)]
+    pub extent: Option<String>,
+    #[serde(default)]
+    pub layers: Vec<String>,
+    #[serde(default)]
+    pub layout: Option<String>,
+}
+
+/// The path-based image artifact returned by `render_map`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RenderMapResponse {
+    pub path: String,
+    pub format: String,
+    pub bytes: u64,
+    pub width: u32,
+    pub height: u32,
+}
+
+/// Arguments for the native `export_features` operation.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ExportFeaturesRequest {
+    pub project: String,
+    pub layer: String,
+    pub output: String,
+    #[serde(default)]
+    pub filter: Option<String>,
+    #[serde(default)]
+    pub bbox: Option<String>,
+    #[serde(default)]
+    pub fields: Vec<String>,
+}
+
+/// The path-based feature artifact returned by `export_features`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ExportFeaturesResponse {
+    pub path: String,
+    pub format: String,
+    pub bytes: u64,
+    pub layer: String,
+    pub feature_count: u64,
 }
 
 /// One response from the engine.

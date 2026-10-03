@@ -1,3 +1,5 @@
+#![cfg(feature = "qgis")]
+
 use qgis_sys::native_manager_ffi as manager;
 use serde_json::{json, Value};
 
@@ -195,4 +197,40 @@ fn manager_opens_reports_batches_and_closes_a_layer() {
     }));
     assert_eq!(closed_twice["ok"], false);
     assert_eq!(closed_twice["result"]["kind"], "invalid_object_id");
+}
+
+
+#[test]
+fn phase_four_operations_are_native_and_return_path_errors_not_placeholders() {
+    ok("app_init", Value::Null);
+    let info = ok("engine_info", Value::Null);
+    for operation in ["render_map", "export_features"] {
+        assert!(info["operations"]
+            .as_array()
+            .expect("operations")
+            .iter()
+            .any(|advertised| advertised == operation));
+    }
+
+    let render = response(json!({
+        "transport_version": 1,
+        "operation": "render_map",
+        "payload": {"project": "/missing/project.qgs", "output": "/tmp/map.png"}
+    }));
+    assert_eq!(render["ok"], false);
+    assert_eq!(render["result"]["kind"], "qgis");
+
+    let export = response(json!({
+        "transport_version": 1,
+        "operation": "export_features",
+        "payload": {
+            "project": "/missing/project.qgs",
+            "layer": "points",
+            "output": "/tmp/points.geojson"
+        }
+    }));
+    assert_eq!(export["ok"], false);
+    assert_eq!(export["result"]["kind"], "qgis");
+    assert_ne!(render["result"]["kind"], "unimplemented");
+    assert_ne!(export["result"]["kind"], "unimplemented");
 }

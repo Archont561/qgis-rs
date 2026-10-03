@@ -128,7 +128,8 @@ RFC 19 keeps rendered images and exported feature files path-based. The JSON
 request supplies a path visible to the in-process manager, and the operation
 writes the requested artifact there. The JSON response carries metadata such
 as the resulting path, format, and byte count; it does not carry arbitrary
-image or feature bytes as base64 or a large JSON array.
+image or feature bytes as base64 or a large JSON array. Version 1 overwrites
+an existing output path after validation; it does not promise atomic replacement.
 
 The manager must validate the output path and format before touching QGIS,
 write the artifact using the operation's documented overwrite/atomicity rules,

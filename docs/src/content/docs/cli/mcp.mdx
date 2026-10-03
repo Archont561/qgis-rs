@@ -26,12 +26,12 @@ qgis-cli mcp --list-tools
 ```
 
 ```text
-capabilities     List the qgis-rs tools and say which ones need the QGIS backend…
+capabilities     List the qgis-rs tools and report loaded-backend availability…
 crs_info         Describe a coordinate reference system: its name, units and…
 plan_tiles       Count and enumerate the XYZ tiles that cover an EPSG:4326 area…
 project_info     Describe a QGIS project file: its format, size and where to…
-render_map       [needs QGIS] Render a QGIS project to an image. Needs the QGIS…
-export_features  [needs QGIS] Export a layer's features to GeoJSON or CSV. Needs…
+render_map       Render a QGIS project to a path-based image artifact…
+export_features  Export a layer's features to a path-based GeoJSON or CSV artifact…
 ```
 
 Register it with Claude Desktop (`claude_desktop_config.json`):
@@ -61,13 +61,13 @@ claude mcp add --transport stdio qgis -- /path/to/qgis-cli mcp
 | `crs_info` | `auth_id` | Live |
 | `plan_tiles` | `bounds`, `zoom` | Live |
 | `project_info` | `project` | Live |
-| `render_map` | `project`, `output`, `extent`, `width`, `height`, `crs`, `dpi`, `layers`, `layout` | Needs the QGIS backend |
-| `export_features` | `project`, `layer`, `output`, `filter`, `bbox`, `fields` | Needs the QGIS backend |
+| `render_map` | `project`, `output`, `extent`, `width`, `height`, `crs`, `dpi`, `layers`, `layout` | Native QGIS backend |
+| `export_features` | `project`, `layer`, `output`, `filter`, `bbox`, `fields` | Native QGIS backend |
 
 Coordinates are EPSG:4326 (`longitude,latitude`) unless a tool says otherwise.
 
 Call `capabilities` first: it returns the same catalogue as `--list-tools`,
-with a `needs_qgis_backend` flag per tool, so a client can tell a working tool
+with a `available` flag per tool, so a client can tell a working tool
 from one that will answer with an error.
 
 ### crs_info
@@ -124,10 +124,12 @@ Counts a tile pyramid without rendering it — the same arithmetic
 
 ### render_map and export_features
 
-Both validate their arguments — the project path, the output format, the
-extent, the CRS — and then return a JSON-RPC error explaining that rendering
-needs the QGIS backend. They are published now so clients can be written
-against the final shape.
+Both validate their arguments and dispatch to the loaded native QGIS manager.
+The manager writes the requested artifact and returns JSON metadata containing
+the filesystem path, format and byte count (plus dimensions for an image or
+feature count for an export). The response does not inline or base64-encode
+artifact bytes. A build without the QGIS feature reports these tools as
+unavailable through `capabilities` and returns a backend error when called.
 
 ## Talking to it by hand
 

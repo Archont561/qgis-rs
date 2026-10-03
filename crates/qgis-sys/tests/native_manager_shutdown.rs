@@ -1,3 +1,5 @@
+#![cfg(feature = "qgis")]
+
 use qgis_sys::native_manager_ffi as manager;
 use serde_json::{json, Value};
 

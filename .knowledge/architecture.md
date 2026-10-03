@@ -31,15 +31,16 @@ rationale behind them.
 The original two-crate sketch (`qgis-sys` plus a future `qgis`) is retained in
 D01 as historical rationale. There is no `crates/qgis` safe-wrapper crate in
 the current workspace; the safe backend-agnostic layer is `qgis-render`, and
-its QGIS-backed operations currently return `Error::Unimplemented` until the
-backend work in [TASK-25.3](../backlog/tasks/task-25.3%20-%20RFC-19-phase-4-render_map-and-export_features-against-real-QGIS-no-NEEDS_QGIS.md)
-lands.
+its QGIS-backed project methods remain a pure-engine API, while the MCP
+`render_map` and `export_features` operations dispatch through the native
+manager implemented in TASK-25.3. Builds without the optional QGIS feature
+report those two tools as unavailable.
 
 ## Execution map
 
 - The RFC 19 architecture gate is [TASK-25.4](../backlog/tasks/task-25.4%20-%20RFC-19-resolve-open-questions-and-record-the-native-manager-ADR.md), recorded in [D12](decisions/D12-qgis-native-manager-over-c-abi.md).
 - The C++ toolchain prerequisite is [TASK-24](../backlog/tasks/task-24%20-%20Add-cmake-and-ninja-to-the-C-toolchain-dependencies.md).
-- The native manager/lifecycle sequence is [TASK-25.1](../backlog/tasks/task-25.1%20-%20RFC-19-phase-2-native-manager-ID-registry-and-lifecycle-behind-qgis_invoke.md) → [TASK-25.2](../backlog/tasks/task-25.2%20-%20RFC-19-phase-3-layer-open-info-close-and-a-batched-layer.features.md) → [TASK-25.3](../backlog/tasks/task-25.3%20-%20RFC-19-phase-4-render_map-and-export_features-against-real-QGIS-no-NEEDS_QGIS.md).
+- The native manager/lifecycle sequence is [TASK-25.1](../backlog/tasks/task-25.1%20-%20RFC-19-phase-2-native-manager-ID-registry-and-lifecycle-behind-qgis_invoke.md) → [TASK-25.2](../backlog/tasks/task-25.2%20-%20RFC-19-phase-3-layer-open-info-close-and-a-batched-layer.features.md) → [TASK-25.3](../backlog/tasks/task-25.3%20-%20RFC-19-phase-4-render_map-and-export_features-against-real-QGIS.md).
 - The independent SDK CLI boundary is [TASK-26](../backlog/tasks/task-26%20-%20Refactor-qgis-sdk-CLI-onto-the-shared-Rust-engine-wire-protocol.md), with the accepted product/dependency contract in [doc-7](../backlog/docs/architecture/doc-7%20-%20Rust-CLI-Cross-Language-FFI-and-QGIS-SDK-Product-Boundaries.md) and implementation decomposition in TASK-40 through TASK-44.
 
 ## Layer organization
@@ -89,7 +90,7 @@ qgis-py / qgis-node → qgis-engine
 qgis-protocol envelope + qgis-render operation
   │
   ├── pure-Rust operation
-  └── future QGIS operation → RFC 19 native manager
+  └── render/export operation → RFC 19 native manager
 ```
 
 D09 makes the JSON protocol the API across language bindings. D12 extends that

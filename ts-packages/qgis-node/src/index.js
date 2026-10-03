@@ -409,14 +409,14 @@ class Project {
 		return invoke("project_info", { path: this.path });
 	}
 
-	/** List the project's layers. Throws `unimplemented` until QGIS lands. */
+	/** List the project's layers. Throws `unimplemented` until the operation is routed through QGIS. */
 	layers() {
 		return invoke("project_layers", { path: this.path }).layers;
 	}
 
-	/** Render the project. Throws `unimplemented` until QGIS lands. */
+	/** Render the project through the native QGIS manager. */
 	render(output, options = {}) {
-		const payload = { path: this.path, output: String(output) };
+		const payload = { project: this.path, output: String(output) };
 		if (options.width != null) payload.width = options.width;
 		if (options.height != null) payload.height = options.height;
 		if (options.dpi != null) payload.dpi = options.dpi;
@@ -426,7 +426,7 @@ class Project {
 		if (options.extent != null) payload.extent = extentPayload(options.extent);
 		if (options.layers?.length) payload.layers = options.layers;
 		if (options.layout != null) payload.layout = options.layout;
-		return invoke("render_project", payload);
+		return invoke("render_map", payload);
 	}
 }
 

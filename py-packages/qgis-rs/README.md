@@ -100,13 +100,13 @@ for level in plan.levels():
 total, levels = plan_tiles("14,50,15,51", "10-14")
 print(total)  # 4568
 
-# Rendering (needs QGIS backend — via conda-forge qgis package)
+# Rendering through the native QGIS backend
 # When QGIS is not available, this raises ValueError with clear message.
 try:
     rendered = project.render("output.png", width=1920, height=1080, dpi=150)
     print(f"Wrote {rendered.path} ({rendered.bytes} bytes)")
 except ValueError as e:
-    print(f"Rendering needs QGIS backend: {e}")
+    print(f"QGIS rendering failed: {e}")
 ```
 
 ## CLI

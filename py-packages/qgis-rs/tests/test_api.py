@@ -112,15 +112,16 @@ def test_engine_refusals_arrive_as_python_exceptions() -> None:
     assert caught.value.kind == "invalid_extent"
 
 
-def test_work_that_needs_qgis_says_so(tmp_path) -> None:
+def test_project_layer_and_render_backend_boundaries_are_honest(tmp_path) -> None:
     path = tmp_path / "map.qgs"
     path.write_text("<qgis></qgis>", encoding="utf-8")
     project = qgis_rs.Project.open(str(path))
 
     with pytest.raises(NotImplementedError, match="QGIS backend"):
         project.layers()
-    with pytest.raises(NotImplementedError, match="QGIS backend"):
+    with pytest.raises(qgis_rs.EngineError) as caught_render:
         project.render(tmp_path / "map.png")
+    assert caught_render.value.kind == "qgis"
 
 
 def test_project_path_and_info_cross_the_boundary(tmp_path) -> None:

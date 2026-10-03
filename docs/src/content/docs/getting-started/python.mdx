@@ -89,12 +89,12 @@ for level in plan.levels():
 total, levels = plan_tiles("14,50,15,51", "10-14")
 print(total)  # 4568
 
-# Rendering (needs QGIS backend)
+# Rendering through the native QGIS backend
 try:
     rendered = project.render("output.png", width=1920, height=1080)
     print(f"Wrote {rendered.path} ({rendered.bytes} bytes)")
 except ValueError as e:
-    print(f"Rendering needs QGIS backend: {e}")
+    print(f"QGIS rendering failed: {e}")
 ```
 
 ## CLI

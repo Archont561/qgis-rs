@@ -179,14 +179,14 @@ function main() {
 		console.log("");
 		console.log("Commands:");
 		console.log(
-			"  render    Render a project to an image (needs QGIS backend)",
+			"  render    Render a project to an image (native QGIS backend)",
 		);
 		console.log(
 			"  tiles     Render a tile pyramid (dry-run works without QGIS)",
 		);
 		console.log("  info      Describe a project");
-		console.log("  serve     Start HTTP server (needs QGIS backend)");
-		console.log("  export    Export features (needs QGIS backend)");
+		console.log("  serve     Start HTTP server (native QGIS backend)");
+		console.log("  export    Export features (native QGIS backend)");
 		console.log("  mcp       Model Context Protocol server");
 		console.log("  version   Print version");
 		console.log("");

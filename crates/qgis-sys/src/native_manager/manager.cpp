@@ -6,10 +6,18 @@
 // NOLINTBEGIN
 
 #include <qgsconfig.h>
+#include <qgscoordinatereferencesystem.h>
 #include <qgsfield.h>
 #include <qgsfields.h>
 #include <qgsfeature.h>
 #include <qgsfeatureiterator.h>
+#include <qgsfeaturerequest.h>
+#include <qgsgeometry.h>
+#include <qgsmaplayer.h>
+#include <qgsmaprenderersequentialjob.h>
+#include <qgsmapsettings.h>
+#include <qgsproject.h>
+#include <qgsrectangle.h>
 #include <qgsvectorlayer.h>
 #include <qgswkbtypes.h>
 
@@ -19,7 +27,12 @@
 #include <QJsonObject>
 #include <QJsonParseError>
 #include <QJsonValue>
+#include <QFile>
+#include <QFileInfo>
+#include <QImage>
+#include <QList>
 #include <QString>
+#include <QStringList>
 #include <QSysInfo>
 #include <QVariant>
 #include <QtGlobal>
@@ -27,6 +40,7 @@
 #include <condition_variable>
 #include <cstdlib>
 #include <cstring>
+#include <fstream>
 #include <future>
 #include <limits>
 #include <memory>
@@ -242,6 +256,12 @@ class ManagerHost {
         if (operation == QStringLiteral("engine_info")) {
             return compact_json(engine_info());
         }
+        if (operation == QStringLiteral("render_map")) {
+            return compact_json(render_map(payload));
+        }
+        if (operation == QStringLiteral("export_features")) {
+            return compact_json(export_features(payload));
+        }
         if (operation == QStringLiteral("layer_open")) {
             return compact_json(layer_open(payload));
         }
@@ -311,6 +331,8 @@ class ManagerHost {
         operations.append(QStringLiteral("app_init"));
         operations.append(QStringLiteral("app_shutdown"));
         operations.append(QStringLiteral("engine_info"));
+        operations.append(QStringLiteral("render_map"));
+        operations.append(QStringLiteral("export_features"));
         operations.append(QStringLiteral("layer_open"));
         operations.append(QStringLiteral("layer_info"));
         operations.append(QStringLiteral("layer_close"));
@@ -464,6 +486,291 @@ class ManagerHost {
                                    {"next_offset", next_offset},
                                    {"total", total},
                                    {"features", features}});
+    }
+
+    static bool parse_extent(const QString& text, ::QgsRectangle* extent) {
+        const QStringList parts = text.split(',', Qt::SkipEmptyParts);
+        if (parts.size() != 4) {
+            return false;
+        }
+        bool xmin_ok = false;
+        bool ymin_ok = false;
+        bool xmax_ok = false;
+        bool ymax_ok = false;
+        const double xmin = parts.at(0).trimmed().toDouble(&xmin_ok);
+        const double ymin = parts.at(1).trimmed().toDouble(&ymin_ok);
+        const double xmax = parts.at(2).trimmed().toDouble(&xmax_ok);
+        const double ymax = parts.at(3).trimmed().toDouble(&ymax_ok);
+        if (!xmin_ok || !ymin_ok || !xmax_ok || !ymax_ok || xmin > xmax || ymin > ymax) {
+            return false;
+        }
+        *extent = ::QgsRectangle(xmin, ymin, xmax, ymax);
+        return true;
+    }
+
+    static bool parse_extent(const QJsonValue& value, ::QgsRectangle* extent) {
+        if (value.isString()) {
+            return parse_extent(value.toString(), extent);
+        }
+        if (!value.isObject()) {
+            return false;
+        }
+        const QJsonObject object = value.toObject();
+        const QStringList keys{QStringLiteral("min_x"), QStringLiteral("min_y"),
+                               QStringLiteral("max_x"), QStringLiteral("max_y")};
+        for (const QString& key : keys) {
+            if (!object.value(key).isDouble()) {
+                return false;
+            }
+        }
+        const double xmin = object.value(keys.at(0)).toDouble();
+        const double ymin = object.value(keys.at(1)).toDouble();
+        const double xmax = object.value(keys.at(2)).toDouble();
+        const double ymax = object.value(keys.at(3)).toDouble();
+        if (xmin > xmax || ymin > ymax) {
+            return false;
+        }
+        *extent = ::QgsRectangle(xmin, ymin, xmax, ymax);
+        return true;
+    }
+
+    static QJsonObject artifact(const QString& path, const QString& format,
+                                qint64 bytes) {
+        return QJsonObject{{"path", path},
+                           {"format", format},
+                           {"bytes", bytes}};
+    }
+
+    QJsonObject render_map(const QJsonObject& payload) const {
+        const QString project_path = payload.value(QStringLiteral("project")).toString();
+        const QString output = payload.value(QStringLiteral("output")).toString();
+        if (project_path.isEmpty() || output.isEmpty()) {
+            return failure("invalid_payload", "render_map requires project and output");
+        }
+        const QString format = QFileInfo(output).suffix().toLower();
+        if (format != QStringLiteral("png") && format != QStringLiteral("jpg") &&
+            format != QStringLiteral("jpeg") && format != QStringLiteral("webp")) {
+            return failure("invalid_payload",
+                           "render_map supports png, jpg, jpeg, and webp output paths");
+        }
+        if (payload.contains(QStringLiteral("layout")) &&
+            !payload.value(QStringLiteral("layout")).toString().isEmpty()) {
+            return failure("qgis", "print-layout rendering is not supported by render_map");
+        }
+
+        ::QgsProject project;
+        if (!project.read(project_path)) {
+            return failure("qgis", "QGIS could not read the project");
+        }
+
+        QList<::QgsMapLayer*> layers;
+        const QJsonArray requested_layers =
+            payload.value(QStringLiteral("layers")).toArray();
+        const bool restrict_layers = !requested_layers.isEmpty();
+        for (auto* map_layer : project.mapLayers().values()) {
+            bool selected = !restrict_layers;
+            for (const QJsonValue& requested : requested_layers) {
+                const QString name = requested.toString();
+                selected = selected || name == map_layer->name() || name == map_layer->id();
+            }
+            if (selected) {
+                layers.append(map_layer);
+            }
+        }
+        if (layers.isEmpty()) {
+            return failure("qgis", "the project has no selected map layers");
+        }
+
+        const int width = payload.value(QStringLiteral("width")).toInt(1024);
+        const int height = payload.value(QStringLiteral("height")).toInt(768);
+        const double dpi = payload.value(QStringLiteral("dpi")).toDouble(96.0);
+        if (width <= 0 || height <= 0 || dpi <= 0.0) {
+            return failure("invalid_payload", "render dimensions and dpi must be positive");
+        }
+
+        ::QgsMapSettings settings;
+        settings.setLayers(layers);
+        settings.setOutputSize(QSize(width, height));
+        settings.setOutputDpi(dpi);
+        if (payload.contains(QStringLiteral("crs"))) {
+            ::QgsCoordinateReferenceSystem crs;
+            if (!crs.createFromUserInput(payload.value(QStringLiteral("crs")).toString()) ||
+                !crs.isValid()) {
+                return failure("invalid_payload", "crs is not a valid QGIS coordinate reference system");
+            }
+            settings.setDestinationCrs(crs);
+        }
+
+        ::QgsRectangle extent;
+        const QJsonValue extent_value = payload.value(QStringLiteral("extent"));
+        if (!extent_value.isUndefined() && !extent_value.isNull()) {
+            if (!parse_extent(extent_value, &extent)) {
+                return failure("invalid_payload", "extent must be minx,miny,maxx,maxy");
+            }
+        } else {
+            bool has_extent = false;
+            for (auto* map_layer : layers) {
+                const ::QgsRectangle layer_extent = map_layer->extent();
+                if (!has_extent) {
+                    extent = layer_extent;
+                    has_extent = true;
+                } else {
+                    extent.combineExtentWith(layer_extent);
+                }
+            }
+            if (!has_extent || extent.isEmpty()) {
+                return failure("qgis", "the project layers have no renderable extent");
+            }
+        }
+        settings.setExtent(extent);
+
+        ::QgsMapRendererSequentialJob job(settings);
+        job.start();
+        job.waitForFinished();
+        const QImage image = job.renderedImage();
+        if (image.isNull() || !image.save(output)) {
+            return failure("qgis", "QGIS could not write the rendered image");
+        }
+
+        const QFileInfo output_info(output);
+        QJsonObject result = artifact(output, format, output_info.size());
+        result.insert(QStringLiteral("width"), image.width());
+        result.insert(QStringLiteral("height"), image.height());
+        return success(result);
+    }
+
+    static QJsonObject feature_attributes(const ::QgsFeature& feature,
+                                          const ::QgsFields& schema,
+                                          const QStringList& requested_fields) {
+        QJsonObject attributes;
+        const ::QgsAttributes values = feature.attributes();
+        for (int index = 0; index < schema.count() && index < values.count(); ++index) {
+            const QString name = schema.at(index).name();
+            if (!requested_fields.isEmpty() && !requested_fields.contains(name)) {
+                continue;
+            }
+            attributes.insert(name, QJsonValue::fromVariant(values.at(index)));
+        }
+        return attributes;
+    }
+
+    QJsonObject export_features(const QJsonObject& payload) const {
+        const QString project_path = payload.value(QStringLiteral("project")).toString();
+        const QString layer_name = payload.value(QStringLiteral("layer")).toString();
+        const QString output = payload.value(QStringLiteral("output")).toString();
+        if (project_path.isEmpty() || layer_name.isEmpty() || output.isEmpty()) {
+            return failure("invalid_payload", "export_features requires project, layer, and output");
+        }
+        const QString format = QFileInfo(output).suffix().toLower();
+        if (format != QStringLiteral("geojson") && format != QStringLiteral("json") &&
+            format != QStringLiteral("csv")) {
+            return failure("invalid_payload", "export_features supports geojson and csv output paths");
+        }
+
+        ::QgsProject project;
+        if (!project.read(project_path)) {
+            return failure("qgis", "QGIS could not read the project");
+        }
+        ::QgsVectorLayer* vector_layer = nullptr;
+        for (auto* map_layer : project.mapLayers().values()) {
+            if (map_layer->name() == layer_name || map_layer->id() == layer_name) {
+                vector_layer = qobject_cast<::QgsVectorLayer*>(map_layer);
+                break;
+            }
+        }
+        if (vector_layer == nullptr) {
+            return failure("invalid_object_id", "the requested project layer is not a vector layer");
+        }
+
+        ::QgsFeatureRequest request;
+        const QString filter = payload.value(QStringLiteral("filter")).toString();
+        if (!filter.isEmpty()) {
+            request.setFilterExpression(filter);
+        }
+        const QJsonValue bbox_value = payload.value(QStringLiteral("bbox"));
+        if (!bbox_value.isUndefined() && !bbox_value.isNull()) {
+            ::QgsRectangle rectangle;
+            if (!parse_extent(bbox_value, &rectangle)) {
+                return failure("invalid_payload", "bbox must be minx,miny,maxx,maxy");
+            }
+            request.setFilterRect(rectangle);
+        }
+
+        QStringList requested_fields;
+        for (const QJsonValue& value : payload.value(QStringLiteral("fields")).toArray()) {
+            const QString field = value.toString();
+            if (!field.isEmpty()) {
+                requested_fields.append(field);
+            }
+        }
+
+        QJsonArray geojson_features;
+        QString csv;
+        if (format == QStringLiteral("csv")) {
+            const ::QgsFields schema = vector_layer->fields();
+            QStringList columns;
+            for (int index = 0; index < schema.count(); ++index) {
+                const QString name = schema.at(index).name();
+                if (requested_fields.isEmpty() || requested_fields.contains(name)) {
+                    columns.append(name);
+                }
+            }
+            csv = columns.join(',') + QLatin1Char('\n');
+        }
+
+        quint64 feature_count = 0;
+        ::QgsFeatureIterator iterator = vector_layer->getFeatures(request);
+        ::QgsFeature feature;
+        const ::QgsFields schema = vector_layer->fields();
+        while (iterator.nextFeature(feature)) {
+            const QJsonObject attributes =
+                feature_attributes(feature, schema, requested_fields);
+            if (format == QStringLiteral("csv")) {
+                QStringList values;
+                for (int index = 0; index < schema.count(); ++index) {
+                    const QString column = schema.at(index).name();
+                    if (!requested_fields.isEmpty() && !requested_fields.contains(column)) {
+                        continue;
+                    }
+                    QString value = attributes.value(column).toVariant().toString();
+                    value.replace(QLatin1Char('"'), QStringLiteral("\"\""));
+                    if (value.contains(',') || value.contains('"') || value.contains('\n')) {
+                        value.prepend(QLatin1Char('"'));
+                        value.append(QLatin1Char('"'));
+                    }
+                    values.append(value);
+                }
+                csv += values.join(',') + QLatin1Char('\n');
+            } else {
+                const QJsonDocument geometry =
+                    QJsonDocument::fromJson(feature.geometry().asJson().toUtf8());
+                geojson_features.append(QJsonObject{
+                    {"type", "Feature"},
+                    {"id", static_cast<qint64>(feature.id())},
+                    {"geometry", geometry.isObject() ? QJsonValue(geometry.object()) : QJsonValue::Null},
+                    {"properties", attributes}});
+            }
+            ++feature_count;
+        }
+
+        QFile file(output);
+        if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+            return failure("io", "could not open the feature export output");
+        }
+        if (format == QStringLiteral("csv")) {
+            file.write(csv.toUtf8());
+        } else {
+            const QJsonObject collection{{"type", "FeatureCollection"},
+                                         {"features", geojson_features}};
+            file.write(QJsonDocument(collection).toJson(QJsonDocument::Indented));
+        }
+        file.close();
+
+        const QFileInfo output_info(output);
+        QJsonObject result = artifact(output, format, output_info.size());
+        result.insert(QStringLiteral("layer"), layer_name);
+        result.insert(QStringLiteral("feature_count"), static_cast<qint64>(feature_count));
+        return success(result);
     }
 
     QJsonObject layer_is_valid(const QJsonObject& payload) const {
