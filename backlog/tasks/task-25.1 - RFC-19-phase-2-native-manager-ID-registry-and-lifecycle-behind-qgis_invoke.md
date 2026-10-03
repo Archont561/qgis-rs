@@ -4,7 +4,7 @@ title: 'RFC 19 phase 2: native manager, ID registry and lifecycle behind qgis_in
 status: To Do
 assignee: []
 created_date: '2026-10-02 23:23'
-updated_date: '2026-10-03 08:31'
+updated_date: '2026-10-03 08:57'
 labels:
   - rfc
   - ffi
@@ -21,6 +21,9 @@ documentation:
   - .knowledge/decisions/D09-wire-protocol-over-ffi.md
   - .knowledge/decisions/D12-qgis-native-manager-over-c-abi.md
   - .knowledge/decisions/INDEX.md
+  - >-
+    backlog/docs/architecture/doc-4 -
+    QGIS-Native-Manager-and-API-Coverage-Strategy.md
 parent_task_id: TASK-25
 priority: high
 type: enhancement

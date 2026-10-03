@@ -18,6 +18,7 @@ okf_version: "0.2"
 # Architecture
 
 * [Architecture](/architecture.md) — Crate layout, layer model, and FFI data flow for qgis-rs.
+* [QGIS Native Manager and API Coverage Strategy](/../backlog/docs/architecture/doc-4%20-%20QGIS-Native-Manager-and-API-Coverage-Strategy.md) — Native manager shape, ownership, generated operations, and a realistic path toward broad QGIS API coverage.
 * [FFI Shim Pattern](/ffishim.md) — The opaque-handle CXX bridge pattern used to wrap every QGIS C++ type.
 * [Build System](/build-system.md) — How build.rs orchestrates cxx-build, cc shim compilation, and compile_commands.json.
 
