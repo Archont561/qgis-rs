@@ -29,6 +29,7 @@
 #include <QJsonValue>
 #include <QFile>
 #include <QFileInfo>
+#include <QHash>
 #include <QImage>
 #include <QList>
 #include <QString>
