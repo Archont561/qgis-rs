@@ -4,6 +4,7 @@
 //! without losing a field, and the operation set is *closed*, so an unknown
 //! verb is a parse error here rather than a surprise inside the engine.
 
+use proptest::prelude::*;
 use qgis_protocol::*;
 use serde_json::{json, Value};
 
@@ -131,6 +132,40 @@ fn layer_feature_requests_apply_the_bounded_default() {
     assert_eq!(request.limit, 100);
 }
 
+proptest! {
+    #[test]
+    fn requests_preserve_operation_and_payload_through_json(
+        operation in prop::sample::select(vec![
+            Operation::Ping,
+            Operation::EngineInfo,
+            Operation::ApiDescribe,
+            Operation::DescribeExtent,
+            Operation::DescribeCrs,
+            Operation::DescribeZoomRange,
+            Operation::PlanTiles,
+        ]),
+        value in any::<i64>(),
+    ) {
+        let request = EngineRequest::new(operation, json!({"value": value}));
+        let encoded = serde_json::to_string(&request).expect("request serialises");
+        let decoded: EngineRequest = serde_json::from_str(&encoded).expect("request parses");
+
+        prop_assert_eq!(decoded, request);
+    }
+
+    #[test]
+    fn response_envelopes_keep_the_transport_invariant(value in any::<i64>()) {
+        let success = EngineResponse::success(json!({"value": value}));
+        let failure = EngineResponse::failure(
+            json!({"kind": ErrorKind::InvalidPayload.as_str()}),
+        );
+
+        prop_assert_eq!(success.transport_version, TRANSPORT_VERSION);
+        prop_assert!(success.ok);
+        prop_assert_eq!(failure.transport_version, TRANSPORT_VERSION);
+        prop_assert!(!failure.ok);
+    }
+}
 
 #[test]
 fn native_artifact_contract_is_path_based() {

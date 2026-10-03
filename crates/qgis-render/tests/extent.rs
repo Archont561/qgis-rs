@@ -1,6 +1,7 @@
 //! Extents: the `minx,miny,maxx,maxy` text a user types, the `Display` form it
 //! round-trips to, and the two ways an extent can be invalid.
 
+use proptest::prelude::*;
 use qgis_render::*;
 
 #[test]
@@ -34,4 +35,63 @@ fn detects_overlap() {
     let a = Extent::new(0.0, 0.0, 10.0, 10.0);
     assert!(a.intersects(&Extent::new(5.0, 5.0, 20.0, 20.0)));
     assert!(!a.intersects(&Extent::new(20.0, 20.0, 30.0, 30.0)));
+}
+
+proptest! {
+    #[test]
+    fn finite_extents_round_trip_through_display(
+        first_x in -1_000_000.0f64..1_000_000.0,
+        second_x in -1_000_000.0f64..1_000_000.0,
+        first_y in -1_000_000.0f64..1_000_000.0,
+        second_y in -1_000_000.0f64..1_000_000.0,
+    ) {
+        let (min_x, max_x) = if first_x <= second_x {
+            (first_x, second_x)
+        } else {
+            (second_x, first_x)
+        };
+        let (min_y, max_y) = if first_y <= second_y {
+            (first_y, second_y)
+        } else {
+            (second_y, first_y)
+        };
+        let extent = Extent::new(min_x, min_y, max_x, max_y);
+
+        prop_assert_eq!(
+            Extent::parse(&extent.to_string()).expect("display is parseable"),
+            extent
+        );
+    }
+
+    #[test]
+    fn intersection_is_symmetric(
+        first_x in -1_000.0f64..1_000.0,
+        second_x in -1_000.0f64..1_000.0,
+        first_y in -1_000.0f64..1_000.0,
+        second_y in -1_000.0f64..1_000.0,
+        other_x in -1_000.0f64..1_000.0,
+        other_width in 0.0f64..1_000.0,
+        other_y in -1_000.0f64..1_000.0,
+        other_height in 0.0f64..1_000.0,
+    ) {
+        let (min_x, max_x) = if first_x <= second_x {
+            (first_x, second_x)
+        } else {
+            (second_x, first_x)
+        };
+        let (min_y, max_y) = if first_y <= second_y {
+            (first_y, second_y)
+        } else {
+            (second_y, first_y)
+        };
+        let a = Extent::new(min_x, min_y, max_x, max_y);
+        let b = Extent::new(
+            other_x,
+            other_y,
+            other_x + other_width,
+            other_y + other_height,
+        );
+
+        prop_assert_eq!(a.intersects(&b), b.intersects(&a));
+    }
 }

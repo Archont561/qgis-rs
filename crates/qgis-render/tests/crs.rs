@@ -1,6 +1,7 @@
 //! Coordinate reference systems: what `EPSG:3857` means, what normalisation
 //! accepts, and where a well-formed-but-unknown code stops being an error.
 
+use proptest::prelude::*;
 use qgis_render::*;
 
 #[test]
@@ -32,5 +33,17 @@ fn accepts_unknown_but_wellformed_codes() {
 fn rejects_malformed_codes() {
     for text in ["3857", "EPSG", "EPSG:abc", ":4326", "EPSG:"] {
         assert!(Crs::from_auth_id(text).is_err(), "{text:?} should fail");
+    }
+}
+
+proptest! {
+    #[test]
+    fn authority_codes_normalise_without_changing_the_code(
+        code in 1u32..1_000_000,
+    ) {
+        let input = format!(" epsg:{code} ");
+        let crs = Crs::from_auth_id(&input).expect("numeric EPSG codes are valid");
+
+        prop_assert_eq!(crs.auth_id().to_owned(), format!("EPSG:{code}"));
     }
 }

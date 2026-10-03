@@ -8,6 +8,7 @@
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const fc = require("fast-check");
 const fs = require("node:fs");
 const path = require("node:path");
 
@@ -73,6 +74,27 @@ test("an extent can be given the way the caller has it", () => {
 	for (const bounds of [BOUNDS, [14, 50, 15, 51], qgis.Extent.parse(BOUNDS)]) {
 		assert.equal(new qgis.TilePlan(bounds, 10).tileCount(), 24);
 	}
+});
+
+test("property: finite extent text round trips through the native boundary", () => {
+	fc.assert(
+		fc.property(
+			fc.integer({ min: -100000, max: 100000 }),
+			fc.integer({ min: -100000, max: 100000 }),
+			fc.integer({ min: -100000, max: 100000 }),
+			fc.integer({ min: -100000, max: 100000 }),
+			(firstX, secondX, firstY, secondY) => {
+				const extent = new qgis.Extent(
+					Math.min(firstX, secondX),
+					Math.min(firstY, secondY),
+					Math.max(firstX, secondX),
+					Math.max(firstY, secondY),
+				);
+				assert.deepEqual(qgis.Extent.parse(String(extent)).toArray(), extent.toArray());
+			},
+		),
+		{ numRuns: 40 },
+	);
 });
 
 test("tiles round trip through the engine", () => {
