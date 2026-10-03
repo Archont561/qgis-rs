@@ -902,6 +902,8 @@ acceptance criteria, and next actions live in [TASK-1](../backlog/tasks/task-1%2
 through [TASK-18](../backlog/tasks/task-18%20-%20Add-frontend-framework-starter-templates-for-WebEngine-plugins.md),
 and [TASK-26](../backlog/tasks/task-26%20-%20Refactor-qgis-sdk-CLI-onto-the-shared-Rust-engine-wire-protocol.md).
 
+The accepted Rust CLI, FFI, and hosted-runtime boundary is specified in [doc-7](../backlog/docs/architecture/doc-7%20-%20Rust-CLI-Cross-Language-FFI-and-QGIS-SDK-Product-Boundaries.md). Its implementation is decomposed into [TASK-40](../backlog/tasks/task-40%20-%20Define-Rust-CLI-FFI-and-QGIS-SDK-product-boundaries.md) through [TASK-44](../backlog/tasks/task-44%20-%20Package-the-Rust-native-qgis-plugin-and-qgis-sdk-CLI.md): contract, standalone CLI, cross-language FFI, hosted-runtime separation, and CLI packaging.
+
 | Spec section | Module | Evidence / backlog owner |
 |--------------|--------|--------|
 | 1.1 Plugin definition, decorators | `qgis_sdk.plugin` — `Plugin`, `@action`, `@toolbar`, `@menu`, `class_factory` | Implemented, unit-tested |

@@ -4,7 +4,7 @@ title: Refactor qgis-sdk CLI onto the shared Rust engine wire protocol
 status: To Do
 assignee: []
 created_date: '2026-10-03 01:51'
-updated_date: '2026-10-03 08:31'
+updated_date: '2026-10-03 09:37'
 labels:
   - qgis-sdk
   - qgis-py
@@ -14,7 +14,8 @@ labels:
   - architecture
   - refactor
 milestone: m-3
-dependencies: []
+dependencies:
+  - TASK-40
 references:
   - crates/qgis-protocol
   - crates/qgis-engine
@@ -23,11 +24,23 @@ references:
   - py-packages/qgis-sdk/src/qgis_sdk/cli.py
   - py-packages/qgis-sdk/src/qgis_sdk/_fallback_cli.py
 documentation:
+  - crates/qgis-protocol
+  - crates/qgis-engine
+  - crates/qgis-py
+  - crates/qgis-py/ARCHITECTURE.md
+  - crates/qgis-sdk
+  - py-packages/qgis-sdk/src/qgis_sdk/cli.py
+  - py-packages/qgis-sdk/src/qgis_sdk/_fallback_cli.py
   - .knowledge/api-design.md
   - .knowledge/architecture.md
   - .knowledge/qgis-plugin-sdk.md
   - .knowledge/decisions/D09-wire-protocol-over-ffi.md
-  - crates/qgis-py/ARCHITECTURE.md
+  - .knowledge/decisions/D13-rust-cli-ffi-and-qgis-sdk-boundaries.md
+  - >-
+    backlog/docs/architecture/doc-7 -
+    Rust-CLI-Cross-Language-FFI-and-QGIS-SDK-Product-Boundaries.md
+  - .agents/skills/refactor/SKILL.md
+  - .agents/skills/tdd/SKILL.md
 priority: high
 type: enhancement
 ---
@@ -58,3 +71,15 @@ First settle the architecture rather than assuming that every SDK command belong
 - [ ] #2 pixi run gates passes, including Rust, Python, source-visibility, and package checks; native CLI tests run without PyQGIS imports.
 - [ ] #3 No duplicated Python/Rust command implementation or silent fallback remains in the shipped qgis-sdk CLI.
 <!-- DOD:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+Build the canonical Rust qgis-plugin command library and exact qgis-sdk alias. Keep qgis-sdk CLI tooling separate from qgis-cli GIS execution, use shared protocol/engine components only where appropriate, and keep QGIS-hosted plugin runtime outside this CLI boundary.
+<!-- SECTION:PLAN:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+The accepted product boundary is recorded in doc-7. qgis-sdk must not depend directly on qgis-py; its Rust CLI may reuse shared protocol/engine crates, while hosted UI and Processing remain PyQGIS/PyQt-owned. Follow TASK-40, TASK-43, and TASK-44 for the decomposed work.
+<!-- SECTION:NOTES:END -->

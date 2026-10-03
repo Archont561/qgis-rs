@@ -4,6 +4,7 @@ Architectural decision records for qgis-rs. Each document captures a decision, i
 
 ## Active Decisions
 
+* [D13 — Rust CLI, FFI, and QGIS SDK product boundaries](/decisions/D13-rust-cli-ffi-and-qgis-sdk-boundaries.md) - GIS execution, cross-language embedding, plugin tooling, and the QGIS-hosted runtime remain separate products with shared Rust protocol components.
 * [D12 — QGIS Native Manager over the C ABI](/decisions/D12-qgis-native-manager-over-c-abi.md) - QGIS state has one dedicated owner thread, `qgis-protocol` is normative, artifacts stay path-based, and crash isolation is deferred.
 * [D11 — Tests Outside `src/`](/decisions/D11-tests-outside-src.md) - One layout in every language: source in `src/`, tests in `tests/`, and anything a test needs is public.
 * [D10 — xtask over Shell Scripts](/decisions/D10-xtask-over-shell-scripts.md) - Repository automation is a compiled, tested `cargo xtask` binary behind pixi tasks; per-package verbs stay with turbo.
