@@ -42,7 +42,7 @@ Build the version-pinned extraction and generation pipeline described in the QGI
 <!-- SECTION:NOTES:BEGIN -->
 2026-10-03: Started the first vertical slice with a version-pinned core/data manifest at `crates/qgis-sys/native_manager/generated/api_manifest.json`. It records explicit declaration statuses, QGIS version ranges, ownership, operation/handler mappings, exclusions, and representative mapping policies.
 
-2026-10-03: Added `pixi run xtask api-manifest [--check]` implementation. It validates manifest status/reason/version invariants and deterministically generates the native-manager operation table and manifest-version header.
+2026-10-03: Added `pixi run xtask api-manifest [--check] [--diff-against PATH]` implementation. It validates manifest status/reason/version invariants, rejects dropped declarations/operations and ownership changes during upgrades, and deterministically generates the native-manager operation table and manifest-version header.
 
 2026-10-03: Native `engine_info` now advertises manifest metadata, and `api_describe` routes through the generated handler registry. Cross-language/runtime gates and the full clang-AST extraction/API-diff pipeline remain outstanding; keep this task In Progress until Pixi/QGIS validation is available.
 <!-- SECTION:NOTES:END -->
