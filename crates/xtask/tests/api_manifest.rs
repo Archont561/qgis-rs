@@ -76,6 +76,15 @@ fn invalid_statuses_and_duplicate_operations_are_rejected() {
             "version_range": ">=3.0,<4",
             "reason": "test"
         }],
+        "mappings": [
+            {"category":"ownership","qgis_type":"x","wire_type":"x","rule":"x"},
+            {"category":"invalidation","qgis_type":"x","wire_type":"x","rule":"x"},
+            {"category":"overload","qgis_type":"x","wire_type":"x","rule":"x"},
+            {"category":"enum","qgis_type":"x","wire_type":"x","rule":"x"},
+            {"category":"variant","qgis_type":"x","wire_type":"x","rule":"x"},
+            {"category":"binary_artifact","qgis_type":"x","wire_type":"x","rule":"x"},
+            {"category":"paging","qgis_type":"x","wire_type":"x","rule":"x"}
+        ],
         "operations": [
             {"name": "one", "handler": "one", "requires_initialization": true},
             {"name": "one", "handler": "two", "requires_initialization": true}
