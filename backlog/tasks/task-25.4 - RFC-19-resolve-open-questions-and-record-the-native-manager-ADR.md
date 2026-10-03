@@ -1,10 +1,10 @@
 ---
 id: TASK-25.4
 title: 'RFC 19: resolve open questions and record the native-manager ADR'
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-10-03 02:16'
-updated_date: '2026-10-03 17:45'
+updated_date: '2026-10-03 17:49'
 labels:
   - rfc
   - ffi
@@ -40,7 +40,7 @@ Resolve the RFC's concurrency model (one global mutex versus a dedicated QGIS th
 - [x] #1 The concurrency model for QGIS access is selected, justified against QGIS thread-affinity requirements, and specified as an invariant for qgis_invoke.
 - [x] #2 The source of truth for the JSON envelope and operation schema shared by Rust and C++ is selected, including how transport-version and snake_case naming are enforced.
 - [x] #3 The binary-artifact policy is confirmed or changed, and crash isolation/subprocess transport is explicitly scoped in or out for RFC 19.
-- [ ] #4 Issue #19's camelCase examples versus the shipped snake_case protocol are reconciled in the issue and the repository documentation.
+- [x] #4 Issue #19's camelCase examples versus the shipped snake_case protocol are reconciled in the issue and the repository documentation.
 - [x] #5 A reviewed ADR is added or updated under .knowledge/decisions, and TASK-25.1 through TASK-25.3 can reference this decision without reopening the same questions.
 <!-- AC:END -->
 
@@ -71,6 +71,8 @@ Posted the resolution text to backlog/drafts/issue-19-status-comment.md because 
 2026-10-03: Repository-side reconciliation is present in D12, including the dedicated QGIS owner thread, normative qgis-protocol contract, path-based artifacts, deferred crash isolation, and the snake_case amendment for the RFC examples.
 
 2026-10-03: Re-read issue #19; it remains open and still contains the original camelCase examples. A direct gh API comment attempt returned HTTP 403 Resource not accessible by integration, so AC #4 remains unchecked. The ready-to-post resolution is retained in backlog/drafts/issue-19-status-comment.md.
+
+2026-10-03: Issue #19 is now closed. The owner posted the resolution comment at https://github.com/Archont561/qgis-rs/issues/19#issuecomment-5971826467, linking TASK-25.4 and D12 and reconciling the camelCase examples with the shipped snake_case protocol.
 <!-- SECTION:NOTES:END -->
 
 ## Comments
@@ -82,3 +84,9 @@ created: 2026-10-03 17:45
 Prepared the issue #19 comment body with a direct [TASK-25.4 link](https://github.com/Archont561/qgis-rs/blob/arena/01a102bb-qgis-rs/backlog/tasks/task-25.4%20-%20RFC-19-resolve-open-questions-and-record-the-native-manager-ADR.md). The ready-to-paste body is retained in [backlog/drafts/issue-19-status-comment.md](https://github.com/Archont561/qgis-rs/blob/arena/01a102bb-qgis-rs/backlog/drafts/issue-19-status-comment.md); AC #4 remains unchecked until the external issue is updated.
 ---
 <!-- COMMENTS:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Resolved RFC 19 architecture questions in D12 and reconciled the issue examples with the shipped snake_case protocol. Issue #19 was closed after the resolution comment was posted. All acceptance criteria and definition-of-done items are complete; implementation phases remain tracked by TASK-25.1 through TASK-25.3.
+<!-- SECTION:FINAL_SUMMARY:END -->
