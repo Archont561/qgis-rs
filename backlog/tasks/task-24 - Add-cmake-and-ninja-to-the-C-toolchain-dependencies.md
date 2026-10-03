@@ -1,10 +1,10 @@
 ---
 id: TASK-24
 title: Add cmake and ninja to the C++ toolchain dependencies
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-10-02 23:22'
-updated_date: '2026-10-03 08:38'
+updated_date: '2026-10-03 17:23'
 labels:
   - build
   - cpp
@@ -40,8 +40,8 @@ The existing `qgis-sys/build.rs` continues to compile the Rust-consumer CXX/cc s
 <!-- AC:BEGIN -->
 - [x] #1 cmake and ninja are declared in [feature.cxx.dependencies] in pixi.toml with upper-bounded version ranges
 - [x] #2 gtest is declared explicitly instead of being inherited from the minizip package, and rapidcheck is declared or TASK-23 records why it is vendored instead
-- [ ] #3 pixi.lock is regenerated for linux-64 on a runner, since conda-forge cannot be reached from the sandbox, and the sandbox pack is republished so a restored environment contains the new tools
-- [ ] #4 cmake --version and ninja --version resolve inside the default pixi environment after scripts/restore.sh
+- [x] #3 pixi.lock is regenerated for linux-64 on a runner, since conda-forge cannot be reached from the sandbox, and the sandbox pack is republished so a restored environment contains the new tools
+- [x] #4 cmake --version and ninja --version resolve inside the default pixi environment after scripts/restore.sh
 - [x] #5 A short note in CONTEXT.md or the README records which parts of the C++ build cmake owns and that build.rs still owns the shim compiled into qgis-sys
 <!-- AC:END -->
 
@@ -55,4 +55,16 @@ Remaining proof: restore the Pixi environment to run cmake --version and ninja -
 Restore attempt (2026-10-03): pixi was not on PATH. scripts/restore.sh fetched origin/sandbox/developer-linux-64 and staged the transport, but failed before installing environments because the embedded pixi-sandbox launcher requires the missing .pixi-sandbox/tools/linux-64/trampoline_configuration/pixi-sandbox.json. The payload contains pixi 0.81.0, pixi-unpack, and pixi-sandbox, but no usable standalone pixi-sandbox executable.
 
 Fallback pixi global install of pixi-sandbox==0.5.0 was attempted with the transport pixi and failed after three TLS-handshake retries against conda-forge. AC #4 remains unchecked; no .pixi environment was restored.
+
+2026-10-03: Restored the published sandbox transport with bash scripts/restore.sh using pixi-sandbox 0.5.2. The restore verified 7,189 blobs, materialized pixi 0.81.0, pixi-sandbox 0.5.2, and pixi-unpack 0.7.11, restored default and bun, and verified 75,727 entries per environment with 0 failures.
+
+2026-10-03: Consumer proof for AC #3: publish sandbox run 37138912619 succeeded for main a4869d3, publishing sandbox/developer-linux-64 at 1288845e57c327e429ea8914714509de621749f5.
+
+2026-10-03: Consumer proof for AC #4: pixi run -e default cmake --version reported 4.4.3 and ninja --version reported 1.13.2 after scripts/restore.sh.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+CMake and Ninja are declared in the C++ toolchain feature without replacing the existing Rust-consumer build.rs path. The linux-64 lock and published sandbox were verified on the restored consumer transport, and both tools resolve in the restored default environment.
+<!-- SECTION:FINAL_SUMMARY:END -->
