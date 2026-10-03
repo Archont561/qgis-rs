@@ -4,7 +4,7 @@ title: Refactor every test suite onto property-based and fixture-driven testing
 status: To Do
 assignee: []
 created_date: '2026-10-02 23:06'
-updated_date: '2026-10-03 08:31'
+updated_date: '2026-10-03 08:43'
 labels:
   - refactor
   - testing
@@ -13,6 +13,9 @@ dependencies: []
 documentation:
   - .knowledge/testing.md
   - .knowledge/decisions/D11-tests-outside-src.md
+  - >-
+    backlog/docs/refactor/doc-3 -
+    Repository-Refactor-and-Test-Modernization-Plan.md
 priority: high
 type: enhancement
 ---
@@ -46,3 +49,11 @@ Do this suite by suite, and keep the example-based tests that document a specifi
 - [ ] #6 The C++ suite is wired into turbo so that pixi run ci covers it
 - [ ] #7 The cross-language golden values survive the migration and still agree
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Repository-wide assessment and sequencing plan: backlog/docs/refactor/doc-3 - Repository-Refactor-and-Test-Modernization-Plan.md
+
+The plan is intentionally documentation-only; implementation must proceed in small behavior-preserving slices after the Pixi environment is restored.
+<!-- SECTION:NOTES:END -->
