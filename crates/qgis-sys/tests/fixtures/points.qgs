@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE qgis PUBLIC 'http://mrcc.com/qgis.dtd' 'SYSTEM'>
+<qgis projectname="qgis-rs-native-manager" version="3.40.0">
+  <projectlayers layercount="1">
+    <maplayer type="vector" geometry="Point" name="points">
+      <id>points</id>
+      <datasource>./points.gpkg|layername=points</datasource>
+      <layername>points</layername>
+      <srs>
+        <spatialrefsys>
+          <authid>EPSG:4326</authid>
+        </spatialrefsys>
+      </srs>
+      <provider encoding="UTF-8">ogr</provider>
+    </maplayer>
+  </projectlayers>
+</qgis>

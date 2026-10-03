@@ -4,9 +4,9 @@ use std::path::PathBuf;
 
 /// Everything that can go wrong inside `qgis-render`.
 ///
-/// The engine is backend-agnostic: operations that need `libqgis_core` report
-/// [`Error::Unimplemented`] until the QGIS backend is wired up, which keeps the
-/// pure-Rust parts (extents, CRS, tile pyramids) usable everywhere.
+/// The engine is backend-agnostic: the pure-Rust parts (extents, CRS, tile
+/// pyramids) are usable everywhere, while transport-level operations that need
+/// `libqgis_core` are routed through the optional native manager.
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     /// A file or directory could not be read or written.
@@ -40,8 +40,8 @@ pub enum Error {
     #[error("cannot infer an image format from {}", path.display())]
     UnknownImageFormat { path: PathBuf },
 
-    /// The operation needs the QGIS backend, which is not wired up yet.
-    #[error("{feature} needs the QGIS backend, which is not wired up yet")]
+    /// The operation needs the QGIS backend, which is unavailable in this engine profile.
+    #[error("{feature} needs the QGIS backend, which is unavailable in this engine profile")]
     Unimplemented { feature: &'static str },
 }
 

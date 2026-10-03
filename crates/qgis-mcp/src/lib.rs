@@ -245,7 +245,7 @@ impl QgisMcpServer {
             .map(|tool| {
                 let name = tool.name.to_string();
                 let available = match name.as_str() {
-                    "render_map" | "export_features" => backend.available,
+                    "render_map" | "export_features" => backend.supports(&name),
                     _ => true,
                 };
                 ToolReport {
@@ -496,27 +496,37 @@ impl rmcp::ServerHandler for QgisMcpServer {}
 // ── helpers ───────────────────────────────────────────────────────────────────
 
 struct NativeBackend {
-    available: bool,
+    operations: Vec<String>,
     name: String,
     qgis_version: Option<String>,
+}
+
+impl NativeBackend {
+    fn supports(&self, operation: &str) -> bool {
+        self.operations.iter().any(|name| name == operation)
+    }
 }
 
 fn native_backend() -> NativeBackend {
     let init = native_call("app_init", serde_json::Value::Null);
     if init.is_err() {
         return NativeBackend {
-            available: false,
+            operations: Vec::new(),
             name: "unavailable".to_string(),
             qgis_version: None,
         };
     }
     match native_call("engine_info", serde_json::Value::Null) {
         Ok(info) => NativeBackend {
-            available: info["operations"].as_array().is_some_and(|operations| {
-                operations
-                    .iter()
-                    .any(|name| name.as_str() == Some("render_map"))
-            }),
+            operations: info["operations"]
+                .as_array()
+                .map(|operations| {
+                    operations
+                        .iter()
+                        .filter_map(|name| name.as_str().map(str::to_string))
+                        .collect()
+                })
+                .unwrap_or_default(),
             name: info["engine"]
                 .as_str()
                 .unwrap_or("qgis-native-manager")
@@ -524,7 +534,7 @@ fn native_backend() -> NativeBackend {
             qgis_version: info["qgis_version"].as_str().map(str::to_string),
         },
         Err(_) => NativeBackend {
-            available: false,
+            operations: Vec::new(),
             name: "unavailable".to_string(),
             qgis_version: None,
         },

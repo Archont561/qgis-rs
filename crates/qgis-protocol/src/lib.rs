@@ -397,7 +397,7 @@ pub enum ErrorKind {
     UnknownCrs,
     /// An output path has no recognisable image-format extension.
     UnknownImageFormat,
-    /// The operation needs the QGIS backend, which is not wired up yet.
+    /// The operation needs the optional native QGIS backend.
     Unimplemented,
     /// The operation name is not served by the native manager.
     InvalidOperation,

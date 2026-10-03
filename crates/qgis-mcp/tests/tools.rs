@@ -70,6 +70,7 @@ fn capabilities_reports_the_loaded_backend() {
         .find(|tool| tool.name == "export_features")
         .unwrap();
     assert_eq!(render.available, export.available);
+    assert_eq!(render.available, cfg!(feature = "qgis"));
     #[cfg(feature = "qgis")]
     {
         assert!(render.available);

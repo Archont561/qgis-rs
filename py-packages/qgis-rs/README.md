@@ -16,7 +16,7 @@
 - **Native speed**: No Python overhead for geometry math, tile planning, or rendering. The `qgis-cli` binary is a statically-linked Rust executable built with `cargo`.
 - **Single install**: `pip install qgis-rs` gives you both `import qgis_rs` and `qgis-cli` on PATH.
 - **No QGIS needed for many operations**: Tile planning (`tiles --dry-run`), extent parsing, CRS handling, and project inspection are pure Rust and work anywhere.
-- **QGIS backend optional**: When `libqgis_core` is available (conda-forge `qgis` package), rendering and feature export use it; otherwise they report `Unimplemented` with a clear message, so CLI tooling can be developed without QGIS.
+- **QGIS backend optional**: When `libqgis_core` is available (the Pixi/conda QGIS environment), rendering and feature export use the native manager; QGIS-free builds report an explicit backend error instead of silently substituting another implementation.
 
 ## Installation
 

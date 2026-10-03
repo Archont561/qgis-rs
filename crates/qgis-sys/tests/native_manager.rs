@@ -236,6 +236,60 @@ fn manager_opens_reports_batches_and_closes_a_layer() {
 
 
 #[test]
+fn phase_four_operations_render_and_export_real_qgis_artifacts() {
+    ok("app_init", Value::Null);
+    let project = format!("{}/tests/fixtures/points.qgs", env!("CARGO_MANIFEST_DIR"));
+    let output_dir = std::env::temp_dir().join(format!(
+        "qgis-rs-phase-four-{}",
+        std::process::id()
+    ));
+    std::fs::create_dir_all(&output_dir).expect("create output directory");
+    let image_path = output_dir.join("points.png");
+    let geojson_path = output_dir.join("points.geojson");
+
+    let rendered = ok(
+        "render_map",
+        json!({
+            "project": project,
+            "output": image_path,
+            "width": 64,
+            "height": 48,
+            "dpi": 96,
+            "crs": "EPSG:4326",
+            "extent": "-1,-1,3,3"
+        }),
+    );
+    assert_eq!(rendered["format"], "png");
+    assert_eq!(rendered["width"], 64);
+    assert_eq!(rendered["height"], 48);
+    assert!(rendered["bytes"].as_u64().unwrap() > 0);
+    assert!(image_path.is_file());
+
+    let exported = ok(
+        "export_features",
+        json!({
+            "project": format!("{}/tests/fixtures/points.qgs", env!("CARGO_MANIFEST_DIR")),
+            "layer": "points",
+            "output": geojson_path,
+            "bbox": "-1,-1,3,3",
+            "fields": ["name"]
+        }),
+    );
+    assert_eq!(exported["format"], "geojson");
+    assert_eq!(exported["layer"], "points");
+    assert_eq!(exported["feature_count"], 3);
+    assert!(exported["bytes"].as_u64().unwrap() > 0);
+    let collection: Value = serde_json::from_str(
+        &std::fs::read_to_string(&geojson_path).expect("read GeoJSON artifact"),
+    )
+    .expect("parse GeoJSON artifact");
+    assert_eq!(collection["type"], "FeatureCollection");
+    assert_eq!(collection["features"].as_array().unwrap().len(), 3);
+
+    let _ = std::fs::remove_dir_all(output_dir);
+}
+
+#[test]
 fn phase_four_operations_are_native_and_return_path_errors_not_placeholders() {
     ok("app_init", Value::Null);
     let info = ok("engine_info", Value::Null);

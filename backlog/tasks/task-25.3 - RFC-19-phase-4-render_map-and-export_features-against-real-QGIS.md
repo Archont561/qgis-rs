@@ -47,5 +47,5 @@ This is also where the binary-artifact question gets settled in practice: a rend
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-Implemented native-manager render_map/export_features dispatch, path-based artifact responses, runtime capability reporting, optional QGIS/no-QGIS feature paths, and removed the stale static capability marker from suites and docs. Static Python/Node checks and git diff --check pass. Repository gates are still blocked in this checkout because pixi and cargo are not installed; do not treat the gates as green until run in the Pixi environment.
+Implemented native-manager render_map/export_features dispatch, path-based artifact responses, runtime capability reporting, optional QGIS/no-QGIS feature paths, and removed the stale static capability marker from suites and docs. The dispatch catalogue is now a handler registry, and a QGIS-backed integration fixture covers successful PNG rendering and GeoJSON export. Static Python/Node checks and git diff --check pass. Repository gates are still blocked in this checkout because pixi and cargo are not installed; do not treat the gates as green until run in the Pixi environment.
 <!-- SECTION:NOTES:END -->

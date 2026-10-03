@@ -150,7 +150,8 @@ impl Project {
     ///
     /// # Errors
     ///
-    /// Always [`Error::Unimplemented`] until the QGIS backend lands.
+    /// This backend-agnostic reader does not load QGIS project layers. Use the
+    /// transport-level native manager operation when the QGIS feature is enabled.
     pub fn layers(&self) -> Result<Vec<LayerSummary>> {
         Err(Error::Unimplemented {
             feature: "listing project layers",
@@ -172,7 +173,8 @@ impl Project {
     ///
     /// # Errors
     ///
-    /// Always [`Error::Unimplemented`] until the QGIS backend lands.
+    /// This backend-agnostic reader does not export through QGIS. Use the
+    /// transport-level `export_features` operation for native export.
     pub fn export_layer(&self, _layer: &str, _format: &str) -> Result<PathBuf> {
         Err(Error::Unimplemented {
             feature: "exporting features",
