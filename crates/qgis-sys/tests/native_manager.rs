@@ -34,6 +34,41 @@ fn manager_initializes_and_reports_engine_info() {
 }
 
 #[test]
+fn engine_info_exposes_the_complete_native_operation_catalogue() {
+    let actual = ok("app_init", Value::Null)["initialized"];
+    assert_eq!(actual, true);
+
+    let mut operations: Vec<String> = ok("engine_info", Value::Null)["operations"]
+        .as_array()
+        .expect("operation catalogue")
+        .iter()
+        .map(|operation| operation.as_str().expect("operation name").to_string())
+        .collect();
+    operations.sort();
+
+    let mut expected = vec![
+        "app_init",
+        "app_shutdown",
+        "engine_info",
+        "export_features",
+        "layer_close",
+        "layer_crs_authid",
+        "layer_feature_count",
+        "layer_features",
+        "layer_fields",
+        "layer_geometry_type_name",
+        "layer_info",
+        "layer_is_valid",
+        "layer_name",
+        "layer_new",
+        "layer_open",
+        "render_map",
+    ];
+    expected.sort();
+    assert_eq!(operations, expected);
+}
+
+#[test]
 fn manager_routes_vector_layer_operations_through_owned_ids() {
     ok("app_init", Value::Null);
     let path = format!("{}/tests/fixtures/points.gpkg", env!("CARGO_MANIFEST_DIR"));
