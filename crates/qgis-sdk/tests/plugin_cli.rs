@@ -62,17 +62,34 @@ fn stderr(output: &Output) -> String {
     String::from_utf8_lossy(&output.stderr).into_owned()
 }
 
+/// One line that says everything about a child that did not exit 0.
+///
+/// `assert!(status.success(), "{}", stderr(&output))` was not enough: a
+/// process killed by a signal writes nothing, so CI reported a panic with a
+/// blank message and the cause had to be guessed. The exit status carries the
+/// signal on Unix, and both streams are folded onto one line because the gate
+/// forwards single lines into the job annotation.
+fn failure(command: &str, output: &Output) -> String {
+    let flatten = |text: String| text.replace('\n', " ⏎ ");
+    format!(
+        "error: `qgis-plugin {command}` exited with {:?} — stderr: {} | stdout: {}",
+        output.status,
+        flatten(stderr(output)),
+        flatten(stdout(output)),
+    )
+}
+
 #[test]
 fn help_and_version_are_available() {
     let output = run(&["--help"]);
-    assert!(output.status.success(), "{}", stderr(&output));
+    assert!(output.status.success(), "{}", failure("--help", &output));
     let help = stdout(&output);
     for command in ["new", "validate", "info", "version"] {
         assert!(help.contains(command), "{command} missing from: {help}");
     }
 
     let output = run(&["version"]);
-    assert!(output.status.success(), "{}", stderr(&output));
+    assert!(output.status.success(), "{}", failure("version", &output));
     assert!(stdout(&output).contains(&format!("qgis-plugin {}", env!("CARGO_PKG_VERSION"))));
 }
 
@@ -84,7 +101,7 @@ fn scaffolds_validates_and_reports_a_plugin() {
         .arg(temp.path())
         .output()
         .expect("run `qgis-plugin new`");
-    assert!(output.status.success(), "{}", stderr(&output));
+    assert!(output.status.success(), "{}", failure("new", &output));
 
     let plugin = temp.path().join("smoke_plugin");
     assert!(plugin.join("metadata.txt").is_file());
@@ -95,7 +112,7 @@ fn scaffolds_validates_and_reports_a_plugin() {
         .arg(&plugin)
         .output()
         .expect("run `qgis-plugin validate`");
-    assert!(output.status.success(), "{}", stderr(&output));
+    assert!(output.status.success(), "{}", failure("validate", &output));
     assert!(stdout(&output).contains("looks valid"));
 
     let output = Command::new(QGIS_PLUGIN)
@@ -104,7 +121,7 @@ fn scaffolds_validates_and_reports_a_plugin() {
         .arg("--json")
         .output()
         .expect("run `qgis-plugin info`");
-    assert!(output.status.success(), "{}", stderr(&output));
+    assert!(output.status.success(), "{}", failure("info", &output));
     let info: serde_json::Value = serde_json::from_slice(&output.stdout).expect("valid JSON");
     assert_eq!(info["name"], "smoke_plugin");
     assert_eq!(info["version"], "0.1.0");
