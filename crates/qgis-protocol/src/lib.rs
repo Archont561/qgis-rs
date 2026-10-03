@@ -17,6 +17,24 @@
 //! envelope wrapped around snake_case contents; the JavaScript client renames
 //! at its own edge, which it had to do anyway.
 //!
+//! # Binary artifacts are paths, not bytes
+//!
+//! A rendered map and an exported layer are files. Version 1 of this envelope
+//! carries the *path* the operation wrote and metadata about it —
+//! [`RenderMapResponse`], [`ExportFeaturesResponse`] — and never the image or
+//! feature bytes inline as base64 or a JSON array. The caller supplies an
+//! output path it can see, the manager validates path and format before it
+//! touches QGIS, an existing file is overwritten (atomically is not promised),
+//! and the caller owns the result: shutting the engine down does not delete
+//! it. Paths are local to the engine process, because version 1 is in-process;
+//! an out-of-process transport that needs a shared filesystem or an artifact
+//! store is a new transport version, not a quiet change of meaning here.
+//!
+//! The policy is settled rather than provisional —
+//! `.knowledge/decisions/D12-qgis-native-manager-over-c-abi.md` §3, confirmed
+//! by TASK-25.3 once `render_map` and `export_features` answered from real
+//! QGIS.
+//!
 //! # Two version numbers, deliberately not one
 //!
 //! [`TRANSPORT_VERSION`] is the shape of the envelope below. `qgis_render`'s
