@@ -258,7 +258,7 @@ the report:
    §1, and lint/format are 7 of 7 green. Say which of those two numbers you are quoting — a gate
    that was never run is not a green gate.
 4. **Record what you did not implement** in [`.knowledge/log.md`](/.knowledge/log.md) under a dated
-   heading, newest last, and end that entry with the next session's opening prompt, so the file in
+   heading, newest first — the file is reverse-chronological — and end that entry with the next session's opening prompt, so the file in
    the tree and the message in the chat say the same thing. Proposals, alternatives weighed, and
    measurements worth keeping belong in the log — never in the files they speculate about. That
    entry is its own commit (`docs(log): …`), so the repository carries its own session summary.

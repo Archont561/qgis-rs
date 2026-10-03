@@ -1,5 +1,73 @@
 # Bundle Update Log
 
+## 2026-10-04
+
+* **Change (ci)**: The D13 product boundaries are decided by a program instead
+  of by review. `crates/xtask/src/boundaries.rs` adds `xtask check-boundaries`,
+  which reads every member manifest plus the two distribution manifests and
+  rules on four things: the forbidden dependency edges (no `qgis-sdk` →
+  `qgis-py`, no binding crate depending on another binding crate, nothing
+  depending on a CLI), binding crates owning no `[[bin]]`, the canonical
+  executable names (`qgis-cli`, `qgis-mcp`, `qgis-plugin`, `xtask`), and a
+  closed list of tracked fallbacks so a new one cannot appear unnoticed. It
+  runs in `xtask gate`'s repo-lints step, before anything compiles, and costs
+  no new dependency — the checker hand-parses TOML because the airlock cannot
+  fetch one. Today it reports `12 crates and 2 distributions match D13 (1
+  tracked fallback(s))`; 11 tests in `crates/xtask/tests/boundaries.rs` cover
+  the rules, the real repository, and a discovery guard that fails if a crate
+  stops being seen. Two deviations are named rather than silently allowed:
+  `py-packages/qgis-sdk/src/qgis_sdk/_fallback_cli.py` (TASK-43) and the
+  `qgis-cli` console script that `qgis-sdk` also ships (TASK-44).
+* **Change (testing)**: The gate now runs the QGIS-backed code it used to only
+  compile. `@qgis/rust`'s `test` script runs the workspace with
+  `--no-default-features` and then `cargo test -p qgis-sys -p qgis-mcp
+  --features qgis-sys/qgis,qgis-mcp/qgis -- --test-threads=1`, which is what
+  closes RFC 19 phase four: before this, the `qgis` feature paths had zero
+  tests executed anywhere, so "it builds" was the only claim the repository
+  could make about them. Rust went from 149 to 183 passing tests across 35
+  test-binary runs (30 integration files, 5 of them re-run under the feature).
+  Single-threaded on purpose: QGIS initialization is process-global.
+* **Addition**: `crates/qgis-protocol`'s crate documentation now states the
+  binary-artifact policy — renders cross the wire as filesystem paths, never as
+  base64 bytes — so the rule lives next to the types it constrains instead of
+  only in `.knowledge/decisions/D12-qgis-native-manager-over-c-abi.md` §3.
+  D12 also gained the snake_case amendment that issue #19 was closed on.
+* **Idea (not implemented)**: `xtask scaffold` still emits a `cxx::bridge`
+  module and a `#include "rust/cxx.h"` for a crate that no longer has `cxx` or
+  `cxx-build` anywhere in it. Nothing is broken today, but the next binding
+  scaffolded from it would reintroduce the exact dependency RFC 19 spent four
+  phases removing, and the gate would not catch it — `check-boundaries` rules
+  on edges between crates, not on what a generator writes. Filed as TASK-45:
+  either teach the template the native-manager shape D12 chose, or delete the
+  C++ half of the template and let `scaffold` make Rust-only crates.
+* **Idea (not implemented)**: `qgis-rs-py#build` cannot run in this sandbox
+  because `patchelf` is in neither `pixi.toml` nor the offline pack, and
+  adding it needs `pixi lock`, which needs the network. CI runners supply it,
+  so the gap is local-only — but it means `pixi run gates` is not actually the
+  same command CI runs, and the difference is discovered rather than declared.
+  Declaring `patchelf` as a pixi dependency the next time the lock can be
+  regenerated would close it.
+* **Verified**: PR #25 was green before the merge (CI 8m51s) and squash
+  `067d2a6` is green on `main` after it (CI 9m17s, Docs 50s). The `publish
+  sandbox` workflow correctly did not fire: its `paths` allowlist covers the
+  manifests and the vendored crate graph, and this change touched neither.
+  Locally the same fan-out is 21 of 25 tasks with `--env-mode=loose`, the one
+  failure being the `patchelf` gap above — so the green that counts here is
+  CI's, not the sandbox's.
+* **Next session's opening prompt**: TASK-40 closing unblocked four tasks —
+  41, 42, 43 and 26 — and 44 waits on 26. Start by reading
+  `.knowledge/decisions/D13-rust-cli-ffi-and-qgis-sdk-boundaries.md` and the
+  capability-ownership matrix in
+  `backlog/docs/architecture/doc-7 - ...Product-Boundaries.md`, then take
+  TASK-43 (delete `_fallback_cli.py`) and TASK-44 (the duplicate `qgis-cli`
+  console script in `qgis-sdk`): both are now the only two deviations
+  `xtask check-boundaries` tolerates, and closing them lets the tracked-
+  fallback list shrink to zero. Before touching Python, run
+  `export PATH="$HOME/.local/bin:$PATH"`, `pixi run setup`, then
+  `pixi run bun-install`; expect `qgis-rs-py#build` to fail locally on
+  `patchelf` and filter it out. TASK-45 (the `xtask scaffold` cxx template) is
+  already filed and is a good small warm-up if you want one.
+
 ## 2026-10-03
 
 * **Change (ffi)**: The Python and Node bindings no longer mirror the domain
