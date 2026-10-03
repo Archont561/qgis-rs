@@ -87,7 +87,7 @@ Currently `qgis-render` is pure Rust (no `libqgis_core`). Rendering methods retu
 - `cargo test -p qgis-render -p qgis-cli -p qgis-py -p qgis-sdk -p qgis-node` — Rust logic, CLI, and binding-adapter tests (QGIS is only needed for `qgis-sys` integration tests)
 - `cargo test -p qgis-protocol -p qgis-engine` — the wire protocol and one test per operation, at the JSON level the bindings see
 - `maturin develop && python -m pytest py-packages/qgis-rs/tests -v` — the Python client against the real `_core`
-- `pixi run -e default py-test` — builds the extension, then runs the native Python tests
+- `bun x turbo run test --filter=qgis-rs-py` — builds the extension, then runs the native Python tests
 - `qgis-cli` behavior is covered by Rust integration tests in `crates/qgis-cli/tests/cli.rs`; plugin CLI behavior is covered in `crates/qgis-sdk/tests/plugin_cli.rs`
 
 ### Publishing

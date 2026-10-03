@@ -13,8 +13,8 @@
 #   default  QGIS + Rust + C++ toolchain + Python + the packaged Python
 #            distributions (qgis-rs, qgis-sdk) + lint tooling + the cargo test
 #            tooling (cargo-llvm-cov / nextest / deny). Everything that touches
-#            QGIS lives here, and this is what the published sandbox branch
-#            ships.
+#            QGIS lives here, and this is what pixi-sandbox packs into the
+#            published offline branch.
 #   bun      Bun, for docs/ (Astro Starlight), the JS test suites, and the
 #            napi addon build.
 #
@@ -109,6 +109,22 @@ rust = { workspace = true }
 [feature.cxx.dependencies]
 cxx-compiler = ">=1.11.0,<2"
 clang-tools = ">=22.1.8,<23"
+# The generator and the build tool, so a CMakeLists.txt in this repository (or
+# in a shim added later) needs nothing from outside the environment. `cxx-build`
+# drives `cc` directly and does not use either, which is why they are pinned
+# but not required by anything today.
+cmake = ">=4.4,<5"
+ninja = ">=1.13,<2"
+
+[feature.cpp-test.dependencies]
+# C++ test frameworks, deliberately NOT part of [feature.cxx] for the same
+# reason the Rust cargo subcommands sit in [feature.rust-tools]: a framework is
+# not a toolchain. Kept out of the `bun` environment's transitive set — it is
+# not in any feature it pulls.
+gtest = ">=1.18,<2"
+# rapidcheck is RapidCheck: property-based testing in C++. It is to gtest what
+# proptest is to the Rust test harness, and what hypothesis is to pytest.
+rapidcheck = ">=2023.4,<2024"
 
 [feature.rust-tools.dependencies]
 # Rust test/lint tooling that used to be `cargo install`-ed next to pixi (CI
@@ -118,8 +134,8 @@ clang-tools = ">=22.1.8,<23"
 #
 # Deliberately NOT part of [feature.rust]: that feature is also pulled into the
 # `bun` environment (napi build shells out to cargo), and both environments are
-# packed by pixi-sandbox.toml. Keeping these here makes them `default`-only and
-# keeps them out of the published transport.
+# packed by the `developer` bundle in pixi-sandbox.toml. Keeping these here makes
+# them `default`-only and keeps them out of the published transport.
 #
 # Lower bounds track the versions the tools were adopted at — the repo pins the
 # bottom of each range and lets the solver float within the minor, so a
@@ -167,9 +183,13 @@ maturin = { workspace = true }
 # wheel itself; developing in place does.
 pip = ">=24,<27"
 pytest = { workspace = true }
-# The plugin CI exercises through --cov; declared so `pixi run py-test` can do
-# coverage without a pip install.
+# The plugin CI exercises through --cov; declared so the distribution's own
+# `coverage` package script can run it without a pip install.
 pytest-cov = { workspace = true }
+# Property-based testing for the Python distributions, next to pytest the way
+# proptest sits next to the Rust harness. Not a runtime dependency of either
+# distribution — it ships with the environment, not in the wheel.
+hypothesis = ">=6.168,<7"
 
 [feature.py-runtime.activation.env]
 # The conda-forge `qgis` package already exports these through
@@ -181,6 +201,12 @@ pytest-cov = { workspace = true }
 # ($VAR syntax: activation runs under bash; platforms are linux-64 only.)
 PYTHONPATH = "$CONDA_PREFIX/share/qgis/python/plugins:$CONDA_PREFIX/share/qgis/python:$PYTHONPATH"
 QGIS_PREFIX_PATH = "$CONDA_PREFIX"
+# The one QGIS variable conda's activate script does NOT export, and the reason
+# `cargo test` used to need two separate invocations: without the plugin path a
+# QgsApplication initialised in a test cannot load the bundled plugins, so
+# qgis-sys's QGIS-backed suites failed while every QGIS-free suite passed. Stating
+# it here is what lets one `cargo test --workspace` cover the whole tree.
+QGIS_PLUGINPATH = "$CONDA_PREFIX/lib/qgis/plugins"
 QT_QPA_PLATFORM = "offscreen"
 
 [feature.utils.dependencies]
@@ -233,10 +259,12 @@ skills = { cmd = "bun x skills", depends-on = [
 
 [environments]
 # See the header: two environments, split by an icu conflict that no single
-# solve can satisfy. `default` is what the published sandbox branch packs.
+# solve can satisfy. `default` is what the `developer` bundle in
+# pixi-sandbox.toml packs.
 default = { features = [
   "rust",
   "cxx",
+  "cpp-test",
   "rust-tools",
   "qgis",
   "py-runtime",
@@ -297,7 +325,15 @@ gates = { cmd = "cargo run -q -p xtask -- ci --no-coverage", description = "`ci`
 # Optional arguments are staged files from lefthook; with none they check the
 # whole relevant tree.
 check-cpp = { cmd = "cargo run -q -p xtask -- check-cpp", description = "clang-format gate for the C++ shim (staged files, or the whole tree)", default-environment = "default" }
-lint-toml = { cmd = "cargo run -q -p xtask -- lint-toml", description = "taplo canonicality check for pixi.toml and pixi-sandbox.toml", default-environment = "default" }
+# The writing counterpart of check-cpp, and the fourth pass of the lint gate.
+# Both used to be steps inside scripts/rust-format.sh and scripts/rust-lint.sh;
+# as subcommands they are what lets @qgis/rust's `format` and `lint` scripts be
+# one line each. clang-tidy in particular has to discover its own include paths —
+# the hashed cxxbridge out-dir, qt vs qt6, the GCC dir carrying stddef.h — which
+# is why it is a program and not a flag.
+format-cpp = { cmd = "cargo run -q -p xtask -- format-cpp", description = "clang-format the C++ shim in place", default-environment = "default" }
+clang-tidy = { cmd = "cargo run -q -p xtask -- clang-tidy", description = "clang-tidy over the C++ shim, discovering the include paths it needs", default-environment = "default" }
+lint-toml = { cmd = "cargo run -q -p xtask -- lint-toml", description = "taplo canonicality check for pixi.toml", default-environment = "default" }
 lint-actions = { cmd = "actionlint", description = "Lint .github/workflows/*.yml", default-environment = "default" }
 lint-commit = { cmd = "convco check --from-stdin", description = "Validate a commit message against the conventional-commit spec", default-environment = "default" }
 

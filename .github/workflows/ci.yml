@@ -39,47 +39,12 @@ concurrency:
 
 env:
   CARGO_TERM_COLOR: always
-  PIXI_SANDBOX_VERSION: 0.4.3
   # Fetch prebuilt registry indexes instead of cloning the whole crates.io git
   # index on a cold cache.
   CARGO_NET_GIT_FETCH_WITH_CLI: "true"
   CARGO_INCREMENTAL: "0"
 
 jobs:
-  # Cheap, independent, and therefore parallel: this needs neither the QGIS
-  # environment nor the Bun workspace, so it reports a broken publish contract
-  # in under a minute instead of waiting behind a 3-hour native build.
-  sandbox-plan:
-    name: Sandbox publish plan
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      # v0.4.0 retired the v0.3.x composite `setup`/`publish` actions, so the CLI
-      # is installed the same way the generated publish-sandbox workflow does it:
-      # from its own channel into pixi's global environment, which is independent
-      # of this repository's conda-forge-only project solve. Exercising it here
-      # means the plan shape is checked even when a later application-level test
-      # fails. `run-install: false`/`cache: false` — this job never solves the
-      # project, and pixi-sandbox owns any `pixi install` during packing.
-      - uses: prefix-dev/setup-pixi@d3f436a425481402e6a95a1d1fc10331c708cd9e # v0.10.2
-        with:
-          pixi-version: v0.81.0
-          run-install: false
-          cache: false
-
-      - name: Install the pinned pixi-sandbox release
-        run: |
-          pixi global install \
-            --channel https://prefix.dev/archont561/pixi-sandbox \
-            --channel conda-forge \
-            "pixi-sandbox==${{ env.PIXI_SANDBOX_VERSION }}"
-          echo "PIXI_SANDBOX_VERSION=${{ env.PIXI_SANDBOX_VERSION }}" >> "$GITHUB_ENV"
-
-      - name: Validate the reviewed publish plan
-        run: pixi-sandbox plan --config pixi-sandbox.toml --json
-
   ci:
     name: CI
     runs-on: ubuntu-latest

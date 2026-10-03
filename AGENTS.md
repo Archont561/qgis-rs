@@ -87,8 +87,10 @@ Repository-wide automation is `crates/xtask`, not shell
 ([D10](.knowledge/decisions/D10-xtask-over-shell-scripts.md)). Add a subcommand
 there — with a unit test — rather than a `scripts/*.sh`; `pixi run xtask <sub>`
 reaches it without a new pixi task. Per-package verbs (`build`, `test`, `lint`,
-`format`, `coverage`, `pack:check`) stay in the package's own `package.json`
-and are fanned out by turbo.
+`format`, `coverage`, `pack:check`) stay in the package's own `package.json`,
+are fanned out by turbo, and are **one line each** — `pixi run` keeps the
+package directory as the working directory, so a package verb needs no `cd` and
+no wrapper script.
 
 Source has to be visible to git. `.gitignore` ignores `.*` and `_*`, which once
 swallowed the whole Python client (`_api.py`, `_transport.py`) without a word

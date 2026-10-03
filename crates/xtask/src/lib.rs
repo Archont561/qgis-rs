@@ -40,6 +40,8 @@ use clap::{Parser, Subcommand};
     long_about = "Every repository-wide verb qgis-rs has. Run through pixi:\n  \
                   pixi run xtask ci\n  \
                   pixi run xtask check-cpp [files...]\n  \
+                  pixi run xtask format-cpp\n  \
+                  pixi run xtask clang-tidy\n  \
                   pixi run xtask release verify-version v1.2.3",
     version
 )]
@@ -63,11 +65,15 @@ pub enum Command {
         /// Files to check; with none, every .cpp/.h under crates/qgis-sys.
         files: Vec<String>,
     },
+    /// Write clang-format's output over the C++ shim.
+    FormatCpp,
+    /// clang-tidy over the C++ shim, discovering the include paths it needs.
+    ClangTidy,
     /// Fail if a source file inside a package tree is hidden by .gitignore.
     CheckSources,
     /// taplo canonicality check for the manifests kept in canonical form.
     LintToml {
-        /// Files to check; with none, pixi.toml and pixi-sandbox.toml.
+        /// Files to check; with none, pixi.toml.
         files: Vec<String>,
     },
     /// Assert a package directory contains everything its `files` list promises.
@@ -109,6 +115,8 @@ pub fn run(command: Command) -> Result<()> {
     match command {
         Command::Ci { no_coverage } => ci::gate(!no_coverage),
         Command::CheckCpp { files } => lints::check_cpp(&files),
+        Command::FormatCpp => lints::format_cpp(),
+        Command::ClangTidy => lints::clang_tidy(),
         Command::CheckSources => lints::check_sources(),
         Command::LintToml { files } => lints::lint_toml(&files),
         Command::PackCheck {

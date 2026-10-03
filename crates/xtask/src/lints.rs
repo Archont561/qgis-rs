@@ -28,12 +28,173 @@ pub fn check_cpp(files: &[String]) -> Result<()> {
     run("clang-format", args)
 }
 
+/// Write clang-format's output for the C++ shim.
+///
+/// The mirror of [`check_cpp`]: same sources, same discovery, but `-i` instead
+/// of `--dry-run --Werror`. A separate verb rather than a flag on `check-cpp`
+/// because lefthook wants the check form on staged files and `format` wants this
+/// one on the whole tree.
+pub fn format_cpp() -> Result<()> {
+    let paths = cpp_sources();
+    if paths.is_empty() {
+        println!("format-cpp: no C++ sources to format");
+        return Ok(());
+    }
+    let mut args = vec!["-i".to_string()];
+    args.extend(paths.iter().map(|path| path.display().to_string()));
+    run("clang-format", args)
+}
+
+/// clang-tidy over the C++ shim, with the include paths it needs discovered.
+///
+/// This is the one lint that could not be a manifest one-liner while it lived in
+/// a shell file: clang-tidy parses the shim against the real headers, and every
+/// path it needs is version-stamped or content-hashed — the cxxbridge out-dir
+/// under `target/debug/build/qgis-sys-*/out`, Qt under `include/qt` or
+/// `include/qt6` depending on the build, and the GCC internal include directory
+/// carrying `stddef.h`. Discovering them in Rust rather than in
+/// `find | head | xargs` is what lets `@qgis/rust`'s `lint` script be a single
+/// line, and it makes a missing directory a named error instead of an empty
+/// argument list.
+pub fn clang_tidy() -> Result<()> {
+    let prefix = std::env::var("CONDA_PREFIX")
+        .context("CONDA_PREFIX is not set — run this under `pixi run -e default`")?;
+
+    let sources: Vec<PathBuf> = cpp_sources()
+        .into_iter()
+        .filter(|path| path.extension().and_then(std::ffi::OsStr::to_str) == Some("cpp"))
+        .collect();
+    if sources.is_empty() {
+        bail!("clang-tidy: no .cpp sources in the qgis-sys shim");
+    }
+
+    let qt_include = ["include/qt", "include/qt6"]
+        .iter()
+        .map(|candidate| Path::new(&prefix).join(candidate))
+        .find(|candidate| candidate.is_dir())
+        .with_context(|| {
+            format!("clang-tidy: no Qt headers under {prefix}/include — qt or include/qt6 missing?")
+        })?;
+
+    // target/debug/build/qgis-sys-<hash>/out/cxxbridge — a *directory*, which is
+    // why this is not the same walk as the stddef.h hunt below. The two are
+    // sorted, so a workspace that carries several feature configurations of the
+    // shim gets the same include directory on every machine rather than whichever
+    // one `find` happened to list first.
+    let cxx_out = first_matching_dir(&repo_root().join("target/debug/build"), |path| {
+        path.file_name() == Some(std::ffi::OsStr::new("cxxbridge"))
+            && path
+                .parent()
+                .and_then(Path::file_name)
+                .is_some_and(|name| name == "out")
+            && path
+                .parent()
+                .and_then(Path::parent)
+                .and_then(Path::file_name)
+                .is_some_and(|name| name.to_string_lossy().starts_with("qgis-sys-"))
+    })
+    .context(
+        "clang-tidy: no cxxbridge output under target/debug/build — run \
+         `pixi run -e default cargo build -p qgis-sys` first",
+    )?;
+
+    let gcc_include = first_matching_file(&Path::new(&prefix).join("lib/gcc"), |path| {
+        path.file_name() == Some(std::ffi::OsStr::new("stddef.h"))
+    })
+    .and_then(|path| path.parent().map(Path::to_path_buf))
+    .context("clang-tidy: no stddef.h under $CONDA_PREFIX/lib/gcc")?;
+
+    run(
+        "clang-tidy",
+        clang_tidy_arguments(
+            &repo_root().join("crates/qgis-sys"),
+            Path::new(&prefix),
+            &qt_include,
+            &cxx_out,
+            &gcc_include,
+            &sources,
+        ),
+    )
+}
+
+/// The clang-tidy command line for the shim, from five discovered directories.
+///
+/// Split out from [`clang_tidy`] so the part that can be wrong — the order of
+/// the arguments — is a pure function a test can pin, instead of something only
+/// observable by running clang-tidy against a built QGIS.
+///
+/// Every path is absolute. The shell version this replaced `cd crates` first and
+/// passed `-Iqgis-sys` relative to that; a subcommand runs at the repository
+/// root, where the same two flags name a directory that does not exist, so the
+/// shim is passed in rather than assumed to be underfoot.
+pub fn clang_tidy_arguments(
+    shim: &Path,
+    prefix: &Path,
+    qt_include: &Path,
+    cxx_out: &Path,
+    gcc_include: &Path,
+    sources: &[PathBuf],
+) -> Vec<String> {
+    let sysroot = prefix.join("x86_64-conda-linux-gnu/sysroot");
+    let mut args: Vec<String> = sources
+        .iter()
+        .map(|path| path.display().to_string())
+        .collect();
+    // The sources must come BEFORE the `--` separator; everything after it is
+    // the compiler command line. Passing them the other way round — which is
+    // what piping them through `xargs` after the separator did — makes
+    // clang-tidy print its own --help and exit 123.
+    args.push(format!("--extra-arg=--sysroot={}", sysroot.display()));
+    args.push(format!("--extra-arg=-I{}", gcc_include.display()));
+    args.push("--".to_string());
+    args.extend([
+        "-std=c++17".to_string(),
+        format!("-I{}", shim.display()),
+        format!("-I{}/include", shim.display()),
+        format!("-I{}/include", cxx_out.display()),
+        format!("-I{}/crate", cxx_out.display()),
+        format!("-I{}/include/qgis", prefix.display()),
+        format!("-I{}", qt_include.display()),
+        format!("-I{}/QtCore", qt_include.display()),
+        format!("-I{}/QtGui", qt_include.display()),
+        format!("-I{}/QtWidgets", qt_include.display()),
+        format!("-I{}/QtXml", qt_include.display()),
+    ]);
+    args
+}
+
+/// The lexicographically first file under `root` that `accepts`.
+///
+/// Sorted before the first is taken, so the answer does not depend on directory
+/// iteration order: a lint that picks a different header directory on a
+/// different machine is a lint whose failures nobody can reproduce. Public
+/// because `tests/lints.rs` asserts that ordering on a tree it builds itself.
+pub fn first_matching_file(root: &Path, accepts: impl Fn(&Path) -> bool) -> Option<PathBuf> {
+    first_matching_entry(root, |path| path.is_file() && accepts(path))
+}
+
+/// [`first_matching_file`] for directories.
+fn first_matching_dir(root: &Path, accepts: impl Fn(&Path) -> bool) -> Option<PathBuf> {
+    first_matching_entry(root, |path| path.is_dir() && accepts(path))
+}
+
+fn first_matching_entry(root: &Path, accepts: impl Fn(&Path) -> bool) -> Option<PathBuf> {
+    let mut matches: Vec<PathBuf> = walkdir::WalkDir::new(root)
+        .into_iter()
+        .filter_map(std::result::Result::ok)
+        .map(walkdir::DirEntry::into_path)
+        .filter(|path| accepts(path))
+        .collect();
+    matches.sort();
+    matches.into_iter().next()
+}
+
 /// The manifests kept in taplo's canonical form.
 ///
-/// Only these two are: the rest of the repository uses the aligned-`=` style
+/// Only this one is: the rest of the repository uses the aligned-`=` style
 /// on purpose, and running taplo over them would rewrite a deliberate choice.
-/// Public for `tests/lints.rs`, which asserts both files still exist.
-pub const CANONICAL_TOML: &[&str] = &["pixi.toml", "pixi-sandbox.toml"];
+/// Public for `tests/lints.rs`, which asserts the file still exists.
+pub const CANONICAL_TOML: &[&str] = &["pixi.toml"];
 
 /// taplo canonicality check. Arguments (staged files) override the list above.
 pub fn lint_toml(files: &[String]) -> Result<()> {

@@ -2,13 +2,13 @@
 	"name": "qgis-sdk-py",
 	"private": true,
 	"version": "0.1.0",
-	"description": "Bun/Turbo facade for the qgis-sdk Python distribution. `build` is the whole maturin story: `maturin develop --release` (installs into pixi's default environment and puts the extension next to the mixed-layout Python sources pytest imports) plus `maturin build --release` for the shippable wheel, from one compilation. `test` and `coverage` therefore only run pytest, and CI needs no separate maturin or virtualenv step.",
+	"description": "Bun/Turbo facade for the qgis-sdk Python distribution. `build` is the whole maturin story: `maturin develop --release` (installs into pixi's default environment and puts the extension next to the mixed-layout Python sources pytest imports) plus `maturin build --release` for the shippable wheel, from one compilation — and it ends by importing `._core`, because this distribution still has a silent pure-Python fallback that a build must not be able to produce. `test` and `coverage` therefore only run pytest, and CI needs no separate maturin or virtualenv step.",
 	"scripts": {
-		"build": "bash ../../scripts/py-build.sh py-packages/qgis-sdk",
-		"test": "bash ../../scripts/py-test.sh py-packages/qgis-sdk",
-		"coverage": "bash ../../scripts/py-coverage.sh py-packages/qgis-sdk qgis_sdk",
+		"build": "pixi run -e default bash -c 'rm -rf dist && maturin develop --release && maturin build --release --out dist && python -c \"import qgis_sdk._core\"'",
+		"test": "pixi run -e default env QGIS_REQUIRE_NATIVE=1 python -m pytest tests -v",
+		"coverage": "pixi run -e default env QGIS_REQUIRE_NATIVE=1 python -m pytest tests -v --cov=qgis_sdk --cov-report=term-missing --cov-report=xml:../../target/coverage/python-qgis-sdk.xml",
 		"lint": "bunx biome check package.json",
 		"format": "bunx biome format --write package.json",
-		"doctor": "bash ../../scripts/py-doctor.sh"
+		"doctor": "pixi run -e default env QGIS_REQUIRE_NATIVE=1 python scripts/doctor.py"
 	}
 }

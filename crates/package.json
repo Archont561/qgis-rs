@@ -2,15 +2,14 @@
 	"name": "@qgis/rust",
 	"private": true,
 	"version": "0.1.0",
-	"description": "Bun/Turbo facade for the Cargo workspace as ONE package. Every verb is a script under scripts/ so the same command runs from turbo, from lefthook and from CI; they re-enter pixi because the QGIS-linked crates need the CONDA_PREFIX activation that exists only in pixi's default environment.",
+	"description": "Bun/Turbo facade for the Cargo workspace as ONE package. Every verb is a single command that re-enters pixi's `default` environment, because the QGIS-linked crates need the CONDA_PREFIX activation that exists nowhere else. `pixi run` keeps the caller's working directory, which is this package's directory, so every command below is written relative to `crates/`.",
 	"scripts": {
-		"build": "bash ../scripts/rust-build.sh",
-		"test": "bash ../scripts/rust-test.sh --fast",
-		"test:full": "bash ../scripts/rust-test.sh --full",
-		"lint": "bash ../scripts/rust-lint.sh",
-		"format": "bash ../scripts/rust-format.sh",
-		"format:cpp": "bash ../scripts/rust-format.sh --cpp",
-		"coverage": "bash ../scripts/rust-coverage.sh",
+		"build": "pixi run -e default cargo build --release",
+		"test": "pixi run -e default setup && pixi run -e default cargo test --workspace --no-default-features -- --test-threads=1",
+		"lint": "bun x biome check package.json && pixi run -e default cargo fmt --all --check && pixi run -e default cargo clippy --workspace --all-targets -- -D warnings && pixi run -e default cargo build -p qgis-sys && pixi run -e default -- clang-tidy",
+		"format": "bun x biome format --write package.json && pixi run -e default cargo fmt --all && pixi run -e default -- format-cpp",
+		"format:cpp": "pixi run -e default -- format-cpp",
+		"coverage": "pixi run -e default setup && mkdir -p ../target/coverage && pixi run -e default cargo llvm-cov --workspace --exclude qgis-sys --no-default-features --lcov --output-path ../target/coverage/rust-lcov.info -- --test-threads=1",
 		"clean": "pixi run -e default cargo clean"
 	}
 }

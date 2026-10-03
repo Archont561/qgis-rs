@@ -371,8 +371,8 @@ run `maturin develop` + `pytest` twice by hand — after turbo had already built
 | per-package `maturin develop` / `pytest` steps | folded into the turbo graph |
 | `Swatinem/rust-cache` | it shells out to `cargo`, which lives inside the pixi env here, not on the runner PATH; a plain keyed `actions/cache` does the same job |
 
-The sandbox publish-plan check moved into its own parallel job: it needs no environment, so it reports
-a broken publish contract in under a minute instead of queueing behind a native build.
+The sandbox publish-plan check runs in its own workflow, not in this one: it needs no environment, so
+it reports a broken publish contract in under a minute instead of queueing behind a native build.
 
 ### Do you need a separate venv step? No.
 
@@ -381,15 +381,15 @@ already *is* an activated environment: it exports `CONDA_PREFIX`, which maturin 
 install target, and it is the interpreter QGIS was compiled against, so a venv layered on top would
 only hide QGIS's own `site-packages`.
 
-So [`scripts/py-build.sh`](scripts/py-build.sh) runs `maturin develop --release` (installs, and
-drops the compiled `_core` next to the mixed-layout Python sources that pytest actually imports)
-followed by `maturin build --release --out dist` for the shippable wheel — one cargo compilation,
-reused:
+So [`py-packages/qgis-rs/package.json`](py-packages/qgis-rs/package.json) runs `maturin develop
+--release` (installs, and drops the compiled `_core` next to the mixed-layout Python sources that
+pytest actually imports) followed by `maturin build --release --out dist` for the shippable wheel —
+one cargo compilation, reused:
 
 ```jsonc
 // py-packages/qgis-rs/package.json
-"build": "bash ../../scripts/py-build.sh py-packages/qgis-rs"   // builds dist/*.whl AND installs it
-"test":  "bash ../../scripts/py-test.sh  py-packages/qgis-rs"   // turbo: test dependsOn build
+"build": "pixi run -e default bash -c 'rm -rf dist && maturin develop --release && maturin build --release --out dist && python -c \"import qgis_rs._core\"'"   // builds dist/*.whl AND installs it
+"test":  "pixi run -e default env QGIS_REQUIRE_NATIVE=1 python -m pytest tests -v"   // turbo: test dependsOn build
 ```
 
 One compile instead of two, and CI no longer repeats per package what turbo already did.
@@ -402,6 +402,8 @@ Everything a human, a hook or CI does to the **repository as a whole** is a subc
 ```bash
 pixi run xtask ci [--no-coverage]            # the gate
 pixi run xtask check-cpp [files...]          # clang-format on the C++ shim
+pixi run xtask format-cpp                    # clang-format writes for the C++ shim
+pixi run xtask clang-tidy                    # clang-tidy, discovering its own include paths
 pixi run xtask check-sources                 # no source file hidden by .gitignore
 pixi run xtask lint-toml  [files...]         # taplo canonicality
 pixi run xtask pack-check <dir> <required…>  # the published tarball has what `files` promises
@@ -421,15 +423,28 @@ What xtask deliberately does **not** own: per-package `build` / `test` / `lint` 
 `coverage`. Those stay in each package's own `package.json`, fanned out by turbo, so the command
 that builds a package is in the manifest a reader of that package already has open.
 
+**Every one of them is a single line.** `pixi run` preserves the caller's working directory, which
+for a turbo task is the package's own directory, so a package verb needs no `cd` and no wrapper to
+find the repository root:
+
+```jsonc
+// crates/package.json — the whole Cargo workspace as one package
+"test": "pixi run -e default setup && pixi run -e default cargo test --workspace --no-default-features -- --test-threads=1"
+```
+
+That one line runs all 57 test binaries, including the QGIS-backed suites: `QGIS_PLUGINPATH` is
+declared in `[feature.py-runtime.activation.env]`, which is what let the `--fast` / `--full` split
+and its two cargo invocations collapse into one. The only verbs that are not one command are the two
+that have to *discover* something — the clang-tidy include paths and the clang-format file set —
+which is why they are subcommands above rather than shell one-liners.
+
 The shell that remains, and why ([`scripts/README.md`](scripts/README.md)):
 
 | Script | Called by | Why still shell |
 | --- | --- | --- |
-| `restore.sh`, `restore.ps1` | a human, offline | bootstrap — it runs *before* there is a cargo to build xtask with |
-| `version.ts` | `pixi run version[-check\|-set]` | the one tool that rewrites every manifest; `xtask release` calls it rather than reimplementing it |
-| `rust-*.sh` | `@qgis/rust` package scripts (turbo) | package verbs, owned by the package |
-| `py-build.sh`, `py-test.sh`, `py-coverage.sh`, `py-doctor.sh` | `qgis-rs-py` / `qgis-sdk-py` package scripts | same |
-| `lib.sh` | the scripts above | three lines that find the repo root |
+| `version.ts` | `pixi run version[-check\|-set]` | the one tool that rewrites every manifest — JSON, TOML and YAML; `xtask release` calls it rather than reimplementing it |
+
+(`scripts/restore.sh` is generated by `pixi sandbox init` and is never edited.)
 
 ## Documentation
 
