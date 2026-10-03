@@ -64,7 +64,7 @@ Bind the types needed to read features from a layer. These are tracked in
 Backlog.md rather than by a status table here:
 
 - `QgsFields` / `QgsField` → [TASK-5](../../tasks/task-5%20-%20Bind-QgsFields-and-QgsField-schema-types-in-qgis-sys.md)
-- `QgsFeature` / `QgsGeometry` → [TASK-6](../../tasks/task-6%20-%20Bind-QgsFeature-AttributeValue-conversions-and-QgsGeometry-in-qgis-sys.md)
+- `QgsFeature` / `QgsGeometry` → [TASK-6](../../archive/task-6%20-%20Bind-QgsFeature-AttributeValue-conversions-and-QgsGeometry-in-qgis-sys.md)
 - `QgsFeatureIterator` / CRS → [TASK-7](../../tasks/task-7%20-%20Bind-QgsFeatureIterator-and-QgsCoordinateReferenceSystem-in-qgis-sys.md)
 
 Validation remains a real GeoPackage fixture with attributes and geometry:

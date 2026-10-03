@@ -45,4 +45,6 @@ Build the version-pinned extraction and generation pipeline described in the QGI
 2026-10-03: Added `pixi run xtask api-manifest [--check] [--diff-against PATH]` implementation. It validates manifest status/reason/version invariants, rejects dropped declarations/operations and ownership changes during upgrades, and deterministically generates the native-manager operation table and manifest-version header.
 
 2026-10-03: Native `engine_info` now advertises manifest metadata, and `api_describe` routes through the generated handler registry. Cross-language/runtime gates and the full clang-AST extraction/API-diff pipeline remain outstanding; keep this task In Progress until Pixi/QGIS validation is available.
+
+2026-10-03: Added required per-operation codec metadata to the manifest and generated registry, and exposed it through `api_describe.operation_metadata`; Python and TypeScript contract tests now advertise the capability as well. The manifest/registry still require compile-time validation once Cargo/QGIS tooling is available.
 <!-- SECTION:NOTES:END -->

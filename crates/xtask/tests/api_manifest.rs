@@ -63,6 +63,16 @@ fn manifest_upgrade_diff_rejects_drops_and_ownership_changes() {
 }
 
 #[test]
+fn operation_handlers_must_match_the_supported_declaration() {
+    let mismatch = MANIFEST.replace(
+        "\"name\": \"api_describe\",\n      \"handler\": \"api_describe\",",
+        "\"name\": \"api_describe\",\n      \"handler\": \"engine_info\",",
+    );
+    let error = validate_manifest(&mismatch).expect_err("handler mismatch must fail");
+    assert!(error.to_string().contains("handler"));
+}
+
+#[test]
 fn invalid_statuses_and_duplicate_operations_are_rejected() {
     let invalid = r#"{
         "manifest_version": 1,
@@ -86,8 +96,8 @@ fn invalid_statuses_and_duplicate_operations_are_rejected() {
             {"category":"paging","qgis_type":"x","wire_type":"x","rule":"x"}
         ],
         "operations": [
-            {"name": "one", "handler": "one", "requires_initialization": true},
-            {"name": "one", "handler": "two", "requires_initialization": true}
+            {"name": "one", "handler": "one", "codec": "json_object", "requires_initialization": true},
+            {"name": "one", "handler": "two", "codec": "json_object", "requires_initialization": true}
         ]
     }"#;
     let error = validate_manifest(invalid).expect_err("invalid manifest must fail");

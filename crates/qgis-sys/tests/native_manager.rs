@@ -51,6 +51,20 @@ fn engine_info_exposes_the_complete_native_operation_catalogue() {
     assert_eq!(info["api_manifest_qgis_min_version"], "3.44.9");
     assert_eq!(info["api_manifest_qgis_tested_version"], "3.44.14");
 
+    let api = ok("api_describe", Value::Null);
+    let metadata = api["operation_metadata"]
+        .as_object()
+        .expect("generated operation metadata");
+    assert_eq!(metadata.len(), operations.len());
+    for (name, entry) in metadata {
+        assert_eq!(entry["name"], name.as_str());
+        assert_eq!(entry["codec"], "json_object");
+        assert!(entry["requires_initialization"].is_boolean());
+    }
+    let render_metadata = &metadata["render_map"];
+    assert_eq!(render_metadata["codec"], "json_object");
+    assert_eq!(render_metadata["requires_initialization"], true);
+
     let mut expected = vec![
         "app_init",
         "app_shutdown",

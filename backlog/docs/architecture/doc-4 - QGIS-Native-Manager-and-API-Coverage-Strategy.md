@@ -112,7 +112,7 @@ The manager should have these internal layers:
 
 - **`ManagerHost`:** process state, owner thread, queue, startup/shutdown.
 - **`RequestDecoder`:** UTF-8, JSON document, transport version, envelope and operation validation.
-- **`OperationRegistry`:** generated operation name, version range, argument/result schema, owner-thread requirement, handler.
+- **`OperationRegistry`:** generated operation name, version range, argument/result schema, codec, owner-thread requirement, handler.
 - **`OperationContext`:** request ID, cancellation/deadline, temporary IDs, error accumulator, artifact policy.
 - **`ObjectRegistry`:** generational IDs, type tags, ownership policy, invalidation hooks, destruction.
 - **`CodecRegistry`:** JSON/value/binary conversion for supported QGIS and Qt types.

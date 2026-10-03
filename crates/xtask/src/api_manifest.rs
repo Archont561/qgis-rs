@@ -95,11 +95,12 @@ pub struct Exclusion {
     pub reason: String,
 }
 
-/// A manager operation and its handler strategy.
+/// A manager operation, serialization codec, and handler strategy.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct OperationDefinition {
     pub name: String,
     pub handler: String,
+    pub codec: String,
     pub requires_initialization: bool,
 }
 
@@ -182,6 +183,9 @@ pub fn validate_manifest(contents: &str) -> Result<ApiManifest> {
         if !valid_cpp_identifier(&operation.handler) {
             bail!("invalid C++ handler name {:?}", operation.handler);
         }
+        if !valid_cpp_identifier(&operation.codec) {
+            bail!("invalid codec name {:?}", operation.codec);
+        }
         if !operation_names.insert(&operation.name) {
             bail!("duplicate operation: {}", operation.name);
         }
@@ -190,17 +194,41 @@ pub fn validate_manifest(contents: &str) -> Result<ApiManifest> {
         bail!("API manifest must generate at least one operation");
     }
 
-    let supported_operations: HashSet<&str> = manifest
+    let supported_declarations: Vec<&Declaration> = manifest
         .declarations
         .iter()
         .filter(|declaration| declaration.status.starts_with("supported"))
-        .filter_map(|declaration| declaration.operation.as_deref())
         .collect();
     for operation in &manifest.operations {
-        if !supported_operations.contains(operation.name.as_str()) {
+        let Some(declaration) = supported_declarations.iter().find(|declaration| {
+            declaration.operation.as_deref() == Some(operation.name.as_str())
+        }) else {
             bail!(
                 "operation {} has no supported declaration in the manifest",
                 operation.name
+            );
+        };
+        if declaration.handler.as_deref() != Some(operation.handler.as_str()) {
+            bail!(
+                "operation {} handler {} disagrees with declaration {} handler {:?}",
+                operation.name,
+                operation.handler,
+                declaration.id,
+                declaration.handler
+            );
+        }
+    }
+    for declaration in supported_declarations {
+        if let Some(operation) = declaration.operation.as_deref()
+            && !manifest
+                .operations
+                .iter()
+                .any(|candidate| candidate.name == operation)
+        {
+            bail!(
+                "supported declaration {} has no generated operation {}",
+                declaration.id,
+                operation
             );
         }
     }
@@ -261,8 +289,11 @@ pub fn render_operation_table(manifest: &ApiManifest) -> Result<String> {
     let mut output = String::new();
     for operation in &manifest.operations {
         output.push_str(&format!(
-            "QGIS_NATIVE_OPERATION(\"{}\", {}, {});\n",
-            operation.name, operation.handler, operation.requires_initialization
+            "QGIS_NATIVE_OPERATION(\"{}\", {}, \"{}\", {});\n",
+            operation.name,
+            operation.handler,
+            operation.codec,
+            operation.requires_initialization
         ));
     }
     Ok(output)

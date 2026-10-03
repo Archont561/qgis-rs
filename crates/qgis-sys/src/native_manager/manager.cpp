@@ -252,6 +252,7 @@ class ManagerHost {
         using Handler = QJsonObject (ManagerHost::*)(const QJsonObject&);
 
         Handler handler;
+        const char* codec;
         bool requires_initialization;
     };
 
@@ -260,7 +261,7 @@ class ManagerHost {
     QJsonObject dispatch_operation(const QString& operation,
                                    const QJsonObject& payload);
 
-    QJsonObject initialize() {
+    QJsonObject initialize(const QJsonObject&) {
         if (initialized_) {
             return success(
                 QJsonObject{{"initialized", true}, {"already_initialized", true}});
@@ -276,7 +277,7 @@ class ManagerHost {
             QJsonObject{{"initialized", true}, {"already_initialized", false}});
     }
 
-    QJsonObject shutdown() {
+    QJsonObject shutdown(const QJsonObject&) {
         const quint64 released_layer_count =
             static_cast<quint64>(owned_layers_.size());
         shutdown_qgis();
@@ -286,11 +287,13 @@ class ManagerHost {
                                     static_cast<qint64>(released_layer_count)}});
     }
 
-    QJsonObject engine_info() {
+    QJsonObject engine_info(const QJsonObject&) {
         QJsonArray operations;
         const auto& registry = operation_registry();
-        for (auto iterator = registry.constBegin(); iterator != registry.constEnd(); ++iterator) {
-            operations.append(iterator.key());
+        QStringList operation_names = registry.keys();
+        operation_names.sort();
+        for (const auto& name : operation_names) {
+            operations.append(name);
         }
 
         return success(
@@ -306,6 +309,26 @@ class ManagerHost {
                          QStringLiteral(QGIS_API_MANIFEST_QGIS_TESTED_VERSION)},
                         {"initialized", initialized_},
                         {"operations", operations}});
+    }
+
+    QJsonObject api_describe(const QJsonObject&) {
+        QJsonObject operation_metadata;
+        const auto& registry = operation_registry();
+        QStringList operation_names = registry.keys();
+        operation_names.sort();
+        for (const auto& name : operation_names) {
+            const auto definition = registry.constFind(name);
+            operation_metadata.insert(
+                name,
+                QJsonObject{{"name", name},
+                            {"codec", QString::fromLatin1(definition->codec)},
+                            {"requires_initialization", definition->requires_initialization}});
+        }
+
+        QJsonObject result =
+            engine_info(QJsonObject{}).value(QStringLiteral("result")).toObject();
+        result.insert(QStringLiteral("operation_metadata"), operation_metadata);
+        return success(result);
     }
 
     QJsonObject layer_open(const QJsonObject& payload) {
@@ -780,9 +803,9 @@ class ManagerHost {
     static const QHash<QString, OperationDefinition>& operation_registry() {
         static const QHash<QString, OperationDefinition> registry = [] {
             QHash<QString, OperationDefinition> definitions;
-#define QGIS_NATIVE_OPERATION(NAME, HANDLER, REQUIRES_INITIALIZATION) \
+#define QGIS_NATIVE_OPERATION(NAME, HANDLER, CODEC, REQUIRES_INITIALIZATION) \
     definitions.insert(QStringLiteral(NAME), \
-                       OperationDefinition{&ManagerHost::HANDLER, REQUIRES_INITIALIZATION})
+                       OperationDefinition{&ManagerHost::HANDLER, CODEC, REQUIRES_INITIALIZATION})
 #include "native_manager/generated/operation_table.inc"
 #undef QGIS_NATIVE_OPERATION
             return definitions;

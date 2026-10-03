@@ -43,7 +43,7 @@ test("exports the documented API and package version", () => {
 test("the engine advertises the operations this client uses", () => {
 	const { operations } = qgis.engineInfo();
 
-	for (const name of ["describe_extent", "plan_tiles", "project_info"]) {
+	for (const name of ["describe_extent", "plan_tiles", "project_info", "api_describe"]) {
 		assert.ok(operations.includes(name), `engine does not serve ${name}`);
 	}
 });

@@ -41,6 +41,8 @@ Bind QgsFeature and QgsGeometry in qgis-sys, including extraction of attribute v
 author: Arena agent
 created: 2026-10-03 18:35
 ---
+Archived 2026-10-03 as superseded, not implemented. The backlog CLI was unavailable in this checkout (`pixi` is not installed), so this archive move is the documented manual fallback.
+
 Deprecated: superseded by RFC 19 native-manager operations; this legacy direct qgis-sys shim path is no longer planned.
 ---
 <!-- COMMENTS:END -->

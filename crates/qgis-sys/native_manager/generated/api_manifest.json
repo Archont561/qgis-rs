@@ -69,7 +69,7 @@
       "reason": "The generated manifest is exposed through the native manager capability report.",
       "ownership": "borrowed_snapshot",
       "operation": "api_describe",
-      "handler": "engine_info"
+      "handler": "api_describe"
     },
     {
       "id": "QgsMapRendererSequentialJob::renderedImage",
@@ -290,22 +290,107 @@
     }
   ],
   "operations": [
-    {"name": "app_init", "handler": "initialize", "requires_initialization": false},
-    {"name": "app_shutdown", "handler": "shutdown", "requires_initialization": false},
-    {"name": "engine_info", "handler": "engine_info", "requires_initialization": true},
-    {"name": "api_describe", "handler": "engine_info", "requires_initialization": true},
-    {"name": "render_map", "handler": "render_map", "requires_initialization": true},
-    {"name": "export_features", "handler": "export_features", "requires_initialization": true},
-    {"name": "layer_open", "handler": "layer_open", "requires_initialization": true},
-    {"name": "layer_info", "handler": "layer_info", "requires_initialization": true},
-    {"name": "layer_close", "handler": "layer_close", "requires_initialization": true},
-    {"name": "layer_features", "handler": "layer_features", "requires_initialization": true},
-    {"name": "layer_new", "handler": "layer_new", "requires_initialization": true},
-    {"name": "layer_is_valid", "handler": "layer_is_valid", "requires_initialization": true},
-    {"name": "layer_name", "handler": "layer_name", "requires_initialization": true},
-    {"name": "layer_feature_count", "handler": "layer_feature_count", "requires_initialization": true},
-    {"name": "layer_crs_authid", "handler": "layer_crs_authid", "requires_initialization": true},
-    {"name": "layer_geometry_type_name", "handler": "layer_geometry_type_name", "requires_initialization": true},
-    {"name": "layer_fields", "handler": "layer_fields", "requires_initialization": true}
+    {
+      "name": "app_init",
+      "handler": "initialize",
+      "requires_initialization": false,
+      "codec": "json_object"
+    },
+    {
+      "name": "app_shutdown",
+      "handler": "shutdown",
+      "requires_initialization": false,
+      "codec": "json_object"
+    },
+    {
+      "name": "engine_info",
+      "handler": "engine_info",
+      "requires_initialization": true,
+      "codec": "json_object"
+    },
+    {
+      "name": "api_describe",
+      "handler": "api_describe",
+      "requires_initialization": true,
+      "codec": "json_object"
+    },
+    {
+      "name": "render_map",
+      "handler": "render_map",
+      "requires_initialization": true,
+      "codec": "json_object"
+    },
+    {
+      "name": "export_features",
+      "handler": "export_features",
+      "requires_initialization": true,
+      "codec": "json_object"
+    },
+    {
+      "name": "layer_open",
+      "handler": "layer_open",
+      "requires_initialization": true,
+      "codec": "json_object"
+    },
+    {
+      "name": "layer_info",
+      "handler": "layer_info",
+      "requires_initialization": true,
+      "codec": "json_object"
+    },
+    {
+      "name": "layer_close",
+      "handler": "layer_close",
+      "requires_initialization": true,
+      "codec": "json_object"
+    },
+    {
+      "name": "layer_features",
+      "handler": "layer_features",
+      "requires_initialization": true,
+      "codec": "json_object"
+    },
+    {
+      "name": "layer_new",
+      "handler": "layer_new",
+      "requires_initialization": true,
+      "codec": "json_object"
+    },
+    {
+      "name": "layer_is_valid",
+      "handler": "layer_is_valid",
+      "requires_initialization": true,
+      "codec": "json_object"
+    },
+    {
+      "name": "layer_name",
+      "handler": "layer_name",
+      "requires_initialization": true,
+      "codec": "json_object"
+    },
+    {
+      "name": "layer_feature_count",
+      "handler": "layer_feature_count",
+      "requires_initialization": true,
+      "codec": "json_object"
+    },
+    {
+      "name": "layer_crs_authid",
+      "handler": "layer_crs_authid",
+      "requires_initialization": true,
+      "codec": "json_object"
+    },
+    {
+      "name": "layer_geometry_type_name",
+      "handler": "layer_geometry_type_name",
+      "requires_initialization": true,
+      "codec": "json_object"
+    },
+    {
+      "name": "layer_fields",
+      "handler": "layer_fields",
+      "requires_initialization": true,
+      "codec": "json_object"
+    }
   ]
 }

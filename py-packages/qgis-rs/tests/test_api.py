@@ -39,6 +39,7 @@ def test_the_engine_describes_itself() -> None:
     assert info["version"] == qgis_rs.version() == qgis_rs.__version__
     assert info["transport_version"] == qgis_rs.TRANSPORT_VERSION
     assert "plan_tiles" in info["operations"]
+    assert "api_describe" in info["operations"]
     assert qgis_rs.MAX_ZOOM == 22
 
 
