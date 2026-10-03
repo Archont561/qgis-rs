@@ -87,6 +87,22 @@ pub enum Operation {
     /// This build's version, the transport it speaks, its limits and the
     /// operations it serves.
     EngineInfo,
+    /// Initialize the standalone native QGIS manager.
+    AppInit,
+    /// Create a managed vector layer and return its opaque integer ID.
+    LayerNew,
+    /// Check whether a managed vector layer is valid.
+    LayerIsValid,
+    /// Read a managed vector layer's display name.
+    LayerName,
+    /// Read a managed vector layer's feature count.
+    LayerFeatureCount,
+    /// Read a managed vector layer's CRS authority ID.
+    LayerCrsAuthid,
+    /// Read a managed vector layer's geometry type name.
+    LayerGeometryTypeName,
+    /// Read a managed vector layer's copied field metadata.
+    LayerFields,
     /// Parse and/or describe an extent: edges, width, height, validity.
     DescribeExtent,
     /// Whether an extent contains a point.
@@ -121,6 +137,14 @@ impl Operation {
         &[
             "ping",
             "engine_info",
+            "app_init",
+            "layer_new",
+            "layer_is_valid",
+            "layer_name",
+            "layer_feature_count",
+            "layer_crs_authid",
+            "layer_geometry_type_name",
+            "layer_fields",
             "describe_extent",
             "extent_contains",
             "extent_intersects",
@@ -207,6 +231,16 @@ pub enum ErrorKind {
     UnknownImageFormat,
     /// The operation needs the QGIS backend, which is not wired up yet.
     Unimplemented,
+    /// The operation name is not served by the native manager.
+    InvalidOperation,
+    /// An object ID is missing, stale, or has the wrong type.
+    InvalidObjectId,
+    /// The native manager must be initialized before this operation.
+    NotInitialized,
+    /// QGIS rejected an operation or returned an unusable object.
+    Qgis,
+    /// The native manager caught an unexpected internal failure.
+    Internal,
 }
 
 impl ErrorKind {
@@ -225,6 +259,11 @@ impl ErrorKind {
             Self::UnknownCrs => "unknown_crs",
             Self::UnknownImageFormat => "unknown_image_format",
             Self::Unimplemented => "unimplemented",
+            Self::InvalidOperation => "invalid_operation",
+            Self::InvalidObjectId => "invalid_object_id",
+            Self::NotInitialized => "not_initialized",
+            Self::Qgis => "qgis",
+            Self::Internal => "internal",
         }
     }
 }

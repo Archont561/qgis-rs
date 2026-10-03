@@ -110,6 +110,14 @@ contract to the native manager: QGIS objects stay behind one owner thread,
 handles are integer IDs, binary artifacts are paths plus metadata, and an
 in-process C ABI does not promise crash recovery.
 
+The phase-2 manager is exposed to Rust through
+`qgis_sys::native_manager_ffi::invoke`, which owns the C ABI response/free pair.
+`app_init` and `engine_info` establish the manager lifecycle; vector-layer
+operations use integer IDs and return copied metadata, never QGIS pointers.
+Concurrent callers are copied into a blocking owner-thread queue. The manager
+implementation and the compatibility CXX shims share one QGIS-header-owning
+translation unit under `crates/qgis-sys/src/native_manager/`.
+
 ## Ownership and handles
 
 The current CXX handle pattern is:

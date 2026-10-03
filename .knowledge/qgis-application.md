@@ -31,7 +31,7 @@ QgsApplication::exitQgis();
 
 ## The Workaround
 
-The shim in `app.cpp` **does not use `QgsApplication` directly**. Instead it creates a `QApplication` and calls `QgsApplication` static methods via a forward-declared class:
+The native manager translation unit **does not include `qgsapplication.h` directly**. Instead it creates a `QApplication` and calls `QgsApplication` static methods via a forward-declared class. The legacy CXX application functions are implemented in that same translation unit so it remains the only QGIS-header owner:
 
 ```cpp
 class QgsApplication {

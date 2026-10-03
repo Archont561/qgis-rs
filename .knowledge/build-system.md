@@ -19,8 +19,23 @@ The build pipeline has two deliberately separate layers:
 The build pipeline in `crates/qgis-sys/build.rs` has three stages:
 
 1. **CXX bridge generation** — `cxx_build::bridges()` generates C++ code from `#[cxx::bridge]` modules
-2. **Shim compilation** — `cc::Build` compiles the hand-written C++ shim files
+2. **Shim compilation** — `cc::Build` compiles the hand-written C++ shim files, including the native manager
 3. **Linking** — `println!("cargo:rustc-link-lib=...")` links against `libqgis_core` and Qt
+
+## Native manager boundary
+
+`crates/qgis-sys/src/native_manager/manager.cpp` is the sole translation unit
+that includes QGIS headers. It owns the QGIS-compatible CXX shim definitions as
+well as the RFC 19 manager, so the legacy CXX declarations remain available
+without creating another QGIS-header-owning translation unit.
+
+The Rust-consumer path compiles the manager into the existing qgis-sys static
+archive. `build.rs` applies `-fvisibility=hidden` to the C++ shim compilation,
+and `include/native_manager/manager.h` opts only `qgis_invoke`, `qgis_free`, and
+`qgis_transport_version` back into default visibility. A future standalone
+shared manager target can be modelled with the CMake/Ninja toolchain from
+TASK-24; phase 2 proves the same symbol policy and ABI through the Rust consumer
+first.
 
 ## Path Discovery
 

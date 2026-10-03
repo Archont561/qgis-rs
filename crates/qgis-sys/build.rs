@@ -72,7 +72,11 @@ fn main() -> Result<()> {
 
     shim.flag_if_supported("-Wall")
         .flag_if_supported("-Wextra")
-        .flag_if_supported("-Werror");
+        .flag_if_supported("-Werror")
+        // The native manager opts its three C ABI declarations back into
+        // default visibility in manager.h; every other shim symbol stays
+        // hidden so the manager boundary cannot grow accidentally.
+        .flag_if_supported("-fvisibility=hidden");
 
     for f in &shims {
         shim.file(f);
@@ -128,6 +132,7 @@ fn glob(dir: &str, ext: &str) -> Result<Vec<String>> {
                 && p.extension().and_then(|x| x.to_str()) == Some(ext)
                 && name != "lib.rs"
                 && name != "mod.rs"
+                && name != "native_manager.rs"
         })
         .map(|e| e.path().to_string_lossy().into_owned())
         .collect();

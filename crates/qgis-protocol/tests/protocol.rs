@@ -56,6 +56,11 @@ fn error_kinds_spell_themselves_the_way_serde_does() {
         ErrorKind::UnknownCrs,
         ErrorKind::UnknownImageFormat,
         ErrorKind::Unimplemented,
+        ErrorKind::InvalidOperation,
+        ErrorKind::InvalidObjectId,
+        ErrorKind::NotInitialized,
+        ErrorKind::Qgis,
+        ErrorKind::Internal,
     ];
     for kind in kinds {
         let encoded = serde_json::to_value(kind).expect("serialisable");

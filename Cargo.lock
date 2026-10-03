@@ -866,6 +866,8 @@ dependencies = [
  "cc",
  "cxx",
  "cxx-build",
+ "qgis-protocol",
+ "serde_json",
  "walkdir",
 ]
 

@@ -82,6 +82,18 @@ fn run(request: &EngineRequest) -> EngineResponse {
             "max_latitude": qgis_render::MAX_LATITUDE,
             "operations": Operation::all(),
         })),
+        Operation::AppInit
+        | Operation::LayerNew
+        | Operation::LayerIsValid
+        | Operation::LayerName
+        | Operation::LayerFeatureCount
+        | Operation::LayerCrsAuthid
+        | Operation::LayerGeometryTypeName
+        | Operation::LayerFields => failure(
+            ErrorKind::Unimplemented,
+            "operation requires the native QGIS manager",
+            Value::Null,
+        ),
         Operation::DescribeExtent => with_payload(payload, |input: ExtentInput| {
             let extent = input.resolve()?;
             Ok(json!({
