@@ -1,5 +1,7 @@
 Tracking this RFC in the backlog, and recording where the repository already stands against it.
 
+Related backlog task: [TASK-25.4 — resolve RFC 19 open questions and record the native-manager ADR](https://github.com/Archont561/qgis-rs/blob/566b579/backlog/tasks/task-25.4%20-%20RFC-19-resolve-open-questions-and-record-the-native-manager-ADR.md).
+
 **Phase 1 is shipped.** PR #20 landed the protocol crate, the router, the envelope and the single-function bindings: thirteen operations, one `invoke` on each of the Python and Node edges, golden values asserted identically from Rust, Python and TypeScript. So the first bullet of the migration sketch is done, with one difference from the text above — the RFC writes `transportVersion`, but the shipped wire is **snake_case throughout**, including operation names (`engine_info`, `tile_from_lon_lat`, …), with JavaScript renaming at its own edge. Three clients and their golden tests agree on that today, so the RFC should either be read with snake_case substituted or amended.
 
 **Phases 2 to 4 are now tracked as backlog tasks:**

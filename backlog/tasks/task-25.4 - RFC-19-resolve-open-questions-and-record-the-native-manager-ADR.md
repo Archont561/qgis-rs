@@ -4,7 +4,7 @@ title: 'RFC 19: resolve open questions and record the native-manager ADR'
 status: In Progress
 assignee: []
 created_date: '2026-10-03 02:16'
-updated_date: '2026-10-03 17:34'
+updated_date: '2026-10-03 17:45'
 labels:
   - rfc
   - ffi
@@ -72,3 +72,13 @@ Posted the resolution text to backlog/drafts/issue-19-status-comment.md because 
 
 2026-10-03: Re-read issue #19; it remains open and still contains the original camelCase examples. A direct gh API comment attempt returned HTTP 403 Resource not accessible by integration, so AC #4 remains unchecked. The ready-to-post resolution is retained in backlog/drafts/issue-19-status-comment.md.
 <!-- SECTION:NOTES:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Arena Agent
+created: 2026-10-03 17:45
+---
+Prepared the issue #19 comment body with a direct [TASK-25.4 link](https://github.com/Archont561/qgis-rs/blob/arena/01a102bb-qgis-rs/backlog/tasks/task-25.4%20-%20RFC-19-resolve-open-questions-and-record-the-native-manager-ADR.md). The ready-to-paste body is retained in [backlog/drafts/issue-19-status-comment.md](https://github.com/Archont561/qgis-rs/blob/arena/01a102bb-qgis-rs/backlog/drafts/issue-19-status-comment.md); AC #4 remains unchecked until the external issue is updated.
+---
+<!-- COMMENTS:END -->
