@@ -114,17 +114,21 @@ app.listen(3000);
 
 ```
 qgis-rs npm package
-├── qgis-rs.<platform>.node  → NAPI addon (Rust) — native speed
-├── index.js                 → JS wrapper
-├── index.d.ts               → TypeScript types
-├── fallback.js              → pure JS fallback
+├── qgis-rs.<platform>.node  → NAPI addon (Rust) — exposes one function, invoke(json)
+├── src/
+│   ├── index.js             → JS wrapper (Extent, Crs, TilePlan, Project…) over that call
+│   └── index.d.ts           → TypeScript types
 └── bin/
-    ├── qgis-cli.js          → Node wrapper (tries Rust binary, fallback JS)
+    ├── qgis-cli.js          → Node wrapper around the Rust binary
     └── qgis-plugin.js       → same for plugin SDK
 ```
 
-- Rust: `crates/qgis-render` (pure Rust), `crates/qgis-cli`, `crates/qgis-node` (NAPI addon), `crates/qgis-sdk`
-- JS: `ts-packages/qgis-node/` — npm package (JS wrappers + fallback); the addon is built from `crates/qgis-node/`
+There is no JavaScript fallback: every value this package returns is computed
+by Rust, so a platform without a matching addon builds one rather than quietly
+getting different answers.
+
+- Rust: `crates/qgis-protocol` (the wire format), `crates/qgis-engine` (the dispatcher), `crates/qgis-render` (pure Rust), `crates/qgis-cli`, `crates/qgis-node` (NAPI addon), `crates/qgis-sdk`
+- JS: `ts-packages/qgis-node/` — npm package (the typed client); the addon is built from `crates/qgis-node/`
 
 ## Conda-forge
 

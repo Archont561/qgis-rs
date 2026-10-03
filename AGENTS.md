@@ -19,7 +19,7 @@ The `.knowledge/` directory contains design documents, decision records, and arc
 - **INDEX.md** — Entry point to all knowledge documents
 - **architecture.md** — System architecture and component overview
 - **ROADMAP.md** — Development roadmap and priorities
-- **decisions/** — Architecture Decision Records (D01-D08)
+- **decisions/** — Architecture Decision Records (D01-D11)
 - **api-design.md** — Public API specification
 - **qgis-plugin-sdk.md** — Plugin framework design
 
@@ -59,18 +59,65 @@ workflow so IDs, dependencies, acceptance criteria, and status remain consistent
 
 ### FFI Boundaries
 
+**Rust ↔ C++** (`crates/qgis-sys`):
+
 - All C++ ↔ Rust communication goes through CXX bridges
 - Use `#[cxx::bridge]` modules in `.rs` files
 - Declare C++ types as opaque handles
 - Convert strings at the boundary (QString ↔ Rust String)
 - Never expose Qt types to Rust (convert to primitives)
 
+**Rust ↔ Python / Node** (`crates/qgis-py`, `crates/qgis-node` — see
+[D09](.knowledge/decisions/D09-wire-protocol-over-ffi.md)):
+
+- Each binding crate exposes **one** function, `invoke(request_json) -> response_json`.
+  Do not add a `#[pyclass]` or a `#[napi]` struct per domain type.
+- A new capability is a variant of `Operation` in `crates/qgis-protocol`, a
+  payload struct and a match arm in `crates/qgis-engine` — plus a test in
+  `crates/qgis-engine/tests/engine.rs`, which is where the boundary is covered.
+- Everything on the wire is `snake_case`, including operation names. The
+  JavaScript client renames to camelCase at its own edge; Python does not rename.
+- The ergonomic classes live in the host languages
+  (`py-packages/qgis-rs/python/qgis_rs/_api.py`, `ts-packages/qgis-node/src/index.js`),
+  never in the binding crates. There are no pure-Python or pure-JS fallbacks.
+
+### Repository automation
+
+Repository-wide automation is `crates/xtask`, not shell
+([D10](.knowledge/decisions/D10-xtask-over-shell-scripts.md)). Add a subcommand
+there — with a unit test — rather than a `scripts/*.sh`; `pixi run xtask <sub>`
+reaches it without a new pixi task. Per-package verbs (`build`, `test`, `lint`,
+`format`, `coverage`, `pack:check`) stay in the package's own `package.json`
+and are fanned out by turbo.
+
+Source has to be visible to git. `.gitignore` ignores `.*` and `_*`, which once
+swallowed the whole Python client (`_api.py`, `_transport.py`) without a word
+from `git status`; `pixi run xtask check-sources` now fails the gate when a
+file under `crates/`, `py-packages/`, `ts-packages/` or `scripts/` looks like
+source and is ignored.
+
 ## Testing
 
 ### Test Structure
 
+**`src/` holds code, `tests/` holds tests — in every crate and every package.**
+There are no `#[cfg(test)] mod tests` blocks in `src/`; a Rust test is an
+integration test in `crates/<crate>/tests/<topic>.rs` that uses the crate the
+way any other consumer would. The same split already holds for the Python
+distributions (`py-packages/*/tests/`) and the npm packages
+(`ts-packages/*/tests/`). See
+[D11](.knowledge/decisions/D11-tests-outside-src.md).
+
+Two consequences worth knowing before you write one:
+
+- If a test needs an item, that item is **public**, with a doc comment saying
+  the test is why. If making it public feels wrong, the test is usually
+  asserting an implementation detail rather than a behaviour.
+- A crate that is only a binary needs a library to be testable, so
+  `crates/xtask` is `src/lib.rs` plus a six-line `src/main.rs`.
+
 ```
-tests/
+crates/qgis-sys/tests/
 ├── application_info.rs      # Basic QGIS initialization
 ├── application_lifecycle.rs # RAII patterns, cleanup
 └── vector_layer.rs          # Layer operations
@@ -97,7 +144,7 @@ bun x turbo run test --filter=qgis-sdk
 - All tests must set `QT_QPA_PLATFORM=offscreen` for headless execution
 - Use `--test-threads=1` to avoid Qt threading issues
 - Tests should be idempotent and not modify shared state
-- Prefer unit tests over integration tests when possible
+- Name a test after the behaviour it pins down, not the function it calls
 
 ## Commit Messages
 

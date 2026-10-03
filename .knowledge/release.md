@@ -6,14 +6,15 @@ description: "One version, one tag, one set of artifacts: how qgis-rs cuts a rel
 # Release Model
 
 Adopted from `Archont561/geoquery`, adapted to this repository's five publishing
-surfaces. Two workflows and a handful of scripts; nothing is published as a side
-effect of merging.
+surfaces. Two workflows and one binary (`pixi run xtask release <step>`,
+`crates/xtask/src/release.rs`); nothing is published as a side effect of
+merging.
 
 ## The two halves
 
 | Workflow | Trigger | What it does |
 | --- | --- | --- |
-| `.github/workflows/autorelease.yml` | `workflow_dispatch` | `convco` derives the next SemVer from the conventional commits since the last `v*` tag; `scripts/release/prepare.sh` writes it into every manifest, regenerates `CHANGELOG.md`, refreshes `bun.lock` / `Cargo.lock` / `pixi.lock`; the workflow commits `chore(release): vX.Y.Z` to `main` and tags it. |
+| `.github/workflows/autorelease.yml` | `workflow_dispatch` | `convco` derives the next SemVer from the conventional commits since the last `v*` tag; `xtask release prepare` writes it into every manifest, regenerates `CHANGELOG.md`, refreshes `bun.lock` / `Cargo.lock` / `pixi.lock`; the workflow commits `chore(release): vX.Y.Z` to `main` and tags it. |
 | `.github/workflows/release.yml` | push of `v[0-9]+.[0-9]+.[0-9]+` | Verifies the tag against the manifests, re-runs the gate on the tagged commit, builds every artifact, then attempts each registry independently and always creates the GitHub Release. |
 
 The commit is pushed **before** the tag on purpose: only a release commit that
@@ -42,9 +43,9 @@ the one failure that cannot be fixed after a release is cut.
 
 ## Builds block, registries do not
 
-`scripts/release/build-artifacts.sh` produces `dist/pypi`, `dist/npm` and
-`dist/conda` before a single upload is attempted, and
-`scripts/release/checksums.sh` writes one `SHA256SUMS` over all of them. Each
+`xtask release build-artifacts` produces `dist/pypi`, `dist/npm` and
+`dist/conda` before a single upload is attempted, and `xtask release checksums`
+writes one `SHA256SUMS` over all of them. Each
 registry step is then `continue-on-error: true` and its outcome is reported in
 the job summary.
 

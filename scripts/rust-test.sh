@@ -1,9 +1,16 @@
 #!/usr/bin/env bash
 # The Rust suites. Two shapes, because they need different amounts of QGIS:
 #
-#   --fast (default)  the headless smoke suite; needs only the libqca link
+#   --fast (default)  everything that does not need a QGIS runtime: every
+#                     crate's tests/ except qgis-sys's QGIS-backed pair, plus
+#                     qgis-sys's own headless smoke suite. Needs only the
+#                     libqca link.
 #   --full            the QGIS-backed suites; additionally needs PROJ data and
 #                     the QGIS plugin path pointed at the conda prefix
+#
+# `--fast` used to run `--test application_info` alone, which meant the pre-push
+# loop compiled 120 tests and ran five of them; the rest were only reached by
+# the coverage step, which `pixi run gates` skips.
 #
 # Both force `--test-threads=1`: QgsApplication is a process-global singleton
 # and parallel test threads race its lifecycle.
@@ -34,8 +41,18 @@ fi
 
 exec pixi run -e default bash -c '
   set -eu
+  # Everything but qgis-sys: pure Rust, no QGIS runtime, a second or two.
+  # --no-default-features keeps PyO3 '"'"'s extension-module off so the test
+  # binaries link against the interpreter instead of leaving its symbols
+  # unresolved.
   QT_QPA_PLATFORM=offscreen \
-  cargo test --workspace --no-default-features \
+  cargo test --workspace --exclude qgis-sys --no-default-features \
+    "$@" -- --test-threads=1
+
+  # qgis-sys links real QGIS, so only its smoke suite belongs in the fast loop;
+  # application_lifecycle and vector_layer need the --full environment.
+  QT_QPA_PLATFORM=offscreen \
+  cargo test -p qgis-sys --no-default-features \
     --test application_info \
     "$@" -- --test-threads=1
 ' _ "$@"

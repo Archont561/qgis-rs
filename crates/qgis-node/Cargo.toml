@@ -1,8 +1,9 @@
 # crates/qgis-node — the Rust core of the `qgis-rs` npm package.
 #
 # Builds the NAPI addon plus the `qgis-cli` / `qgis-plugin` binaries that the
-# npm package shells out to. The JS side — package.json, index.js, the pure-JS
-# fallback, the .d.ts and the CLI wrappers — lives in
+# npm package shells out to. The addon is ~20 lines: it forwards one JSON string
+# to `qgis-engine` and hands one back (D09). The JS side — package.json,
+# index.js, the .d.ts and the CLI wrappers — lives in
 # ../../ts-packages/qgis-node/, and drives this crate with:
 #
 #   napi build --platform --release \
@@ -34,14 +35,11 @@ name = "qgis-plugin"
 path = "src/bin/qgis-plugin.rs"
 
 [dependencies]
-qgis-render = { workspace = true }
-qgis-server = { workspace = true }
+# The addon needs nothing but the engine; `clap` and `qgis-cli` belong to the
+# two binary targets above.
+qgis-engine = { workspace = true }
 qgis-cli = { workspace = true }
-anyhow = { workspace = true }
 clap = { workspace = true }
-serde = { workspace = true }
-serde_json = { workspace = true }
-thiserror = { workspace = true }
 
 napi = { version = "2.16", features = ["napi4"] }
 napi-derive = "2.16"

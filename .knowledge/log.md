@@ -1,5 +1,56 @@
 # Bundle Update Log
 
+## 2026-10-03
+
+* **Change (ffi)**: The Python and Node bindings no longer mirror the domain
+  types. `crates/qgis-protocol` defines the wire format (`EngineRequest` /
+  `EngineResponse`, `TRANSPORT_VERSION = 1`, a closed `Operation` enum with 13
+  variants and `Operation::all()`, `ErrorKind`), `crates/qgis-engine` owns
+  `invoke(&str) -> String` with one match arm per operation, and each binding
+  crate is now a single `invoke` function — `crates/qgis-py` went from 778
+  lines of `#[pyclass]` to ~65, `crates/qgis-node` from 632 to ~40. The
+  ergonomic APIs moved into the host languages
+  (`qgis_rs/_transport.py` + `_api.py`, `ts-packages/qgis-node/index.js`), and
+  the `_fallback.py` / `fallback.js` re-implementations were deleted: a
+  fallback is a second set of answers. Everything on the wire is `snake_case`,
+  including operation names; the JS client renames at its own edge. Golden
+  values are now asserted identically in all three suites (4568 tiles for
+  `14,50,15,51` z10-14; `tile_from_lon_lat(10, 13.9, 51.1)` ⇒ `{10,551,342}`).
+  15 engine tests, 6 protocol tests, 17 pytest, 11 bun contract tests —
+  all green. Rationale and costs: `.knowledge/decisions/D09-wire-protocol-over-ffi.md`.
+* **Change (ci)**: Repository automation is `crates/xtask`, a clap binary with
+  16 unit tests, instead of eight shell files called by path from four
+  manifests. `ci.sh`, `check-cpp.sh`, `lint-toml.sh`, `npm-pack-check.sh`,
+  `scaffold.sh`, `setup-qca.sh`, `ci-failure-summary.sh` and `release/*.sh` are
+  deleted; `pixi.toml`, `lefthook.yml`, `ci.yml`, `autorelease.yml`,
+  `release.yml` and the npm `pack:check` scripts call subcommands. A generic
+  `pixi run xtask <sub> [args]` task means a new repository verb needs no new
+  pixi task; `ci`, `gates`, `setup`, `scaffold`, `check-cpp` and `lint-toml`
+  stay as aliases because hooks and humans already type them. Per-package
+  verbs stayed with turbo on purpose. `xtask release` publishes
+  `qgis-protocol` and `qgis-engine` alongside the original six crates and
+  shells to `pixi run version` rather than reimplementing `scripts/version.ts`.
+  Rationale: `.knowledge/decisions/D10-xtask-over-shell-scripts.md`.
+* **Change (testing)**: `src/` is code and `tests/` is tests, in every crate and
+  every package. 21 `#[cfg(test)] mod tests` blocks (~1100 lines) moved out of
+  `crates/*/src/` into `crates/*/tests/<topic>.rs`; the same 120 tests still
+  run, now as integration tests that use each crate the way a consumer does.
+  Consequences: `crates/xtask` is a library plus a six-line `main.rs` (a
+  `[[bin]]` cannot be linked from `tests/`); the items the tests need are now
+  `pub` with a doc comment saying so (`CRATES`/`already_published`,
+  `split_list`/`what_is_served`/`tiles`, the `#[tool]` handlers plus a public
+  `QgisMcpServer::tools()` for the router the macro generates privately);
+  `crates/qgis-node` gained the adapter test `crates/qgis-py` already had; and
+  `ts-packages/qgis-node` — the one package whose sources sat at its root —
+  moved `index.js`/`index.d.ts` into `src/`, with `main`, `types`, `files` and
+  `pack:check` following. Rationale:
+  `.knowledge/decisions/D11-tests-outside-src.md`. The next step, adopting
+  proptest/rstest, hypothesis, fast-check + `@qgis/test-utils` and
+  GoogleTest/RapidCheck, is backlog TASK-23.
+* **Change (sdk)**: `ts-packages/qgis-sdk-bridge` gained the `README.md` its
+  `files` field already promised and a `pack:check` script, so `turbo run
+  pack:check` now covers both npm packages instead of one.
+
 ## 2026-09-24
 
 * **Change (ci)**: `publish_sandbox.yml` now uses pixi-sandbox's trigger shape —

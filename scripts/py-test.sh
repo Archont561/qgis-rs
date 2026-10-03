@@ -8,8 +8,10 @@
 # maturin again from the test task is what used to make every test run a
 # rebuild.
 #
-# QGIS_REQUIRE_NATIVE=1 turns the pure-Python fallbacks into hard failures, so a
-# broken native extension cannot pass as a green suite.
+# QGIS_REQUIRE_NATIVE=1 turns what pure-Python fallbacks remain (qgis_sdk) into
+# hard failures, so a broken native extension cannot pass as a green suite.
+# `qgis_rs` has no fallback at all: it is a client for the engine behind the
+# wire protocol, and without `._core` there is nothing to be a client of.
 set -euo pipefail
 # shellcheck source=scripts/lib.sh
 source "$(dirname "$0")/lib.sh"

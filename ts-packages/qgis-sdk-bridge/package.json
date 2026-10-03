@@ -57,6 +57,7 @@
 		"coverage": "bun test ./tests --coverage",
 		"test:watch": "bun test ./tests --watch",
 		"typecheck": "tsc --noEmit --project tsconfig.test.json",
+		"pack:check": "cargo run -q -p xtask --manifest-path ../../Cargo.toml -- pack-check ts-packages/qgis-sdk-bridge dist/index.js dist/index.d.ts dist/react.js dist/loader.js README.md",
 		"lint": "bunx biome check .",
 		"format": "bunx biome format --write .",
 		"prepublishOnly": "bun run build"

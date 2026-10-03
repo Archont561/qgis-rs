@@ -1,17 +1,13 @@
-"""
-CLI entry point for qgis-rs Python package.
+"""CLI entry point for the qgis-rs Python package.
 
-This module provides `qgis-cli` and `qgis-rs` console scripts that run at
-native Rust speed. Two execution paths:
+Provides the `qgis-cli` and `qgis-rs` console scripts. Argument parsing is
+Python; every answer comes from the Rust engine over the JSON transport, in
+the same process — no subprocess, and no second implementation of anything the
+standalone `qgis-cli` binary does.
 
-1. Pure Python path using the Rust extension (`_core`) — parses args via
-   Python and calls Rust library functions directly (no subprocess).
-
-2. Binary path — if the `qgis-cli` Rust binary is on PATH (installed by the
-   wheel via maturin), delegate to it for exact parity with the standalone CLI.
-
-The default is (1) for speed and to avoid subprocess overhead; (2) is used
-as fallback for commands that need QGIS backend not yet exposed via PyO3.
+The wheel also installs that Rust binary on PATH. It is the same engine behind
+a clap parser instead of an argparse one, which is why the two agree about
+wording: the messages printed here are the engine's own.
 """
 
 from __future__ import annotations
@@ -23,15 +19,15 @@ from pathlib import Path
 from typing import List, Optional
 
 try:
-    from . import _core as core
-    from ._core import Extent, Project, ZoomRange, TilePlan
+    from . import _api as core
+    from ._api import Extent, Project, TilePlan, ZoomRange
 except ImportError:
-    try:
-        from . import _fallback as core  # type: ignore
-        from ._fallback import Extent, Project, ZoomRange, TilePlan  # type: ignore
-    except ImportError:
-        core = None  # type: ignore
-        Extent = Project = ZoomRange = TilePlan = None  # type: ignore
+    # The only way this fails is a package whose compiled extension was never
+    # built: there is no pure-Python fallback behind the engine any more, so
+    # the CLI reports that rather than quietly answering from a second
+    # implementation. `main` turns it into a one-line instruction.
+    core = None  # type: ignore
+    Extent = Project = ZoomRange = TilePlan = None  # type: ignore
 
 
 def _cmd_info(args: argparse.Namespace) -> int:
@@ -187,9 +183,10 @@ def main(argv: Optional[List[str]] = None) -> int:
     # Check extension availability
     if core is None:
         print(
-            "qgis-cli: Rust extension _core not found. Install with:\n"
-            "  pip install qgis-rs  # or\n"
-            "  pip install maturin && maturin develop",
+            "qgis-cli: the Rust extension qgis_rs._core is not built, and the\n"
+            "Python API is a client of it — there is no fallback. Install with:\n"
+            "  pip install qgis-rs  # or, from a checkout:\n"
+            "  pixi run -e default maturin develop -m py-packages/qgis-rs/pyproject.toml",
             file=sys.stderr,
         )
         return 1

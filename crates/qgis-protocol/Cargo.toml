@@ -1,0 +1,20 @@
+# crates/qgis-protocol — the wire format every qgis-rs language binding speaks.
+#
+# Envelope only: `transport_version`, `operation`, `payload`, `ok`, `result`.
+# The payloads themselves are `qgis-render`'s own types, serialised by the serde
+# derives they already carry, so this crate deliberately does NOT depend on the
+# domain crate — a binding-only copy of `Extent` or `ProjectInfo` would be a
+# second place a field name can change.
+
+[package]
+name = "qgis-protocol"
+description = "Request/response envelope for the qgis-rs engine transport"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+keywords = ["qgis", "gis", "ffi", "protocol", "serde"]
+categories = ["science::geo", "encoding"]
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }

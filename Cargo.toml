@@ -29,6 +29,11 @@ thiserror = "2.0.18"
 qgis-sys = { version = "0.1.0", path = "crates/qgis-sys" }
 
 # ── ecosystem crates ──────────────────────────────────────────────────────────
+# The transport pair: `qgis-protocol` is the envelope, `qgis-engine` is the one
+# function every language binding calls. See
+# .knowledge/decisions/D09-wire-protocol-over-ffi.md.
+qgis-protocol = { version = "0.1.0", path = "crates/qgis-protocol" }
+qgis-engine = { version = "0.1.0", path = "crates/qgis-engine" }
 qgis-render = { version = "0.1.0", path = "crates/qgis-render" }
 qgis-server = { version = "0.1.0", path = "crates/qgis-server" }
 qgis-mcp    = { version = "0.1.0", path = "crates/qgis-mcp" }

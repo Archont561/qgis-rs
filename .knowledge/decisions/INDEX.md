@@ -4,6 +4,9 @@ Architectural decision records for qgis-rs. Each document captures a decision, i
 
 ## Active Decisions
 
+* [D11 — Tests Outside `src/`](/decisions/D11-tests-outside-src.md) - One layout in every language: source in `src/`, tests in `tests/`, and anything a test needs is public.
+* [D10 — xtask over Shell Scripts](/decisions/D10-xtask-over-shell-scripts.md) - Repository automation is a compiled, tested `cargo xtask` binary behind pixi tasks; per-package verbs stay with turbo.
+* [D09 — Wire Protocol over FFI](/decisions/D09-wire-protocol-over-ffi.md) - Each binding exposes one `invoke(json) -> json`; the versioned protocol is the interface, not a mirrored class surface.
 * [D08 — Standalone Rendering App](/decisions/D08-standalone-rendering-app.md) - Embed QGIS as a headless rendering engine in a Rust application (recommended path).
 * [D07 — Rust QGIS Plugins via PyO3](/decisions/D07-rust-qgis-plugins.md) - Use Rust as the computation engine behind QGIS Processing plugins.
 

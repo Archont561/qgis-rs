@@ -20,7 +20,7 @@ yarn add qgis-rs
 pnpm add qgis-rs
 ```
 
-Pre-built binaries for Linux x86_64 (gnu + musl) and Linux arm64 (gnu). If no binary matches, falls back to pure JS (slower) and you can build from source with `bun run build` (requires Rust ≥1.96).
+Pre-built binaries for Linux x86_64 (gnu + musl) and Linux arm64 (gnu). There is no JavaScript fallback — every value this package returns is computed by Rust — so if no binary matches your platform, build from source with `bun run build` (requires Rust ≥1.96).
 
 ### From source (development)
 
@@ -142,9 +142,10 @@ execSync('npx qgis-cli info map.qgs --json', { stdio: 'inherit' });
 ```
 qgis-rs npm package
 ├── qgis-rs.<platform>.node  → NAPI addon (Rust cdylib) — native speed
-├── index.js                 → JS wrapper (Extent, Crs, TilePlan, etc.)
-├── index.d.ts               → TypeScript types
-├── fallback.js              → pure JS fallback when native not built
+├── src/
+│   ├── index.js             → JS wrapper (Extent, Crs, TilePlan, etc.) over one `invoke(json)` call
+│   └── index.d.ts           → TypeScript types
+├── tests/                   → the contract suite, run against the real addon
 ├── bin/
 │   ├── qgis-cli.js          → Node wrapper that tries Rust binary, falls back to JS
 │   ├── qgis-plugin.js       → same for plugin SDK
@@ -153,7 +154,7 @@ qgis-rs npm package
 ```
 
 - Rust: `crates/qgis-render` (pure Rust), `crates/qgis-cli`, `crates/qgis-sdk` (plugin CLI)
-- Node: `ts-packages/qgis-node/` — package.json, `index.js`, `fallback.js`, `bin/` wrappers; the NAPI crate it builds is `crates/qgis-node/` (`napi build --cargo-cwd ../../crates/qgis-node .`)
+- Node: `ts-packages/qgis-node/` — package.json, `src/index.js`, `bin/` wrappers; the NAPI crate it builds is `crates/qgis-node/` (`napi build --cargo-cwd ../../crates/qgis-node .`), and that crate exposes exactly one function, `invoke(requestJson) -> responseJson` (see `.knowledge/decisions/D09-wire-protocol-over-ffi.md`)
 - Python: `py-packages/qgis-rs/` and `py-packages/qgis-sdk/` — same Rust code via PyO3
 
 ## Conda-forge (Node.js)
@@ -172,12 +173,20 @@ TypeScript; a conda-forge recipe for it could be added similarly to Python
 
 ## Performance
 
-Pure-Rust ops (no QGIS):
+Pure-Rust ops (no QGIS). The addon is called once per operation with a JSON
+request and answers with a JSON response, so the cost of a call is the Rust
+work plus one serialize/parse pair — which is why `planTiles` does not return
+the 4568 tiles unless you ask for them (`includeTiles: true`):
 
-| Operation | Rust (NAPI) | JS fallback | Speedup |
-|-----------|-------------|-------------|---------|
-| Extent parse | 0.5µs | 5µs | 10× |
-| TilePlan 10-14 (4568 tiles) | 0.2ms | 3ms | 15× |
+| Operation | Time (bun 1.3, x86_64) |
+|-----------|------------------------|
+| `new Extent("14,50,15,51")` | ~4µs |
+| `planTiles` z10-14 — counts and per-level extents | ~18µs |
+| `TilePlan#iterTiles()` — the same plan, all 4568 tiles materialised | ~3.5ms |
+
+That last row is the reason a plan counts by default and enumerates only when
+asked: the maths is the cheap part, and 4568 objects crossing the boundary is
+the expensive one.
 
 ## License
 

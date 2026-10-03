@@ -1,7 +1,7 @@
 # prepare release
 #
 # A maintainer starts this manually. convco derives the next stable SemVer from
-# the conventional commits since the latest v* tag, scripts/release/prepare.sh
+# the conventional commits since the latest v* tag, `xtask release prepare`
 # writes that number into every manifest and regenerates CHANGELOG.md from the
 # same history, and this workflow commits the result to main and creates the
 # tag that release.yml consumes.
@@ -56,7 +56,7 @@ jobs:
       - name: Derive the version, rewrite the manifests, regenerate the changelog
         id: version
         run: |
-          next="$(bash scripts/release/prepare.sh | tail -1)"
+          next="$(pixi run xtask release prepare | tail -1)"
           echo "next=${next}" >> "$GITHUB_OUTPUT"
           echo "Convco selected v${next} from the conventional commit history."
 

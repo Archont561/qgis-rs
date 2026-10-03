@@ -264,25 +264,40 @@ bun = { features = ["bun"] }
 # ---------------------------------------------------------------------------
 [tasks]
 
-# Every task below is one line. Anything longer lives in scripts/ and is called
-# from here — see scripts/README.md for why (a multi-line command embedded in
-# TOML is unreviewable, un-lintable, and cannot be run outside this manifest,
-# which is exactly how a local gate and a CI gate drift apart).
+# Every task below is one line, because the logic behind it is a subcommand of
+# crates/xtask rather than a shell file: `pixi run xtask <subcommand>` is THE
+# entry point, and the named tasks under it are aliases for the three callers
+# (lefthook, turbo, CI) that pass arguments or want a memorable verb. Adding a
+# repository-wide verb means adding a subcommand to crates/xtask and, usually,
+# no line here at all. See .knowledge/decisions/D10-xtask-over-shell-scripts.md.
+#
+# What is NOT here: the per-package build/test/lint/format/coverage verbs.
+# Those live in the packages' own package.json scripts and are orchestrated by
+# turbo (`bun x turbo run <task>`), so the command that builds a package is in
+# the manifest a reader of that package already opens.
+
+# ── the entry point ───────────────────────────────────────────────────────────
+# Typed repository automation (crates/xtask): ci, check-cpp, lint-toml,
+# pack-check, setup-qca, ci-failure-summary, scaffold, release <step>. Extra
+# arguments pass straight through: `pixi run xtask release verify-version v1.2.3`.
+xtask = { cmd = "cargo run -q -p xtask --", description = "Run a repository-automation subcommand (crates/xtask)", default-environment = "default" }
 
 # ── environment repair ────────────────────────────────────────────────────────
-setup = { cmd = "bash scripts/setup-qca.sh", description = "Link libqca under the Qt5 soname QGIS still asks for", default-environment = "default" }
+setup = { cmd = "cargo run -q -p xtask -- setup-qca", description = "Link libqca under the Qt5 soname QGIS still asks for", default-environment = "default" }
 
 # ── the gate ──────────────────────────────────────────────────────────────────
 # One call, run identically by a contributor before pushing and by ci.yml:
 # repo lints, turbo lint, format-drift gate, tests, pack:check, coverage.
-ci = { cmd = "bash scripts/ci.sh", description = "The full gate: repo lints, turbo lint/format/test/pack:check, coverage", default-environment = "bun" }
-gates = { cmd = "bash scripts/ci.sh --no-coverage", description = "`ci` without the coverage producers — the fast pre-push loop", default-environment = "bun" }
+# It runs in `default` (where cargo and the QGIS toolchain are) and re-enters
+# `-e bun` for every turbo fan-out, exactly as the shell gate did.
+ci = { cmd = "cargo run -q -p xtask -- ci", description = "The full gate: repo lints, turbo lint/format/test/pack:check, coverage", default-environment = "default" }
+gates = { cmd = "cargo run -q -p xtask -- ci --no-coverage", description = "`ci` without the coverage producers — the fast pre-push loop", default-environment = "default" }
 
 # ── lint tooling (lefthook, the gate and CI share these) ──────────────────────
 # Optional arguments are staged files from lefthook; with none they check the
 # whole relevant tree.
-check-cpp = { cmd = "bash scripts/check-cpp.sh", description = "clang-format gate for the C++ shim (staged files, or the whole tree)", default-environment = "default" }
-lint-toml = { cmd = "bash scripts/lint-toml.sh", description = "taplo canonicality check for pixi.toml and pixi-sandbox.toml", default-environment = "default" }
+check-cpp = { cmd = "cargo run -q -p xtask -- check-cpp", description = "clang-format gate for the C++ shim (staged files, or the whole tree)", default-environment = "default" }
+lint-toml = { cmd = "cargo run -q -p xtask -- lint-toml", description = "taplo canonicality check for pixi.toml and pixi-sandbox.toml", default-environment = "default" }
 lint-actions = { cmd = "actionlint", description = "Lint .github/workflows/*.yml", default-environment = "default" }
 lint-commit = { cmd = "convco check --from-stdin", description = "Validate a commit message against the conventional-commit spec", default-environment = "default" }
 
@@ -302,7 +317,7 @@ changelog = { cmd = "convco changelog", description = "Preview the conventional-
 
 # ── codegen ───────────────────────────────────────────────────────────────────
 # Usage: pixi run scaffold <layer> <concept> <QgisClass> <short_name>
-scaffold = { cmd = "bash scripts/scaffold.sh", description = "Scaffold a qgis-sys binding: header + cxx bridge + C++ shim + wiring", default-environment = "default" }
+scaffold = { cmd = "cargo run -q -p xtask -- scaffold", description = "Scaffold a qgis-sys binding: header + cxx bridge + C++ shim + wiring", default-environment = "default" }
 
 # ── internal staged-file plumbing ─────────────────────────────────────────────
 # lefthook's js-biome job checks exactly the files being committed. Repo-wide
