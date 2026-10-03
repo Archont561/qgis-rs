@@ -140,7 +140,7 @@ impl Project {
             layer_count: None,
             extent: None,
             note: Some(
-                "CRS, layer count and extent are only available through the native QGIS project reader"
+                "CRS, layer count and extent are only available through the native QGIS backend project reader"
                     .to_string(),
             ),
         })
