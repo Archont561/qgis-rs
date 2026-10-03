@@ -243,62 +243,20 @@ class ManagerHost {
         const QJsonObject payload =
             payload_value.isObject() ? payload_value.toObject() : QJsonObject{};
 
-        if (operation == QStringLiteral("app_init")) {
-            return compact_json(initialize());
-        }
-        if (operation == QStringLiteral("app_shutdown")) {
-            return compact_json(shutdown());
-        }
-        if (!initialized_) {
-            return compact_json(failure(
-                "not_initialized", "app_init must succeed before a QGIS operation"));
-        }
-        if (operation == QStringLiteral("engine_info")) {
-            return compact_json(engine_info());
-        }
-        if (operation == QStringLiteral("render_map")) {
-            return compact_json(render_map(payload));
-        }
-        if (operation == QStringLiteral("export_features")) {
-            return compact_json(export_features(payload));
-        }
-        if (operation == QStringLiteral("layer_open")) {
-            return compact_json(layer_open(payload));
-        }
-        if (operation == QStringLiteral("layer_info")) {
-            return compact_json(layer_info(payload));
-        }
-        if (operation == QStringLiteral("layer_close")) {
-            return compact_json(layer_close(payload));
-        }
-        if (operation == QStringLiteral("layer_features")) {
-            return compact_json(layer_features(payload));
-        }
-        if (operation == QStringLiteral("layer_new")) {
-            return compact_json(layer_new(payload));
-        }
-        if (operation == QStringLiteral("layer_is_valid")) {
-            return compact_json(layer_is_valid(payload));
-        }
-        if (operation == QStringLiteral("layer_name")) {
-            return compact_json(layer_name(payload));
-        }
-        if (operation == QStringLiteral("layer_feature_count")) {
-            return compact_json(layer_feature_count(payload));
-        }
-        if (operation == QStringLiteral("layer_crs_authid")) {
-            return compact_json(layer_crs_authid(payload));
-        }
-        if (operation == QStringLiteral("layer_geometry_type_name")) {
-            return compact_json(layer_geometry_type_name(payload));
-        }
-        if (operation == QStringLiteral("layer_fields")) {
-            return compact_json(layer_fields(payload));
-        }
-
-        return compact_json(failure(
-            "invalid_operation", "the operation is not served by the native manager"));
+        return compact_json(dispatch_operation(operation, payload));
     }
+
+    struct OperationDefinition {
+        using Handler = QJsonObject (ManagerHost::*)(const QJsonObject&);
+
+        Handler handler;
+        bool requires_initialization;
+    };
+
+    static const QHash<QString, OperationDefinition>& operation_registry();
+
+    QJsonObject dispatch_operation(const QString& operation,
+                                   const QJsonObject& payload);
 
     QJsonObject initialize() {
         if (initialized_) {
@@ -326,24 +284,12 @@ class ManagerHost {
                                     static_cast<qint64>(released_layer_count)}});
     }
 
-    QJsonObject engine_info() const {
+    QJsonObject engine_info() {
         QJsonArray operations;
-        operations.append(QStringLiteral("app_init"));
-        operations.append(QStringLiteral("app_shutdown"));
-        operations.append(QStringLiteral("engine_info"));
-        operations.append(QStringLiteral("render_map"));
-        operations.append(QStringLiteral("export_features"));
-        operations.append(QStringLiteral("layer_open"));
-        operations.append(QStringLiteral("layer_info"));
-        operations.append(QStringLiteral("layer_close"));
-        operations.append(QStringLiteral("layer_features"));
-        operations.append(QStringLiteral("layer_new"));
-        operations.append(QStringLiteral("layer_is_valid"));
-        operations.append(QStringLiteral("layer_name"));
-        operations.append(QStringLiteral("layer_feature_count"));
-        operations.append(QStringLiteral("layer_crs_authid"));
-        operations.append(QStringLiteral("layer_geometry_type_name"));
-        operations.append(QStringLiteral("layer_fields"));
+        const auto& registry = operation_registry();
+        for (auto iterator = registry.constBegin(); iterator != registry.constEnd(); ++iterator) {
+            operations.append(iterator.key());
+        }
 
         return success(
             QJsonObject{{"engine", "qgis-native-manager"},
@@ -389,7 +335,7 @@ class ManagerHost {
                                    {"name", display_name}});
     }
 
-    QJsonObject layer_info(const QJsonObject& payload) const {
+    QJsonObject layer_info(const QJsonObject& payload) {
         const auto layer = lookup(payload);
         if (!layer.second) {
             return layer.first;
@@ -432,7 +378,7 @@ class ManagerHost {
                                    {"closed", true}});
     }
 
-    QJsonObject layer_features(const QJsonObject& payload) const {
+    QJsonObject layer_features(const QJsonObject& payload) {
         const auto layer = lookup(payload);
         if (!layer.second) {
             return layer.first;
@@ -541,7 +487,7 @@ class ManagerHost {
                            {"bytes", bytes}};
     }
 
-    QJsonObject render_map(const QJsonObject& payload) const {
+    QJsonObject render_map(const QJsonObject& payload) {
         const QString project_path = payload.value(QStringLiteral("project")).toString();
         const QString output = payload.value(QStringLiteral("output")).toString();
         if (project_path.isEmpty() || output.isEmpty()) {
@@ -654,7 +600,7 @@ class ManagerHost {
         return attributes;
     }
 
-    QJsonObject export_features(const QJsonObject& payload) const {
+    QJsonObject export_features(const QJsonObject& payload) {
         const QString project_path = payload.value(QStringLiteral("project")).toString();
         const QString layer_name = payload.value(QStringLiteral("layer")).toString();
         const QString output = payload.value(QStringLiteral("output")).toString();
@@ -773,7 +719,7 @@ class ManagerHost {
         return success(result);
     }
 
-    QJsonObject layer_is_valid(const QJsonObject& payload) const {
+    QJsonObject layer_is_valid(const QJsonObject& payload) {
         const auto layer = lookup(payload);
         if (!layer.second) {
             return layer.first;
@@ -781,7 +727,7 @@ class ManagerHost {
         return success(QJsonObject{{"is_valid", layer.second->isValid()}});
     }
 
-    QJsonObject layer_name(const QJsonObject& payload) const {
+    QJsonObject layer_name(const QJsonObject& payload) {
         const auto layer = lookup(payload);
         if (!layer.second) {
             return layer.first;
@@ -789,7 +735,7 @@ class ManagerHost {
         return success(QJsonObject{{"name", layer.second->name()}});
     }
 
-    QJsonObject layer_feature_count(const QJsonObject& payload) const {
+    QJsonObject layer_feature_count(const QJsonObject& payload) {
         const auto layer = lookup(payload);
         if (!layer.second) {
             return layer.first;
@@ -798,7 +744,7 @@ class ManagerHost {
             {"feature_count", static_cast<qint64>(layer.second->featureCount())}});
     }
 
-    QJsonObject layer_crs_authid(const QJsonObject& payload) const {
+    QJsonObject layer_crs_authid(const QJsonObject& payload) {
         const auto layer = lookup(payload);
         if (!layer.second) {
             return layer.first;
@@ -806,7 +752,7 @@ class ManagerHost {
         return success(QJsonObject{{"auth_id", layer.second->crs().authid()}});
     }
 
-    QJsonObject layer_geometry_type_name(const QJsonObject& payload) const {
+    QJsonObject layer_geometry_type_name(const QJsonObject& payload) {
         const auto layer = lookup(payload);
         if (!layer.second) {
             return layer.first;
@@ -815,13 +761,68 @@ class ManagerHost {
             {"name", ::QgsWkbTypes::displayString(layer.second->wkbType())}});
     }
 
-    QJsonObject layer_fields(const QJsonObject& payload) const {
+    QJsonObject layer_fields(const QJsonObject& payload) {
         const auto layer = lookup(payload);
         if (!layer.second) {
             return layer.first;
         }
 
         return success(QJsonObject{{"fields", fields_json(layer.second)}});
+    }
+
+    static const QHash<QString, OperationDefinition>& operation_registry() {
+        static const QHash<QString, OperationDefinition> registry = [] {
+            QHash<QString, OperationDefinition> definitions;
+            definitions.insert(QStringLiteral("app_init"),
+                               OperationDefinition{&ManagerHost::initialize, false});
+            definitions.insert(QStringLiteral("app_shutdown"),
+                               OperationDefinition{&ManagerHost::shutdown, false});
+            definitions.insert(QStringLiteral("engine_info"),
+                               OperationDefinition{&ManagerHost::engine_info, true});
+            definitions.insert(QStringLiteral("render_map"),
+                               OperationDefinition{&ManagerHost::render_map, true});
+            definitions.insert(QStringLiteral("export_features"),
+                               OperationDefinition{&ManagerHost::export_features, true});
+            definitions.insert(QStringLiteral("layer_open"),
+                               OperationDefinition{&ManagerHost::layer_open, true});
+            definitions.insert(QStringLiteral("layer_info"),
+                               OperationDefinition{&ManagerHost::layer_info, true});
+            definitions.insert(QStringLiteral("layer_close"),
+                               OperationDefinition{&ManagerHost::layer_close, true});
+            definitions.insert(QStringLiteral("layer_features"),
+                               OperationDefinition{&ManagerHost::layer_features, true});
+            definitions.insert(QStringLiteral("layer_new"),
+                               OperationDefinition{&ManagerHost::layer_new, true});
+            definitions.insert(QStringLiteral("layer_is_valid"),
+                               OperationDefinition{&ManagerHost::layer_is_valid, true});
+            definitions.insert(QStringLiteral("layer_name"),
+                               OperationDefinition{&ManagerHost::layer_name, true});
+            definitions.insert(QStringLiteral("layer_feature_count"),
+                               OperationDefinition{&ManagerHost::layer_feature_count, true});
+            definitions.insert(QStringLiteral("layer_crs_authid"),
+                               OperationDefinition{&ManagerHost::layer_crs_authid, true});
+            definitions.insert(QStringLiteral("layer_geometry_type_name"),
+                               OperationDefinition{&ManagerHost::layer_geometry_type_name, true});
+            definitions.insert(QStringLiteral("layer_fields"),
+                               OperationDefinition{&ManagerHost::layer_fields, true});
+            return definitions;
+        }();
+        return registry;
+    }
+
+    QJsonObject dispatch_operation(const QString& operation,
+                                   const QJsonObject& payload) {
+        const auto& registry = operation_registry();
+        const auto definition = registry.constFind(operation);
+        if (!initialized_ &&
+            (definition == registry.constEnd() || definition->requires_initialization)) {
+            return failure("not_initialized", "app_init must succeed before a QGIS operation");
+        }
+        if (definition == registry.constEnd()) {
+            return failure("invalid_operation",
+                           "the operation is not served by the native manager");
+        }
+        return (this->*definition->handler)(payload);
     }
 
     static quint64 json_layer_id(const QJsonObject& payload) {
