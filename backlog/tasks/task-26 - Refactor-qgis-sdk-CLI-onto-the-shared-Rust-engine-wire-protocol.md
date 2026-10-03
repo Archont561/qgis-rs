@@ -4,7 +4,7 @@ title: Refactor qgis-sdk CLI onto the shared Rust engine wire protocol
 status: To Do
 assignee: []
 created_date: '2026-10-03 01:51'
-updated_date: '2026-10-03 01:51'
+updated_date: '2026-10-03 08:31'
 labels:
   - qgis-sdk
   - qgis-py
@@ -13,6 +13,7 @@ labels:
   - cli
   - architecture
   - refactor
+milestone: m-3
 dependencies: []
 references:
   - crates/qgis-protocol
@@ -22,8 +23,10 @@ references:
   - py-packages/qgis-sdk/src/qgis_sdk/cli.py
   - py-packages/qgis-sdk/src/qgis_sdk/_fallback_cli.py
 documentation:
-  - .knowledge/decisions/D09-wire-protocol-over-ffi.md
+  - .knowledge/api-design.md
+  - .knowledge/architecture.md
   - .knowledge/qgis-plugin-sdk.md
+  - .knowledge/decisions/D09-wire-protocol-over-ffi.md
   - crates/qgis-py/ARCHITECTURE.md
 priority: high
 type: enhancement

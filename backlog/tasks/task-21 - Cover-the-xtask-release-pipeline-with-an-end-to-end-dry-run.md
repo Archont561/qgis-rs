@@ -4,9 +4,12 @@ title: Cover the xtask release pipeline with an end-to-end dry run
 status: To Do
 assignee: []
 created_date: '2026-10-02 22:35'
+updated_date: '2026-10-03 08:31'
 labels: []
+milestone: m-4
 dependencies: []
 documentation:
+  - .knowledge/release.md
   - .knowledge/decisions/D10-xtask-over-shell-scripts.md
 priority: medium
 type: chore

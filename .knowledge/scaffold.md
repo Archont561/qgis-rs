@@ -53,8 +53,10 @@ After scaffolding, you need to:
 1. **Edit the header** — add function declarations for your QGIS type's methods
 2. **Edit the `.rs` bridge** — add matching Rust signatures
 3. **Edit the `.cpp` shim** — implement the functions using real QGIS API
-4. **Build** — `cargo build -p qgis-sys`
-5. **Test** — add integration tests in `tests/`
+4. **Build** — `pixi run -- cargo build -p qgis-sys`
+5. **Test** — add integration tests in `tests/` following [D11](decisions/D11-tests-outside-src.md)
+
+The scaffold/API documentation work is tracked by [TASK-3](../backlog/tasks/task-3%20-%20Document%20and%20scaffold%20the%20declarative%20plugin%20and%20SDK%20APIs.md); concrete bindings are tracked by [TASK-5](../backlog/tasks/task-5%20-%20Bind-QgsFields-and-QgsField-schema-types-in-qgis-sys.md) through [TASK-7](../backlog/tasks/task-7%20-%20Bind-QgsFeatureIterator-and-QgsCoordinateReferenceSystem-in-qgis-sys.md).
 
 ## Template Details
 

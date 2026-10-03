@@ -2,16 +2,21 @@
 id: task-2
 title: Add a dedicated QGIS SDK integration test runner and CI job
 status: To Do
-priority: high
 assignee: []
 created_date: '2026-09-30'
-updated_date: '2026-09-30'
+updated_date: '2026-10-03 08:31'
 labels:
   - qgis-sdk
   - ci
   - testing
+milestone: m-3
 dependencies:
   - task-1
+documentation:
+  - .knowledge/qgis-plugin-sdk.md
+  - .knowledge/qgis-plugin-ui.md
+  - .knowledge/testing.md
+priority: high
 ---
 
 ## Description

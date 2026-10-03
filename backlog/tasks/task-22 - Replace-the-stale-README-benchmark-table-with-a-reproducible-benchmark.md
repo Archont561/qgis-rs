@@ -4,7 +4,9 @@ title: Replace the stale README benchmark table with a reproducible benchmark
 status: To Do
 assignee: []
 created_date: '2026-10-02 22:35'
+updated_date: '2026-10-03 08:31'
 labels: []
+milestone: m-4
 dependencies: []
 priority: low
 type: task

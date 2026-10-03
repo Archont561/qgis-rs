@@ -63,10 +63,13 @@ fn layer_feature_count() {
 
 ## Future Additions
 
-Potential next bindings:
-- Feature iteration (`QgsFeatureIterator`)
-- Field/attribute access (`QgsFields`, `QgsField`)
-- Geometry access (`QgsGeometry`, `QgsAbstractGeometry`)
-- Editing operations (`startEditing`, `addFeature`, `commitChanges`)
-- Spatial filters and expression filters
-- Renderer and symbology access
+These are executable work items, not a second status tracker:
+
+- Field/attribute schema access (`QgsFields`, `QgsField`) — [TASK-5](../backlog/tasks/task-5%20-%20Bind-QgsFields-and-QgsField-schema-types-in-qgis-sys.md)
+- Feature and geometry values (`QgsFeature`, `QgsGeometry`) — [TASK-6](../backlog/tasks/task-6%20-%20Bind-QgsFeature-AttributeValue-conversions-and-QgsGeometry-in-qgis-sys.md)
+- Feature iteration and CRS (`QgsFeatureIterator`, `QgsCoordinateReferenceSystem`) — [TASK-7](../backlog/tasks/task-7%20-%20Bind-QgsFeatureIterator-and-QgsCoordinateReferenceSystem-in-qgis-sys.md)
+- Editing operations (`startEditing`, `addFeature`, `commitChanges`) — [TASK-11](../backlog/tasks/task-11%20-%20Bind-QgsVectorLayerEditBuffer-for-transactional-layer-editing.md)
+- Batched manager-side feature access — [TASK-25.2](../backlog/tasks/task-25.2%20-%20RFC-19-phase-3-layer-open-info-close-and-a-batched-layer.features.md)
+- Spatial filters, expressions, renderer and symbology — [TASK-9](../backlog/tasks/task-9%20-%20Implement-structured-error-handling-and-string-caching-across-Rust-wrappers.md), [TASK-14](../backlog/tasks/task-14%20-%20Implement-declarative-expression-engine-wrappers.md), and [TASK-12](../backlog/tasks/task-12%20-%20Bind-QgsMapSettings-and-QgsMapRendererSequentialJob-for-embedded-rendering.md)
+
+The knowledge entry remains the binding reference; status, acceptance criteria, and dependency order live in Backlog.md.

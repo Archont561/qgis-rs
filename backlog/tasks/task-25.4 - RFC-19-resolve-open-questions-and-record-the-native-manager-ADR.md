@@ -4,16 +4,18 @@ title: 'RFC 19: resolve open questions and record the native-manager ADR'
 status: In Progress
 assignee: []
 created_date: '2026-10-03 02:16'
-updated_date: '2026-10-03 08:04'
+updated_date: '2026-10-03 08:31'
 labels:
   - rfc
   - ffi
   - architecture
   - decision
+milestone: m-0
 dependencies: []
 references:
   - 'https://github.com/Archont561/qgis-rs/issues/19'
 documentation:
+  - .knowledge/architecture.md
   - .knowledge/decisions/D09-wire-protocol-over-ffi.md
   - .knowledge/decisions/D12-qgis-native-manager-over-c-abi.md
   - .knowledge/decisions/INDEX.md

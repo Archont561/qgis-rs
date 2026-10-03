@@ -7,11 +7,12 @@ okf_version: "0.2"
 # Overview
 
 * [Project Context](/CONTEXT.md) — Orientation file for AI agents and contributors working on qgis-rs.
-* [Roadmap](/ROADMAP.md) — Ordered plan: architectural decisions first, then incremental type binding.
+* [Execution roadmap](../backlog/docs/roadmap/doc-2%20-%20QGIS-RS-Execution-Roadmap.md) — Backlog-owned milestones, execution order, and task groupings.
 * [Update Log](/log.md) — Chronological history of bundle changes.
 * [QGIS Plugin SDK](/qgis-plugin-sdk.md) — Python framework for building QGIS plugins with declarative APIs, Rust acceleration, and CLI tooling.
 * [QGIS Plugin UI](/qgis-plugin-ui.md) — Dialogs via PyQt/Qt Designer (.ui) and WebEngine with HTML/CSS/JS + QWebChannel bridge (new).
 * [Knowledge-to-backlog migration map](/../backlog/docs/knowledge-backlog-map/doc-1%20-%20Knowledge-to-backlog-migration-map.md) — Which knowledge entries remain durable context and which executable work is tracked by Backlog.md.
+* [Backlog task board](../backlog/) — Current executable status, acceptance criteria, dependencies, and ready work; reconciled under TASK-27.
 
 # Architecture
 

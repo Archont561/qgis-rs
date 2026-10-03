@@ -11,16 +11,18 @@ generated: { by: arena-agent/qgis-rs-kb-init, at: 2026-09-17T20:00:00Z }
 
 ## Test Types
 
-### Basic Tests (`pixi run test`)
+### Rust and QGIS tests
 
-Run without full QGIS initialization:
-- `application_info` — verifies version, Qt version, and platform strings
+Repository-wide gates are owned by `crates/xtask` ([D10](decisions/D10-xtask-over-shell-scripts.md)):
 
-### Full Tests (`pixi run test-full`)
+- `pixi run gates` — Rust, C++, package, and non-coverage checks.
+- `pixi run -- cargo test -p qgis-sys --test application_info` — QGIS-free/application information coverage.
+- `pixi run -- cargo test -p qgis-sys --test application_lifecycle -- --test-threads=1` — QGIS lifecycle coverage.
+- `pixi run -- cargo test -p qgis-sys --test vector_layer -- --test-threads=1` — real vector-layer coverage.
 
-Require `QgsApplication::initQgis()`:
-- `application_lifecycle` — tests init/exit round-trip with info retrieval
-- `vector_layer` — tests layer creation, validity, metadata access
+The old `pixi run test` and `pixi run test-full` names are historical and are not current root tasks.
+
+SDK-specific pure-Python and QGIS-hosted test separation is tracked by [TASK-1](../backlog/tasks/task-1%20-%20Make%20the%20full%20QGIS%20SDK%20test%20suite%20headless%20and%20CI-green.md), [TASK-2](../backlog/tasks/task-2%20-%20Add%20a%20dedicated%20QGIS%20SDK%20integration%20test%20runner%20and%20CI%20job.md), and [TASK-4](../backlog/tasks/task-4%20-%20Cover%20real%20QGIS%20network%20and%20task-manager%20integration.md). Property and fixture migration is [TASK-23](../backlog/tasks/task-23%20-%20Refactor-every-test-suite-onto-property-based-and-fixture-driven-testing.md).
 
 ## Environment Requirements
 

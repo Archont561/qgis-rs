@@ -4,13 +4,16 @@ title: Implement structured error handling and string caching across Rust wrappe
 status: To Do
 assignee: []
 created_date: '2026-09-30 20:48'
+updated_date: '2026-10-03 08:31'
 labels:
   - qgis
   - error-handling
   - performance
+milestone: m-1
 dependencies:
   - TASK-8
 documentation:
+  - .knowledge/qgis-vector-layer.md
   - .knowledge/decisions/D03-error-handling.md
 priority: medium
 ---

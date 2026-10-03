@@ -4,14 +4,17 @@ title: Bind QgsVectorLayerEditBuffer for transactional layer editing
 status: To Do
 assignee: []
 created_date: '2026-09-30 20:48'
+updated_date: '2026-10-03 08:31'
 labels:
   - qgis-sys
   - qgis
   - editing
+milestone: m-2
 dependencies:
   - TASK-10
 documentation:
-  - .knowledge/ROADMAP.md
+  - backlog/docs/roadmap/doc-2 - QGIS-RS-Execution-Roadmap.md
+  - .knowledge/qgis-vector-layer.md
 priority: medium
 ---
 

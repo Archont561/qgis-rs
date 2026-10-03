@@ -205,6 +205,8 @@ own matching `llvm-profdata` / `llvm-cov` inside the sysroot, so no rustup
 3. **Add C++ header** in `crates/qgis-sys/include/{layer}/{concept}.h`
 4. **Add Rust bridge** in `crates/qgis-sys/src/{layer}/{concept}/{short}.rs`
 5. **Add C++ shim** in `crates/qgis-sys/src/{layer}/{concept}/{short}.cpp`
+
+The current Rust-consumer shim remains compiled by `qgis-sys/build.rs` through `cxx-build` and `cc`. CMake/Ninja/GTest/RapidCheck are declared in the Pixi C++ and C++-test features for standalone native targets and RFC 19 manager tests; that split is tracked by TASK-24 and documented in `.knowledge/build-system.md`. The native-manager target must not silently replace the existing Rust-consumer build until its artifact and symbol policy are proven.
 6. **Write tests** in `tests/{concept}.rs`
 7. **Update documentation** in `.knowledge/` and `docs/`
 

@@ -11,6 +11,11 @@ generated: { by: arena-agent/qgis-rs-kb-init, at: 2026-09-17T20:00:00Z }
 
 ## Overview
 
+The build pipeline has two deliberately separate layers:
+
+- `crates/qgis-sys/build.rs` still owns the Rust-consumer shim compiled into `qgis-sys`.
+- The Pixi C++ feature now declares CMake, Ninja, GTest, and RapidCheck for standalone native targets and tests; the dependency and environment work is tracked in [TASK-24](../backlog/tasks/task-24%20-%20Add-cmake-and-ninja-to-the-C-toolchain-dependencies.md).
+
 The build pipeline in `crates/qgis-sys/build.rs` has three stages:
 
 1. **CXX bridge generation** — `cxx_build::bridges()` generates C++ code from `#[cxx::bridge]` modules

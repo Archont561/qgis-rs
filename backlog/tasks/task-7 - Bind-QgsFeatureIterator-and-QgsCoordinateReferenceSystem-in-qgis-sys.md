@@ -4,15 +4,19 @@ title: Bind QgsFeatureIterator and QgsCoordinateReferenceSystem in qgis-sys
 status: To Do
 assignee: []
 created_date: '2026-09-30 20:48'
+updated_date: '2026-10-03 08:31'
 labels:
   - qgis-sys
   - core
   - iteration
   - crs
+milestone: m-1
 dependencies:
   - TASK-6
 documentation:
-  - .knowledge/ROADMAP.md
+  - backlog/docs/roadmap/doc-2 - QGIS-RS-Execution-Roadmap.md
+  - .knowledge/qgis-vector-layer.md
+  - .knowledge/scaffold.md
 priority: high
 ---
 

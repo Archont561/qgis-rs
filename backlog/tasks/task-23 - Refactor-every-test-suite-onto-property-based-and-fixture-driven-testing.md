@@ -4,11 +4,14 @@ title: Refactor every test suite onto property-based and fixture-driven testing
 status: To Do
 assignee: []
 created_date: '2026-10-02 23:06'
+updated_date: '2026-10-03 08:31'
 labels:
   - refactor
   - testing
+milestone: m-4
 dependencies: []
 documentation:
+  - .knowledge/testing.md
   - .knowledge/decisions/D11-tests-outside-src.md
 priority: high
 type: enhancement

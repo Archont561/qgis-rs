@@ -4,17 +4,20 @@ title: 'RFC 19 phase 2: native manager, ID registry and lifecycle behind qgis_in
 status: To Do
 assignee: []
 created_date: '2026-10-02 23:23'
-updated_date: '2026-10-03 08:13'
+updated_date: '2026-10-03 08:31'
 labels:
   - rfc
   - ffi
   - cpp
+milestone: m-0
 dependencies:
   - TASK-25.4
   - TASK-24
 references:
   - 'https://github.com/Archont561/qgis-rs/issues/19'
 documentation:
+  - .knowledge/architecture.md
+  - .knowledge/build-system.md
   - .knowledge/decisions/D09-wire-protocol-over-ffi.md
   - .knowledge/decisions/D12-qgis-native-manager-over-c-abi.md
   - .knowledge/decisions/INDEX.md
