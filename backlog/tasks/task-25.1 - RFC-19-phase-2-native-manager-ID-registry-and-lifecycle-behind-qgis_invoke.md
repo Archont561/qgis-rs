@@ -4,11 +4,13 @@ title: 'RFC 19 phase 2: native manager, ID registry and lifecycle behind qgis_in
 status: To Do
 assignee: []
 created_date: '2026-10-02 23:23'
+updated_date: '2026-10-03 02:16'
 labels:
   - rfc
   - ffi
   - cpp
-dependencies: []
+dependencies:
+  - TASK-25.4
 references:
   - 'https://github.com/Archont561/qgis-rs/issues/19'
 parent_task_id: TASK-25
