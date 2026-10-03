@@ -217,6 +217,45 @@ pub fn validate_manifest(contents: &str) -> Result<ApiManifest> {
     Ok(manifest)
 }
 
+/// Reject an upgrade that silently drops declarations, operations, or ownership
+/// metadata. Additions and explicit status changes remain reviewable output.
+pub fn check_upgrade(previous: &ApiManifest, current: &ApiManifest) -> Result<()> {
+    if current.manifest_version < previous.manifest_version {
+        bail!(
+            "API manifest version regressed from {} to {}",
+            previous.manifest_version,
+            current.manifest_version
+        );
+    }
+    for declaration in &previous.declarations {
+        let Some(next) = current
+            .declarations
+            .iter()
+            .find(|candidate| candidate.id == declaration.id)
+        else {
+            bail!("declaration dropped from API manifest: {}", declaration.id);
+        };
+        if next.ownership != declaration.ownership {
+            bail!(
+                "ownership changed for declaration {}: {:?} -> {:?}",
+                declaration.id,
+                declaration.ownership,
+                next.ownership
+            );
+        }
+    }
+    for operation in &previous.operations {
+        if !current
+            .operations
+            .iter()
+            .any(|candidate| candidate.name == operation.name)
+        {
+            bail!("operation dropped from API manifest: {}", operation.name);
+        }
+    }
+    Ok(())
+}
+
 /// Render the generated C++ operation registration fragment.
 pub fn render_operation_table(manifest: &ApiManifest) -> Result<String> {
     let mut output = String::new();
@@ -246,10 +285,24 @@ pub fn render_generated_header(manifest: &ApiManifest) -> String {
 }
 
 /// Run the repository command against the checked-in manifest.
-pub fn run(check: bool) -> Result<()> {
+pub fn run(check: bool, diff_against: Option<&str>) -> Result<()> {
     let root = crate::util::repo_root();
+    let manifest_path = root.join("crates/qgis-sys/native_manager/generated/api_manifest.json");
+    if let Some(previous_path) = diff_against {
+        let current = validate_manifest(
+            &fs::read_to_string(&manifest_path)
+                .with_context(|| format!("read API manifest {}", manifest_path.display()))?,
+        )?;
+        let previous_path = root.join(previous_path);
+        let previous = validate_manifest(
+            &fs::read_to_string(&previous_path)
+                .with_context(|| format!("read prior API manifest {}", previous_path.display()))?,
+        )?;
+        check_upgrade(&previous, &current)?;
+        println!("API manifest upgrade is compatible with {}", previous_path.display());
+    }
     generate(
-        &root.join("crates/qgis-sys/native_manager/generated/api_manifest.json"),
+        &manifest_path,
         &root.join("crates/qgis-sys/include/native_manager/generated"),
         check,
     )

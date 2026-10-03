@@ -46,6 +46,23 @@ fn generated_header_exposes_the_pinned_api_version() {
 }
 
 #[test]
+fn manifest_upgrade_diff_rejects_drops_and_ownership_changes() {
+    let current = validate_manifest(MANIFEST).expect("checked-in API manifest is valid");
+
+    let mut dropped = current.clone();
+    dropped.declarations.pop();
+    let error = xtask::api_manifest::check_upgrade(&current, &dropped)
+        .expect_err("dropped declaration must fail review");
+    assert!(error.to_string().contains("dropped"));
+
+    let mut reowned = current.clone();
+    reowned.declarations[0].ownership = Some("qgis_owned".to_string());
+    let error = xtask::api_manifest::check_upgrade(&current, &reowned)
+        .expect_err("ownership change must fail review");
+    assert!(error.to_string().contains("ownership"));
+}
+
+#[test]
 fn invalid_statuses_and_duplicate_operations_are_rejected() {
     let invalid = r#"{
         "manifest_version": 1,
