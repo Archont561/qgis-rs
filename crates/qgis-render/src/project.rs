@@ -140,7 +140,7 @@ impl Project {
             layer_count: None,
             extent: None,
             note: Some(
-                "CRS, layer count and extent need the QGIS backend, which is not wired up yet"
+                "CRS, layer count and extent are only available through the native QGIS project reader"
                     .to_string(),
             ),
         })
@@ -162,7 +162,8 @@ impl Project {
     ///
     /// # Errors
     ///
-    /// Always [`Error::Unimplemented`] until the QGIS backend lands.
+    /// This backend-agnostic reader does not render through QGIS. Use the
+    /// transport-level `render_map` operation for native rendering.
     pub fn render(&self, _settings: &RenderSettings) -> Result<RenderedMap> {
         Err(Error::Unimplemented {
             feature: "rendering a project",
