@@ -6,12 +6,15 @@ use std::{
 use anyhow::{Context, Result};
 use walkdir::WalkDir;
 
-/// Qt modules required by QGIS headers.
-/// Add new modules here as the compiler asks for them.
+/// Qt modules required by the native manager's QGIS headers.
 const QT_MODULES: &[&str] = &["QtCore", "QtGui", "QtWidgets", "QtXml"];
 
 fn main() -> Result<()> {
-    let out_dir = PathBuf::from(env::var("OUT_DIR")?);
+    if env::var_os("CARGO_FEATURE_QGIS").is_none() {
+        println!("cargo:warning=qgis-sys built without the QGIS backend");
+        return Ok(());
+    }
+
     let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR")?);
 
     let conda = env::var("CONDA_PREFIX")
@@ -39,48 +42,44 @@ fn main() -> Result<()> {
         .map(PathBuf::from)
         .unwrap_or_else(|_| conda.join("lib"));
 
-    // Detect Qt major version from directory name
+    // Detect Qt major version from directory name.
     let qt_major = if qt_inc.ends_with("qt6") { 6 } else { 5 };
 
-    // ── Discover files ────────────────────────────────────────────────────
-    let bridges = glob("src", "rs")?;
+    // The native manager is the only QGIS implementation. There is no CXX
+    // bridge or direct per-class shim to discover or compile here.
     let headers = glob("include", "h")?;
     let shims = glob("src", "cpp")?;
 
-    // ── CXX bridge ───────────────────────────────────────────────────────
-    cxx_build::bridges(&bridges)
+    let mut manager = cc::Build::new();
+    manager
+        .cpp(true)
         .std("c++17")
         .include("include")
-        .compile("qgis-sys-cxx");
-
-    let cxxbridge_include = out_dir.join("cxxbridge/include");
-    let cxxbridge_crate = out_dir.join("cxxbridge/crate");
-
-    // ── Shim archive ─────────────────────────────────────────────────────
-    let mut shim = cc::Build::new();
-    shim.cpp(true)
-        .std("c++17")
-        .include("include")
-        .include(&cxxbridge_include)
-        .include(&cxxbridge_crate)
         .include(&qgis_inc)
         .include(&qt_inc);
 
     for module in QT_MODULES {
-        shim.include(qt_inc.join(module));
+        manager.include(qt_inc.join(module));
     }
 
-    shim.flag_if_supported("-Wall")
+    manager
+        .flag_if_supported("-Wall")
         .flag_if_supported("-Wextra")
-        .flag_if_supported("-Werror");
+        .flag_if_supported("-Werror")
+        // QGIS's Qt headers on the conda GCC toolchain trigger this diagnostic
+        // in a legacy constructor declaration; do not let an external-header warning
+        // prevent the native manager from compiling with warnings-as-errors.
+        .flag_if_supported("-Wno-error=template-id-cdtor")
+        // The native manager opts its three C ABI declarations back into
+        // default visibility; every other manager symbol stays hidden.
+        .flag_if_supported("-fvisibility=hidden");
 
-    for f in &shims {
-        shim.file(f);
+    for file in &shims {
+        manager.file(file);
     }
 
-    shim.compile("qgis-sys-shim");
+    manager.compile("qgis-sys-shim");
 
-    // ── Link ──────────────────────────────────────────────────────────────
     println!("cargo:rustc-link-search=native={}", qgis_lib.display());
     println!("cargo:rustc-link-lib=dylib=qgis_core");
 
@@ -91,20 +90,13 @@ fn main() -> Result<()> {
 
     println!("cargo:rustc-link-arg=-Wl,-rpath,{}", qgis_lib.display());
 
-    // ── compile_commands.json for clangd ──────────────────────────────────
-    write_compile_commands(
-        &manifest_dir,
-        &cxxbridge_include,
-        &cxxbridge_crate,
-        &qt_inc,
-        &qgis_inc,
-        &shims,
-    )?;
+    write_compile_commands(&manifest_dir, &qt_inc, &qgis_inc, &shims)?;
 
-    // ── Rerun triggers ───────────────────────────────────────────────────
-    for f in bridges.iter().chain(headers.iter()).chain(shims.iter()) {
-        println!("cargo:rerun-if-changed={f}");
+    for file in headers.iter().chain(shims.iter()) {
+        println!("cargo:rerun-if-changed={file}");
     }
+    println!("cargo:rerun-if-changed=native_manager/generated/api_manifest.json");
+    println!("cargo:rerun-if-changed=include/native_manager/generated/operation_table.inc");
     println!("cargo:rerun-if-env-changed=CONDA_PREFIX");
     println!("cargo:rerun-if-env-changed=QGIS_INCLUDE_DIR");
     println!("cargo:rerun-if-env-changed=QT_INCLUDE_DIR");
@@ -120,16 +112,12 @@ fn glob(dir: &str, ext: &str) -> Result<Vec<String>> {
 
     let mut files: Vec<String> = WalkDir::new(dir)
         .into_iter()
-        .filter_map(|e| e.ok())
-        .filter(|e| {
-            let p = e.path();
-            let name = p.file_name().and_then(|n| n.to_str()).unwrap_or("");
-            p.is_file()
-                && p.extension().and_then(|x| x.to_str()) == Some(ext)
-                && name != "lib.rs"
-                && name != "mod.rs"
+        .filter_map(|entry| entry.ok())
+        .filter(|entry| {
+            let path = entry.path();
+            path.is_file() && path.extension().and_then(|value| value.to_str()) == Some(ext)
         })
-        .map(|e| e.path().to_string_lossy().into_owned())
+        .map(|entry| entry.path().to_string_lossy().into_owned())
         .collect();
 
     files.sort();
@@ -138,8 +126,6 @@ fn glob(dir: &str, ext: &str) -> Result<Vec<String>> {
 
 fn write_compile_commands(
     manifest_dir: &Path,
-    cxxbridge_include: &Path,
-    cxxbridge_crate: &Path,
     qt_inc: &Path,
     qgis_inc: &Path,
     shims: &[String],
@@ -150,29 +136,22 @@ fn write_compile_commands(
         .parent()
         .context("missing workspace root")?;
 
-    let mut include_dirs = vec![
-        manifest_dir.join("include"),
-        cxxbridge_include.to_path_buf(),
-        cxxbridge_crate.to_path_buf(),
-        qt_inc.to_path_buf(),
-    ];
-
+    let mut include_dirs = vec![manifest_dir.join("include"), qt_inc.to_path_buf()];
     for module in QT_MODULES {
         include_dirs.push(qt_inc.join(module));
     }
-
     include_dirs.push(qgis_inc.to_path_buf());
 
     let flags: String = include_dirs
         .iter()
-        .map(|p| format!("-I{}", p.display()))
+        .map(|path| format!("-I{}", path.display()))
         .collect::<Vec<_>>()
         .join(" ");
 
     let entries: Vec<String> = shims
         .iter()
-        .map(|f| {
-            let abs = manifest_dir.join(f);
+        .map(|file| {
+            let absolute = manifest_dir.join(file);
             format!(
                 r#"  {{
     "directory": "{}",
@@ -180,15 +159,14 @@ fn write_compile_commands(
     "command": "c++ -std=c++17 {} {}"
   }}"#,
                 manifest_dir.display(),
-                abs.display(),
+                absolute.display(),
                 flags,
-                abs.display(),
+                absolute.display(),
             )
         })
         .collect();
 
     let json = format!("[\n{}\n]\n", entries.join(",\n"));
-
     std::fs::write(workspace_root.join("compile_commands.json"), json)
         .context("failed to write compile_commands.json")?;
 

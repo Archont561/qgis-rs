@@ -37,7 +37,7 @@ The highest-impact architectural path is:
 1. [TASK-25.4](../../tasks/task-25.4%20-%20RFC-19-resolve-open-questions-and-record-the-native-manager-ADR.md) — resolve the RFC 19 manager invariants and ADR.
 2. [TASK-24](../../tasks/task-24%20-%20Add-cmake-and-ninja-to-the-C-toolchain-dependencies.md) — provide the C++ toolchain prerequisites; it may run in parallel with TASK-25.4.
 3. [TASK-25.1](../../tasks/task-25.1%20-%20RFC-19-phase-2-native-manager-ID-registry-and-lifecycle-behind-qgis_invoke.md) — implement the native manager only after both prerequisites.
-4. [TASK-25.2](../../tasks/task-25.2%20-%20RFC-19-phase-3-layer-open-info-close-and-a-batched-layer.features.md) → [TASK-25.3](../../tasks/task-25.3%20-%20RFC-19-phase-4-render_map-and-export_features-against-real-QGIS-no-NEEDS_QGIS.md).
+4. [TASK-25.2](../../tasks/task-25.2%20-%20RFC-19-phase-3-layer-open-info-close-and-a-batched-layer.features.md) → [TASK-25.3](../../tasks/task-25.3%20-%20RFC-19-phase-4-render_map-and-export_features-against-real-QGIS.md).
 
 The independent SDK CLI architecture path is [TASK-26](../../tasks/task-26%20-%20Refactor-qgis-sdk-CLI-onto-the-shared-Rust-engine-wire-protocol.md). It shares D09's envelope conventions but must not be conflated with the QGIS-native manager.
 
@@ -64,7 +64,7 @@ Bind the types needed to read features from a layer. These are tracked in
 Backlog.md rather than by a status table here:
 
 - `QgsFields` / `QgsField` → [TASK-5](../../tasks/task-5%20-%20Bind-QgsFields-and-QgsField-schema-types-in-qgis-sys.md)
-- `QgsFeature` / `QgsGeometry` → [TASK-6](../../tasks/task-6%20-%20Bind-QgsFeature-AttributeValue-conversions-and-QgsGeometry-in-qgis-sys.md)
+- `QgsFeature` / `QgsGeometry` → [TASK-6](../../archive/task-6%20-%20Bind-QgsFeature-AttributeValue-conversions-and-QgsGeometry-in-qgis-sys.md)
 - `QgsFeatureIterator` / CRS → [TASK-7](../../tasks/task-7%20-%20Bind-QgsFeatureIterator-and-QgsCoordinateReferenceSystem-in-qgis-sys.md)
 
 Validation remains a real GeoPackage fixture with attributes and geometry:
@@ -96,7 +96,7 @@ backend is complete. The work is split between:
 
 - [TASK-12](../../tasks/task-12%20-%20Bind-QgsMapSettings-and-QgsMapRendererSequentialJob-for-embedded-rendering.md) — direct rendering bindings.
 - [TASK-19](../../tasks/task-19%20-%20End-to-end-integration-test-suite-for-qgis-server-OGC-endpoints.md) — server integration.
-- [TASK-25.3](../../tasks/task-25.3%20-%20RFC-19-phase-4-render_map-and-export_features-against-real-QGIS-no-NEEDS_QGIS.md) — rendering/export through the native manager.
+- [TASK-25.3](../../tasks/task-25.3%20-%20RFC-19-phase-4-render_map-and-export_features-against-real-QGIS.md) — rendering/export through the native manager.
 - [TASK-20](../../tasks/task-20%20-%20Document-the-engine-wire-protocol-in-the-docs-site.md) — public protocol reference.
 
 D12 settles the RFC 19 manager boundary; it does not make QGIS GUI widgets

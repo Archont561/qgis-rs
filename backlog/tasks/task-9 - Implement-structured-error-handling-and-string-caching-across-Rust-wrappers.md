@@ -4,11 +4,12 @@ title: Implement structured error handling and string caching across Rust wrappe
 status: To Do
 assignee: []
 created_date: '2026-09-30 20:48'
-updated_date: '2026-10-03 08:31'
+updated_date: '2026-10-03 18:36'
 labels:
   - qgis
   - error-handling
   - performance
+  - deprecated
 milestone: m-1
 dependencies:
   - TASK-8
@@ -31,3 +32,13 @@ Replace silent boolean fallbacks in C++ shims with structured error retrieval vi
 - [ ] #3 Static layer and CRS properties (authid, description) cache converted Rust Strings via OnceCell
 - [ ] #4 Invalid layer paths return descriptive QgisError::InvalidLayer(msg) instead of generic boolean false
 <!-- AC:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Arena agent
+created: 2026-10-03 18:36
+---
+Deprecated: superseded by RFC 19 native-manager operations; this legacy direct qgis-sys shim path is no longer planned.
+---
+<!-- COMMENTS:END -->

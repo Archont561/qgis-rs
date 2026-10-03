@@ -28,6 +28,15 @@ import pytest
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 
+def pytest_configure(config):
+    """Register the SDK plugin for source checkouts without double-loading it."""
+    if config.pluginmanager.get_plugin("qgis_sdk") is None:
+        import qgis_sdk.testing as sdk_testing
+
+        config.pluginmanager.register(sdk_testing, "qgis_sdk")
+        sdk_testing.pytest_configure(config)
+
+
 @pytest.fixture(scope="session")
 def qt_app() -> Iterator[Any]:
     """A QApplication for the session, or skip when PyQt is not installed."""

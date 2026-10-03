@@ -407,6 +407,7 @@ pixi run xtask clang-tidy                    # clang-tidy, discovering its own i
 pixi run xtask check-sources                 # no source file hidden by .gitignore
 pixi run xtask lint-toml  [files...]         # taplo canonicality
 pixi run xtask pack-check <dir> <required…>  # the published tarball has what `files` promises
+pixi run xtask api-manifest [--check] [--diff-against PATH] # validate/generate API coverage
 pixi run xtask scaffold <layer> <concept> <QgisClass> <short>
 pixi run xtask setup-qca
 pixi run xtask release <step>

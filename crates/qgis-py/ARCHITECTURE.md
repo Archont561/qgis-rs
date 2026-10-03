@@ -73,13 +73,23 @@ numbers from a different codebase.
 - **API**: every value — `Extent.parse`, `TilePlan`, `ZoomRange`, `Crs`, `plan_tiles`, `Project.open` — is computed by Rust and crosses the boundary once, as JSON. The Python classes hold the decoded result; they never recompute it.
 - **CLI**: `qgis-cli` binary is Rust executable (no Python interpreter). `qgis_rs.cli:main` Python wrapper calls Rust extension directly (no subprocess), so `python -m qgis_rs.cli` is also native speed.
 
-### Future: QGIS backend
+### Native QGIS backend
 
-Currently `qgis-render` is pure Rust (no `libqgis_core`). Rendering methods return `Error::Unimplemented` until QGIS backend is wired. When `qgis-sys` backend lands:
+`qgis-render` remains the backend-agnostic Rust domain layer; its pure
+`Project::render` method is intentionally separate from the native manager.
+The transport-level `render_map` and `export_features` operations route through
+`qgis-engine` to `qgis-sys` when the `qgis` feature is enabled. That manager is
+the sole owner of `libqgis_core`, Qt objects, project state, and path-based
+artifact creation.
 
-- `Project::render` will use `libqgis_core` via CXX bindings (still Rust, still native speed, but requires QGIS libs).
-- Conda-forge package will depend on `qgis` to provide `libqgis_core.so`.
-- pip wheels will remain lightweight (no QGIS) unless we bundle QGIS — for full rendering, users should use conda-forge.
+- The QGIS-enabled Pixi/conda environment provides `libqgis_core.so` and runs
+  the native-manager integration tests.
+- QGIS-free builds retain validation and pure Rust operations, but report native
+  render/export tools as unavailable instead of silently substituting another
+  implementation.
+- pip wheels remain lightweight unless a distribution explicitly supplies the
+  native QGIS runtime; users needing native rendering should use the QGIS-backed
+  package/environment.
 
 ### Testing
 

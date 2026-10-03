@@ -1,10 +1,10 @@
 ---
 id: TASK-27
 title: Reconcile draft knowledge decisions with current backlog and architecture
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-10-03 02:12'
-updated_date: '2026-10-03 08:33'
+updated_date: '2026-10-03 17:28'
 labels:
   - knowledge
   - backlog
@@ -64,7 +64,7 @@ The repository already has backlog tasks covering most roadmap/API work, but sev
 ## Definition of Done
 <!-- DOD:BEGIN -->
 - [x] #1 All migration changes use the backlog CLI for task/doc metadata and are committed in one focused conventional commit.
-- [ ] #2 pixi run backlog task list --ready --plain and the relevant documentation/link checks pass.
+- [x] #2 pixi run backlog task list --ready --plain and the relevant documentation/link checks pass.
 - [x] #3 Durable knowledge remains in .knowledge/ with working links; the executable roadmap is intentionally moved to backlog/docs/roadmap and no source link is broken.
 <!-- DOD:END -->
 
@@ -95,4 +95,14 @@ No new task was created because the audit found no uncovered executable work; op
 Moved executable roadmap planning from the knowledge bundle into Backlog.md milestones m-0 through m-5 and the Backlog document doc-2.
 
 Roadmap migration completed: removed the former knowledge roadmap, created Backlog document doc-2, created milestones m-0 through m-5, and assigned all current tasks to a milestone.
+
+2026-10-03: Re-ran pixi run backlog task list --ready --plain after restoring the environment; the ready queue completed successfully and no dependency metadata errors were reported.
+
+2026-10-03: Checked 131 relative Markdown links across .knowledge (excluding the historical session log) and the knowledge-backlog migration map; 0 missing targets.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+The knowledge-to-backlog reconciliation is complete. Acceptance criteria remain checked, the ready queue is proven with the restored Pixi/Bun environment, and all links in the maintained knowledge and migration-map documents resolve.
+<!-- SECTION:FINAL_SUMMARY:END -->

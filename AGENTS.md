@@ -27,6 +27,17 @@ The `.knowledge/` directory contains design documents, decision records, and arc
 
 **Always consult the knowledge base before making architectural decisions.**
 
+## Refactoring and design rules
+
+These are enforced workflow rules, not optional style advice:
+
+- **TDD first:** before changing production code, identify the public seam and add or extend a behavior test under `crates/*/tests/`, `py-packages/*/tests/`, or `ts-packages/*/tests/`. Run the focused test in the red → green loop; do not test private implementation details.
+- **Refactor only after green:** keep feature work and structural cleanup separate. Make one small behavior-preserving refactor at a time, run the focused test, then run the relevant package gate before moving on.
+- **DRY:** keep operation names, wire shapes, error mapping, and capability lists in one authoritative registry or protocol definition. Do not duplicate dispatch lists in language bindings or documentation when discovery can provide them.
+- **KISS:** prefer a small table, guard clause, or focused helper over nested conditionals, speculative abstractions, and framework-heavy machinery. Keep the native manager's owner-thread boundary explicit.
+- **SOLID:** each manager component has one responsibility; depend on narrow handler seams; extend dispatch through a registry/strategy entry instead of editing a growing `if`/`else` chain; keep QGIS ownership and serialization behind the native-manager boundary.
+- **Review gate:** every refactor must explain the preserved behavior, remove duplication or branching, retain public-seam coverage, and leave the repository with `cargo fmt`, focused tests, and applicable Pixi gates either passing or with their exact environmental blocker recorded.
+
 ## Agent Tooling
 
 The repository carries the same agent workflow used by `pixi-sandbox`:

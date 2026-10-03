@@ -140,7 +140,7 @@ impl Project {
             layer_count: None,
             extent: None,
             note: Some(
-                "CRS, layer count and extent need the QGIS backend, which is not wired up yet"
+                "CRS, layer count and extent are only available through the native QGIS backend project reader"
                     .to_string(),
             ),
         })
@@ -150,7 +150,8 @@ impl Project {
     ///
     /// # Errors
     ///
-    /// Always [`Error::Unimplemented`] until the QGIS backend lands.
+    /// This backend-agnostic reader does not load QGIS project layers. Use the
+    /// transport-level native manager operation when the QGIS feature is enabled.
     pub fn layers(&self) -> Result<Vec<LayerSummary>> {
         Err(Error::Unimplemented {
             feature: "listing project layers",
@@ -161,7 +162,8 @@ impl Project {
     ///
     /// # Errors
     ///
-    /// Always [`Error::Unimplemented`] until the QGIS backend lands.
+    /// This backend-agnostic reader does not render through QGIS. Use the
+    /// transport-level `render_map` operation for native rendering.
     pub fn render(&self, _settings: &RenderSettings) -> Result<RenderedMap> {
         Err(Error::Unimplemented {
             feature: "rendering a project",
@@ -172,7 +174,8 @@ impl Project {
     ///
     /// # Errors
     ///
-    /// Always [`Error::Unimplemented`] until the QGIS backend lands.
+    /// This backend-agnostic reader does not export through QGIS. Use the
+    /// transport-level `export_features` operation for native export.
     pub fn export_layer(&self, _layer: &str, _format: &str) -> Result<PathBuf> {
         Err(Error::Unimplemented {
             feature: "exporting features",

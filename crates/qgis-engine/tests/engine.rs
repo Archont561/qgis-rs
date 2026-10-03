@@ -56,7 +56,7 @@ fn engine_info_advertises_the_operations_it_serves() {
     assert!(result["version"].as_str().expect("a version").contains('.'));
 
     let operations = result["operations"].as_array().expect("a list");
-    for name in ["ping", "plan_tiles", "render_project"] {
+    for name in ["ping", "api_describe", "plan_tiles", "render_project"] {
         assert!(
             operations.contains(&json!(name)),
             "{name} is served but not advertised"
@@ -196,7 +196,7 @@ fn a_project_is_described_from_its_path() {
 }
 
 #[test]
-fn work_that_needs_the_qgis_backend_says_so_in_a_kind() {
+fn native_render_operations_return_a_qgis_error_instead_of_a_placeholder() {
     let dir = std::env::temp_dir().join("qgis-engine-unimplemented");
     std::fs::create_dir_all(&dir).expect("create dir");
     let path = dir.join("map.qgs");
@@ -211,7 +211,7 @@ fn work_that_needs_the_qgis_backend_says_so_in_a_kind() {
     err(
         "render_project",
         json!({"path": &path, "output": "out.png"}),
-        "unimplemented",
+        "qgis",
     );
 }
 
@@ -235,8 +235,8 @@ fn every_rejection_carries_a_kind_a_client_can_branch_on() {
     );
     err(
         "render_project",
-        json!({"path": "/nope/missing.qgs", "output": "out.bmp"}),
-        "project_not_found",
+        json!({"path": "/nope/missing.qgs", "output": "out.png"}),
+        "qgis",
     );
     // A payload of the wrong shape is reported before any domain rule runs.
     err("describe_extent", json!({"extent": 42}), "invalid_payload");

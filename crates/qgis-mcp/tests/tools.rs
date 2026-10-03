@@ -1,5 +1,5 @@
-//! The MCP surface as a client meets it: which tools are advertised, which of
-//! them admit to needing the QGIS backend, and what the live ones answer.
+//! The MCP surface as a client meets it: which tools are advertised, which
+//! native backend is loaded, and what the live tools answer.
 //!
 //! The tool list is a contract — an agent that discovered `plan_tiles`
 //! yesterday must still find it today — so it is asserted by name here.
@@ -46,20 +46,45 @@ fn every_tool_has_a_description() {
 }
 
 #[test]
-fn capabilities_flags_the_tools_that_need_qgis() {
+fn capabilities_reports_the_loaded_backend() {
     let report = QgisMcpServer::capabilities_report();
     assert_eq!(report.server, "qgis-cli");
     assert_eq!(report.tools.len(), 6);
-    let mut needs_qgis: Vec<&str> = report
+    assert!(!report.backend.is_empty());
+    assert_eq!(
+        report
+            .tools
+            .iter()
+            .filter(|tool| tool.name == "render_map")
+            .count(),
+        1
+    );
+    let render = report
         .tools
         .iter()
-        .filter(|tool| tool.needs_qgis_backend)
-        .map(|tool| tool.name.as_str())
-        .collect();
-    needs_qgis.sort_unstable();
-    assert_eq!(needs_qgis, ["export_features", "render_map"]);
+        .find(|tool| tool.name == "render_map")
+        .unwrap();
+    let export = report
+        .tools
+        .iter()
+        .find(|tool| tool.name == "export_features")
+        .unwrap();
+    assert_eq!(render.available, export.available);
+    assert_eq!(render.available, cfg!(feature = "qgis"));
+    #[cfg(feature = "qgis")]
+    {
+        assert!(render.available);
+        assert!(report.qgis_version.is_some());
+        assert_ne!(report.backend, "unavailable");
+    }
+    #[cfg(not(feature = "qgis"))]
+    {
+        assert!(!render.available);
+        assert_eq!(report.qgis_version, None);
+        assert_eq!(report.backend, "unavailable");
+    }
     let json = serde_json::to_string(&report).expect("serialisable");
-    assert!(json.contains("needs_qgis_backend"));
+    assert!(json.contains("backend"));
 }
 
 #[test]
@@ -105,7 +130,7 @@ fn project_info_describes_a_project_without_qgis() {
 }
 
 #[test]
-fn render_requests_are_validated_before_they_are_refused() {
+fn render_requests_are_validated_before_they_reach_qgis() {
     let path = project_file("render.qgs");
     let project = path.to_str().expect("utf-8").to_string();
 
@@ -150,6 +175,44 @@ fn render_requests_are_validated_before_they_are_refused() {
         ..good
     };
     assert!(QgisMcpServer::render_settings(&missing).is_err());
+}
+
+#[test]
+fn render_and_export_handlers_cross_the_manager_boundary() {
+    let path = project_file("native-dispatch.qgs");
+    let project = path.to_str().expect("utf-8").to_string();
+    let server = QgisMcpServer::new();
+
+    let render_error = server
+        .render_map(Parameters(RenderMapParams {
+            project: project.clone(),
+            output: path.with_extension("png").display().to_string(),
+            extent: None,
+            width: Some(32),
+            height: Some(32),
+            crs: None,
+            dpi: None,
+            layers: None,
+            layout: None,
+        }))
+        .expect_err("the deliberately empty project cannot render");
+    assert!(!format!("{render_error:?}")
+        .to_ascii_lowercase()
+        .contains("unimplemented"));
+
+    let export_error = server
+        .export_features(Parameters(ExportFeaturesParams {
+            project,
+            layer: "points".to_string(),
+            output: Some(path.with_extension("geojson").display().to_string()),
+            filter: None,
+            bbox: None,
+            fields: None,
+        }))
+        .expect_err("the deliberately empty project cannot export");
+    assert!(!format!("{export_error:?}")
+        .to_ascii_lowercase()
+        .contains("unimplemented"));
 }
 
 #[test]

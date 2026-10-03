@@ -3,9 +3,9 @@
 //! `qgis-render` is the library every other qgis-rs component is built on: the
 //! CLI, the HTTP server and the MCP server all take their types from here.
 //! It is deliberately backend-agnostic — the geometry that does not need QGIS
-//! (extents, CRS codes, XYZ tile pyramids) is implemented in pure Rust, while
-//! the operations that do need `libqgis_core` return
-//! [`Error::Unimplemented`] until the QGIS backend is wired up.
+//! (extents, CRS codes, XYZ tile pyramids) is implemented in pure Rust. The
+//! transport-level operations that need `libqgis_core` are routed through the
+//! optional native manager rather than adding QGIS ownership to this crate.
 //!
 //! ```
 //! use qgis_render::{Extent, TilePlan, ZoomRange};

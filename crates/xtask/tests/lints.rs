@@ -41,12 +41,11 @@ fn the_canonical_manifests_are_the_one_pixi_file() {
     }
 }
 
-/// The shim's `.cpp` files are discovered for clang-tidy, and clang-tidy is
-/// handed the compiler flags *after* the `--` separator — which is the mistake
-/// the shell version made, and the one clang-tidy answers with its own `--help`
-/// and exit 123.
+/// The shim's `.cpp` files are discovered for clang-tidy, and the command
+/// consumes the native-manager compile database rather than inventing a second
+/// list of QGIS or Qt include paths.
 #[test]
-fn clang_tidy_gets_its_sources_before_the_separator_and_its_flags_after() {
+fn clang_tidy_uses_the_compile_database_for_native_sources() {
     let sources: Vec<std::path::PathBuf> = cpp_sources()
         .into_iter()
         .filter(|path| path.extension().is_some_and(|extension| extension == "cpp"))
@@ -57,78 +56,50 @@ fn clang_tidy_gets_its_sources_before_the_separator_and_its_flags_after() {
     );
 
     let args = clang_tidy_arguments(
-        std::path::Path::new("/shim"),
+        std::path::Path::new("/repo"),
         std::path::Path::new("/prefix"),
-        std::path::Path::new("/prefix/include/qt"),
-        std::path::Path::new("/out/cxxbridge"),
         std::path::Path::new("/gcc/include"),
         &sources,
     );
 
-    let separator = args
-        .iter()
-        .position(|arg| arg == "--")
-        .expect("clang-tidy needs the `--` before the compiler flags");
+    assert_eq!(args[0], "-p");
+    assert_eq!(args[1], "/repo");
     for source in &sources {
-        let position = args
-            .iter()
-            .position(|arg| arg == &source.display().to_string())
-            .unwrap_or_else(|| panic!("{} is not on the command line", source.display()));
         assert!(
-            position < separator,
-            "{} landed after `--`, where clang-tidy reads it as a compiler flag",
+            args.iter().any(|arg| arg == &source.display().to_string()),
+            "{} is not on the command line",
             source.display()
         );
     }
-
-    let flags = &args[separator + 1..];
-    for expected in [
-        "-std=c++17",
-        "-I/shim",
-        "-I/shim/include",
-        "-I/out/cxxbridge/include",
-        "-I/out/cxxbridge/crate",
-        "-I/prefix/include/qgis",
-    ] {
-        assert!(flags.iter().any(|flag| flag == expected), "no {expected}");
-    }
-    assert!(
-        flags.iter().all(|flag| !flag.contains("qgis-sys/../")),
-        "an include path that walks out of the shim is a relative path that no longer resolves"
-    );
-    assert!(
-        flags
-            .iter()
-            .filter(|flag| flag.starts_with("-I"))
-            .all(|flag| flag.len() > 2 && flag[2..].starts_with('/')),
-        "every include path is absolute: a subcommand runs at the repository root"
-    );
-    // The GCC internal include dir carrying stddef.h is only reachable as an
-    // extra arg: it is a clang driver flag, not part of the compiler command
-    // line clang-tidy forwards to the parser.
+    assert!(args
+        .iter()
+        .any(|arg| arg == "--header-filter=^/.*/crates/qgis-sys/src/native_manager/.*"));
     assert!(
         args.iter().any(|arg| arg == "--extra-arg=-I/gcc/include"),
         "the GCC internal include dir is missing"
     );
+    assert!(
+        args.iter().all(|arg| !arg.contains("cxxbridge")),
+        "clang-tidy must not depend on a removed cxxbridge binding"
+    );
 }
 
-/// Qt is found under `include/qt` or `include/qt6` depending on the build, and
-/// the four Qt module directories have to follow whichever one it is.
 #[test]
-fn clang_tidy_names_every_qt_module_directory() {
+fn clang_tidy_uses_the_conda_standard_library_and_sysroot() {
     let args = clang_tidy_arguments(
-        std::path::Path::new("/shim"),
+        std::path::Path::new("/repo"),
         std::path::Path::new("/prefix"),
-        std::path::Path::new("/prefix/include/qt6"),
-        std::path::Path::new("/out/cxxbridge"),
         std::path::Path::new("/gcc/include"),
         &[std::path::PathBuf::from("/shim/application.cpp")],
     );
-    for module in ["QtCore", "QtGui", "QtWidgets", "QtXml"] {
-        assert!(
-            args.iter().any(|arg| arg.ends_with(&format!("/{module}"))),
-            "no include path for {module}"
-        );
+    for expected in [
+        "--extra-arg=--sysroot=/prefix/x86_64-conda-linux-gnu/sysroot",
+        "--extra-arg=-nostdinc++",
+        "--extra-arg=-isystem/gcc/include/c++",
+        "--extra-arg=-isystem/gcc/include/c++/x86_64-conda-linux-gnu",
+        "--extra-arg=-isystem/gcc/include/c++/backward",
+    ] {
+        assert!(args.iter().any(|arg| arg == expected), "no {expected}");
     }
 }
 

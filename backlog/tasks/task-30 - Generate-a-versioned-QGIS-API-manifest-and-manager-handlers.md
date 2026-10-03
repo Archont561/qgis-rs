@@ -1,9 +1,10 @@
 ---
 id: TASK-30
 title: Generate a versioned QGIS API manifest and manager handlers
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-10-03 08:57'
+updated_date: '2026-10-03 19:44'
 labels:
   - rfc
   - ffi
@@ -35,3 +36,15 @@ Build the version-pinned extraction and generation pipeline described in the QGI
 - [ ] #4 Rust, Python, TypeScript, and C++ consume shared protocol fixtures for generated core operations and exact error envelopes.
 - [ ] #5 A QGIS upgrade produces an API diff and fails review when declarations are silently dropped or ownership metadata changes.
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+2026-10-03: Started the first vertical slice with a version-pinned core/data manifest at `crates/qgis-sys/native_manager/generated/api_manifest.json`. It records explicit declaration statuses, QGIS version ranges, ownership, operation/handler mappings, exclusions, and representative mapping policies.
+
+2026-10-03: Added `pixi run xtask api-manifest [--check] [--diff-against PATH]` implementation. It validates manifest status/reason/version invariants, rejects dropped declarations/operations and ownership changes during upgrades, and deterministically generates the native-manager operation table and manifest-version header.
+
+2026-10-03: Native `engine_info` now advertises manifest metadata, and `api_describe` routes through the generated handler registry. Cross-language/runtime gates and the full clang-AST extraction/API-diff pipeline remain outstanding; keep this task In Progress until Pixi/QGIS validation is available.
+
+2026-10-03: Added required per-operation codec metadata to the manifest and generated registry, and exposed it through `api_describe.operation_metadata`; Python and TypeScript contract tests now advertise the capability as well. The manifest/registry still require compile-time validation once Cargo/QGIS tooling is available.
+<!-- SECTION:NOTES:END -->

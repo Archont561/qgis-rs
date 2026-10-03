@@ -23,6 +23,7 @@
 //! the crate is `publish = false` — but the tests are a consumer like any
 //! other, and a consumer is exactly what the public API is for.
 
+pub mod api_manifest;
 pub mod ci;
 pub mod lints;
 pub mod release;
@@ -41,6 +42,7 @@ use clap::{Parser, Subcommand};
                   pixi run xtask ci\n  \
                   pixi run xtask check-cpp [files...]\n  \
                   pixi run xtask format-cpp\n  \
+                  pixi run xtask api-manifest [--check] [--diff-against PATH]\n  \
                   pixi run xtask clang-tidy\n  \
                   pixi run xtask release verify-version v1.2.3",
     version
@@ -90,6 +92,15 @@ pub enum Command {
         /// The captured gate log.
         log: String,
     },
+    /// Validate the versioned QGIS API manifest and generate native-manager fragments.
+    ApiManifest {
+        /// Check generated fragments without rewriting them.
+        #[arg(long)]
+        check: bool,
+        /// Compare the current manifest against a prior checked-in manifest.
+        #[arg(long, value_name = "PATH")]
+        diff_against: Option<String>,
+    },
     /// Scaffold a qgis-sys binding: header + cxx bridge + C++ shim + wiring.
     Scaffold {
         /// Layer directory, e.g. `core`.
@@ -125,6 +136,10 @@ pub fn run(command: Command) -> Result<()> {
         } => lints::pack_check(&package_dir, &required),
         Command::SetupQca => lints::setup_qca(),
         Command::CiFailureSummary { log } => ci::failure_summary(&log),
+        Command::ApiManifest {
+            check,
+            diff_against,
+        } => api_manifest::run(check, diff_against.as_deref()),
         Command::Scaffold {
             layer,
             concept,

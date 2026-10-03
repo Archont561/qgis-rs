@@ -16,7 +16,7 @@
 - **Native speed**: No Python overhead for geometry math, tile planning, or rendering. The `qgis-cli` binary is a statically-linked Rust executable built with `cargo`.
 - **Single install**: `pip install qgis-rs` gives you both `import qgis_rs` and `qgis-cli` on PATH.
 - **No QGIS needed for many operations**: Tile planning (`tiles --dry-run`), extent parsing, CRS handling, and project inspection are pure Rust and work anywhere.
-- **QGIS backend optional**: When `libqgis_core` is available (conda-forge `qgis` package), rendering and feature export use it; otherwise they report `Unimplemented` with a clear message, so CLI tooling can be developed without QGIS.
+- **QGIS backend optional**: When `libqgis_core` is available (the Pixi/conda QGIS environment), rendering and feature export use the native manager; QGIS-free builds report an explicit backend error instead of silently substituting another implementation.
 
 ## Installation
 
@@ -100,13 +100,13 @@ for level in plan.levels():
 total, levels = plan_tiles("14,50,15,51", "10-14")
 print(total)  # 4568
 
-# Rendering (needs QGIS backend — via conda-forge qgis package)
+# Rendering through the native QGIS backend
 # When QGIS is not available, this raises ValueError with clear message.
 try:
     rendered = project.render("output.png", width=1920, height=1080, dpi=150)
     print(f"Wrote {rendered.path} ({rendered.bytes} bytes)")
 except ValueError as e:
-    print(f"Rendering needs QGIS backend: {e}")
+    print(f"QGIS rendering failed: {e}")
 ```
 
 ## CLI

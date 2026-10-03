@@ -12,10 +12,9 @@
 //! # }
 //! ```
 //!
-//! Tools that only need geometry (`crs_info`, `plan_tiles`, `project_info`)
-//! answer for real; the ones that need `libqgis_core` (`render_map`,
-//! `export_features`) report that they are not wired up yet instead of
-//! pretending. `capabilities` lists both, so a client can tell them apart.
+//! Pure planning tools and native QGIS tools share one MCP surface. Rendering
+//! and feature export cross the RFC 19 native-manager boundary, which owns all
+//! QGIS objects and returns path-based artifact metadata rather than bytes.
 //!
 //! The `_report` helpers are the pure half of each tool: they take plain
 //! arguments and return typed values, which is what the tests exercise.
@@ -32,9 +31,6 @@ use rmcp::{
 
 /// The implementation name reported during the MCP handshake.
 pub const SERVER_NAME: &str = "qgis-cli";
-
-/// Tools that cannot answer until `qgis-render` gains a QGIS backend.
-const NEEDS_QGIS: &[&str] = &["render_map", "export_features"];
 
 // ── tool arguments ────────────────────────────────────────────────────────────
 
@@ -69,7 +65,7 @@ pub struct RenderMapParams {
     #[schemars(description = "Path to a .qgs or .qgz project file.")]
     pub project: String,
     #[schemars(
-        description = "Where to write the image; the extension picks the format (.png, .jpg, .webp, .svg, .pdf)."
+        description = "Where to write the image; the extension picks the format (.png, .jpg, .jpeg, or .webp)."
     )]
     pub output: String,
     #[schemars(
@@ -176,8 +172,8 @@ pub struct ToolReport {
     pub name: String,
     /// Its description.
     pub description: String,
-    /// Whether it needs the QGIS backend.
-    pub needs_qgis_backend: bool,
+    /// Whether the loaded native backend serves this tool.
+    pub available: bool,
 }
 
 /// What `capabilities` returns.
@@ -189,6 +185,10 @@ pub struct CapabilitiesReport {
     pub version: String,
     /// Every tool this server advertises.
     pub tools: Vec<ToolReport>,
+    /// Backend selected for this server process.
+    pub backend: String,
+    /// QGIS version when the native backend initialized.
+    pub qgis_version: Option<String>,
     /// How to interpret the report.
     pub note: String,
 }
@@ -234,16 +234,21 @@ impl QgisMcpServer {
         Self::tool_router()
     }
 
-    /// The tools this server advertises, with what each one needs.
+    /// The tools this server advertises and whether the loaded backend serves them.
     #[must_use]
     pub fn capabilities_report() -> CapabilitiesReport {
+        let backend = native_backend();
         let tools = Self::tool_router()
             .list_all()
             .into_iter()
             .map(|tool| {
                 let name = tool.name.to_string();
+                let available = match name.as_str() {
+                    "render_map" | "export_features" => backend.supports(&name),
+                    _ => true,
+                };
                 ToolReport {
-                    needs_qgis_backend: NEEDS_QGIS.contains(&name.as_str()),
+                    available,
                     description: tool
                         .description
                         .map_or_else(String::new, |text| text.to_string()),
@@ -254,10 +259,11 @@ impl QgisMcpServer {
         CapabilitiesReport {
             server: SERVER_NAME.to_string(),
             version: qgis_render::VERSION.to_string(),
+            backend: backend.name,
+            qgis_version: backend.qgis_version,
             tools,
-            note:
-                "tools with needs_qgis_backend = true fail until qgis-render gains a QGIS backend"
-                    .to_string(),
+            note: "capabilities are computed from the native manager loaded by this process"
+                .to_string(),
         }
     }
 
@@ -358,6 +364,12 @@ impl QgisMcpServer {
         if let Some(layout) = &params.layout {
             settings = settings.with_layout(layout.clone());
         }
+        if !settings.format.is_raster() {
+            return Err(ErrorData::invalid_params(
+                "the native map renderer currently writes raster images (png, jpg, jpeg, or webp)",
+                None,
+            ));
+        }
         Ok((project, settings))
     }
 
@@ -385,7 +397,7 @@ impl QgisMcpServer {
 #[tool_router]
 impl QgisMcpServer {
     #[tool(
-        description = "List the qgis-rs tools and say which ones need the QGIS backend. Call this first."
+        description = "List the qgis-rs tools and report availability from the loaded backend. Call this first."
     )]
     pub fn capabilities(&self) -> Result<String, ErrorData> {
         report(&Self::capabilities_report())
@@ -411,9 +423,7 @@ impl QgisMcpServer {
         report(&Self::plan_tiles_report(&params.bounds, &params.zoom)?)
     }
 
-    #[tool(
-        description = "Describe a QGIS project file: its format, size and where to find it. Layer details need the QGIS backend."
-    )]
+    #[tool(description = "Describe a QGIS project file: its format, size and where to find it.")]
     pub fn project_info(
         &self,
         Parameters(params): Parameters<ProjectInfoParams>,
@@ -421,26 +431,55 @@ impl QgisMcpServer {
         report(&Self::project_info_report(&params.project)?)
     }
 
-    #[tool(description = "Render a QGIS project to an image. Needs the QGIS backend.")]
+    #[tool(
+        description = "Render a QGIS project to a path-based image artifact using the loaded native QGIS backend."
+    )]
     pub fn render_map(
         &self,
         Parameters(params): Parameters<RenderMapParams>,
     ) -> Result<String, ErrorData> {
-        let (_project, _settings) = Self::render_settings(&params)?;
-        Err(internal_error(RenderError::Unimplemented {
-            feature: "rendering a project",
-        }))
+        let (_project, settings) = Self::render_settings(&params)?;
+        let payload = serde_json::json!({
+            "project": params.project,
+            "output": settings.output,
+            "width": settings.width,
+            "height": settings.height,
+            "dpi": settings.dpi,
+            "crs": params.crs,
+            "extent": params.extent,
+            "layers": settings.layers,
+            "layout": params.layout,
+        });
+        report(&native_call("render_map", payload)?)
     }
 
-    #[tool(description = "Export a layer's features to GeoJSON or CSV. Needs the QGIS backend.")]
+    #[tool(
+        description = "Export a QGIS vector layer to a path-based GeoJSON or CSV artifact using the loaded native QGIS backend."
+    )]
     pub fn export_features(
         &self,
         Parameters(params): Parameters<ExportFeaturesParams>,
     ) -> Result<String, ErrorData> {
-        let (_project, _bbox) = Self::export_request(&params)?;
-        Err(internal_error(RenderError::Unimplemented {
-            feature: "exporting features",
-        }))
+        let (project, bbox) = Self::export_request(&params)?;
+        let output = params.output.clone().unwrap_or_else(|| {
+            project
+                .path()
+                .parent()
+                .unwrap_or_else(|| std::path::Path::new("."))
+                .join(format!("{}.geojson", params.layer))
+                .display()
+                .to_string()
+        });
+        let fields = params.fields.as_deref().map(split_list).unwrap_or_default();
+        let payload = serde_json::json!({
+            "project": project.path(),
+            "layer": params.layer,
+            "output": output,
+            "filter": params.filter,
+            "bbox": params.bbox.unwrap_or_else(|| bbox.to_string()),
+            "fields": fields,
+        });
+        report(&native_call("export_features", payload)?)
     }
 }
 
@@ -452,6 +491,92 @@ impl QgisMcpServer {
 impl rmcp::ServerHandler for QgisMcpServer {}
 
 // ── helpers ───────────────────────────────────────────────────────────────────
+
+struct NativeBackend {
+    operations: Vec<String>,
+    name: String,
+    qgis_version: Option<String>,
+}
+
+impl NativeBackend {
+    fn supports(&self, operation: &str) -> bool {
+        self.operations.iter().any(|name| name == operation)
+    }
+}
+
+fn native_backend() -> NativeBackend {
+    let init = native_call("app_init", serde_json::Value::Null);
+    if init.is_err() {
+        return NativeBackend {
+            operations: Vec::new(),
+            name: "unavailable".to_string(),
+            qgis_version: None,
+        };
+    }
+    match native_call("api_describe", serde_json::Value::Null) {
+        Ok(info) => NativeBackend {
+            operations: info["operations"]
+                .as_array()
+                .map(|operations| {
+                    operations
+                        .iter()
+                        .filter_map(|name| name.as_str().map(str::to_string))
+                        .collect()
+                })
+                .unwrap_or_default(),
+            name: info["engine"]
+                .as_str()
+                .unwrap_or("qgis-native-manager")
+                .to_string(),
+            qgis_version: info["qgis_version"].as_str().map(str::to_string),
+        },
+        Err(_) => NativeBackend {
+            operations: Vec::new(),
+            name: "unavailable".to_string(),
+            qgis_version: None,
+        },
+    }
+}
+
+fn native_call(
+    operation: &str,
+    payload: serde_json::Value,
+) -> Result<serde_json::Value, ErrorData> {
+    if operation != "app_init" {
+        let init = serde_json::json!({
+            "transport_version": 1,
+            "operation": "app_init",
+            "payload": null,
+        });
+        let init_response: serde_json::Value =
+            serde_json::from_str(&qgis_sys::native_manager_ffi::invoke(&init.to_string()))
+                .map_err(internal_error)?;
+        if init_response["ok"].as_bool() != Some(true) {
+            return Err(internal_error(init_response["result"].clone()));
+        }
+    }
+    let request = serde_json::json!({
+        "transport_version": 1,
+        "operation": operation,
+        "payload": payload,
+    });
+    let response: serde_json::Value =
+        serde_json::from_str(&qgis_sys::native_manager_ffi::invoke(&request.to_string()))
+            .map_err(internal_error)?;
+    if response["ok"].as_bool() == Some(true) {
+        return Ok(response["result"].clone());
+    }
+    let result = &response["result"];
+    let message = result["error"]
+        .as_str()
+        .unwrap_or("native manager rejected the request");
+    match result["kind"].as_str() {
+        Some("invalid_payload") | Some("invalid_object_id") => {
+            Err(ErrorData::invalid_params(message.to_string(), None))
+        }
+        _ => Err(internal_error(message.to_string())),
+    }
+}
 
 fn report<T: serde::Serialize>(value: &T) -> Result<String, ErrorData> {
     serde_json::to_string_pretty(value).map_err(internal_error)

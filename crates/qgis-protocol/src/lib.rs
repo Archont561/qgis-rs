@@ -87,6 +87,34 @@ pub enum Operation {
     /// This build's version, the transport it speaks, its limits and the
     /// operations it serves.
     EngineInfo,
+    /// Describe the generated native-manager API manifest and live handlers.
+    ApiDescribe,
+    /// Initialize the standalone native QGIS manager.
+    AppInit,
+    /// Release all managed QGIS objects and stop the native manager.
+    AppShutdown,
+    /// Open a managed vector layer and return its opaque integer ID.
+    LayerOpen,
+    /// Read all supported metadata for a managed vector layer.
+    LayerInfo,
+    /// Release a managed vector layer from the registry.
+    LayerClose,
+    /// Read one bounded page of features from a managed vector layer.
+    LayerFeatures,
+    /// Create a managed vector layer and return its opaque integer ID.
+    LayerNew,
+    /// Check whether a managed vector layer is valid.
+    LayerIsValid,
+    /// Read a managed vector layer's display name.
+    LayerName,
+    /// Read a managed vector layer's feature count.
+    LayerFeatureCount,
+    /// Read a managed vector layer's CRS authority ID.
+    LayerCrsAuthid,
+    /// Read a managed vector layer's geometry type name.
+    LayerGeometryTypeName,
+    /// Read a managed vector layer's copied field metadata.
+    LayerFields,
     /// Parse and/or describe an extent: edges, width, height, validity.
     DescribeExtent,
     /// Whether an extent contains a point.
@@ -107,7 +135,11 @@ pub enum Operation {
     ProjectInfo,
     /// List the layers of a project.
     ProjectLayers,
-    /// Render a project to an image.
+    /// Render a QGIS project to a path-based image artifact.
+    RenderMap,
+    /// Export one QGIS vector layer to a path-based feature artifact.
+    ExportFeatures,
+    /// Legacy pure-engine project render operation.
     RenderProject,
 }
 
@@ -121,6 +153,20 @@ impl Operation {
         &[
             "ping",
             "engine_info",
+            "api_describe",
+            "app_init",
+            "app_shutdown",
+            "layer_open",
+            "layer_info",
+            "layer_close",
+            "layer_features",
+            "layer_new",
+            "layer_is_valid",
+            "layer_name",
+            "layer_feature_count",
+            "layer_crs_authid",
+            "layer_geometry_type_name",
+            "layer_fields",
             "describe_extent",
             "extent_contains",
             "extent_intersects",
@@ -131,9 +177,158 @@ impl Operation {
             "plan_tiles",
             "project_info",
             "project_layers",
+            "render_map",
+            "export_features",
             "render_project",
         ]
     }
+}
+
+/// Arguments for opening a vector layer in the native manager.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LayerOpenRequest {
+    pub uri: String,
+    pub provider: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+}
+
+/// Arguments shared by layer metadata and close operations.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LayerIdRequest {
+    pub layer_id: u64,
+}
+
+fn default_layer_feature_limit() -> u32 {
+    100
+}
+
+/// Arguments for one bounded, batched feature page.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LayerFeaturesRequest {
+    pub layer_id: u64,
+    #[serde(default)]
+    pub offset: u64,
+    #[serde(default = "default_layer_feature_limit")]
+    pub limit: u32,
+}
+
+/// A copied field description returned as part of layer metadata.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LayerFieldInfo {
+    pub name: String,
+    #[serde(rename = "type")]
+    pub type_name: String,
+    pub precision: i32,
+}
+
+/// The metadata returned by `layer.info`.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct LayerInfoResponse {
+    pub layer_id: u64,
+    pub is_valid: bool,
+    pub name: String,
+    pub feature_count: i64,
+    pub crs_authid: String,
+    pub geometry_type_name: String,
+    pub fields: Vec<LayerFieldInfo>,
+}
+
+/// The result returned by `layer.open`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LayerOpenResponse {
+    pub layer_id: u64,
+    pub is_valid: bool,
+    pub name: String,
+}
+
+/// The result returned by `layer.close`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LayerCloseResponse {
+    pub layer_id: u64,
+    pub closed: bool,
+}
+
+/// One feature copied into the transport response. No QGIS pointer or Qt
+/// value crosses the manager boundary.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct LayerFeature {
+    pub id: i64,
+    pub attributes: Value,
+    pub geometry_wkt: String,
+}
+
+/// The result returned by one batched `layer.features` request.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct LayerFeaturesResponse {
+    pub layer_id: u64,
+    pub offset: u64,
+    pub limit: u32,
+    pub next_offset: Option<u64>,
+    pub total: i64,
+    pub features: Vec<LayerFeature>,
+}
+
+/// The result returned by an explicit manager shutdown.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AppShutdownResponse {
+    pub shutdown: bool,
+    pub released_layer_count: u64,
+}
+
+/// Arguments for the native `render_map` operation.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct RenderMapRequest {
+    pub project: String,
+    pub output: String,
+    #[serde(default)]
+    pub width: Option<u32>,
+    #[serde(default)]
+    pub height: Option<u32>,
+    #[serde(default)]
+    pub dpi: Option<f64>,
+    #[serde(default)]
+    pub crs: Option<String>,
+    #[serde(default)]
+    pub extent: Option<String>,
+    #[serde(default)]
+    pub layers: Vec<String>,
+    #[serde(default)]
+    pub layout: Option<String>,
+}
+
+/// The path-based image artifact returned by `render_map`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RenderMapResponse {
+    pub path: String,
+    pub format: String,
+    pub bytes: u64,
+    pub width: u32,
+    pub height: u32,
+}
+
+/// Arguments for the native `export_features` operation.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ExportFeaturesRequest {
+    pub project: String,
+    pub layer: String,
+    pub output: String,
+    #[serde(default)]
+    pub filter: Option<String>,
+    #[serde(default)]
+    pub bbox: Option<String>,
+    #[serde(default)]
+    pub fields: Vec<String>,
+}
+
+/// The path-based feature artifact returned by `export_features`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ExportFeaturesResponse {
+    pub path: String,
+    pub format: String,
+    pub bytes: u64,
+    pub layer: String,
+    pub feature_count: u64,
 }
 
 /// One response from the engine.
@@ -205,8 +400,18 @@ pub enum ErrorKind {
     UnknownCrs,
     /// An output path has no recognisable image-format extension.
     UnknownImageFormat,
-    /// The operation needs the QGIS backend, which is not wired up yet.
+    /// The operation needs the optional native QGIS backend.
     Unimplemented,
+    /// The operation name is not served by the native manager.
+    InvalidOperation,
+    /// An object ID is missing, stale, or has the wrong type.
+    InvalidObjectId,
+    /// The native manager must be initialized before this operation.
+    NotInitialized,
+    /// QGIS rejected an operation or returned an unusable object.
+    Qgis,
+    /// The native manager caught an unexpected internal failure.
+    Internal,
 }
 
 impl ErrorKind {
@@ -225,6 +430,11 @@ impl ErrorKind {
             Self::UnknownCrs => "unknown_crs",
             Self::UnknownImageFormat => "unknown_image_format",
             Self::Unimplemented => "unimplemented",
+            Self::InvalidOperation => "invalid_operation",
+            Self::InvalidObjectId => "invalid_object_id",
+            Self::NotInitialized => "not_initialized",
+            Self::Qgis => "qgis",
+            Self::Internal => "internal",
         }
     }
 }

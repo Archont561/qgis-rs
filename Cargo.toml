@@ -13,8 +13,6 @@ edition  = "2021"
 license  = "GPL-2.0-or-later"
 
 [workspace.dependencies]
-cxx = "1.0.194"
-cxx-build = "1.0.194"
 anyhow = "1"
 serde_json = "1"
 walkdir = "2"
@@ -26,17 +24,17 @@ thiserror = "2.0.18"
 # crates.io, so a release that bumps the workspace without bumping these would
 # publish crates that ask the registry for their previous selves.
 # `pixi run version-check` keeps them on the workspace version.
-qgis-sys = { version = "0.1.0", path = "crates/qgis-sys" }
+qgis-sys = { version = "0.1.0", path = "crates/qgis-sys", default-features = false }
 
 # ── ecosystem crates ──────────────────────────────────────────────────────────
 # The transport pair: `qgis-protocol` is the envelope, `qgis-engine` is the one
 # function every language binding calls. See
 # .knowledge/decisions/D09-wire-protocol-over-ffi.md.
 qgis-protocol = { version = "0.1.0", path = "crates/qgis-protocol" }
-qgis-engine = { version = "0.1.0", path = "crates/qgis-engine" }
+qgis-engine = { version = "0.1.0", path = "crates/qgis-engine", default-features = false }
 qgis-render = { version = "0.1.0", path = "crates/qgis-render" }
 qgis-server = { version = "0.1.0", path = "crates/qgis-server" }
-qgis-mcp    = { version = "0.1.0", path = "crates/qgis-mcp" }
+qgis-mcp    = { version = "0.1.0", path = "crates/qgis-mcp", default-features = false }
 qgis-cli    = { version = "0.1.0", path = "crates/qgis-cli" }
 qgis-py     = { version = "0.1.0", path = "crates/qgis-py" }
 qgis-sdk    = { version = "0.1.0", path = "crates/qgis-sdk" }

@@ -80,12 +80,12 @@ for (const level of plan.levels()) {
 const result = planTiles('14,50,15,51', '10-14');
 console.log(result.total); // 4568
 
-// Rendering (needs QGIS backend — via conda-forge qgis or system QGIS)
+// Rendering through the native QGIS backend
 try {
   const rendered = project.render('output.png', { width: 1920, height: 1080, dpi: 150 });
   console.log(`Wrote ${rendered.path} (${rendered.bytes} bytes)`);
 } catch (e) {
-  console.log(`Rendering needs QGIS backend: ${e.message}`);
+  console.log(`QGIS rendering failed: ${e.message}`);
 }
 
 console.log(version());

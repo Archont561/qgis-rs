@@ -18,3 +18,6 @@ categories = ["science::geo", "encoding"]
 [dependencies]
 serde = { workspace = true }
 serde_json = { workspace = true }
+
+[dev-dependencies]
+proptest = { workspace = true }

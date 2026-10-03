@@ -2,10 +2,13 @@
 //! answers. The pyramid over `14,50,15,51` at z10-14 is 4568 tiles, and the
 //! same numbers are asserted again from Python and from JavaScript.
 
+use proptest::prelude::*;
 use qgis_render::*;
+use rstest::{fixture, rstest};
 
 /// Central Europe: the bounds the CLI docs use.
-fn bounds() -> Extent {
+#[fixture]
+fn europe_bounds() -> Extent {
     Extent::parse("14,50,15,51").expect("valid extent")
 }
 
@@ -25,9 +28,9 @@ fn tile_bounds_are_the_inverse_of_tile_lookup() {
     assert_eq!(Tile::from_lon_lat(10, 13.9, 51.1), tile);
 }
 
-#[test]
-fn plans_a_single_zoom_level() {
-    let plan = TilePlan::new(bounds(), ZoomRange::parse("10").expect("valid")).expect("valid");
+#[rstest]
+fn plans_a_single_zoom_level(europe_bounds: Extent) {
+    let plan = TilePlan::new(europe_bounds, ZoomRange::parse("10").expect("valid")).expect("valid");
     let level = plan.level(10);
     assert_eq!(
         level,
@@ -45,9 +48,10 @@ fn plans_a_single_zoom_level() {
     assert_eq!(plan.iter().next(), Some(Tile::new(10, 551, 342)));
 }
 
-#[test]
-fn plans_a_zoom_range() {
-    let plan = TilePlan::new(bounds(), ZoomRange::parse("10-14").expect("valid")).expect("valid");
+#[rstest]
+fn plans_a_zoom_range(europe_bounds: Extent) {
+    let plan =
+        TilePlan::new(europe_bounds, ZoomRange::parse("10-14").expect("valid")).expect("valid");
     assert_eq!(plan.zooms.count(), 5);
     assert_eq!(plan.levels().len(), 5);
     assert_eq!(plan.tile_count(), 4568);
@@ -81,5 +85,32 @@ fn zoom_range_parsing() {
     );
     for text in ["14-10", "a", "", "10-", "-10", "30"] {
         assert!(ZoomRange::parse(text).is_err(), "{text:?} should fail");
+    }
+}
+
+proptest! {
+    #[test]
+    fn a_full_world_level_iterates_exactly_its_reported_count(zoom in 0u32..=6) {
+        let world = Extent::new(-180.0, -MAX_LATITUDE, 180.0, MAX_LATITUDE);
+        let plan = TilePlan::new(world, ZoomRange::new(zoom, zoom).expect("bounded zoom"))
+            .expect("world extent is valid");
+
+        prop_assert_eq!(plan.iter().count() as u64, plan.level(zoom).tile_count());
+    }
+
+    #[test]
+    fn zoom_range_count_matches_its_inclusive_levels(
+        first in 0u32..=MAX_ZOOM,
+        second in 0u32..=MAX_ZOOM,
+    ) {
+        let (min, max) = if first <= second {
+            (first, second)
+        } else {
+            (second, first)
+        };
+        let range = ZoomRange::new(min, max).expect("ordered bounded range");
+
+        prop_assert_eq!(range.count(), max - min + 1);
+        prop_assert_eq!(range.iter().count() as u32, range.count());
     }
 }

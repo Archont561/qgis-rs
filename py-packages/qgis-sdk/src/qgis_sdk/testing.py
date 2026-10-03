@@ -255,7 +255,11 @@ def mock_source(features=None, fields=None, geometry_type="Point", feature_count
 
     class FakeSource:
         def __init__(self):
-            self._features = features or mock_features(feature_count or 10, geometry_type)
+            self._features = (
+                features
+                if features is not None
+                else mock_features(10 if feature_count is None else feature_count, geometry_type)
+            )
             self._fields = fields or FakeFields()
             self.geometry_type = geometry_type
             self.crs = crs

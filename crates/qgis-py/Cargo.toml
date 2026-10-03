@@ -45,5 +45,6 @@ qgis-engine = { workspace = true }
 pyo3 = { version = "0.22" }
 
 [features]
-default = ["python"]
+default = ["python", "qgis"]
 python = ["pyo3/extension-module"]
+qgis = ["qgis-engine/qgis"]

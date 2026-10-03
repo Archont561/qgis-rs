@@ -1,7 +1,7 @@
 ---
 id: TASK-23
 title: Refactor every test suite onto property-based and fixture-driven testing
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-10-02 23:06'
 updated_date: '2026-10-03 09:16'
@@ -59,6 +59,12 @@ Do this suite by suite, and keep the example-based tests that document a specifi
 Repository-wide assessment and sequencing plan: backlog/docs/refactor/doc-3 - Repository-Refactor-and-Test-Modernization-Plan.md
 
 The plan is intentionally documentation-only; implementation must proceed in small behavior-preserving slices after the Pixi environment is restored.
+
+2026-10-03: Started the first executable P0 slice. Added proptest coverage for extent round trips/intersection symmetry, zoom-range invariants, tile-level counts, CRS normalization, and protocol request/response envelopes. Added rstest fixture usage for shared tile bounds, Hypothesis dependencies plus pure Python property coverage for both distributions, and a fast-check extent round-trip property at the Node boundary.
+
+2026-10-03: The Python fake-source property exposed that `feature_count=0` was replaced by the default ten features; the fake now preserves an explicit zero. Existing shared layer golden fixtures remain in place for Rust, Python, and TypeScript.
+
+2026-10-03: TASK-23 remains In Progress. Cargo, Pixi, QGIS, and Bun are unavailable in this checkout, so the focused Rust/Python/TypeScript gates and C++ GoogleTest/RapidCheck target still need execution and implementation in the restored environment. The backlog CLI was also unavailable, so this status/note update is the documented manual fallback.
 
 Testing utilities and bridge-contract execution is decomposed into TASK-31 through TASK-35.
 

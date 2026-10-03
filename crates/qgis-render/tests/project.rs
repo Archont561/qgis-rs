@@ -1,5 +1,5 @@
 //! Opening `.qgs` and `.qgz` projects, rejecting everything else, and the
-//! honest `Unimplemented` every QGIS-backed operation still returns.
+//! explicit backend boundary of the pure Rust project reader.
 
 use std::path::{Path, PathBuf};
 
@@ -48,7 +48,7 @@ fn rejects_missing_files_and_other_extensions() {
 }
 
 #[test]
-fn qgis_backed_operations_report_themselves_as_unwired() {
+fn pure_project_reader_reports_native_operations_as_backend_gated() {
     let dir = std::env::temp_dir().join("qgis-render-project-unwired");
     std::fs::create_dir_all(&dir).expect("create dir");
     let project = Project::open(write_project(&dir, "map.qgs")).expect("open");

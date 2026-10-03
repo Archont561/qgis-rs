@@ -4,11 +4,12 @@ title: Create the safe high-level qgis wrapper crate
 status: To Do
 assignee: []
 created_date: '2026-09-30 20:48'
-updated_date: '2026-10-03 08:31'
+updated_date: '2026-10-03 18:36'
 labels:
   - qgis
   - architecture
   - api
+  - deprecated
 milestone: m-1
 dependencies:
   - TASK-7
@@ -32,3 +33,13 @@ Establish the high-level safe qgis crate implementing RAII wrappers around qgis-
 - [ ] #4 VectorLayer::features(&self) implements Rust impl Iterator<Item = Feature>
 - [ ] #5 All wrappers enforce !Send + !Sync via PhantomData<*const ()>
 <!-- AC:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Arena agent
+created: 2026-10-03 18:36
+---
+Deprecated: superseded by RFC 19 native-manager operations; this legacy direct qgis-sys shim path is no longer planned.
+---
+<!-- COMMENTS:END -->

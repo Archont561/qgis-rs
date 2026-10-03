@@ -71,7 +71,7 @@ class EngineIOError(EngineError, OSError):
 
 
 class Unimplemented(EngineError, NotImplementedError):
-    """The operation needs the QGIS backend, which is not wired up yet."""
+    """The operation is not available in the selected engine profile."""
 
 
 class TransportMismatch(EngineError, RuntimeError):

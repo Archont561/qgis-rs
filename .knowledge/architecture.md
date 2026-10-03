@@ -18,7 +18,7 @@ rationale behind them.
 
 | Crate | Purpose |
 |---|---|
-| `qgis-sys` | Low-level QGIS/Qt FFI shims; currently CXX-based and being migrated for RFC 19 |
+| `qgis-sys` | Native-manager C ABI for QGIS lifecycle, registry, and copied protocol values |
 | `qgis-render` | Backend-agnostic domain engine: extents, CRS, tiles, projects, render settings |
 | `qgis-protocol` | Versioned JSON envelope and closed operation/error vocabulary |
 | `qgis-engine` | One `invoke(request_json) -> response_json` dispatcher over `qgis-render` |
@@ -31,64 +31,54 @@ rationale behind them.
 The original two-crate sketch (`qgis-sys` plus a future `qgis`) is retained in
 D01 as historical rationale. There is no `crates/qgis` safe-wrapper crate in
 the current workspace; the safe backend-agnostic layer is `qgis-render`, and
-its QGIS-backed operations currently return `Error::Unimplemented` until the
-backend work in [TASK-12](../backlog/tasks/task-12%20-%20Bind-QgsMapSettings-and-QgsMapRendererSequentialJob-for-embedded-rendering.md)
-and [TASK-25.3](../backlog/tasks/task-25.3%20-%20RFC-19-phase-4-render_map-and-export_features-against-real-QGIS-no-NEEDS_QGIS.md)
-lands.
+its QGIS-backed project methods remain a pure-engine API, while the MCP
+`render_map` and `export_features` operations dispatch through the native
+manager implemented in TASK-25.3. Builds without the optional QGIS feature
+report those two tools as unavailable.
 
 ## Execution map
 
 - The RFC 19 architecture gate is [TASK-25.4](../backlog/tasks/task-25.4%20-%20RFC-19-resolve-open-questions-and-record-the-native-manager-ADR.md), recorded in [D12](decisions/D12-qgis-native-manager-over-c-abi.md).
 - The C++ toolchain prerequisite is [TASK-24](../backlog/tasks/task-24%20-%20Add-cmake-and-ninja-to-the-C-toolchain-dependencies.md).
-- The native manager/lifecycle sequence is [TASK-25.1](../backlog/tasks/task-25.1%20-%20RFC-19-phase-2-native-manager-ID-registry-and-lifecycle-behind-qgis_invoke.md) → [TASK-25.2](../backlog/tasks/task-25.2%20-%20RFC-19-phase-3-layer-open-info-close-and-a-batched-layer.features.md) → [TASK-25.3](../backlog/tasks/task-25.3%20-%20RFC-19-phase-4-render_map-and-export_features-against-real-QGIS-no-NEEDS_QGIS.md).
+- The native manager/lifecycle sequence is [TASK-25.1](../backlog/tasks/task-25.1%20-%20RFC-19-phase-2-native-manager-ID-registry-and-lifecycle-behind-qgis_invoke.md) → [TASK-25.2](../backlog/tasks/task-25.2%20-%20RFC-19-phase-3-layer-open-info-close-and-a-batched-layer.features.md) → [TASK-25.3](../backlog/tasks/task-25.3%20-%20RFC-19-phase-4-render_map-and-export_features-against-real-QGIS.md).
 - The independent SDK CLI boundary is [TASK-26](../backlog/tasks/task-26%20-%20Refactor-qgis-sdk-CLI-onto-the-shared-Rust-engine-wire-protocol.md), with the accepted product/dependency contract in [doc-7](../backlog/docs/architecture/doc-7%20-%20Rust-CLI-Cross-Language-FFI-and-QGIS-SDK-Product-Boundaries.md) and implementation decomposition in TASK-40 through TASK-44.
 
 ## Layer organization
 
-Inside `qgis-sys`, code is organized by QGIS module layer:
+`qgis-sys` has one QGIS implementation unit and one Rust C-ABI adapter:
 
 ```
 src/
-├── lib.rs            # module tree root + ffi re-exports
-└── core/             # maps to QGIS "core" library (libqgis_core)
-    ├── application/  # QgsApplication, app info
-    ├── vector_layer/ # QgsVectorLayer
-    ├── geometry/     # future geometry bindings
-    └── ...
+├── lib.rs                         # native-manager module export
+└── native_manager/manager.cpp    # sole QGIS-header owner and JSON dispatcher
+native_manager/generated/
+└── api_manifest.json              # version-pinned support and mapping inventory
+include/
+└── native_manager/generated/      # generated handlers and manifest constants
 ```
 
-Each concept directory contains:
-
-- `mod.rs` — Rust module declaration
-- `<short>.rs` — `#[cxx::bridge]` while the current qgis-sys boundary remains CXX
-- `<short>.cpp` — C++ implementation
-
-The RFC 19 migration will add one native manager translation unit and a C ABI;
-that target is constrained by [D12](decisions/D12-qgis-native-manager-over-c-abi.md)
-and must not turn into a second per-concept wire surface.
+The manager owns QGIS objects on its dedicated thread. It accepts copied JSON
+requests, stores layers behind integer registry IDs, and returns copied JSON
+values or structured error envelopes. There are no per-class CXX bridges or
+raw QGIS handles in the public Rust surface.
 
 ## FFI and transport data flow
 
-### Current CXX shim path
+### Native manager path
 
 ```
-Rust caller
-  │
+Python / Node / Rust caller
+  │ JSON text
   ▼
-#[cxx::bridge] ──► generated CXX glue
+qgis-py / qgis-node → qgis-engine
   │
-  ▼
-C++ shim (`qgis-sys/src/**/*.cpp`)
-  │
-  ▼
-QGIS C++ API (`libqgis_core`)
+  ├── pure-Rust operation
+  └── qgis-sys native manager → QGIS owner thread
 ```
 
-Headers remain clean: `include/core/*.h` declares opaque handles and
-signatures without including QGIS headers. Shims contain the QGIS includes,
-catch exceptions, and convert Qt strings to primitives. The build details are
-in [build-system.md](build-system.md); the CMake/Ninja environment prerequisite
-is [TASK-24](../backlog/tasks/task-24%20-%20Add-cmake-and-ninja-to-the-C-toolchain-dependencies.md).
+The native manager is compiled as one C++ translation unit. Its only default
+visible symbols are `qgis_invoke`, `qgis_free`, and
+`qgis_transport_version`; QGIS pointers and Qt values never cross that boundary.
 
 ### D09 wire path
 
@@ -102,7 +92,7 @@ qgis-py / qgis-node → qgis-engine
 qgis-protocol envelope + qgis-render operation
   │
   ├── pure-Rust operation
-  └── future QGIS operation → RFC 19 native manager
+  └── render/export operation → RFC 19 native manager
 ```
 
 D09 makes the JSON protocol the API across language bindings. D12 extends that
@@ -110,20 +100,20 @@ contract to the native manager: QGIS objects stay behind one owner thread,
 handles are integer IDs, binary artifacts are paths plus metadata, and an
 in-process C ABI does not promise crash recovery.
 
+The manager is exposed to Rust through
+`qgis_sys::native_manager_ffi::invoke`, which owns the C ABI response/free pair.
+`app_init`, `engine_info`, and generated `api_describe` establish the manager
+lifecycle and report the pinned API manifest; layer operations use integer IDs
+and return copied metadata, never QGIS pointers. Concurrent callers are copied
+into a blocking owner-thread queue.
+
 ## Ownership and handles
 
-The current CXX handle pattern is:
-
-1. The header declares `QGIS_DECLARE_HANDLE(FooHandle)` with an opaque pointer.
-2. C++ defines the handle destructor with `QGIS_DEFINE_HANDLE_DTOR`.
-3. C++ uses `real()` / `real_const()` helpers to access the QGIS object.
-4. Rust sees the handle as an opaque CXX type held through `UniquePtr`.
-
-This pattern remains valid for the existing qgis-sys implementation. RFC 19
-uses a different ownership surface: the manager owns QGIS objects in an ID
-registry, and only integer IDs cross the JSON/C boundary. The relevant
-ownership rationale is in [D02](decisions/D02-ownership-model.md) and the
-accepted manager rule is in [D12](decisions/D12-qgis-native-manager-over-c-abi.md).
+The manager's registry owns each `QgsVectorLayer` in a `unique_ptr` vector and
+keeps a private integer-to-pointer index only on the owner thread. `layer_open`
+returns the integer ID, `layer_info` and `layer_features` return copied values,
+and `layer_close` or owner-thread shutdown destroys the object. No opaque QGIS
+handle is exposed to Rust or a language binding.
 
 ## Architecture decisions
 

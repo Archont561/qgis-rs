@@ -8,7 +8,7 @@
 
 use std::path::PathBuf;
 
-use qgis_render::{Crs, Error, Extent, RenderSettings, Tile, ZoomRange};
+use qgis_render::{Error, Extent, Tile, ZoomRange};
 use serde::Deserialize;
 
 /// An extent, given either as the `minx,miny,maxx,maxy` text a CLI accepts or
@@ -179,77 +179,4 @@ pub struct PlanTiles {
 pub struct ProjectPath {
     /// Path to a `.qgs` or `.qgz` file.
     pub path: PathBuf,
-}
-
-/// `render_project`.
-///
-/// The optional fields mirror [`RenderSettings`]' builders exactly; omitting one
-/// leaves the default that `RenderSettings::new` chose, so the defaults are
-/// stated once, in `qgis-render`.
-#[derive(Debug, Clone, Deserialize)]
-pub struct RenderProject {
-    /// Path to the project to render.
-    pub path: PathBuf,
-    /// Where the image is written. The format is inferred from its extension.
-    pub output: PathBuf,
-    /// Image width in pixels.
-    #[serde(default)]
-    pub width: Option<u32>,
-    /// Image height in pixels.
-    #[serde(default)]
-    pub height: Option<u32>,
-    /// Resolution in dots per inch.
-    #[serde(default)]
-    pub dpi: Option<f64>,
-    /// CRS to render in; omitted keeps the project CRS.
-    #[serde(default)]
-    pub crs: Option<String>,
-    /// Area to render; omitted uses the full extent.
-    #[serde(default)]
-    pub extent: Option<ExtentValue>,
-    /// Layers to draw; empty means all of them.
-    #[serde(default)]
-    pub layers: Vec<String>,
-    /// Print layout to render instead of the map canvas.
-    #[serde(default)]
-    pub layout: Option<String>,
-}
-
-impl RenderProject {
-    /// Build the settings this request describes.
-    ///
-    /// # Errors
-    ///
-    /// [`Error::UnknownImageFormat`] when the output extension is not a
-    /// supported format, [`Error::UnknownCrs`] for a malformed authority code,
-    /// and [`Error::InvalidExtent`] for an unparseable extent.
-    pub fn into_settings(self) -> Result<RenderSettings, Error> {
-        let mut settings = RenderSettings::new(&self.output)?;
-        if let (Some(width), Some(height)) = (self.width, self.height) {
-            settings = settings.with_size(width, height);
-        } else {
-            if let Some(width) = self.width {
-                settings.width = width;
-            }
-            if let Some(height) = self.height {
-                settings.height = height;
-            }
-        }
-        if let Some(dpi) = self.dpi {
-            settings = settings.with_dpi(dpi);
-        }
-        if let Some(crs) = self.crs {
-            settings = settings.with_crs(Crs::from_auth_id(&crs)?);
-        }
-        if let Some(extent) = self.extent {
-            settings = settings.with_extent(extent.resolve()?);
-        }
-        if !self.layers.is_empty() {
-            settings = settings.with_layers(self.layers);
-        }
-        if let Some(layout) = self.layout {
-            settings = settings.with_layout(layout);
-        }
-        Ok(settings)
-    }
 }

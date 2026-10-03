@@ -13,7 +13,12 @@ license.workspace = true
 keywords = ["qgis", "gis", "ffi", "engine", "json"]
 categories = ["science::geo", "api-bindings"]
 
+[features]
+default = ["qgis"]
+qgis = ["dep:qgis-sys", "qgis-sys/qgis"]
+
 [dependencies]
+qgis-sys = { workspace = true, optional = true, default-features = false }
 qgis-protocol = { workspace = true }
 qgis-render = { workspace = true }
 serde = { workspace = true }

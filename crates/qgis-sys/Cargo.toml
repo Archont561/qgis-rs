@@ -4,11 +4,17 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 
+[features]
+default = ["qgis"]
+qgis = []
+
 [dependencies]
-cxx = { workspace = true }
+qgis-protocol = { workspace = true }
 
 [build-dependencies]
-cxx-build = { workspace = true }
 cc        = { workspace = true }
 anyhow    = { workspace = true }
 walkdir   = { workspace = true }
+
+[dev-dependencies]
+serde_json = { workspace = true }

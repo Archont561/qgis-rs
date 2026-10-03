@@ -29,7 +29,7 @@ classifiers = [
 dependencies = []
 
 [project.optional-dependencies]
-dev = ["pytest>=8", "pytest-cov"]
+dev = ["pytest>=8", "pytest-cov", "hypothesis>=6.168,<7"]
 
 [project.urls]
 Homepage = "https://github.com/Archont561/qgis-rs"

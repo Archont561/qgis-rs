@@ -1,75 +1,44 @@
 ---
 type: Concept
 title: QGIS Vector Layer
-description: "QgsVectorLayer binding — creation, validity, metadata accessors."
+description: "QgsVectorLayer lifecycle and copied feature access through the RFC 19 native manager."
 status: stable
-tags: [qgis, vector-layer, geo, features]
+tags: [qgis, vector-layer, geo, features, native-manager]
 generated: { by: arena-agent/qgis-rs-kb-init, at: 2026-09-17T20:00:00Z }
-sources:
-  - id: qgis-vectorlayer-api
-    resource: https://api.qgis.org/api/classQgsVectorLayer.html
-    title: "QgsVectorLayer Class Reference — QGIS API Documentation"
-
 ---
 
 # QGIS Vector Layer
 
-## Overview
+## Current boundary
 
-`QgsVectorLayer` is one of the most-used QGIS classes. It represents a layer of vector (feature) data — points, lines, or polygons — loaded from a data source via a provider plugin.
+Direct per-class CXX shims were retired after RFC 19 phase 3. Vector layers are
+manager-owned QGIS objects addressed by an integer `layer_id`; no QGIS pointer,
+Qt value, or opaque CXX handle crosses the Rust or JSON boundary. The manager
+serializes all operations on its dedicated QGIS owner thread.
 
-## Current Bindings
+| Operation | Result | Purpose |
+|---|---|---|
+| `layer_open` | `layer_id`, `is_valid`, `name` | Open a provider-backed vector layer |
+| `layer_info` | copied metadata and fields | Read name, validity, feature count, CRS, geometry type, and schema in one crossing |
+| `layer_features` | bounded feature page | Copy feature IDs, JSON-safe attributes, and WKT geometry in one manager crossing |
+| `layer_close` | `closed` | Release the registry entry and owned QGIS layer |
 
-| FFI Function                     | Returns  | Purpose                            |
-|----------------------------------|----------|------------------------------------|
-| `vector_layer_new(uri, name, provider)` | `UniquePtr<QgsVectorLayerHandle>` | Create a new layer |
-| `vector_layer_is_valid(handle)`  | `bool`   | Check if the layer loaded OK       |
-| `vector_layer_name(handle)`      | `String` | Layer display name                 |
-| `vector_layer_feature_count(handle)` | `i64` | Number of features (-1 on error) |
-| `vector_layer_crs_authid(handle)` | `String` | CRS authority ID (e.g. `EPSG:4326`) |
-| `vector_layer_geometry_type_name(handle)` | `String` | Geometry type (e.g. `Point`) |
+The manager returns `invalid_object_id` for missing or already-closed IDs. A
+page accepts `offset` and `limit` (default 100, maximum 1000), and reports
+`next_offset` when more features remain. Feature iteration happens inside the
+manager; clients do not issue one request per feature.
 
-## Provider Model
+## Fixture
 
-QGIS uses a plugin-based provider architecture. Common providers:
+`crates/qgis-sys/tests/fixtures/points.gpkg` contains three EPSG:4326 point
+features with fields `fid` and `name`. The canonical request and copied values
+live in [`test-fixtures/layer-lifecycle.json`](../test-fixtures/layer-lifecycle.json)
+and are asserted by the Rust protocol, Python, and TypeScript suites.
 
-| Provider   | Data Source                              |
-|------------|------------------------------------------|
-| `ogr`      | OGR-supported formats (GeoPackage, Shapefile, GeoJSON, etc.) |
-| `postgres` | PostgreSQL/PostGIS databases             |
-| `wfs`      | OGC Web Feature Service                  |
-| `memory`   | In-memory feature store                  |
+## Lifecycle
 
-The `vector_layer_new` constructor takes a URI string that the provider interprets. For `ogr`, this is typically a file path:
+`app_init` starts the owner thread and QGIS application. `app_shutdown` clears
+the registry on that owner thread before calling `exitQgis`, and reports how
+many open layers it released. `native_manager_shutdown.rs` proves that anbandoned layer is released rather than leaked through process teardown.
 
-```rust
-let layer = layer_ffi::vector_layer_new(
-    "/path/to/data.gpkg", "my layer", "ogr"
-);
-```
-
-## Test Fixture
-
-The project includes `tests/fixtures/points.gpkg` — a GeoPackage with 3 point features in EPSG:4326. Tests use this to validate the binding:
-
-```rust
-#[test]
-fn layer_feature_count() {
-    let _app = helpers::AppHandle::new();
-    let layer = open_test_layer();
-    assert_eq!(layer_ffi::vector_layer_feature_count(&layer), 3);
-}
-```
-
-## Future Additions
-
-These are executable work items, not a second status tracker:
-
-- Field/attribute schema access (`QgsFields`, `QgsField`) — [TASK-5](../backlog/tasks/task-5%20-%20Bind-QgsFields-and-QgsField-schema-types-in-qgis-sys.md)
-- Feature and geometry values (`QgsFeature`, `QgsGeometry`) — [TASK-6](../backlog/tasks/task-6%20-%20Bind-QgsFeature-AttributeValue-conversions-and-QgsGeometry-in-qgis-sys.md)
-- Feature iteration and CRS (`QgsFeatureIterator`, `QgsCoordinateReferenceSystem`) — [TASK-7](../backlog/tasks/task-7%20-%20Bind-QgsFeatureIterator-and-QgsCoordinateReferenceSystem-in-qgis-sys.md)
-- Editing operations (`startEditing`, `addFeature`, `commitChanges`) — [TASK-11](../backlog/tasks/task-11%20-%20Bind-QgsVectorLayerEditBuffer-for-transactional-layer-editing.md)
-- Batched manager-side feature access — [TASK-25.2](../backlog/tasks/task-25.2%20-%20RFC-19-phase-3-layer-open-info-close-and-a-batched-layer.features.md)
-- Spatial filters, expressions, renderer and symbology — [TASK-9](../backlog/tasks/task-9%20-%20Implement-structured-error-handling-and-string-caching-across-Rust-wrappers.md), [TASK-14](../backlog/tasks/task-14%20-%20Implement-declarative-expression-engine-wrappers.md), and [TASK-12](../backlog/tasks/task-12%20-%20Bind-QgsMapSettings-and-QgsMapRendererSequentialJob-for-embedded-rendering.md)
-
-The knowledge entry remains the binding reference; status, acceptance criteria, and dependency order live in Backlog.md.
+Future manager work includes rendering and feature export in [TASK-25.3](../backlog/tasks/task-25.3%20-%20RFC-19-phase-4-render_map-and-export_features-against-real-QGIS.md).
