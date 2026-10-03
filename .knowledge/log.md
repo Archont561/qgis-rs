@@ -50,6 +50,24 @@
 * **Change (sdk)**: `ts-packages/qgis-sdk-bridge` gained the `README.md` its
   `files` field already promised and a `pack:check` script, so `turbo run
   pack:check` now covers both npm packages instead of one.
+* **Change (env)**: The pixi-sandbox publisher moved to v0.5.2 and its three
+  generated files were reinitialized, which retired the seven hand edits `d11e72e`
+  and `45ac2b5` had reinstated by hand — and the `LOCAL EDITS` banner every reviewer
+  had to cross-check against. The policy now lives in a `[workflow]` table in
+  `pixi-sandbox.toml` and `pixi-sandbox init` renders it, so the owned files stay
+  byte-identical to a fresh render and the scheduled upgrade job's pull requests are
+  trustworthy by construction: the `push` `paths` allowlist, least-privilege
+  permissions, the concurrency group, `timeout-minutes`, the pinned `setup-pixi`
+  pixi-version and its disabled cache. The allowlist is narrowed to the transport's
+  real inputs (the plan, the two pixi manifests, the vendored crate graph including
+  every member manifest, the workflow itself) and drops `package.json` / `bun.lock`
+  and the `py-packages/**` and `ts-packages/**` manifests, none of which can change a
+  packed byte. Three things config cannot express are given up on purpose: a timeout
+  on the upgrade job, a per-branch second concurrency group the workflow-level one
+  already covers, and deleting the redundant `pixi global install` step on the
+  publish job. v0.5.2 generates the repaired `SHA256SUMS` bootstrap check that
+  `45ac2b5` had to fix by hand, since v0.4.3–v0.5.1 ran it against a filename that
+  does not exist in the runner's cwd and so verified nothing.
 
 ## 2026-09-24
 

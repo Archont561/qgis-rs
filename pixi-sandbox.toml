@@ -2,6 +2,53 @@ schema = 1
 branch_prefix = "sandbox"
 cargo_vendor = true
 
+# Generated-publisher CI policy, rendered into .github/workflows/publish-sandbox.yml
+# by `pixi-sandbox init`. Until now this was a list of hand edits re-applied after
+# every regeneration (see .knowledge/env-provisioning.md); the generator renders
+# policy from here, so the owned files stay byte-identical to a fresh `init`.
+[workflow]
+# `on.push.paths`: republish only when a file that changes the transport's bytes
+# changes. That is the plan itself, the two pixi manifests that decide what the
+# packed environments contain, and the manifests the vendored crate tree is
+# resolved from — including every member manifest, which the root `Cargo.toml`
+# path alone would miss. The generator stamps its own version into the workflow,
+# so a regeneration is a payload change too.
+#
+# Deliberately absent: `package.json` / `bun.lock`. The transport is conda
+# environments, the pinned tools and `cargo vendor` — it carries no
+# `node_modules`, so a JS dependency bump leaves the packed bytes identical.
+# `crates/*/build.rs` is absent for the same reason: `cargo vendor` resolves the
+# dependency graph, not what a build script compiles.
+push_paths = [
+  "pixi-sandbox.toml",
+  "pixi.toml",
+  "pixi.lock",
+  "Cargo.toml",
+  "Cargo.lock",
+  "crates/*/Cargo.toml",
+  ".github/workflows/publish-sandbox.yml",
+]
+# Least privilege: `contents: read` workflow-wide, `contents: write` regained by the
+# publish job alone (the generated upgrade job carries its own block).
+permissions = true
+# setup-pixi's own pixi, pinned on every setup-pixi step so the solve that packs the
+# transport is the reviewed one rather than whatever setup-pixi defaults to today.
+pixi_version = "v0.81.0"
+# Stated rather than inherited: once this table exists the default is already false,
+# because pixi-sandbox owns the native `pixi install` while packing the checked-out
+# project (qgis-rs#9), and an action cache keyed on the manifest could restore a
+# solve the pack will not reuse (qgis-rs#12).
+setup_pixi_cache = false
+# A rerun cannot race an in-flight publish for the same orphan branch.
+[workflow.concurrency]
+group = "publish-sandbox"
+cancel_in_progress = false
+# A hung pack must not hold a runner for the six-hour default. The upgrade job has
+# no configurable timeout — it only downloads a binary and renders three files.
+[workflow.timeouts]
+plan = 15
+publish = 120
+
 [[bundle]]
 name = "developer"
 # `bun` is packed alongside `default` on purpose: every JS task in pixi.toml
