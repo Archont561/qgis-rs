@@ -4,7 +4,7 @@ title: Refactor every test suite onto property-based and fixture-driven testing
 status: To Do
 assignee: []
 created_date: '2026-10-02 23:06'
-updated_date: '2026-10-03 08:43'
+updated_date: '2026-10-03 09:16'
 labels:
   - refactor
   - testing
@@ -16,6 +16,9 @@ documentation:
   - >-
     backlog/docs/refactor/doc-3 -
     Repository-Refactor-and-Test-Modernization-Plan.md
+  - >-
+    backlog/docs/testing/doc-5 -
+    QGIS-SDK-Testing-Utilities-and-Cross-Language-Bridge-Contracts.md
 priority: high
 type: enhancement
 ---
@@ -56,4 +59,8 @@ Do this suite by suite, and keep the example-based tests that document a specifi
 Repository-wide assessment and sequencing plan: backlog/docs/refactor/doc-3 - Repository-Refactor-and-Test-Modernization-Plan.md
 
 The plan is intentionally documentation-only; implementation must proceed in small behavior-preserving slices after the Pixi environment is restored.
+
+Testing utilities and bridge-contract execution is decomposed into TASK-31 through TASK-35.
+
+TASK-31 defines the shared bridge contract; TASK-32 covers Python fixtures; TASK-33 covers the TypeScript harness; TASK-34 covers shared vectors; TASK-35 covers Qt/QGIS/WebEngine gates.
 <!-- SECTION:NOTES:END -->
