@@ -18,6 +18,11 @@
 #      while packing the checked-out project (see qgis-rs#9), so an action
 #      cache keyed on the manifest could restore a solve pixi-sandbox is not
 #      going to reuse (qgis-rs#12).
+#   6. no "Download released pixi-sandbox" step: the binary already installed by
+#      `pixi global install` from $PIXI_SANDBOX_CHANNEL is the same released
+#      artifact, so the pack/publish steps call it off $PATH. The generated
+#      step downloads from $GITHUB_REPOSITORY — this repo, which has no
+#      releases — and 404s.
 name: publish sandbox
 
 on:
@@ -114,46 +119,9 @@ jobs:
           --channel conda-forge
           "pixi-sandbox==${PIXI_SANDBOX_VERSION}"
 
-      # Consumer workflows embed the released, checksum-verified standalone binary. Building
-      # from the checkout would incorrectly assume the consumer has pixi-sandbox's source tree
-      # and its `package` environment; the checked-out tree belongs to the consumer project.
-      - name: Download released pixi-sandbox
-        id: bootstrap-unix
-        if: runner.os != 'Windows'
-        shell: bash
-        run: |
-          case "${{ matrix.platform }}" in
-            linux-64) asset=pixi-sandbox-x86_64-unknown-linux-musl ;;
-            linux-aarch64) asset=pixi-sandbox-aarch64-unknown-linux-musl ;;
-            osx-64) asset=pixi-sandbox-x86_64-apple-darwin ;;
-            osx-arm64) asset=pixi-sandbox-aarch64-apple-darwin ;;
-            *) echo "::error::unsupported release platform: ${{ matrix.platform }}"; exit 2 ;;
-          esac
-          base="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/download/v${PIXI_SANDBOX_VERSION}"
-          path="$RUNNER_TEMP/$asset"
-          curl --fail --location --silent --show-error "$base/$asset" --output "$path"
-          curl --fail --location --silent --show-error "$base/SHA256SUMS" --output "$RUNNER_TEMP/SHA256SUMS"
-          grep "  $asset$" "$RUNNER_TEMP/SHA256SUMS" | sha256sum --check --status -
-          chmod +x "$path"
-          echo "path=$path" >> "$GITHUB_OUTPUT"
-
-      - name: Download released pixi-sandbox
-        id: bootstrap-windows
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          $asset = switch ('${{ matrix.platform }}') {
-            'win-64' { 'pixi-sandbox-x86_64-pc-windows-msvc.exe' }
-            default { throw "unsupported release platform: ${{ matrix.platform }}" }
-          }
-          $base = "$env:GITHUB_SERVER_URL/$env:GITHUB_REPOSITORY/releases/download/v$env:PIXI_SANDBOX_VERSION"
-          $path = Join-Path $env:RUNNER_TEMP $asset
-          Invoke-WebRequest -UseBasicParsing "$base/$asset" -OutFile $path
-          Invoke-WebRequest -UseBasicParsing "$base/SHA256SUMS" -OutFile (Join-Path $env:RUNNER_TEMP 'SHA256SUMS')
-          $expected = (Get-Content (Join-Path $env:RUNNER_TEMP 'SHA256SUMS') | Where-Object { $_ -match "  $([regex]::Escape($asset))$" }).Split()[0]
-          if ((Get-FileHash $path -Algorithm SHA256).Hash.ToLowerInvariant() -ne $expected.ToLowerInvariant()) { throw "SHA256 mismatch for $asset" }
-          "path=$path" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
-
+      # The binary `pixi global install` put next to `pixi` on $PATH is the
+      # released one; the generated "Download released pixi-sandbox" step
+      # resolves its release base from $GITHUB_REPOSITORY and 404s here.
       - name: Pack, verify, and publish
         if: runner.os != 'Windows'
         shell: bash
@@ -162,11 +130,11 @@ jobs:
           PLATFORM: ${{ matrix.platform }}
           BRANCH: ${{ matrix.branch }}
           CARGO_VENDOR: ${{ matrix.cargo_vendor }}
-          SELF_BIN: ${{ steps.bootstrap-unix.outputs.path }}
           REMOTE: ${{ github.server_url }}/${{ github.repository }}.git
           PUSH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
+          SELF_BIN="$(command -v pixi-sandbox)"
           IFS=',' read -ra ENVS <<< "$ENVIRONMENTS"
           for ENVIRONMENT in "${ENVS[@]}"; do
             pixi install --frozen -e "${ENVIRONMENT//[[:space:]]/}"
@@ -198,24 +166,24 @@ jobs:
           PLATFORM: ${{ matrix.platform }}
           BRANCH: ${{ matrix.branch }}
           CARGO_VENDOR: ${{ matrix.cargo_vendor }}
-          SELF_BIN: ${{ steps.bootstrap-windows.outputs.path }}
           REMOTE: ${{ github.server_url }}/${{ github.repository }}.git
           PUSH_TOKEN: ${{ github.token }}
         run: |
           $ErrorActionPreference = 'Stop'
           $PSNativeCommandUseErrorActionPreference = $true
+          $selfBin = (Get-Command pixi-sandbox -ErrorAction Stop).Source
           foreach ($environment in ($env:ENVIRONMENTS -split ',')) {
             pixi install --frozen -e $environment.Trim()
           }
           $transport = Join-Path $env:RUNNER_TEMP 'pixi-sandbox-transport'
           Remove-Item -Recurse -Force $transport -ErrorAction SilentlyContinue
-          $packArgs = @('pack', '--repo-root', '.', '--envs', $env:ENVIRONMENTS, '--output-dir', $transport, '--platform', $env:PLATFORM, '--fetch-tools', '--self-bin', $env:SELF_BIN)
+          $packArgs = @('pack', '--repo-root', '.', '--envs', $env:ENVIRONMENTS, '--output-dir', $transport, '--platform', $env:PLATFORM, '--fetch-tools', '--self-bin', $selfBin)
           if ($env:CARGO_VENDOR -eq 'true') { $packArgs += '--cargo-vendor' }
-          & $env:SELF_BIN @packArgs
-          & $env:SELF_BIN doctor --branch-location $transport --verify
+          & $selfBin @packArgs
+          & $selfBin doctor --branch-location $transport --verify
           $bytes = [System.Text.Encoding]::UTF8.GetBytes("x-access-token:$env:PUSH_TOKEN")
           $basic = [System.Convert]::ToBase64String($bytes)
           $env:GIT_CONFIG_COUNT = '1'
           $env:GIT_CONFIG_KEY_0 = 'http.extraheader'
           $env:GIT_CONFIG_VALUE_0 = "AUTHORIZATION: basic $basic"
-          & $env:SELF_BIN publish --input-dir $transport --branch-name $env:BRANCH --remote $env:REMOTE
+          & $selfBin publish --input-dir $transport --branch-name $env:BRANCH --remote $env:REMOTE
