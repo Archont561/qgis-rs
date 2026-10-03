@@ -235,20 +235,16 @@ def test_fake_content_fetcher(fake_content_fetcher):
 
 # ── NetworkAccessManager ────────────────────────────────────────────────────
 
-def test_network_access_manager():
+@pytest.mark.qgis
+def test_network_access_manager(qgis_app):
     """The real QGIS-backed path, which needs a live QgsApplication.
 
-    Skipped otherwise. QgsNetworkAccessManager.instance() is a QGIS singleton
-    that dereferences the application object, so importing qgis is not enough —
-    calling it without one crashes the interpreter rather than raising, and a
-    crash cannot be caught from Python. In CI's bare virtualenv qgis is absent
-    and this skips; the fallback contract is covered by the two tests above.
+    The reusable ``qgis_app`` fixture makes the host-lifecycle requirement
+    explicit and skips before touching the QGIS singleton when the suite is
+    running in a bare Python process or an unhosted Pixi process. The fallback
+    contract is covered by the fake-manager tests above.
     """
-    import pytest
-
-    qgis = pytest.importorskip("qgis.core")
-    if qgis.QgsApplication.instance() is None:
-        pytest.skip("needs a QgsApplication; run from QGIS or a plugin host")
+    assert qgis_app is not None
 
     from qgis_sdk.network import NetworkAccessManager
 
