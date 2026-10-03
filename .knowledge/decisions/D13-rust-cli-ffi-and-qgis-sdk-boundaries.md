@@ -90,6 +90,28 @@ Pure Rust CLI operations require no QGIS, Python, Qt, or WebEngine. Native QGIS 
 | Let Python or JavaScript keep fallback command implementations | Creates a second set of answers and allows silent behavior drift from Rust. |
 | Expose QGIS/Qt pointers through Python or Node native addons | Violates ownership, thread-affinity, serialization, and host-lifecycle rules. |
 
+## What a gate enforces, and what it cannot
+
+Four of the rules above are facts about manifests, so `pixi run xtask check-boundaries` decides
+them on every gate run (TASK-40), and the rest of this record is a claim a reviewer has to check:
+
+| Rule | Enforced by | How it fails |
+| --- | --- | --- |
+| §3 `qgis-sdk` must not depend on `qgis-py` | `FORBIDDEN_EDGES` | a dependency key in `crates/qgis-sdk/Cargo.toml` |
+| §4 binding crates own no process semantics | `BINDING_CRATES` | a `[[bin]]` in `qgis-py` or `qgis-node` |
+| §1 one owner per canonical executable | `CANONICAL_BINARIES` | `qgis-cli`, `qgis-plugin` or `qgis-sdk` declared by nobody or by two crates |
+| §4 no-fallback policy | `TRACKED_FALLBACKS` | a new `*fallback*` file under `crates/`, `py-packages/` or `ts-packages/` |
+
+The no-fallback rule is an allowlist rather than a prohibition, because one fallback predates this
+record: `py-packages/qgis-sdk/src/qgis_sdk/_fallback_cli.py`, imported by `qgis_sdk.cli` when
+`qgis_sdk._core` is missing, which TASK-43 removes with the hosted-runtime split. An exception
+with a name and an owner is a debt; an exception nobody counted is a second set of answers.
+
+Three things the check deliberately does not decide: whether a binary's *behaviour* matches its
+contract (that is a test in the owning package), whether a Python distribution's console scripts
+shadow a canonical binary on `PATH` (`py-packages/qgis-sdk` ships a `qgis-cli` entry point, which
+TASK-44 reconciles), and whether the host-language wrappers stay thin (a review question).
+
 ## Implementation gates
 
 - [TASK-40](../../backlog/tasks/task-40%20-%20Define-Rust-CLI-FFI-and-QGIS-SDK-product-boundaries.md) records and tests the product contract.

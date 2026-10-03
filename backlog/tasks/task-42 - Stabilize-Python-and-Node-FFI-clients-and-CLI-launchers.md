@@ -4,6 +4,7 @@ title: Stabilize Python and Node FFI clients and CLI launchers
 status: To Do
 assignee: []
 created_date: '2026-10-03 09:35'
+updated_date: '2026-10-03 22:06'
 labels:
   - ffi
   - python
@@ -21,10 +22,12 @@ documentation:
     Rust-CLI-Cross-Language-FFI-and-QGIS-SDK-Product-Boundaries.md
   - crates/qgis-py/ARCHITECTURE.md
   - .knowledge/decisions/D09-wire-protocol-over-ffi.md
+  - .knowledge/decisions/D13-rust-cli-ffi-and-qgis-sdk-boundaries.md
   - >-
     backlog/docs/testing/doc-5 -
     QGIS-SDK-Testing-Utilities-and-Cross-Language-Bridge-Contracts.md
   - .agents/skills/tdd/SKILL.md
+  - .agents/skills/refactor/SKILL.md
 priority: high
 type: enhancement
 ---

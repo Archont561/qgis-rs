@@ -40,7 +40,7 @@ okf_version: "0.2"
 
 # Strategy and Decisions
 
-* [Decisions](/decisions/) — Architectural decision records (D01–D12).
+* [Decisions](/decisions/) — Architectural decision records (D01–D13).
 
 # References
 

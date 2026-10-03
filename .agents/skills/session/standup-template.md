@@ -12,11 +12,11 @@ session that ends without writing one has handed the next session a reconstructi
 ## 1. Session opening prompt (written at close, pasted back at the next start)
 
 ```
-Confirm the pixi environments and baseline the suite (expect 132 Rust tests across 29 integration
-test files, 42 bun in qgis-sdk, 42 in qgis-rs — <the one or two environment facts that would
-otherwise waste the first ten minutes: whether .pixi/envs is already materialized, whether a
-publish-sandbox repack has landed on sandbox/developer-linux-64, anything new that needs
-vendoring before the tree builds offline>).
+Confirm the pixi environments and baseline the suite (expect 149 Rust tests across 30 integration
+test files, 123 + 21 pytest, 44 bun — <the one or two environment facts that would otherwise waste
+the first ten minutes: whether .pixi/envs is already materialized or needs scripts/restore.sh,
+whether a publish-sandbox repack has landed on sandbox/developer-linux-64, whether gh and its
+write scope are present, anything new that needs vendoring before the tree builds offline>).
 
 Read `.knowledge/log.md` — <the dated heading> lists <K> open items — and `AGENTS.md` for the house
 rules.
@@ -53,12 +53,14 @@ What makes this prompt work, and what makes it fail:
 ```
 Session proposal — <date>
 
-Environment: <default + bun materialized | restored via scripts/restore.sh>; baseline <N> Rust
-tests / <N> bun tests passing.
+Environment: <default + bun materialized | restored via scripts/restore.sh, ~4 min>; network
+<github only | full>; baseline <N> Rust / <N> pytest / <N> bun passing, gates <green | red for
+<the environmental reason>>.
 Sandbox: <branch sandbox/developer-linux-64 current with main | behind — the last publish sandbox
 run was <id>>.
 
-Backlog: 27 To Do, 1 In Progress. Candidates, in recommended order:
+Backlog: <N> To Do, <N> In Progress, <N> Done (36 / 3 / 8 as of 2026-10-03). Candidates, in
+recommended order:
 1. task-<n> (HIGH, <type>) — <one line: what it delivers and why now>
 2. task-<m> …
    …

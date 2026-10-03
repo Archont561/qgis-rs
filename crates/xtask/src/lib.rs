@@ -24,6 +24,7 @@
 //! other, and a consumer is exactly what the public API is for.
 
 pub mod api_manifest;
+pub mod boundaries;
 pub mod ci;
 pub mod lints;
 pub mod release;
@@ -41,6 +42,7 @@ use clap::{Parser, Subcommand};
     long_about = "Every repository-wide verb qgis-rs has. Run through pixi:\n  \
                   pixi run xtask ci\n  \
                   pixi run xtask check-cpp [files...]\n  \
+                  pixi run xtask check-boundaries\n  \
                   pixi run xtask format-cpp\n  \
                   pixi run xtask api-manifest [--check] [--diff-against PATH]\n  \
                   pixi run xtask clang-tidy\n  \
@@ -73,6 +75,8 @@ pub enum Command {
     ClangTidy,
     /// Fail if a source file inside a package tree is hidden by .gitignore.
     CheckSources,
+    /// Fail if a manifest contradicts the D13 product boundaries.
+    CheckBoundaries,
     /// taplo canonicality check for the manifests kept in canonical form.
     LintToml {
         /// Files to check; with none, pixi.toml.
@@ -129,6 +133,7 @@ pub fn run(command: Command) -> Result<()> {
         Command::FormatCpp => lints::format_cpp(),
         Command::ClangTidy => lints::clang_tidy(),
         Command::CheckSources => lints::check_sources(),
+        Command::CheckBoundaries => boundaries::check(&util::repo_root()),
         Command::LintToml { files } => lints::lint_toml(&files),
         Command::PackCheck {
             package_dir,

@@ -42,6 +42,7 @@ report those two tools as unavailable.
 - The C++ toolchain prerequisite is [TASK-24](../backlog/tasks/task-24%20-%20Add-cmake-and-ninja-to-the-C-toolchain-dependencies.md).
 - The native manager/lifecycle sequence is [TASK-25.1](../backlog/tasks/task-25.1%20-%20RFC-19-phase-2-native-manager-ID-registry-and-lifecycle-behind-qgis_invoke.md) → [TASK-25.2](../backlog/tasks/task-25.2%20-%20RFC-19-phase-3-layer-open-info-close-and-a-batched-layer.features.md) → [TASK-25.3](../backlog/tasks/task-25.3%20-%20RFC-19-phase-4-render_map-and-export_features-against-real-QGIS.md).
 - The independent SDK CLI boundary is [TASK-26](../backlog/tasks/task-26%20-%20Refactor-qgis-sdk-CLI-onto-the-shared-Rust-engine-wire-protocol.md), with the accepted product/dependency contract in [doc-7](../backlog/docs/architecture/doc-7%20-%20Rust-CLI-Cross-Language-FFI-and-QGIS-SDK-Product-Boundaries.md) and implementation decomposition in TASK-40 through TASK-44.
+- The product-boundary gate is [TASK-40](../backlog/tasks/task-40%20-%20Define-Rust-CLI-FFI-and-QGIS-SDK-product-boundaries.md), accepted as [D13](decisions/D13-rust-cli-ffi-and-qgis-sdk-boundaries.md). Which product owns which capability is the [capability ownership matrix](../backlog/docs/architecture/doc-7%20-%20Rust-CLI-Cross-Language-FFI-and-QGIS-SDK-Product-Boundaries.md#capability-ownership-matrix) in doc-7; the four parts of it a manifest can contradict are enforced by `pixi run xtask check-boundaries`, which the gate runs with the other repo lints.
 
 ## Layer organization
 
@@ -122,3 +123,4 @@ handle is exposed to Rust or a language binding.
 - [D10 — xtask over Shell Scripts](decisions/D10-xtask-over-shell-scripts.md)
 - [D11 — Tests Outside `src/`](decisions/D11-tests-outside-src.md)
 - [D12 — QGIS Native Manager over the C ABI](decisions/D12-qgis-native-manager-over-c-abi.md)
+- [D13 — Rust CLI, FFI, and QGIS SDK product boundaries](decisions/D13-rust-cli-ffi-and-qgis-sdk-boundaries.md)
