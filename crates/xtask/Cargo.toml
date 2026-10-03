@@ -33,4 +33,6 @@ path = "src/main.rs"
 # before it is a command. All three are already in the workspace lockfile.
 anyhow = { workspace = true }
 clap = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
 walkdir = { workspace = true }

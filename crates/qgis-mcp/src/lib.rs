@@ -516,7 +516,7 @@ fn native_backend() -> NativeBackend {
             qgis_version: None,
         };
     }
-    match native_call("engine_info", serde_json::Value::Null) {
+    match native_call("api_describe", serde_json::Value::Null) {
         Ok(info) => NativeBackend {
             operations: info["operations"]
                 .as_array()

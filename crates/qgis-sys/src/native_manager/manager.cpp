@@ -1,4 +1,5 @@
 #include "native_manager/manager.h"
+#include "native_manager/generated/api_manifest.h"
 
 // The manager deliberately crosses a C ABI (malloc/free), uses Qt/QGIS
 // macro-heavy headers, and owns a process-lifetime executor. The QGIS build
@@ -298,6 +299,11 @@ class ManagerHost {
                         {"qt_version", QString::fromUtf8(qVersion())},
                         {"platform", QSysInfo::prettyProductName()},
                         {"transport_version", static_cast<int>(kTransportVersion)},
+                        {"api_manifest_version", QGIS_API_MANIFEST_VERSION},
+                        {"api_manifest_qgis_min_version",
+                         QStringLiteral(QGIS_API_MANIFEST_QGIS_MIN_VERSION)},
+                        {"api_manifest_qgis_tested_version",
+                         QStringLiteral(QGIS_API_MANIFEST_QGIS_TESTED_VERSION)},
                         {"initialized", initialized_},
                         {"operations", operations}});
     }
@@ -774,38 +780,11 @@ class ManagerHost {
     static const QHash<QString, OperationDefinition>& operation_registry() {
         static const QHash<QString, OperationDefinition> registry = [] {
             QHash<QString, OperationDefinition> definitions;
-            definitions.insert(QStringLiteral("app_init"),
-                               OperationDefinition{&ManagerHost::initialize, false});
-            definitions.insert(QStringLiteral("app_shutdown"),
-                               OperationDefinition{&ManagerHost::shutdown, false});
-            definitions.insert(QStringLiteral("engine_info"),
-                               OperationDefinition{&ManagerHost::engine_info, true});
-            definitions.insert(QStringLiteral("render_map"),
-                               OperationDefinition{&ManagerHost::render_map, true});
-            definitions.insert(QStringLiteral("export_features"),
-                               OperationDefinition{&ManagerHost::export_features, true});
-            definitions.insert(QStringLiteral("layer_open"),
-                               OperationDefinition{&ManagerHost::layer_open, true});
-            definitions.insert(QStringLiteral("layer_info"),
-                               OperationDefinition{&ManagerHost::layer_info, true});
-            definitions.insert(QStringLiteral("layer_close"),
-                               OperationDefinition{&ManagerHost::layer_close, true});
-            definitions.insert(QStringLiteral("layer_features"),
-                               OperationDefinition{&ManagerHost::layer_features, true});
-            definitions.insert(QStringLiteral("layer_new"),
-                               OperationDefinition{&ManagerHost::layer_new, true});
-            definitions.insert(QStringLiteral("layer_is_valid"),
-                               OperationDefinition{&ManagerHost::layer_is_valid, true});
-            definitions.insert(QStringLiteral("layer_name"),
-                               OperationDefinition{&ManagerHost::layer_name, true});
-            definitions.insert(QStringLiteral("layer_feature_count"),
-                               OperationDefinition{&ManagerHost::layer_feature_count, true});
-            definitions.insert(QStringLiteral("layer_crs_authid"),
-                               OperationDefinition{&ManagerHost::layer_crs_authid, true});
-            definitions.insert(QStringLiteral("layer_geometry_type_name"),
-                               OperationDefinition{&ManagerHost::layer_geometry_type_name, true});
-            definitions.insert(QStringLiteral("layer_fields"),
-                               OperationDefinition{&ManagerHost::layer_fields, true});
+#define QGIS_NATIVE_OPERATION(NAME, HANDLER, REQUIRES_INITIALIZATION) \
+    definitions.insert(QStringLiteral(NAME), \
+                       OperationDefinition{&ManagerHost::HANDLER, REQUIRES_INITIALIZATION})
+#include "native_manager/generated/operation_table.inc"
+#undef QGIS_NATIVE_OPERATION
             return definitions;
         }();
         return registry;

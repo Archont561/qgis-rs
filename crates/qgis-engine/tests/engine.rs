@@ -56,7 +56,7 @@ fn engine_info_advertises_the_operations_it_serves() {
     assert!(result["version"].as_str().expect("a version").contains('.'));
 
     let operations = result["operations"].as_array().expect("a list");
-    for name in ["ping", "plan_tiles", "render_project"] {
+    for name in ["ping", "api_describe", "plan_tiles", "render_project"] {
         assert!(
             operations.contains(&json!(name)),
             "{name} is served but not advertised"

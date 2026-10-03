@@ -51,8 +51,10 @@ report those two tools as unavailable.
 src/
 ├── lib.rs                         # native-manager module export
 └── native_manager/manager.cpp    # sole QGIS-header owner and JSON dispatcher
+native_manager/generated/
+└── api_manifest.json              # version-pinned support and mapping inventory
 include/
-└── native_manager/manager.h      # qgis_invoke/qgis_free/version declarations
+└── native_manager/generated/      # generated handlers and manifest constants
 ```
 
 The manager owns QGIS objects on its dedicated thread. It accepts copied JSON
@@ -100,9 +102,10 @@ in-process C ABI does not promise crash recovery.
 
 The manager is exposed to Rust through
 `qgis_sys::native_manager_ffi::invoke`, which owns the C ABI response/free pair.
-`app_init` and `engine_info` establish the manager lifecycle; layer operations
-use integer IDs and return copied metadata, never QGIS pointers. Concurrent
-callers are copied into a blocking owner-thread queue.
+`app_init`, `engine_info`, and generated `api_describe` establish the manager
+lifecycle and report the pinned API manifest; layer operations use integer IDs
+and return copied metadata, never QGIS pointers. Concurrent callers are copied
+into a blocking owner-thread queue.
 
 ## Ownership and handles
 

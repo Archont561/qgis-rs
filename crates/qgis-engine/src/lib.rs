@@ -82,7 +82,7 @@ fn run(request: &EngineRequest) -> EngineResponse {
             "max_latitude": qgis_render::MAX_LATITUDE,
             "operations": Operation::all(),
         })),
-        Operation::RenderMap | Operation::ExportFeatures => {
+        Operation::ApiDescribe | Operation::RenderMap | Operation::ExportFeatures => {
             native_operation(request.operation, payload)
         }
         Operation::AppInit | Operation::AppShutdown | Operation::LayerOpen

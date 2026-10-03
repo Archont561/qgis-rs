@@ -91,6 +91,12 @@ fn main() -> Result<()> {
     for file in headers.iter().chain(shims.iter()) {
         println!("cargo:rerun-if-changed={file}");
     }
+    println!(
+        "cargo:rerun-if-changed=native_manager/generated/api_manifest.json"
+    );
+    println!(
+        "cargo:rerun-if-changed=include/native_manager/generated/operation_table.inc"
+    );
     println!("cargo:rerun-if-env-changed=CONDA_PREFIX");
     println!("cargo:rerun-if-env-changed=QGIS_INCLUDE_DIR");
     println!("cargo:rerun-if-env-changed=QT_INCLUDE_DIR");

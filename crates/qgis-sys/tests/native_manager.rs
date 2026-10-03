@@ -38,7 +38,8 @@ fn engine_info_exposes_the_complete_native_operation_catalogue() {
     let actual = ok("app_init", Value::Null)["initialized"];
     assert_eq!(actual, true);
 
-    let mut operations: Vec<String> = ok("engine_info", Value::Null)["operations"]
+    let info = ok("engine_info", Value::Null);
+    let mut operations: Vec<String> = info["operations"]
         .as_array()
         .expect("operation catalogue")
         .iter()
@@ -46,10 +47,15 @@ fn engine_info_exposes_the_complete_native_operation_catalogue() {
         .collect();
     operations.sort();
 
+    assert_eq!(info["api_manifest_version"], 1);
+    assert_eq!(info["api_manifest_qgis_min_version"], "3.44.9");
+    assert_eq!(info["api_manifest_qgis_tested_version"], "3.44.14");
+
     let mut expected = vec![
         "app_init",
         "app_shutdown",
         "engine_info",
+        "api_describe",
         "export_features",
         "layer_close",
         "layer_crs_authid",

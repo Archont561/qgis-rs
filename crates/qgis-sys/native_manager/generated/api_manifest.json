@@ -1,0 +1,311 @@
+{
+  "manifest_version": 1,
+  "qgis": {
+    "min_version": "3.44.9",
+    "tested_version": "3.44.14"
+  },
+  "source": {
+    "extractor": "clang-ast-plus-qgis-binding-metadata",
+    "headers": [
+      "qgsapplication.h",
+      "qgscoordinatereferencesystem.h",
+      "qgsfeature.h",
+      "qgsgeometry.h",
+      "qgsmaprenderersequentialjob.h",
+      "qgsmapsettings.h",
+      "qgsproject.h",
+      "qgsvectorlayer.h"
+    ],
+    "metadata": [
+      "QGIS public headers",
+      "QGIS API since/deprecation metadata",
+      "native-manager manual overrides"
+    ]
+  },
+  "declarations": [
+    {
+      "id": "QgsApplication::initQgis",
+      "kind": "method",
+      "module": "core",
+      "status": "supported_manual",
+      "since": "3.0",
+      "version_range": ">=3.0,<4",
+      "reason": "Application lifecycle is owned by the dedicated native-manager thread.",
+      "ownership": "singleton",
+      "operation": "app_init",
+      "handler": "initialize"
+    },
+    {
+      "id": "QgsApplication::exitQgis",
+      "kind": "method",
+      "module": "core",
+      "status": "supported_manual",
+      "since": "3.0",
+      "version_range": ">=3.0,<4",
+      "reason": "Shutdown is serialized with manager-owned layer destruction.",
+      "ownership": "singleton",
+      "operation": "app_shutdown",
+      "handler": "shutdown"
+    },
+    {
+      "id": "Qgis::version",
+      "kind": "value",
+      "module": "core",
+      "status": "supported_manual",
+      "since": "3.0",
+      "version_range": ">=3.0,<4",
+      "reason": "The manager reports the linked QGIS version in engine_info.",
+      "ownership": "borrowed_snapshot",
+      "operation": "engine_info",
+      "handler": "engine_info"
+    },
+    {
+      "id": "native-manager::api_describe",
+      "kind": "operation",
+      "module": "native-manager",
+      "status": "supported_manual",
+      "since": "1",
+      "version_range": ">=1",
+      "reason": "The generated manifest is exposed through the native manager capability report.",
+      "ownership": "borrowed_snapshot",
+      "operation": "api_describe",
+      "handler": "engine_info"
+    },
+    {
+      "id": "QgsMapRendererSequentialJob::renderedImage",
+      "kind": "method",
+      "module": "rendering",
+      "status": "supported_manual",
+      "since": "3.0",
+      "version_range": ">=3.0,<4",
+      "reason": "Rendered bytes are written to a validated path and only metadata crosses the wire.",
+      "ownership": "borrowed_snapshot",
+      "operation": "render_map",
+      "handler": "render_map"
+    },
+    {
+      "id": "QgsVectorLayer::getFeatures",
+      "kind": "method",
+      "module": "core-data",
+      "status": "supported_manual",
+      "since": "3.0",
+      "version_range": ">=3.0,<4",
+      "reason": "Feature iteration is bounded by the request and serialized as copied attributes and geometry.",
+      "ownership": "borrowed_snapshot",
+      "operation": "export_features",
+      "handler": "export_features"
+    },
+    {
+      "id": "QgsVectorLayer::QgsVectorLayer(uri,name,provider)",
+      "kind": "constructor",
+      "module": "core-data",
+      "status": "supported_manual",
+      "since": "3.0",
+      "version_range": ">=3.0,<4",
+      "reason": "The manager owns created vector layers and exposes generational integer IDs.",
+      "ownership": "manager_owned",
+      "operation": "layer_open",
+      "handler": "layer_open"
+    },
+    {
+      "id": "QgsProject::mapLayers",
+      "kind": "method",
+      "module": "core-data",
+      "status": "supported_manual",
+      "since": "3.0",
+      "version_range": ">=3.0,<4",
+      "reason": "Project layer lookup remains on the QGIS owner thread.",
+      "ownership": "qgis_owned",
+      "operation": "layer_info",
+      "handler": "layer_info"
+    },
+    {
+      "id": "QgsVectorLayer::~QgsVectorLayer",
+      "kind": "destructor",
+      "module": "core-data",
+      "status": "supported_manual",
+      "since": "3.0",
+      "version_range": ">=3.0,<4",
+      "reason": "Layer close removes the manager-owned object on the owner thread.",
+      "ownership": "manager_owned",
+      "operation": "layer_close",
+      "handler": "layer_close"
+    },
+    {
+      "id": "QgsFeatureIterator::nextFeature",
+      "kind": "method",
+      "module": "core-data",
+      "status": "supported_manual",
+      "since": "3.0",
+      "version_range": ">=3.0,<4",
+      "reason": "Iterator results are copied into bounded JSON pages.",
+      "ownership": "borrowed_snapshot",
+      "operation": "layer_features",
+      "handler": "layer_features"
+    },
+    {
+      "id": "QgsVectorLayer::QgsVectorLayer(uri,name,provider)-new",
+      "kind": "constructor",
+      "module": "core-data",
+      "status": "supported_manual",
+      "since": "3.0",
+      "version_range": ">=3.0,<4",
+      "reason": "New layers use the same manager-owned ID policy as opened layers.",
+      "ownership": "manager_owned",
+      "operation": "layer_new",
+      "handler": "layer_new"
+    },
+    {
+      "id": "QgsMapLayer::isValid",
+      "kind": "method",
+      "module": "core-data",
+      "status": "supported_manual",
+      "since": "3.0",
+      "version_range": ">=3.0,<4",
+      "reason": "Validity is copied as a boolean without exposing the QGIS object.",
+      "ownership": "borrowed_snapshot",
+      "operation": "layer_is_valid",
+      "handler": "layer_is_valid"
+    },
+    {
+      "id": "QgsMapLayer::name",
+      "kind": "method",
+      "module": "core-data",
+      "status": "supported_manual",
+      "since": "3.0",
+      "version_range": ">=3.0,<4",
+      "reason": "The display name is copied as UTF-8 text.",
+      "ownership": "borrowed_snapshot",
+      "operation": "layer_name",
+      "handler": "layer_name"
+    },
+    {
+      "id": "QgsVectorLayer::featureCount",
+      "kind": "method",
+      "module": "core-data",
+      "status": "supported_manual",
+      "since": "3.0",
+      "version_range": ">=3.0,<4",
+      "reason": "The count is copied as a bounded transport integer.",
+      "ownership": "borrowed_snapshot",
+      "operation": "layer_feature_count",
+      "handler": "layer_feature_count"
+    },
+    {
+      "id": "QgsMapLayer::crs",
+      "kind": "method",
+      "module": "core-data",
+      "status": "supported_manual",
+      "since": "3.0",
+      "version_range": ">=3.0,<4",
+      "reason": "CRS authority ID is copied as a stable string.",
+      "ownership": "borrowed_snapshot",
+      "operation": "layer_crs_authid",
+      "handler": "layer_crs_authid"
+    },
+    {
+      "id": "QgsMapLayer::wkbType",
+      "kind": "method",
+      "module": "core-data",
+      "status": "supported_manual",
+      "since": "3.0",
+      "version_range": ">=3.0,<4",
+      "reason": "Geometry type is normalized through QGIS displayString.",
+      "ownership": "borrowed_snapshot",
+      "operation": "layer_geometry_type_name",
+      "handler": "layer_geometry_type_name"
+    },
+    {
+      "id": "QgsVectorLayer::fields",
+      "kind": "method",
+      "module": "core-data",
+      "status": "supported_manual",
+      "since": "3.0",
+      "version_range": ">=3.0,<4",
+      "reason": "Field schema is copied into the versioned protocol response.",
+      "ownership": "borrowed_snapshot",
+      "operation": "layer_fields",
+      "handler": "layer_fields"
+    }
+  ],
+  "mappings": [
+    {
+      "category": "ownership",
+      "qgis_type": "QObject* and QGIS object pointers",
+      "wire_type": "generational object ID",
+      "rule": "Never serialize addresses; manager-owned objects are released on the owner thread."
+    },
+    {
+      "category": "invalidation",
+      "qgis_type": "QgsVectorLayer lifecycle",
+      "wire_type": "invalid_object_id error",
+      "rule": "Close and shutdown invalidate IDs before destruction; stale IDs never reach QGIS."
+    },
+    {
+      "category": "overload",
+      "qgis_type": "QgsVectorLayer::getFeatures overloads",
+      "wire_type": "named JSON payload",
+      "rule": "The manifest selects the request-bearing overload and records filters explicitly."
+    },
+    {
+      "category": "enum",
+      "qgis_type": "Qgis and QgsWkbTypes enums",
+      "wire_type": "stable strings",
+      "rule": "Numeric enum values remain internal; display names cross the manager boundary."
+    },
+    {
+      "category": "variant",
+      "qgis_type": "QVariant attributes",
+      "wire_type": "tagged JSON scalar/object",
+      "rule": "Supported scalar variants are copied through QJsonValue; unsupported values produce an explicit error."
+    },
+    {
+      "category": "binary_artifact",
+      "qgis_type": "QImage and feature export bytes",
+      "wire_type": "validated path plus bytes metadata",
+      "rule": "Large artifacts stay on disk and are never base64 encoded in the envelope."
+    },
+    {
+      "category": "paging",
+      "qgis_type": "QgsFeatureIterator",
+      "wire_type": "offset/limit page",
+      "rule": "Feature reads are bounded and return next_offset when more values remain."
+    }
+  ],
+  "exclusions": [
+    {
+      "scope": "gui",
+      "status": "host_only",
+      "reason": "Qt widgets and QgisInterface require a host-owned GUI thread."
+    },
+    {
+      "scope": "private-headers",
+      "status": "unsupported",
+      "reason": "Private QGIS headers are outside the compatibility promise."
+    },
+    {
+      "scope": "provider-specific",
+      "status": "provider_optional",
+      "reason": "Provider availability is reported by runtime capabilities."
+    }
+  ],
+  "operations": [
+    {"name": "app_init", "handler": "initialize", "requires_initialization": false},
+    {"name": "app_shutdown", "handler": "shutdown", "requires_initialization": false},
+    {"name": "engine_info", "handler": "engine_info", "requires_initialization": true},
+    {"name": "api_describe", "handler": "engine_info", "requires_initialization": true},
+    {"name": "render_map", "handler": "render_map", "requires_initialization": true},
+    {"name": "export_features", "handler": "export_features", "requires_initialization": true},
+    {"name": "layer_open", "handler": "layer_open", "requires_initialization": true},
+    {"name": "layer_info", "handler": "layer_info", "requires_initialization": true},
+    {"name": "layer_close", "handler": "layer_close", "requires_initialization": true},
+    {"name": "layer_features", "handler": "layer_features", "requires_initialization": true},
+    {"name": "layer_new", "handler": "layer_new", "requires_initialization": true},
+    {"name": "layer_is_valid", "handler": "layer_is_valid", "requires_initialization": true},
+    {"name": "layer_name", "handler": "layer_name", "requires_initialization": true},
+    {"name": "layer_feature_count", "handler": "layer_feature_count", "requires_initialization": true},
+    {"name": "layer_crs_authid", "handler": "layer_crs_authid", "requires_initialization": true},
+    {"name": "layer_geometry_type_name", "handler": "layer_geometry_type_name", "requires_initialization": true},
+    {"name": "layer_fields", "handler": "layer_fields", "requires_initialization": true}
+  ]
+}

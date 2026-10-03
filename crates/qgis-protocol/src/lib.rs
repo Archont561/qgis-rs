@@ -87,6 +87,8 @@ pub enum Operation {
     /// This build's version, the transport it speaks, its limits and the
     /// operations it serves.
     EngineInfo,
+    /// Describe the generated native-manager API manifest and live handlers.
+    ApiDescribe,
     /// Initialize the standalone native QGIS manager.
     AppInit,
     /// Release all managed QGIS objects and stop the native manager.
@@ -151,6 +153,7 @@ impl Operation {
         &[
             "ping",
             "engine_info",
+            "api_describe",
             "app_init",
             "app_shutdown",
             "layer_open",
