@@ -1,9 +1,10 @@
 ---
 id: TASK-25.4
 title: 'RFC 19: resolve open questions and record the native-manager ADR'
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-10-03 02:16'
+updated_date: '2026-10-03 08:04'
 labels:
   - rfc
   - ffi
@@ -14,6 +15,7 @@ references:
   - 'https://github.com/Archont561/qgis-rs/issues/19'
 documentation:
   - .knowledge/decisions/D09-wire-protocol-over-ffi.md
+  - .knowledge/decisions/D12-qgis-native-manager-over-c-abi.md
   - .knowledge/decisions/INDEX.md
 parent_task_id: TASK-25
 priority: high
@@ -30,15 +32,34 @@ Resolve the RFC's concurrency model (one global mutex versus a dedicated QGIS th
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 The concurrency model for QGIS access is selected, justified against QGIS thread-affinity requirements, and specified as an invariant for qgis_invoke.
-- [ ] #2 The source of truth for the JSON envelope and operation schema shared by Rust and C++ is selected, including how transport-version and snake_case naming are enforced.
-- [ ] #3 The binary-artifact policy is confirmed or changed, and crash isolation/subprocess transport is explicitly scoped in or out for RFC 19.
+- [x] #1 The concurrency model for QGIS access is selected, justified against QGIS thread-affinity requirements, and specified as an invariant for qgis_invoke.
+- [x] #2 The source of truth for the JSON envelope and operation schema shared by Rust and C++ is selected, including how transport-version and snake_case naming are enforced.
+- [x] #3 The binary-artifact policy is confirmed or changed, and crash isolation/subprocess transport is explicitly scoped in or out for RFC 19.
 - [ ] #4 Issue #19's camelCase examples versus the shipped snake_case protocol are reconciled in the issue and the repository documentation.
-- [ ] #5 A reviewed ADR is added or updated under .knowledge/decisions, and TASK-25.1 through TASK-25.3 can reference this decision without reopening the same questions.
+- [x] #5 A reviewed ADR is added or updated under .knowledge/decisions, and TASK-25.1 through TASK-25.3 can reference this decision without reopening the same questions.
 <!-- AC:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 The task is linked as a child of TASK-25 and references issue #19 and D09.
-- [ ] #2 No native manager implementation begins until the selected invariants are recorded.
+- [x] #1 The task is linked as a child of TASK-25 and references issue #19 and D09.
+- [x] #2 No native manager implementation begins until the selected invariants are recorded.
 <!-- DOD:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. Read D05, D09, the shipped qgis-protocol/qgis-engine boundary, qgis-sys QGIS lifecycle, and issue #19.
+2. Record the native-manager concurrency, schema, artifact, crash-isolation, and naming decisions in D12.
+3. Update decision indexes, RFC phase references, and issue #19.
+4. Verify the decision links and repository checks, then close this task with evidence.
+<!-- SECTION:PLAN:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Started the architecture spike. Workflow check: no GitHub runs are active for arena/01a0ff70-qgis-rs. The checkout is synchronized with origin at 9ad8ed4.
+
+Added D12 and linked it from D09, the decision indexes, the parent RFC tracker, and phases 2–4.
+
+Posted the resolution text to backlog/drafts/issue-19-status-comment.md because gh issue comment 19 was denied with Resource not accessible by integration; AC #4 remains unchecked until issue #19 is updated.
+<!-- SECTION:NOTES:END -->

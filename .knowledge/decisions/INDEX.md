@@ -4,6 +4,7 @@ Architectural decision records for qgis-rs. Each document captures a decision, i
 
 ## Active Decisions
 
+* [D12 — QGIS Native Manager over the C ABI](/decisions/D12-qgis-native-manager-over-c-abi.md) - QGIS state has one dedicated owner thread, `qgis-protocol` is normative, artifacts stay path-based, and crash isolation is deferred.
 * [D11 — Tests Outside `src/`](/decisions/D11-tests-outside-src.md) - One layout in every language: source in `src/`, tests in `tests/`, and anything a test needs is public.
 * [D10 — xtask over Shell Scripts](/decisions/D10-xtask-over-shell-scripts.md) - Repository automation is a compiled, tested `cargo xtask` binary behind pixi tasks; per-package verbs stay with turbo.
 * [D09 — Wire Protocol over FFI](/decisions/D09-wire-protocol-over-ffi.md) - Each binding exposes one `invoke(json) -> json`; the versioned protocol is the interface, not a mirrored class surface.

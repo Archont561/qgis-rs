@@ -14,3 +14,17 @@ Tracking this RFC in the backlog, and recording where the repository already sta
 **One prerequisite the RFC does not mention:** the repository has no C++ build system. Every `.cpp` is compiled by `build.rs` through `cc`/`cxx-build` straight into the Rust link line. That cannot express a shared library with `-fvisibility=hidden` and exactly three default-visible symbols, and it cannot build the GoogleTest binary `TASK-23` asks for. `cmake` and `ninja` are not in `pixi.lock` either. `TASK-24` covers adding them; note that the lock cannot be re-solved from the dev sandbox (conda-forge is unreachable there), so that solve and a sandbox-pack republish have to happen on a runner.
 
 **Feasibility note:** the gated suite (`tests/application_lifecycle.rs`, `tests/vector_layer.rs`) runs a real `QgsApplication` and a real vector layer headless and passes, so phase 2 has a working acceptance surface today. The concurrency question — one global mutex versus a dedicated QGIS thread — is the thing that blocks starting it, because it decides the shape of the manager rather than being an implementation detail inside it.
+
+---
+
+## Architecture resolution ready to post
+
+The open questions are resolved in `.knowledge/decisions/D12-qgis-native-manager-over-c-abi.md`:
+
+- Use one dedicated QGIS owner/executor thread with a blocking request queue; a mutex alone is insufficient because it does not preserve QGIS/Qt thread affinity across callers.
+- Keep `crates/qgis-protocol` as the normative source for the transport version, closed operation set, envelope, error kinds, and `snake_case` wire names. A versioned JSON Schema artifact will be emitted from that crate for C++ conformance tests.
+- Keep rendered images and exported feature files path-based, returning metadata rather than base64 or arbitrary binary payloads.
+- Keep crash isolation out of RFC 19 v1. The C++ exception fence and structured errors are required, but segfaults, aborts, memory corruption, and plugin crashes require a later subprocess/stdin transport.
+- Amend the RFC's illustrative camelCase keys (`transportVersion`, `layerId`, `isValid`, `featureCount`) to the shipped `snake_case` keys (`transport_version`, `layer_id`, `is_valid`, `feature_count`). Future RFC 19 operations use `layer_open`, `layer_info`, `layer_close`, and `layer_features`.
+
+The issue comment could not be posted by the configured GitHub integration: GitHub returned `Resource not accessible by integration` for the write request. The text above is retained here until the issue can be updated.

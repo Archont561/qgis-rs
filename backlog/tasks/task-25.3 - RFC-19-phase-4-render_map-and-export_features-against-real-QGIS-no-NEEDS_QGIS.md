@@ -6,7 +6,7 @@ title: >-
 status: To Do
 assignee: []
 created_date: '2026-10-02 23:23'
-updated_date: '2026-10-03 02:16'
+updated_date: '2026-10-03 08:04'
 labels:
   - rfc
   - ffi
@@ -15,6 +15,10 @@ dependencies:
   - TASK-25.2
 references:
   - 'https://github.com/Archont561/qgis-rs/issues/19'
+documentation:
+  - .knowledge/decisions/D09-wire-protocol-over-ffi.md
+  - .knowledge/decisions/D12-qgis-native-manager-over-c-abi.md
+  - .knowledge/decisions/INDEX.md
 parent_task_id: TASK-25
 priority: medium
 type: enhancement
