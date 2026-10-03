@@ -405,7 +405,7 @@
 * **Creation**: Established [testing.md](/testing.md) — test structure, fixtures, and environment requirements.
 * **Creation**: Established [related-approaches.md](/related-approaches.md) — comparison of Rust ↔ C++ / Qt binding strategies.
 * **Creation**: Established [env-provisioning.md](/env-provisioning.md) — bootstrap via pixi-sandbox packs.
-* **Creation**: Established [ROADMAP.md](/ROADMAP.md) — phased plan for architectural decisions and type binding.
+* **Creation**: Established the execution roadmap, now maintained in [Backlog doc-2](../backlog/docs/roadmap/doc-2%20-%20QGIS-RS-Execution-Roadmap.md) — phased plan for architectural decisions and type binding.
 * **Creation**: Established [decisions/](/decisions/) subdirectory with 8 decision documents (D01–D08).
 * **Creation**: Established [.github/workflows/env.yml](/../.github/workflows/env.yml) — CI workflow for environment packing.
 * **Creation**: Established [scripts/](/../scripts/) — setup-env.sh, use-pack.sh, publish-env-branch.sh.

@@ -14,6 +14,8 @@ This document provides guidelines for AI agents (like Claude, GPT-4, Copilot, et
 
 ## Knowledge Base
 
+Before implementing a feature or fixing a bug, read both `.agents/skills/refactor/SKILL.md` and `.agents/skills/tdd/SKILL.md`. Apply the relevant guidance: establish the public seam and a failing characterization or behavior test first, make one small behavior-preserving change at a time, run the focused tests, then refactor only after the test is green.
+
 The `.knowledge/` directory contains design documents, decision records, and architectural information:
 
 - **INDEX.md** — Entry point to all knowledge documents

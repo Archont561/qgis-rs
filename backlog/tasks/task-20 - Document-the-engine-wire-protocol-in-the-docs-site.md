@@ -4,9 +4,13 @@ title: Document the engine wire protocol in the docs site
 status: To Do
 assignee: []
 created_date: '2026-10-02 22:35'
+updated_date: '2026-10-03 08:31'
 labels: []
+milestone: m-4
 dependencies: []
 documentation:
+  - .knowledge/api-design.md
+  - .knowledge/architecture.md
   - .knowledge/decisions/D09-wire-protocol-over-ffi.md
 priority: medium
 type: docs

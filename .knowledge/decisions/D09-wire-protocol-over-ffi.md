@@ -10,6 +10,11 @@ date: 2026-10-03T00:00:00Z
 
 # D09: A Versioned Wire Protocol Across the FFI Boundary
 
+> The native QGIS manager extension of this decision is recorded in
+> [D12 — QGIS Native Manager over the C ABI](D12-qgis-native-manager-over-c-abi.md).
+> D09 remains the protocol decision; D12 fixes the owner-thread, schema,
+> artifact, crash-isolation, and RFC 19 naming rules for the C++ consumer.
+
 ## The Question
 
 `qgis-rs` ships the same capability to three audiences: Rust callers, Python

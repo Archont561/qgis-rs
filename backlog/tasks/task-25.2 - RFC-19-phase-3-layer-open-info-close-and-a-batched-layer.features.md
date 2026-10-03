@@ -4,13 +4,25 @@ title: 'RFC 19 phase 3: layer open, info, close and a batched layer.features'
 status: To Do
 assignee: []
 created_date: '2026-10-02 23:23'
+updated_date: '2026-10-03 08:57'
 labels:
   - rfc
   - ffi
   - cpp
-dependencies: []
+milestone: m-2
+dependencies:
+  - TASK-25.1
 references:
   - 'https://github.com/Archont561/qgis-rs/issues/19'
+documentation:
+  - .knowledge/architecture.md
+  - .knowledge/qgis-vector-layer.md
+  - .knowledge/decisions/D09-wire-protocol-over-ffi.md
+  - .knowledge/decisions/D12-qgis-native-manager-over-c-abi.md
+  - .knowledge/decisions/INDEX.md
+  - >-
+    backlog/docs/architecture/doc-4 -
+    QGIS-Native-Manager-and-API-Coverage-Strategy.md
 parent_task_id: TASK-25
 priority: medium
 type: enhancement

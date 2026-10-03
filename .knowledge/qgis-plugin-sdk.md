@@ -860,38 +860,12 @@ qgis-rs/
 
 ---
 
-## 10. Effort Estimate
+## 10. Planning ownership
 
-| Component | Effort | Priority |
-|-----------|--------|----------|
-| **Python SDK** (Plugin, Algorithm, Parameter base classes) | 3-4 weeks | P0 |
-| **PyQGIS wrappers** (cleaner API: layer, feature, geometry, crs, iface) | 2-3 weeks | P0 |
-| **CLI** (new, build, test, install, dev, package, publish) | 3-4 weeks | P0 |
-| **Testing framework** (mock_context, mock_source, qgis_app fixture) | 2 weeks | P0 |
-| **Templates** (scaffolding for `qgis-plugin new`) | 1 week | P0 |
-| **plugin.toml → metadata.txt generator** | 2 days | P0 |
-| **Rust SDK crate** (PyO3 acceleration library) | 3-4 weeks | P1 |
-| **@rust_accelerated decorator** | 1 week | P1 |
-| **Cross-platform build** (Rust for Win/Mac/Linux) | 2 weeks | P1 |
-| **Unified backend selector** (Rust vs PyQGIS dispatch) | 1 week | P1 |
-| **GitHub Actions template** | 2 days | P1 |
-| **Documentation + examples** | 2-3 weeks | P1 |
-| **Total** | **20-27 weeks** | |
-
-### Phase 1 (Weeks 1-10): Python-only SDK
-- Base classes, PyQGIS wrappers, CLI, testing, templates
-- Users can write Python plugins with clean API
-- `qgis-plugin new → dev → build → publish` workflow works
-
-### Phase 2 (Weeks 11-18): Rust acceleration
-- Rust SDK crate, @rust_accelerated, cross-platform builds
-- Users can drop into Rust for hot paths
-- Unified API that uses Rust when available
-
-### Phase 3 (Weeks 19-27): Rendering integration
-- Unified render/features/geometry/crs API
-- qgis-render as optional backend
-- Full ecosystem: plugin SDK + render engine + server
+Effort estimates, phase sequencing, priorities, and next actions are Backlog.md
+concerns rather than durable SDK knowledge. The former estimate and phase model
+were moved to the [Backlog execution roadmap](../backlog/docs/roadmap/doc-2%20-%20QGIS-RS-Execution-Roadmap.md),
+with current ownership represented by milestone `m-3` and its linked tasks.
 
 ---
 
@@ -911,7 +885,7 @@ qgis-rs/
 
 ---
 
-## 12. Implementation Status
+## 12. Implementation Evidence and Backlog Tracking
 
 The SDK lives at **`py-packages/qgis-sdk/`** as a pixi workspace package, with its
 Rust core in **`crates/qgis-sdk/`**
@@ -919,22 +893,33 @@ Rust core in **`crates/qgis-sdk/`**
 See [pixi.md](/pixi.md) for how the workspace and the PyQGIS import paths are
 wired up.
 
-| Spec section | Module | Status |
+This table is an evidence snapshot, not a second status source. Current work,
+acceptance criteria, and next actions live in [TASK-1](../backlog/tasks/task-1%20-%20Make%20the%20full%20QGIS%20SDK%20test%20suite%20headless%20and%20CI-green.md),
+[TASK-2](../backlog/tasks/task-2%20-%20Add%20a%20dedicated%20QGIS%20SDK%20integration%20test%20runner%20and%20CI%20job.md),
+[TASK-3](../backlog/tasks/task-3%20-%20Document%20and%20scaffold%20the%20declarative%20plugin%20and%20SDK%20APIs.md),
+[TASK-4](../backlog/tasks/task-4%20-%20Cover%20real%20QGIS%20network%20and%20task-manager%20integration.md),
+[TASK-13](../backlog/tasks/task-13%20-%20Implement-ergonomic-PyQGIS-wrappers-for-iface-layers-and-CRS.md)
+through [TASK-18](../backlog/tasks/task-18%20-%20Add-frontend-framework-starter-templates-for-WebEngine-plugins.md),
+and [TASK-26](../backlog/tasks/task-26%20-%20Refactor-qgis-sdk-CLI-onto-the-shared-Rust-engine-wire-protocol.md).
+
+The accepted Rust CLI, FFI, and hosted-runtime boundary is specified in [doc-7](../backlog/docs/architecture/doc-7%20-%20Rust-CLI-Cross-Language-FFI-and-QGIS-SDK-Product-Boundaries.md). Its implementation is decomposed into [TASK-40](../backlog/tasks/task-40%20-%20Define-Rust-CLI-FFI-and-QGIS-SDK-product-boundaries.md) through [TASK-44](../backlog/tasks/task-44%20-%20Package-the-Rust-native-qgis-plugin-and-qgis-sdk-CLI.md): contract, standalone CLI, cross-language FFI, hosted-runtime separation, and CLI packaging.
+
+| Spec section | Module | Evidence / backlog owner |
 |--------------|--------|--------|
 | 1.1 Plugin definition, decorators | `qgis_sdk.plugin` — `Plugin`, `@action`, `@toolbar`, `@menu`, `class_factory` | Implemented, unit-tested |
 | 1.1 `metadata.txt` generation | `qgis_sdk.metadata` — `render_metadata`, `write_metadata` | Implemented, unit-tested |
 | 1.2 Processing algorithms | `qgis_sdk.algorithm` — `Algorithm`, `parameter.*`, `output.*` | Declarative model implemented, unit-tested |
-| 1.2 QGIS Processing bridge | `qgis_sdk.processing_bridge` — `build_algorithm`, `_ContextAdapter` | Written against PyQGIS; **not yet run against a QGIS environment** |
-| Toolbar/menu widgets | `qgis_sdk.qt` — `make_action` | Written against `qgis.PyQt`; **not yet run against a QGIS environment** |
-| 1.3 Cleaner PyQGIS wrappers (`iface`, `layers`, `crs`, …) | — | Not started |
-| 1.4 Expression engine wrappers | — | Not started |
-| 1.5 Geometry wrappers | — | Not started |
-| 2 Rust acceleration (`@rust_accelerated`) | — | Not started |
-| 1.1 UI dialogs (Qt Designer .ui + declarative) | `qgis_sdk.ui` — `Dialog`, `field`, `layout`, `Button`, `@dialog`, `make_dialog` | Implemented, unit-tested (17 tests) |
-| 1.1 WebEngine HTML + QWebChannel | `qgis_sdk.ui` — `WebDialog`, `@web_bridge`, `make_web_view` | Implemented, unit-tested |
-| 5 CLI (`qgis-plugin scaffold/test/package/publish`) | `qgis_sdk.cli` + Rust binary `qgis-plugin` (native speed) | Implemented, with `--web` and `ui add-dialog/add-web` subcommands |
-| 5 UI scaffolding | `qgis-plugin new --web`, `ui/*.ui`, `web/map.html` (Leaflet + qrc:///qtwebchannel/qwebchannel.js) | Implemented |
-| 7 Testing story | `tests/` — 60 tests (35 original + 17 UI + 8 CLI), fake interface + fake action factory | Implemented; runs without QGIS |
+| 1.2 QGIS Processing bridge | `qgis_sdk.processing_bridge` — `build_algorithm`, `_ContextAdapter` | Written against PyQGIS; runtime proof and lifecycle coverage → TASK-4 |
+| Toolbar/menu widgets | `qgis_sdk.qt` — `make_action` | Written against `qgis.PyQt`; runtime proof and lifecycle coverage → TASK-4 |
+| 1.3 Cleaner PyQGIS wrappers (`iface`, `layers`, `crs`, …) | — | Specification/open implementation → TASK-13 |
+| 1.4 Expression engine wrappers | — | Specification/open implementation → TASK-14 |
+| 1.5 Geometry wrappers | — | Specification/open implementation → TASK-15 |
+| 2 Rust acceleration (`@rust_accelerated`) | — | Specification/open implementation → TASK-16 |
+| 1.1 UI dialogs (Qt Designer .ui + declarative) | `qgis_sdk.ui` — `Dialog`, `field`, `layout`, `Button`, `@dialog`, `make_dialog` | Implemented evidence; UI/template follow-up → TASK-18 |
+| 1.1 WebEngine HTML + QWebChannel | `qgis_sdk.ui` — `WebDialog`, `@web_bridge`, `make_web_view` | Implemented evidence; bridge/package follow-up → TASK-18 |
+| 5 CLI (`qgis-plugin scaffold/test/package/publish`) | `qgis_sdk.cli` + Rust binary `qgis-plugin` (native speed) | Native CLI exists; packaging/publishing → TASK-17; shared engine refactor → TASK-26 |
+| 5 UI scaffolding | `qgis-plugin new --web`, `ui/*.ui`, `web/map.html` (Leaflet + qrc:///qtwebchannel/qwebchannel.js) | Implemented evidence; docs/scaffold follow-up → TASK-3/TASK-18 |
+| 7 Testing story | `tests/` — fake interface + fake action factory | Pure-Python evidence exists; headless/runtime/fixture proof → TASK-1/TASK-2/TASK-23 |
 
 ### Why nothing imports `qgis` at module scope
 

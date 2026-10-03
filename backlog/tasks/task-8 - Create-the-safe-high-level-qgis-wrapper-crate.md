@@ -4,14 +4,17 @@ title: Create the safe high-level qgis wrapper crate
 status: To Do
 assignee: []
 created_date: '2026-09-30 20:48'
+updated_date: '2026-10-03 08:31'
 labels:
   - qgis
   - architecture
   - api
+milestone: m-1
 dependencies:
   - TASK-7
 documentation:
   - .knowledge/decisions/D01-two-crate-architecture.md
+  - .knowledge/architecture.md
 priority: high
 ---
 

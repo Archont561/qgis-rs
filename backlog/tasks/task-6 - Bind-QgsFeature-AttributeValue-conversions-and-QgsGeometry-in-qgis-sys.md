@@ -4,14 +4,18 @@ title: 'Bind QgsFeature, AttributeValue conversions, and QgsGeometry in qgis-sys
 status: To Do
 assignee: []
 created_date: '2026-09-30 20:48'
+updated_date: '2026-10-03 08:31'
 labels:
   - qgis-sys
   - core
   - geometry
   - features
+milestone: m-1
 dependencies:
   - TASK-5
 documentation:
+  - backlog/docs/roadmap/doc-2 - QGIS-RS-Execution-Roadmap.md
+  - .knowledge/qgis-vector-layer.md
   - .knowledge/decisions/D04-api-priority.md
 priority: high
 ---

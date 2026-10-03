@@ -2,14 +2,19 @@
 id: task-1
 title: Make the full QGIS SDK test suite headless and CI-green
 status: In Progress
-priority: high
 assignee: []
 created_date: '2026-09-30'
-updated_date: '2026-09-30'
+updated_date: '2026-10-03 08:31'
 labels:
   - qgis-sdk
   - testing
+milestone: m-3
 dependencies: []
+documentation:
+  - .knowledge/qgis-plugin-sdk.md
+  - .knowledge/qgis-plugin-ui.md
+  - .knowledge/testing.md
+priority: high
 ---
 
 ## Description

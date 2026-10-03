@@ -4,7 +4,7 @@ id: D04
 title: "API Binding Priority — What to Bind and When"
 description: "Tiered approach to binding QGIS types — the 20% that covers 80% of real workflows, in dependency order."
 status: draft
-tags: [roadmap, api, priority]
+tags: [api, priority]
 date: 2026-09-17T00:00:00Z
 generated: { by: arena-agent/qgis-rs-kb-init, at: 2026-09-17T20:00:00Z }
 ---

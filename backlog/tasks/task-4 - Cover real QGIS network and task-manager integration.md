@@ -2,16 +2,21 @@
 id: task-4
 title: Cover real QGIS network and task-manager integration
 status: To Do
-priority: medium
 assignee: []
 created_date: '2026-09-30'
-updated_date: '2026-09-30'
+updated_date: '2026-10-03 08:31'
 labels:
   - qgis-sdk
   - network
   - tasks
+milestone: m-3
 dependencies:
   - task-2
+documentation:
+  - .knowledge/qgis-plugin-sdk.md
+  - .knowledge/qgis-plugin-ui.md
+  - .knowledge/testing.md
+priority: medium
 ---
 
 ## Description

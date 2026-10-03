@@ -4,13 +4,26 @@ title: 'RFC 19 phase 2: native manager, ID registry and lifecycle behind qgis_in
 status: To Do
 assignee: []
 created_date: '2026-10-02 23:23'
+updated_date: '2026-10-03 08:57'
 labels:
   - rfc
   - ffi
   - cpp
-dependencies: []
+milestone: m-0
+dependencies:
+  - TASK-25.4
+  - TASK-24
 references:
   - 'https://github.com/Archont561/qgis-rs/issues/19'
+documentation:
+  - .knowledge/architecture.md
+  - .knowledge/build-system.md
+  - .knowledge/decisions/D09-wire-protocol-over-ffi.md
+  - .knowledge/decisions/D12-qgis-native-manager-over-c-abi.md
+  - .knowledge/decisions/INDEX.md
+  - >-
+    backlog/docs/architecture/doc-4 -
+    QGIS-Native-Manager-and-API-Coverage-Strategy.md
 parent_task_id: TASK-25
 priority: high
 type: enhancement
@@ -21,7 +34,7 @@ type: enhancement
 <!-- SECTION:DESCRIPTION:BEGIN -->
 Phase 2 of RFC 19. Stand the native manager up next to the existing cxx bridge and move the two shims that already exist onto it, so the boundary is proven before any new QGIS feature depends on it.
 
-Scope: one manager translation unit under crates/qgis-sys that includes qgs*.h and nothing else does; qgis_invoke, qgis_free and qgis_transport_version as the only default-visible symbols; QJsonDocument for the envelope on the C++ side; a catch(...) fence before every return out of extern "C"; an ID registry holding QHash<id, std::unique_ptr<T>> so no QGIS pointer crosses the boundary; the serialisation happening inside qgis_invoke, per ADR D05. On the Rust side, the extern "C" declarations, a String round-trip helper that always pairs qgis_free with the pointer it got, and the router forwarding app.init, engine.info and the current vector layer operations.
+Scope: one manager translation unit under crates/qgis-sys that includes qgs*.h and nothing else does; qgis_invoke, qgis_free and qgis_transport_version as the only default-visible symbols; QJsonDocument for the envelope on the C++ side; a catch(...) fence before every return out of extern "C"; an ID registry holding QHash<id, std::unique_ptr<T>> so no QGIS pointer crosses the boundary; the serialisation happening inside qgis_invoke, per ADR D12 (with D05's QGIS thread-affinity invariant). On the Rust side, the extern "C" declarations, a String round-trip helper that always pairs qgis_free with the pointer it got, and the router forwarding app.init, engine.info and the current vector layer operations.
 
 The gated suite is the acceptance surface: tests/application_lifecycle.rs and tests/vector_layer.rs already exercise a real QgsApplication and a real vector layer, and both pass headless in the sandbox today. They must keep passing through the manager, with the same QT_QPA_PLATFORM=offscreen and single-threaded harness.
 

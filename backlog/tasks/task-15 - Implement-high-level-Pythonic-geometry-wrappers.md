@@ -4,10 +4,12 @@ title: Implement high-level Pythonic geometry wrappers
 status: To Do
 assignee: []
 created_date: '2026-09-30 20:49'
+updated_date: '2026-10-03 08:31'
 labels:
   - qgis-sdk
   - python
   - geometry
+milestone: m-3
 dependencies: []
 documentation:
   - .knowledge/qgis-plugin-sdk.md

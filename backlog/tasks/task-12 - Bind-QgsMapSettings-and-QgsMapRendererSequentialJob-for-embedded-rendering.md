@@ -4,13 +4,18 @@ title: Bind QgsMapSettings and QgsMapRendererSequentialJob for embedded renderin
 status: To Do
 assignee: []
 created_date: '2026-09-30 20:48'
+updated_date: '2026-10-03 08:31'
 labels:
   - qgis-sys
   - rendering
   - qgis-render
+milestone: m-2
 dependencies:
   - TASK-10
 documentation:
+  - backlog/docs/roadmap/doc-2 - QGIS-RS-Execution-Roadmap.md
+  - .knowledge/qgis-vector-layer.md
+  - .knowledge/architecture.md
   - .knowledge/decisions/D08-standalone-rendering-app.md
 priority: medium
 ---

@@ -11,6 +11,14 @@ status: draft
 
 The API is organized in four layers:
 
+> This document is a target API specification, not an implementation-status
+> ledger. Executable work is tracked in Backlog.md: data access is TASK-5
+> through TASK-7, project/editing is TASK-10/TASK-11, rendering is TASK-12 and
+> TASK-25.3, server coverage is TASK-19, protocol documentation is TASK-20,
+> and the Python SDK CLI boundary is TASK-26. The pure-Rust subset already
+> implemented in `qgis-render` and `qgis-engine` is described by the current
+> crate tests; QGIS-backed operations remain explicitly gated by those tasks.
+
 1. **`qgis-render`** — core Rust library (the engine)
 2. **`qgis-cli`** — command-line interface
 3. **`qgis-server`** — HTTP server (WMS/WFS/OGC API)

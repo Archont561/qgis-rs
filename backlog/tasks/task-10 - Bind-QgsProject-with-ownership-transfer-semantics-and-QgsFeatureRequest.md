@@ -4,14 +4,18 @@ title: Bind QgsProject with ownership transfer semantics and QgsFeatureRequest
 status: To Do
 assignee: []
 created_date: '2026-09-30 20:48'
+updated_date: '2026-10-03 08:31'
 labels:
   - qgis-sys
   - qgis
   - project
   - editing
+milestone: m-2
 dependencies:
   - TASK-8
 documentation:
+  - backlog/docs/roadmap/doc-2 - QGIS-RS-Execution-Roadmap.md
+  - .knowledge/qgis-vector-layer.md
   - .knowledge/decisions/D02-ownership-model.md
 priority: medium
 ---

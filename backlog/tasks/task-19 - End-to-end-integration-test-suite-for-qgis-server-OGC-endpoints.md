@@ -4,10 +4,12 @@ title: End-to-end integration test suite for qgis-server OGC endpoints
 status: To Do
 assignee: []
 created_date: '2026-09-30 20:49'
+updated_date: '2026-10-03 08:31'
 labels:
   - qgis-server
   - testing
   - ogc
+milestone: m-2
 dependencies: []
 documentation:
   - .knowledge/api-design.md

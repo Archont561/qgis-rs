@@ -4,13 +4,16 @@ title: 'Implement ergonomic PyQGIS wrappers for iface, layers, and CRS'
 status: To Do
 assignee: []
 created_date: '2026-09-30 20:48'
+updated_date: '2026-10-03 08:31'
 labels:
   - qgis-sdk
   - python
   - api
+milestone: m-3
 dependencies: []
 documentation:
   - .knowledge/qgis-plugin-sdk.md
+  - .knowledge/qgis-plugin-ui.md
 priority: medium
 ---
 

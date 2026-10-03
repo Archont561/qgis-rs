@@ -2,15 +2,23 @@
 id: task-3
 title: Document and scaffold the declarative plugin and SDK APIs
 status: To Do
-priority: medium
 assignee: []
 created_date: '2026-09-30'
-updated_date: '2026-09-30'
+updated_date: '2026-10-03 09:19'
 labels:
   - qgis-sdk
   - documentation
   - scaffold
+milestone: m-3
 dependencies: []
+documentation:
+  - .knowledge/qgis-plugin-sdk.md
+  - .knowledge/qgis-plugin-ui.md
+  - .knowledge/scaffold.md
+  - >-
+    backlog/docs/ui/doc-6 -
+    QGIS-SDK-Native-UI-Kit-and-Visual-Design-Loop-Strategy.md
+priority: medium
 ---
 
 ## Description

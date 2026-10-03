@@ -5,6 +5,8 @@ description: "One version, one tag, one set of artifacts: how qgis-rs cuts a rel
 
 # Release Model
 
+Execution and release proof live in [TASK-21](../backlog/tasks/task-21%20-%20Cover-the-xtask-release-pipeline-with-an-end-to-end-dry-run.md); this document remains the release runbook and rationale, not a second release-status checklist.
+
 Adopted from `Archont561/geoquery`, adapted to this repository's five publishing
 surfaces. Two workflows and one binary (`pixi run xtask release <step>`,
 `crates/xtask/src/release.rs`); nothing is published as a side effect of

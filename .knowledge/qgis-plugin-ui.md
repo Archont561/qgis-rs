@@ -399,9 +399,17 @@ def test_dialog_logic():
 - QGIS GUI API: `QgsDialog`, `QgsExternalResourceWidget`, `QgsHtmlWidgetWrapper`: [qgis-gui-api]
 - QSettings persistence, `QgsTaskManager`, `WA_DeleteOnClose`: [pyqgis-engineering.org]
 
-## 7. Implementation Status (implemented 2026-09-18, extended with React/Vue/WebComponents 2026-09-18)
+## 7. Implementation Evidence and Backlog Tracking
 
-| Feature | Module | Status |
+The rows below preserve implementation evidence from the UI work, but they are
+not a second status tracker. Current acceptance criteria and follow-up work
+live in [TASK-3](../backlog/tasks/task-3%20-%20Document%20and%20scaffold%20the%20declarative%20plugin%20and%20SDK%20APIs.md),
+[TASK-1](../backlog/tasks/task-1%20-%20Make%20the%20full%20QGIS%20SDK%20test%20suite%20headless%20and%20CI-green.md),
+[TASK-2](../backlog/tasks/task-2%20-%20Add%20a%20dedicated%20QGIS%20SDK%20integration%20test%20runner%20and%20CI%20job.md),
+[TASK-4](../backlog/tasks/task-4%20-%20Cover%20real%20QGIS%20network%20and%20task-manager%20integration.md), and
+[TASK-18](../backlog/tasks/task-18%20-%20Add-frontend-framework-starter-templates-for-WebEngine-plugins.md).
+
+| Feature | Module | Evidence / backlog owner |
 |---------|--------|--------|
 | Qt Designer .ui loading | `qgis_sdk.ui.Dialog`, `qgis_sdk.qt.make_dialog`, `qgis_sdk.scaffold.MAIN_DIALOG_UI` | ✅ Implemented — `Dialog` tries Qt then fallback, `make_dialog` uses `uic.loadUiType`, template includes `QgsMapLayerComboBox` promotion |
 | Declarative dialog builder | `qgis_sdk.ui.field`, `layout`, `Button`, `FieldSpec` | ✅ Implemented — 5 field types + layer/crs, layouts vertical/horizontal/grid/form/tabs, Button ok/cancel/apply |

@@ -4,14 +4,24 @@ title: 'Track RFC 19: one C-ABI invoke and a native manager for the QGIS backend
 status: To Do
 assignee: []
 created_date: '2026-10-02 23:23'
+updated_date: '2026-10-03 08:57'
 labels:
   - rfc
   - ffi
   - cpp
   - architecture
+milestone: m-0
 dependencies: []
 references:
   - 'https://github.com/Archont561/qgis-rs/issues/19'
+documentation:
+  - .knowledge/architecture.md
+  - .knowledge/decisions/D09-wire-protocol-over-ffi.md
+  - .knowledge/decisions/D12-qgis-native-manager-over-c-abi.md
+  - .knowledge/decisions/INDEX.md
+  - >-
+    backlog/docs/architecture/doc-4 -
+    QGIS-Native-Manager-and-API-Coverage-Strategy.md
 priority: high
 type: enhancement
 ---
