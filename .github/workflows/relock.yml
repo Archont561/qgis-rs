@@ -33,6 +33,10 @@ jobs:
       # fail first with a message about installation, when the fact worth reporting is that the
       # lock no longer satisfies the manifest.
       - run: pixi lock --check
+      # Cargo manifests are outside Pixi's dependency graph. Keep the same guard for Cargo.lock
+      # so a new workspace dev-dependency (for example proptest/rstest) reaches the relock job
+      # instead of failing later in the vendored sandbox.
+      - run: cargo fetch --locked
 
   relock:
     name: relock
