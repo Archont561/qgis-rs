@@ -16,11 +16,26 @@ fn run(args: &[&str]) -> Output {
         .unwrap_or_else(|error| panic!("run `qgis-plugin {}`: {error}", args.join(" ")))
 }
 
+/// A directory no other run of this suite can be holding.
+///
+/// `pid` plus a counter is not enough: the gate runs this binary twice in one
+/// container — once under `turbo run test`, once under `cargo llvm-cov` — and
+/// a runner recycles process ids freely. A leftover directory from a run that
+/// died before `Drop` makes `qgis-plugin new` bail with "directory already
+/// exists", which is how this test went red in CI on a commit that changed
+/// only prose. The clock closes that window; the explicit removal closes what
+/// is left of it.
 fn temp_dir() -> TempDir {
     static NEXT_ID: AtomicUsize = AtomicUsize::new(0);
     let id = NEXT_ID.fetch_add(1, Ordering::Relaxed);
-    let path =
-        std::env::temp_dir().join(format!("qgis-sdk-plugin-cli-{}-{id}", std::process::id()));
+    let stamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |since| since.as_nanos());
+    let path = std::env::temp_dir().join(format!(
+        "qgis-sdk-plugin-cli-{}-{id}-{stamp}",
+        std::process::id()
+    ));
+    let _ = std::fs::remove_dir_all(&path);
     std::fs::create_dir_all(&path).expect("create temporary directory");
     TempDir(path)
 }
