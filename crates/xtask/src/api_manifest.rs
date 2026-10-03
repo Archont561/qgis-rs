@@ -219,17 +219,18 @@ pub fn validate_manifest(contents: &str) -> Result<ApiManifest> {
         }
     }
     for declaration in supported_declarations {
-        if let Some(operation) = declaration.operation.as_deref()
-            && !manifest
+        if let Some(operation) = declaration.operation.as_deref() {
+            if !manifest
                 .operations
                 .iter()
                 .any(|candidate| candidate.name == operation)
-        {
-            bail!(
-                "supported declaration {} has no generated operation {}",
-                declaration.id,
-                operation
-            );
+            {
+                bail!(
+                    "supported declaration {} has no generated operation {}",
+                    declaration.id,
+                    operation
+                );
+            }
         }
     }
 

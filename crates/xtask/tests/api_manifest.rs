@@ -77,6 +77,7 @@ fn invalid_statuses_and_duplicate_operations_are_rejected() {
     let invalid = r#"{
         "manifest_version": 1,
         "qgis": {"min_version": "3.44.9", "tested_version": "3.44.14"},
+        "source": {"extractor": "test"},
         "declarations": [{
             "id": "QgsThing::value",
             "kind": "method",
