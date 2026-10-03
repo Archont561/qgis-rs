@@ -4,7 +4,7 @@ title: Add cmake and ninja to the C++ toolchain dependencies
 status: In Progress
 assignee: []
 created_date: '2026-10-02 23:22'
-updated_date: '2026-10-03 08:31'
+updated_date: '2026-10-03 08:38'
 labels:
   - build
   - cpp
@@ -51,4 +51,8 @@ The existing `qgis-sys/build.rs` continues to compile the Rust-consumer CXX/cc s
 Source audit: pixi.toml now declares cmake >=4.4,<5, ninja >=1.13,<2, gtest >=1.18,<2, and rapidcheck >=2023.4,<2024; matching linux-64 entries are present in pixi.lock.
 
 Remaining proof: restore the Pixi environment to run cmake --version and ninja --version, and document the CMake/build.rs ownership split.
+
+Restore attempt (2026-10-03): pixi was not on PATH. scripts/restore.sh fetched origin/sandbox/developer-linux-64 and staged the transport, but failed before installing environments because the embedded pixi-sandbox launcher requires the missing .pixi-sandbox/tools/linux-64/trampoline_configuration/pixi-sandbox.json. The payload contains pixi 0.81.0, pixi-unpack, and pixi-sandbox, but no usable standalone pixi-sandbox executable.
+
+Fallback pixi global install of pixi-sandbox==0.5.0 was attempted with the transport pixi and failed after three TLS-handshake retries against conda-forge. AC #4 remains unchecked; no .pixi environment was restored.
 <!-- SECTION:NOTES:END -->
