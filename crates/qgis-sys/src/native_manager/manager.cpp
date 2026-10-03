@@ -1,4 +1,5 @@
 #include "native_manager/manager.h"
+
 #include "native_manager/generated/api_manifest.h"
 
 // The manager deliberately crosses a C ABI (malloc/free), uses Qt/QGIS
@@ -8,11 +9,11 @@
 
 #include <qgsconfig.h>
 #include <qgscoordinatereferencesystem.h>
-#include <qgsfield.h>
-#include <qgsfields.h>
 #include <qgsfeature.h>
 #include <qgsfeatureiterator.h>
 #include <qgsfeaturerequest.h>
+#include <qgsfield.h>
+#include <qgsfields.h>
 #include <qgsgeometry.h>
 #include <qgsmaplayer.h>
 #include <qgsmaprenderersequentialjob.h>
@@ -23,15 +24,15 @@
 #include <qgswkbtypes.h>
 
 #include <QApplication>
+#include <QFile>
+#include <QFileInfo>
+#include <QHash>
+#include <QImage>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonParseError>
 #include <QJsonValue>
-#include <QFile>
-#include <QFileInfo>
-#include <QHash>
-#include <QImage>
 #include <QList>
 #include <QString>
 #include <QStringList>
@@ -256,11 +257,6 @@ class ManagerHost {
         bool requires_initialization;
     };
 
-    static const QHash<QString, OperationDefinition>& operation_registry();
-
-    QJsonObject dispatch_operation(const QString& operation,
-                                   const QJsonObject& payload);
-
     QJsonObject initialize(const QJsonObject&) {
         if (initialized_) {
             return success(
@@ -278,13 +274,12 @@ class ManagerHost {
     }
 
     QJsonObject shutdown(const QJsonObject&) {
-        const quint64 released_layer_count =
-            static_cast<quint64>(owned_layers_.size());
+        const quint64 released_layer_count = static_cast<quint64>(owned_layers_.size());
         shutdown_qgis();
         stopping_ = true;
-        return success(QJsonObject{{"shutdown", true},
-                                   {"released_layer_count",
-                                    static_cast<qint64>(released_layer_count)}});
+        return success(QJsonObject{
+            {"shutdown", true},
+            {"released_layer_count", static_cast<qint64>(released_layer_count)}});
     }
 
     QJsonObject engine_info(const QJsonObject&) {
@@ -319,10 +314,10 @@ class ManagerHost {
         for (const auto& name : operation_names) {
             const auto definition = registry.constFind(name);
             operation_metadata.insert(
-                name,
-                QJsonObject{{"name", name},
-                            {"codec", QString::fromLatin1(definition->codec)},
-                            {"requires_initialization", definition->requires_initialization}});
+                name, QJsonObject{{"name", name},
+                                  {"codec", QString::fromLatin1(definition->codec)},
+                                  {"requires_initialization",
+                                   definition->requires_initialization}});
         }
 
         QJsonObject result =
@@ -396,16 +391,16 @@ class ManagerHost {
 
         ::QgsVectorLayer* layer = iterator.value();
         layers_.erase(iterator);
-        const auto owner = std::find_if(
-            owned_layers_.begin(), owned_layers_.end(),
-            [layer](const std::unique_ptr<::QgsVectorLayer>& candidate) {
-                return candidate.get() == layer;
-            });
+        const auto owner =
+            std::find_if(owned_layers_.begin(), owned_layers_.end(),
+                         [layer](const std::unique_ptr<::QgsVectorLayer>& candidate) {
+                             return candidate.get() == layer;
+                         });
         if (owner != owned_layers_.end()) {
             owned_layers_.erase(owner);
         }
-        return success(QJsonObject{{"layer_id", static_cast<qint64>(id)},
-                                   {"closed", true}});
+        return success(
+            QJsonObject{{"layer_id", static_cast<qint64>(id)}, {"closed", true}});
     }
 
     QJsonObject layer_features(const QJsonObject& payload) {
@@ -422,7 +417,8 @@ class ManagerHost {
         quint64 limit = 100;
         if (!json_optional_integer(payload, QStringLiteral("limit"), &limit) ||
             limit == 0 || limit > 1000) {
-            return failure("invalid_payload", "limit must be an integer between 1 and 1000");
+            return failure("invalid_payload",
+                           "limit must be an integer between 1 and 1000");
         }
 
         const ::QgsVectorLayer* vector_layer = layer.second;
@@ -434,7 +430,8 @@ class ManagerHost {
         }
 
         QJsonArray features;
-        while (features.size() < static_cast<int>(limit) && iterator.nextFeature(feature)) {
+        while (features.size() < static_cast<int>(limit) &&
+               iterator.nextFeature(feature)) {
             QJsonObject attributes;
             const ::QgsAttributes values = feature.attributes();
             const ::QgsFields schema = vector_layer->fields();
@@ -444,10 +441,9 @@ class ManagerHost {
                                   QJsonValue::fromVariant(values.at(index)));
             }
 
-            features.append(QJsonObject{
-                {"id", static_cast<qint64>(feature.id())},
-                {"attributes", attributes},
-                {"geometry_wkt", feature.geometry().asWkt()}});
+            features.append(QJsonObject{{"id", static_cast<qint64>(feature.id())},
+                                        {"attributes", attributes},
+                                        {"geometry_wkt", feature.geometry().asWkt()}});
         }
 
         const qint64 total = static_cast<qint64>(vector_layer->featureCount());
@@ -456,12 +452,13 @@ class ManagerHost {
                               static_cast<quint64>(total)) {
             next_offset = static_cast<qint64>(offset + features.size());
         }
-        return success(QJsonObject{{"layer_id", static_cast<qint64>(json_layer_id(payload))},
-                                   {"offset", static_cast<qint64>(offset)},
-                                   {"limit", static_cast<qint64>(limit)},
-                                   {"next_offset", next_offset},
-                                   {"total", total},
-                                   {"features", features}});
+        return success(
+            QJsonObject{{"layer_id", static_cast<qint64>(json_layer_id(payload))},
+                        {"offset", static_cast<qint64>(offset)},
+                        {"limit", static_cast<qint64>(limit)},
+                        {"next_offset", next_offset},
+                        {"total", total},
+                        {"features", features}});
     }
 
     static bool parse_extent(const QString& text, ::QgsRectangle* extent) {
@@ -512,9 +509,7 @@ class ManagerHost {
 
     static QJsonObject artifact(const QString& path, const QString& format,
                                 qint64 bytes) {
-        return QJsonObject{{"path", path},
-                           {"format", format},
-                           {"bytes", bytes}};
+        return QJsonObject{{"path", path}, {"format", format}, {"bytes", bytes}};
     }
 
     QJsonObject render_map(const QJsonObject& payload) {
@@ -531,7 +526,8 @@ class ManagerHost {
         }
         if (payload.contains(QStringLiteral("layout")) &&
             !payload.value(QStringLiteral("layout")).toString().isEmpty()) {
-            return failure("qgis", "print-layout rendering is not supported by render_map");
+            return failure("qgis",
+                           "print-layout rendering is not supported by render_map");
         }
 
         ::QgsProject project;
@@ -547,7 +543,8 @@ class ManagerHost {
             bool selected = !restrict_layers;
             for (const QJsonValue& requested : requested_layers) {
                 const QString name = requested.toString();
-                selected = selected || name == map_layer->name() || name == map_layer->id();
+                selected =
+                    selected || name == map_layer->name() || name == map_layer->id();
             }
             if (selected) {
                 layers.append(map_layer);
@@ -561,7 +558,8 @@ class ManagerHost {
         const int height = payload.value(QStringLiteral("height")).toInt(768);
         const double dpi = payload.value(QStringLiteral("dpi")).toDouble(96.0);
         if (width <= 0 || height <= 0 || dpi <= 0.0) {
-            return failure("invalid_payload", "render dimensions and dpi must be positive");
+            return failure("invalid_payload",
+                           "render dimensions and dpi must be positive");
         }
 
         ::QgsMapSettings settings;
@@ -570,9 +568,11 @@ class ManagerHost {
         settings.setOutputDpi(dpi);
         if (payload.contains(QStringLiteral("crs"))) {
             ::QgsCoordinateReferenceSystem crs;
-            if (!crs.createFromUserInput(payload.value(QStringLiteral("crs")).toString()) ||
+            if (!crs.createFromUserInput(
+                    payload.value(QStringLiteral("crs")).toString()) ||
                 !crs.isValid()) {
-                return failure("invalid_payload", "crs is not a valid QGIS coordinate reference system");
+                return failure("invalid_payload",
+                               "crs is not a valid QGIS coordinate reference system");
             }
             settings.setDestinationCrs(crs);
         }
@@ -635,12 +635,14 @@ class ManagerHost {
         const QString layer_name = payload.value(QStringLiteral("layer")).toString();
         const QString output = payload.value(QStringLiteral("output")).toString();
         if (project_path.isEmpty() || layer_name.isEmpty() || output.isEmpty()) {
-            return failure("invalid_payload", "export_features requires project, layer, and output");
+            return failure("invalid_payload",
+                           "export_features requires project, layer, and output");
         }
         const QString format = QFileInfo(output).suffix().toLower();
         if (format != QStringLiteral("geojson") && format != QStringLiteral("json") &&
             format != QStringLiteral("csv")) {
-            return failure("invalid_payload", "export_features supports geojson and csv output paths");
+            return failure("invalid_payload",
+                           "export_features supports geojson and csv output paths");
         }
 
         ::QgsProject project;
@@ -655,7 +657,8 @@ class ManagerHost {
             }
         }
         if (vector_layer == nullptr) {
-            return failure("invalid_object_id", "the requested project layer is not a vector layer");
+            return failure("invalid_object_id",
+                           "the requested project layer is not a vector layer");
         }
 
         ::QgsFeatureRequest request;
@@ -673,7 +676,8 @@ class ManagerHost {
         }
 
         QStringList requested_fields;
-        for (const QJsonValue& value : payload.value(QStringLiteral("fields")).toArray()) {
+        for (const QJsonValue& value :
+             payload.value(QStringLiteral("fields")).toArray()) {
             const QString field = value.toString();
             if (!field.isEmpty()) {
                 requested_fields.append(field);
@@ -705,12 +709,14 @@ class ManagerHost {
                 QStringList values;
                 for (int index = 0; index < schema.count(); ++index) {
                     const QString column = schema.at(index).name();
-                    if (!requested_fields.isEmpty() && !requested_fields.contains(column)) {
+                    if (!requested_fields.isEmpty() &&
+                        !requested_fields.contains(column)) {
                         continue;
                     }
                     QString value = attributes.value(column).toVariant().toString();
                     value.replace(QLatin1Char('"'), QStringLiteral("\"\""));
-                    if (value.contains(',') || value.contains('"') || value.contains('\n')) {
+                    if (value.contains(',') || value.contains('"') ||
+                        value.contains('\n')) {
                         value.prepend(QLatin1Char('"'));
                         value.append(QLatin1Char('"'));
                     }
@@ -723,7 +729,8 @@ class ManagerHost {
                 geojson_features.append(QJsonObject{
                     {"type", "Feature"},
                     {"id", static_cast<qint64>(feature.id())},
-                    {"geometry", geometry.isObject() ? QJsonValue(geometry.object()) : QJsonValue::Null},
+                    {"geometry", geometry.isObject() ? QJsonValue(geometry.object())
+                                                     : QJsonValue::Null},
                     {"properties", attributes}});
             }
             ++feature_count;
@@ -745,7 +752,8 @@ class ManagerHost {
         const QFileInfo output_info(output);
         QJsonObject result = artifact(output, format, output_info.size());
         result.insert(QStringLiteral("layer"), layer_name);
-        result.insert(QStringLiteral("feature_count"), static_cast<qint64>(feature_count));
+        result.insert(QStringLiteral("feature_count"),
+                      static_cast<qint64>(feature_count));
         return success(result);
     }
 
@@ -804,8 +812,9 @@ class ManagerHost {
         static const QHash<QString, OperationDefinition> registry = [] {
             QHash<QString, OperationDefinition> definitions;
 #define QGIS_NATIVE_OPERATION(NAME, HANDLER, CODEC, REQUIRES_INITIALIZATION) \
-    definitions.insert(QStringLiteral(NAME), \
-                       OperationDefinition{&ManagerHost::HANDLER, CODEC, REQUIRES_INITIALIZATION})
+    definitions.insert(                                                      \
+        QStringLiteral(NAME),                                                \
+        OperationDefinition{&ManagerHost::HANDLER, CODEC, REQUIRES_INITIALIZATION})
 #include "native_manager/generated/operation_table.inc"
 #undef QGIS_NATIVE_OPERATION
             return definitions;
@@ -819,7 +828,8 @@ class ManagerHost {
         const auto definition = registry.constFind(operation);
         if (!initialized_ &&
             (definition == registry.constEnd() || definition->requires_initialization)) {
-            return failure("not_initialized", "app_init must succeed before a QGIS operation");
+            return failure("not_initialized",
+                           "app_init must succeed before a QGIS operation");
         }
         if (definition == registry.constEnd()) {
             return failure("invalid_operation",

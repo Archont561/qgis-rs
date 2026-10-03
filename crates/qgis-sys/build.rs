@@ -66,6 +66,10 @@ fn main() -> Result<()> {
         .flag_if_supported("-Wall")
         .flag_if_supported("-Wextra")
         .flag_if_supported("-Werror")
+        // QGIS's Qt headers on the conda GCC toolchain trigger this diagnostic
+        // in a legacy constructor declaration; do not let an external-header warning
+        // prevent the native manager from compiling with warnings-as-errors.
+        .flag_if_supported("-Wno-error=template-id-cdtor")
         // The native manager opts its three C ABI declarations back into
         // default visibility; every other manager symbol stays hidden.
         .flag_if_supported("-fvisibility=hidden");
@@ -91,12 +95,8 @@ fn main() -> Result<()> {
     for file in headers.iter().chain(shims.iter()) {
         println!("cargo:rerun-if-changed={file}");
     }
-    println!(
-        "cargo:rerun-if-changed=native_manager/generated/api_manifest.json"
-    );
-    println!(
-        "cargo:rerun-if-changed=include/native_manager/generated/operation_table.inc"
-    );
+    println!("cargo:rerun-if-changed=native_manager/generated/api_manifest.json");
+    println!("cargo:rerun-if-changed=include/native_manager/generated/operation_table.inc");
     println!("cargo:rerun-if-env-changed=CONDA_PREFIX");
     println!("cargo:rerun-if-env-changed=QGIS_INCLUDE_DIR");
     println!("cargo:rerun-if-env-changed=QT_INCLUDE_DIR");

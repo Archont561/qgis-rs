@@ -32,7 +32,6 @@ use rmcp::{
 /// The implementation name reported during the MCP handshake.
 pub const SERVER_NAME: &str = "qgis-cli";
 
-
 // ── tool arguments ────────────────────────────────────────────────────────────
 
 /// Arguments for `crs_info`.
@@ -424,9 +423,7 @@ impl QgisMcpServer {
         report(&Self::plan_tiles_report(&params.bounds, &params.zoom)?)
     }
 
-    #[tool(
-        description = "Describe a QGIS project file: its format, size and where to find it."
-    )]
+    #[tool(description = "Describe a QGIS project file: its format, size and where to find it.")]
     pub fn project_info(
         &self,
         Parameters(params): Parameters<ProjectInfoParams>,
@@ -434,7 +431,9 @@ impl QgisMcpServer {
         report(&Self::project_info_report(&params.project)?)
     }
 
-    #[tool(description = "Render a QGIS project to a path-based image artifact using the loaded native QGIS backend.")]
+    #[tool(
+        description = "Render a QGIS project to a path-based image artifact using the loaded native QGIS backend."
+    )]
     pub fn render_map(
         &self,
         Parameters(params): Parameters<RenderMapParams>,
@@ -454,7 +453,9 @@ impl QgisMcpServer {
         report(&native_call("render_map", payload)?)
     }
 
-    #[tool(description = "Export a QGIS vector layer to a path-based GeoJSON or CSV artifact using the loaded native QGIS backend.")]
+    #[tool(
+        description = "Export a QGIS vector layer to a path-based GeoJSON or CSV artifact using the loaded native QGIS backend."
+    )]
     pub fn export_features(
         &self,
         Parameters(params): Parameters<ExportFeaturesParams>,
@@ -469,11 +470,7 @@ impl QgisMcpServer {
                 .display()
                 .to_string()
         });
-        let fields = params
-            .fields
-            .as_deref()
-            .map(split_list)
-            .unwrap_or_default();
+        let fields = params.fields.as_deref().map(split_list).unwrap_or_default();
         let payload = serde_json::json!({
             "project": project.path(),
             "layer": params.layer,
@@ -551,10 +548,9 @@ fn native_call(
             "operation": "app_init",
             "payload": null,
         });
-        let init_response: serde_json::Value = serde_json::from_str(
-            &qgis_sys::native_manager_ffi::invoke(&init.to_string()),
-        )
-        .map_err(internal_error)?;
+        let init_response: serde_json::Value =
+            serde_json::from_str(&qgis_sys::native_manager_ffi::invoke(&init.to_string()))
+                .map_err(internal_error)?;
         if init_response["ok"].as_bool() != Some(true) {
             return Err(internal_error(init_response["result"].clone()));
         }
@@ -564,10 +560,9 @@ fn native_call(
         "operation": operation,
         "payload": payload,
     });
-    let response: serde_json::Value = serde_json::from_str(
-        &qgis_sys::native_manager_ffi::invoke(&request.to_string()),
-    )
-    .map_err(internal_error)?;
+    let response: serde_json::Value =
+        serde_json::from_str(&qgis_sys::native_manager_ffi::invoke(&request.to_string()))
+            .map_err(internal_error)?;
     if response["ok"].as_bool() == Some(true) {
         return Ok(response["result"].clone());
     }

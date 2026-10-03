@@ -106,7 +106,8 @@ pub struct OperationDefinition {
 
 /// Parse and validate one manifest at the public generator seam.
 pub fn validate_manifest(contents: &str) -> Result<ApiManifest> {
-    let manifest: ApiManifest = serde_json::from_str(contents).context("parse API manifest JSON")?;
+    let manifest: ApiManifest =
+        serde_json::from_str(contents).context("parse API manifest JSON")?;
     if manifest.manifest_version != 1 {
         bail!(
             "unsupported API manifest version {}; expected 1",
@@ -126,10 +127,16 @@ pub fn validate_manifest(contents: &str) -> Result<ApiManifest> {
     let mut declaration_ids = HashSet::new();
     for declaration in &manifest.declarations {
         if declaration.id.is_empty() || !declaration_ids.insert(&declaration.id) {
-            bail!("declaration IDs must be non-empty and unique: {}", declaration.id);
+            bail!(
+                "declaration IDs must be non-empty and unique: {}",
+                declaration.id
+            );
         }
         if declaration.kind.is_empty() || declaration.module.is_empty() {
-            bail!("declaration {} must include kind and module", declaration.id);
+            bail!(
+                "declaration {} must include kind and module",
+                declaration.id
+            );
         }
         if !STATUSES.contains(&declaration.status.as_str()) {
             bail!(
@@ -139,14 +146,28 @@ pub fn validate_manifest(contents: &str) -> Result<ApiManifest> {
             );
         }
         if declaration.since.is_empty() || declaration.version_range.is_empty() {
-            bail!("declaration {} must include its version range", declaration.id);
+            bail!(
+                "declaration {} must include its version range",
+                declaration.id
+            );
         }
         if declaration.reason.trim().is_empty() {
-            bail!("declaration {} must include a support reason", declaration.id);
+            bail!(
+                "declaration {} must include a support reason",
+                declaration.id
+            );
         }
         if declaration.status.starts_with("supported")
-            && (declaration.operation.as_deref().unwrap_or_default().is_empty()
-                || declaration.handler.as_deref().unwrap_or_default().is_empty())
+            && (declaration
+                .operation
+                .as_deref()
+                .unwrap_or_default()
+                .is_empty()
+                || declaration
+                    .handler
+                    .as_deref()
+                    .unwrap_or_default()
+                    .is_empty())
         {
             bail!(
                 "supported declaration {} must identify an operation and handler",
@@ -200,9 +221,10 @@ pub fn validate_manifest(contents: &str) -> Result<ApiManifest> {
         .filter(|declaration| declaration.status.starts_with("supported"))
         .collect();
     for operation in &manifest.operations {
-        let Some(declaration) = supported_declarations.iter().find(|declaration| {
-            declaration.operation.as_deref() == Some(operation.name.as_str())
-        }) else {
+        let Some(declaration) = supported_declarations
+            .iter()
+            .find(|declaration| declaration.operation.as_deref() == Some(operation.name.as_str()))
+        else {
             bail!(
                 "operation {} has no supported declaration in the manifest",
                 operation.name
@@ -236,7 +258,11 @@ pub fn validate_manifest(contents: &str) -> Result<ApiManifest> {
 
     for exclusion in &manifest.exclusions {
         if !STATUSES.contains(&exclusion.status.as_str()) {
-            bail!("exclusion {} has unsupported status {:?}", exclusion.scope, exclusion.status);
+            bail!(
+                "exclusion {} has unsupported status {:?}",
+                exclusion.scope,
+                exclusion.status
+            );
         }
         if exclusion.reason.trim().is_empty() {
             bail!("exclusion {} must include a reason", exclusion.scope);
@@ -291,10 +317,7 @@ pub fn render_operation_table(manifest: &ApiManifest) -> Result<String> {
     for operation in &manifest.operations {
         output.push_str(&format!(
             "QGIS_NATIVE_OPERATION(\"{}\", {}, \"{}\", {});\n",
-            operation.name,
-            operation.handler,
-            operation.codec,
-            operation.requires_initialization
+            operation.name, operation.handler, operation.codec, operation.requires_initialization
         ));
     }
     Ok(output)
@@ -310,9 +333,7 @@ pub fn render_generated_header(manifest: &ApiManifest) -> String {
             "#define QGIS_API_MANIFEST_QGIS_MIN_VERSION \"{}\"\n",
             "#define QGIS_API_MANIFEST_QGIS_TESTED_VERSION \"{}\"\n",
         ),
-        manifest.manifest_version,
-        manifest.qgis.min_version,
-        manifest.qgis.tested_version,
+        manifest.manifest_version, manifest.qgis.min_version, manifest.qgis.tested_version,
     )
 }
 
@@ -326,12 +347,15 @@ pub fn run(check: bool, diff_against: Option<&str>) -> Result<()> {
                 .with_context(|| format!("read API manifest {}", manifest_path.display()))?,
         )?;
         let previous_path = root.join(previous_path);
-        let previous = validate_manifest(
-            &fs::read_to_string(&previous_path)
-                .with_context(|| format!("read prior API manifest {}", previous_path.display()))?,
-        )?;
+        let previous =
+            validate_manifest(&fs::read_to_string(&previous_path).with_context(|| {
+                format!("read prior API manifest {}", previous_path.display())
+            })?)?;
         check_upgrade(&previous, &current)?;
-        println!("API manifest upgrade is compatible with {}", previous_path.display());
+        println!(
+            "API manifest upgrade is compatible with {}",
+            previous_path.display()
+        );
     }
     generate(
         &manifest_path,
@@ -361,9 +385,11 @@ pub fn generate(manifest_path: &Path, output_dir: &Path, check: bool) -> Result<
         .with_context(|| format!("create generated API directory {}", output_dir.display()))?;
     fs::write(&table_path, operation_table)
         .with_context(|| format!("write {}", table_path.display()))?;
-    fs::write(&header_path, header)
-        .with_context(|| format!("write {}", header_path.display()))?;
-    println!("generated native-manager API fragments in {}", output_dir.display());
+    fs::write(&header_path, header).with_context(|| format!("write {}", header_path.display()))?;
+    println!(
+        "generated native-manager API fragments in {}",
+        output_dir.display()
+    );
     Ok(())
 }
 
@@ -381,24 +407,18 @@ fn assert_generated(path: &Path, expected: &str) -> Result<()> {
 
 fn valid_wire_name(value: &str) -> bool {
     !value.is_empty()
-        && value
-            .chars()
-            .enumerate()
-            .all(|(index, character)| {
-                character == '_'
-                    || character.is_ascii_lowercase()
-                    || (index > 0 && character.is_ascii_digit())
-            })
+        && value.chars().enumerate().all(|(index, character)| {
+            character == '_'
+                || character.is_ascii_lowercase()
+                || (index > 0 && character.is_ascii_digit())
+        })
 }
 
 fn valid_cpp_identifier(value: &str) -> bool {
     !value.is_empty()
-        && value
-            .chars()
-            .enumerate()
-            .all(|(index, character)| {
-                character == '_'
-                    || character.is_ascii_alphabetic()
-                    || (index > 0 && character.is_ascii_digit())
-            })
+        && value.chars().enumerate().all(|(index, character)| {
+            character == '_'
+                || character.is_ascii_alphabetic()
+                || (index > 0 && character.is_ascii_digit())
+        })
 }

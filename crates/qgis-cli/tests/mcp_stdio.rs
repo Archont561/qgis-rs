@@ -155,5 +155,8 @@ fn list_tools_flag_prints_the_catalogue() {
     for tool in ["capabilities", "crs_info", "plan_tiles", "render_map"] {
         assert!(stdout.contains(tool), "{tool} missing from: {stdout}");
     }
-    assert!(!stdout.contains("[backend unavailable]"), "unexpected unavailable backend: {stdout}");
+    assert!(
+        !stdout.contains("[backend unavailable]"),
+        "unexpected unavailable backend: {stdout}"
+    );
 }

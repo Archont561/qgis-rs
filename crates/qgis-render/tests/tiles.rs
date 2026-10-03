@@ -30,8 +30,7 @@ fn tile_bounds_are_the_inverse_of_tile_lookup() {
 
 #[rstest]
 fn plans_a_single_zoom_level(europe_bounds: Extent) {
-    let plan = TilePlan::new(europe_bounds, ZoomRange::parse("10").expect("valid"))
-        .expect("valid");
+    let plan = TilePlan::new(europe_bounds, ZoomRange::parse("10").expect("valid")).expect("valid");
     let level = plan.level(10);
     assert_eq!(
         level,
@@ -51,8 +50,8 @@ fn plans_a_single_zoom_level(europe_bounds: Extent) {
 
 #[rstest]
 fn plans_a_zoom_range(europe_bounds: Extent) {
-    let plan = TilePlan::new(europe_bounds, ZoomRange::parse("10-14").expect("valid"))
-        .expect("valid");
+    let plan =
+        TilePlan::new(europe_bounds, ZoomRange::parse("10-14").expect("valid")).expect("valid");
     assert_eq!(plan.zooms.count(), 5);
     assert_eq!(plan.levels().len(), 5);
     assert_eq!(plan.tile_count(), 4568);

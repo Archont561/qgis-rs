@@ -35,8 +35,8 @@ fn manager_initializes_and_reports_engine_info() {
 
 #[test]
 fn engine_info_exposes_the_complete_native_operation_catalogue() {
-    let actual = ok("app_init", Value::Null)["initialized"];
-    assert_eq!(actual, true);
+    let initialized = ok("app_init", Value::Null);
+    assert_eq!(initialized["initialized"], true);
 
     let info = ok("engine_info", Value::Null);
     let mut operations: Vec<String> = info["operations"]
@@ -254,15 +254,12 @@ fn manager_opens_reports_batches_and_closes_a_layer() {
     assert_eq!(closed_twice["result"]["kind"], "invalid_object_id");
 }
 
-
 #[test]
 fn phase_four_operations_render_and_export_real_qgis_artifacts() {
     ok("app_init", Value::Null);
     let project = format!("{}/tests/fixtures/points.qgs", env!("CARGO_MANIFEST_DIR"));
-    let output_dir = std::env::temp_dir().join(format!(
-        "qgis-rs-phase-four-{}",
-        std::process::id()
-    ));
+    let output_dir =
+        std::env::temp_dir().join(format!("qgis-rs-phase-four-{}", std::process::id()));
     std::fs::create_dir_all(&output_dir).expect("create output directory");
     let image_path = output_dir.join("points.png");
     let geojson_path = output_dir.join("points.geojson");

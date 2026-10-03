@@ -55,7 +55,10 @@ pub fn invoke(request: &str) -> String {
 #[cfg(not(feature = "qgis"))]
 #[must_use]
 pub fn invoke(_request: &str) -> String {
-    error_response("backend_unavailable", "this build was compiled without the QGIS backend")
+    error_response(
+        "backend_unavailable",
+        "this build was compiled without the QGIS backend",
+    )
 }
 
 /// Return the native manager's transport version without starting QGIS.

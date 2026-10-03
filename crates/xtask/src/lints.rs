@@ -45,20 +45,23 @@ pub fn format_cpp() -> Result<()> {
     run("clang-format", args)
 }
 
-/// clang-tidy over the C++ shim, with the include paths it needs discovered.
+/// Run clang-tidy over the native-manager sources using the compile database
+/// produced by `qgis-sys`'s build script.
 ///
-/// This is the one lint that could not be a manifest one-liner while it lived in
-/// a shell file: clang-tidy parses the shim against the real headers, and every
-/// path it needs is version-stamped or content-hashed — the cxxbridge out-dir
-/// under `target/debug/build/qgis-sys-*/out`, Qt under `include/qt` or
-/// `include/qt6` depending on the build, and the GCC internal include directory
-/// carrying `stddef.h`. Discovering them in Rust rather than in
-/// `find | head | xargs` is what lets `@qgis/rust`'s `lint` script be a single
-/// line, and it makes a missing directory a named error instead of an empty
-/// argument list.
+/// The compile database is the source of truth for the QGIS and Qt include
+/// paths. The only extra paths are the conda GCC headers needed by clang when
+/// it parses the database's GCC command line; discovering those here avoids a
+/// fragile shell `find | head | xargs` pipeline.
 pub fn clang_tidy() -> Result<()> {
+    let root = repo_root();
     let prefix = std::env::var("CONDA_PREFIX")
         .context("CONDA_PREFIX is not set — run this under `pixi run -e default`")?;
+    let compilation_database = root.join("compile_commands.json");
+    if !compilation_database.is_file() {
+        bail!(
+            "clang-tidy: no compile_commands.json — run `pixi run -e default cargo build -p qgis-sys` first"
+        );
+    }
 
     let sources: Vec<PathBuf> = cpp_sources()
         .into_iter()
@@ -68,36 +71,6 @@ pub fn clang_tidy() -> Result<()> {
         bail!("clang-tidy: no .cpp sources in the qgis-sys shim");
     }
 
-    let qt_include = ["include/qt", "include/qt6"]
-        .iter()
-        .map(|candidate| Path::new(&prefix).join(candidate))
-        .find(|candidate| candidate.is_dir())
-        .with_context(|| {
-            format!("clang-tidy: no Qt headers under {prefix}/include — qt or include/qt6 missing?")
-        })?;
-
-    // target/debug/build/qgis-sys-<hash>/out/cxxbridge — a *directory*, which is
-    // why this is not the same walk as the stddef.h hunt below. The two are
-    // sorted, so a workspace that carries several feature configurations of the
-    // shim gets the same include directory on every machine rather than whichever
-    // one `find` happened to list first.
-    let cxx_out = first_matching_dir(&repo_root().join("target/debug/build"), |path| {
-        path.file_name() == Some(std::ffi::OsStr::new("cxxbridge"))
-            && path
-                .parent()
-                .and_then(Path::file_name)
-                .is_some_and(|name| name == "out")
-            && path
-                .parent()
-                .and_then(Path::parent)
-                .and_then(Path::file_name)
-                .is_some_and(|name| name.to_string_lossy().starts_with("qgis-sys-"))
-    })
-    .context(
-        "clang-tidy: no cxxbridge output under target/debug/build — run \
-         `pixi run -e default cargo build -p qgis-sys` first",
-    )?;
-
     let gcc_include = first_matching_file(&Path::new(&prefix).join("lib/gcc"), |path| {
         path.file_name() == Some(std::ffi::OsStr::new("stddef.h"))
     })
@@ -106,59 +79,38 @@ pub fn clang_tidy() -> Result<()> {
 
     run(
         "clang-tidy",
-        clang_tidy_arguments(
-            &repo_root().join("crates/qgis-sys"),
-            Path::new(&prefix),
-            &qt_include,
-            &cxx_out,
-            &gcc_include,
-            &sources,
-        ),
+        clang_tidy_arguments(&root, Path::new(&prefix), &gcc_include, &sources),
     )
 }
 
-/// The clang-tidy command line for the shim, from five discovered directories.
+/// Build the clang-tidy command line from the compile database and the
+/// compiler's conda-specific standard-library directories.
 ///
-/// Split out from [`clang_tidy`] so the part that can be wrong — the order of
-/// the arguments — is a pure function a test can pin, instead of something only
-/// observable by running clang-tidy against a built QGIS.
-///
-/// Every path is absolute. The shell version this replaced `cd crates` first and
-/// passed `-Iqgis-sys` relative to that; a subcommand runs at the repository
-/// root, where the same two flags name a directory that does not exist, so the
-/// shim is passed in rather than assumed to be underfoot.
+/// Kept as a pure seam so tests can pin the argument contract without starting
+/// clang-tidy. `-p` makes clang-tidy consume `compile_commands.json`; the
+/// database owns the native-manager and Qt include paths, while these extra
+/// arguments make clang use the same conda C++ headers as the build.
 pub fn clang_tidy_arguments(
-    shim: &Path,
+    compilation_database: &Path,
     prefix: &Path,
-    qt_include: &Path,
-    cxx_out: &Path,
     gcc_include: &Path,
     sources: &[PathBuf],
 ) -> Vec<String> {
     let sysroot = prefix.join("x86_64-conda-linux-gnu/sysroot");
-    let mut args: Vec<String> = sources
-        .iter()
-        .map(|path| path.display().to_string())
-        .collect();
-    // The sources must come BEFORE the `--` separator; everything after it is
-    // the compiler command line. Passing them the other way round — which is
-    // what piping them through `xargs` after the separator did — makes
-    // clang-tidy print its own --help and exit 123.
-    args.push(format!("--extra-arg=--sysroot={}", sysroot.display()));
-    args.push(format!("--extra-arg=-I{}", gcc_include.display()));
-    args.push("--".to_string());
+    let cxx_include = gcc_include.join("c++");
+    let target_cxx_include = cxx_include.join("x86_64-conda-linux-gnu");
+    let backward_cxx_include = cxx_include.join("backward");
+    let mut args = vec!["-p".to_string(), compilation_database.display().to_string()];
+    args.extend(sources.iter().map(|path| path.display().to_string()));
     args.extend([
-        "-std=c++17".to_string(),
-        format!("-I{}", shim.display()),
-        format!("-I{}/include", shim.display()),
-        format!("-I{}/include", cxx_out.display()),
-        format!("-I{}/crate", cxx_out.display()),
-        format!("-I{}/include/qgis", prefix.display()),
-        format!("-I{}", qt_include.display()),
-        format!("-I{}/QtCore", qt_include.display()),
-        format!("-I{}/QtGui", qt_include.display()),
-        format!("-I{}/QtWidgets", qt_include.display()),
-        format!("-I{}/QtXml", qt_include.display()),
+        "--quiet".to_string(),
+        "--header-filter=^/.*/crates/qgis-sys/src/native_manager/.*".to_string(),
+        format!("--extra-arg=--sysroot={}", sysroot.display()),
+        format!("--extra-arg=-I{}", gcc_include.display()),
+        "--extra-arg=-nostdinc++".to_string(),
+        format!("--extra-arg=-isystem{}", cxx_include.display()),
+        format!("--extra-arg=-isystem{}", target_cxx_include.display()),
+        format!("--extra-arg=-isystem{}", backward_cxx_include.display()),
     ]);
     args
 }
@@ -171,11 +123,6 @@ pub fn clang_tidy_arguments(
 /// because `tests/lints.rs` asserts that ordering on a tree it builds itself.
 pub fn first_matching_file(root: &Path, accepts: impl Fn(&Path) -> bool) -> Option<PathBuf> {
     first_matching_entry(root, |path| path.is_file() && accepts(path))
-}
-
-/// [`first_matching_file`] for directories.
-fn first_matching_dir(root: &Path, accepts: impl Fn(&Path) -> bool) -> Option<PathBuf> {
-    first_matching_entry(root, |path| path.is_dir() && accepts(path))
 }
 
 fn first_matching_entry(root: &Path, accepts: impl Fn(&Path) -> bool) -> Option<PathBuf> {

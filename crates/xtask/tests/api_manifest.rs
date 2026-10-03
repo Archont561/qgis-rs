@@ -2,10 +2,10 @@
 
 use xtask::api_manifest::{render_generated_header, render_operation_table, validate_manifest};
 
-const MANIFEST: &str = include_str!("../../../crates/qgis-sys/native_manager/generated/api_manifest.json");
-const GENERATED_TABLE: &str = include_str!(
-    "../../../crates/qgis-sys/include/native_manager/generated/operation_table.inc"
-);
+const MANIFEST: &str =
+    include_str!("../../../crates/qgis-sys/native_manager/generated/api_manifest.json");
+const GENERATED_TABLE: &str =
+    include_str!("../../../crates/qgis-sys/include/native_manager/generated/operation_table.inc");
 
 #[test]
 fn the_checked_in_manifest_has_a_complete_operation_registry() {
