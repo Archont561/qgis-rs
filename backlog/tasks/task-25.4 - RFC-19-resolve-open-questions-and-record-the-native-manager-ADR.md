@@ -4,7 +4,7 @@ title: 'RFC 19: resolve open questions and record the native-manager ADR'
 status: In Progress
 assignee: []
 created_date: '2026-10-03 02:16'
-updated_date: '2026-10-03 08:57'
+updated_date: '2026-10-03 17:34'
 labels:
   - rfc
   - ffi
@@ -67,4 +67,8 @@ Started the architecture spike. Workflow check: no GitHub runs are active for ar
 Added D12 and linked it from D09, the decision indexes, the parent RFC tracker, and phases 2–4.
 
 Posted the resolution text to backlog/drafts/issue-19-status-comment.md because gh issue comment 19 was denied with Resource not accessible by integration; AC #4 remains unchecked until issue #19 is updated.
+
+2026-10-03: Repository-side reconciliation is present in D12, including the dedicated QGIS owner thread, normative qgis-protocol contract, path-based artifacts, deferred crash isolation, and the snake_case amendment for the RFC examples.
+
+2026-10-03: Re-read issue #19; it remains open and still contains the original camelCase examples. A direct gh API comment attempt returned HTTP 403 Resource not accessible by integration, so AC #4 remains unchecked. The ready-to-post resolution is retained in backlog/drafts/issue-19-status-comment.md.
 <!-- SECTION:NOTES:END -->
