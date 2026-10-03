@@ -807,6 +807,7 @@ dependencies = [
  "napi-build",
  "napi-derive",
  "qgis-engine",
+ "serde_json",
 ]
 
 [[package]]

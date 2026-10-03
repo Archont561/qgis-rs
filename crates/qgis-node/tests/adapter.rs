@@ -21,3 +21,17 @@ fn the_addon_and_the_engine_agree_on_the_transport_version() {
     // second copy that could age independently of it.
     assert_eq!(qgis_engine::TRANSPORT_VERSION, 1);
 }
+
+#[test]
+fn the_default_addon_build_reports_when_qgis_is_not_loaded() {
+    let request = r#"{"transport_version":1,"operation":"api_describe","payload":null}"#;
+    let response: serde_json::Value =
+        serde_json::from_str(&qgis_engine::invoke(request)).expect("the engine answers JSON");
+
+    assert_eq!(response["ok"], false);
+    assert_eq!(response["result"]["kind"], "qgis");
+    assert_eq!(
+        response["result"]["error"],
+        "the QGIS backend is not loaded in this build"
+    );
+}

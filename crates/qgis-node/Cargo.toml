@@ -35,8 +35,10 @@ crate-type = ["cdylib"]
 path = "src/lib.rs"
 
 [dependencies]
-# The addon needs nothing but the engine (D09).
-qgis-engine = { workspace = true }
+# The addon needs the QGIS-free engine by default. The Bun build runs in the
+# dedicated QGIS-free environment; consumers that embed it alongside QGIS can
+# opt into the backend explicitly with `--features qgis`.
+qgis-engine = { workspace = true, default-features = false }
 
 napi = { version = "2.16", features = ["napi4"] }
 napi-derive = "2.16"
@@ -44,5 +46,9 @@ napi-derive = "2.16"
 [build-dependencies]
 napi-build = "2.1"
 
+[dev-dependencies]
+serde_json = { workspace = true }
+
 [features]
 default = []
+qgis = ["qgis-engine/qgis"]
