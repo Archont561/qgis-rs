@@ -4,7 +4,7 @@ title: 'RFC 19 phase 2: native manager, ID registry and lifecycle behind qgis_in
 status: Done
 assignee: []
 created_date: '2026-10-02 23:23'
-updated_date: '2026-10-03 18:03'
+updated_date: '2026-10-03 18:08'
 labels:
   - rfc
   - ffi
@@ -63,6 +63,8 @@ Decide the concurrency model before writing the mutex: one global lock around qg
 2026-10-03: Implemented the dedicated owner thread and blocking request queue, app_init and engine_info, integer layer IDs with unique_ptr ownership, vector-layer metadata operations, structured error envelopes, and concurrent-caller coverage.
 
 2026-10-03: Verification passed: serialized qgis-sys tests (5 application-info, 1 lifecycle, 5 native-manager, 6 vector-layer), qgis-protocol tests, qgis-engine tests, cargo clippy with -D warnings, check-cpp, clang-tidy, and readelf confirmed only the three C ABI exports have DEFAULT visibility in manager.o. Expected QGIS/PDAL/fontconfig warnings remain.
+
+2026-10-03: Full pixi run gates reached the repository lint and format stages, then stopped in qgis-rs build because the bun environment could not fetch crates.io config for anyhow due repeated TLS unexpected EOF errors. This is an environment network blocker; focused Rust/C++ verification for this task remains green.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
