@@ -795,11 +795,9 @@ dependencies = [
 name = "qgis-node"
 version = "0.1.0"
 dependencies = [
- "clap",
  "napi",
  "napi-build",
  "napi-derive",
- "qgis-cli",
  "qgis-engine",
 ]
 
@@ -816,10 +814,7 @@ name = "qgis-py"
 version = "0.1.0"
 dependencies = [
  "pyo3",
- "qgis-cli",
  "qgis-engine",
- "qgis-mcp",
- "tokio",
 ]
 
 [[package]]

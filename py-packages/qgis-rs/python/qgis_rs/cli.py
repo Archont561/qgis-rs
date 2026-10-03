@@ -5,9 +5,10 @@ Python; every answer comes from the Rust engine over the JSON transport, in
 the same process — no subprocess, and no second implementation of anything the
 standalone `qgis-cli` binary does.
 
-The wheel also installs that Rust binary on PATH. It is the same engine behind
-a clap parser instead of an argparse one, which is why the two agree about
-wording: the messages printed here are the engine's own.
+The standalone Rust binary (crates/qgis-cli) is the same engine behind a clap
+parser instead of an argparse one, which is why the two agree about wording:
+the messages printed here are the engine's own. The wheel itself ships only
+these console scripts — not the Rust binary.
 """
 
 from __future__ import annotations

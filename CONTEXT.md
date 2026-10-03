@@ -100,9 +100,9 @@ qgis-rs/
 │   ├── qgis-server/           # HTTP server: WMS, WFS, XYZ tiles, OGC API
 │   ├── qgis-mcp/              # Model Context Protocol server (rmcp)
 │   ├── qgis-cli/              # Command-line binary, bundles the MCP server
-│   ├── qgis-py/               # Rust core of the qgis-rs Python wheel (PyO3 + qgis-cli bin)
-│   ├── qgis-sdk/              # Rust core of the qgis-sdk Python wheel (PyO3 + CLIs)
-│   └── qgis-node/             # Rust core of the qgis-rs npm package (NAPI + CLIs)
+│   ├── qgis-py/               # Rust core of the qgis-rs Python wheel (PyO3, no bins)
+│   ├── qgis-sdk/              # Rust core of the qgis-sdk Python wheel (PyO3 + qgis-plugin/qgis-sdk bins)
+│   └── qgis-node/             # Rust core of the qgis-rs npm package (NAPI, no bins)
 │
 ├── py-packages/
 │   ├── qgis-rs/               # Python dist: pyproject.toml (maturin), python/qgis_rs/, tests/

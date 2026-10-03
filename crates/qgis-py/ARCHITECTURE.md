@@ -10,7 +10,7 @@ Expose the QGIS SDK CLI tool (`qgis-cli`) as a Rust-based binary inside a Python
 
 ### Two artifacts, one Rust codebase
 
-1. **Rust binary `qgis-cli`** — standalone executable, built with `cargo build --release -p qgis-py --bin qgis-cli`. Does argument parsing with `clap` and dispatches to `qgis-render` / `qgis-server`. When installed via `pip install qgis-rs`, maturin places this binary on PATH (`$VENV/bin/qgis-cli` or `$CONDA_PREFIX/bin/qgis-cli`).
+1. **Rust binary `qgis-cli`** — standalone executable, built with `cargo build --release -p qgis-cli`. Does argument parsing with `clap` and dispatches to `qgis-render` / `qgis-server`. It lives in `crates/qgis-cli`, not here: bin names must be unique across the workspace (every bin resolves to the same `target/<profile>/<name>`), and maturin's `pyo3` bindings never ship bin targets in the wheel anyway. On PATH, pip installs provide `qgis-cli` as the `[project.scripts]` console script (`qgis_rs.cli:main`); the conda recipe additionally installs the real Rust binary into `$PREFIX/bin`.
 
 2. **Rust cdylib `_core`** — PyO3 extension module `qgis_rs._core` (`_core.so` / `.pyd`). It exposes **one function**, `invoke(request_json) -> response_json`, which is `qgis_engine::invoke` and nothing else. No `#[pyclass]` per domain type: the FFI surface is the wire protocol of `crates/qgis-protocol` (see `.knowledge/decisions/D09-wire-protocol-over-ffi.md`), and the ergonomic `Extent`/`Crs`/`TilePlan`/`Project` classes are plain Python in `python/qgis_rs/_api.py` over that one call.
 
@@ -23,10 +23,9 @@ the Python-facing half sits in `py-packages/qgis-rs/`.
 
 ```
 crates/qgis-py/               # this crate — pure Rust, no Python files
-├── Cargo.toml                # cdylib _core + bin qgis-cli
+├── Cargo.toml                # cdylib _core only (no bin targets)
 ├── src/
-│   ├── lib.rs                # the one #[pyfunction]: invoke(request_json)
-│   └── bin/qgis-cli.rs       # Binary entry point (calls qgis_cli::main_entry)
+│   └── lib.rs                # the one #[pyfunction]: invoke(request_json)
 └── tests/
     └── adapter.rs            # the adapter adds nothing to the request (D11)
 
@@ -56,7 +55,7 @@ py-packages/qgis-rs/          # the Python distribution
 
 - **pip (PyPI)**: `maturin` builds the wheel with the `_core` extension module. `pyproject.toml` declares `[project.scripts] qgis-cli = "qgis_rs.cli:main"` for the Python wrapper; the Rust binary itself is installed by the conda recipe, since maturin ships only the extension module. Pre-built wheels for Linux x86_64 and arm64 — no cargo needed for end users.
 
-- **conda-forge**: `conda-recipe/meta.yaml` builds the Rust binary with `cargo build --release -p qgis-py`, copies to `$PREFIX/bin`, then builds the Python wheel with `cd py-packages/qgis-rs && maturin build` and `pip install`. Depends on `qgis >=3.44.9` optionally — lightweight variant (no QGIS) supports `info`, `tiles --dry-run`, `version`; full variant (with QGIS) supports `render`, `tiles`, `export`, `serve`.
+- **conda-forge**: `conda-recipe/meta.yaml` builds the Rust binary with `cargo build --release -p qgis-cli`, copies to `$PREFIX/bin`, then builds the Python wheel with `cd py-packages/qgis-rs && maturin build` and `pip install`. Depends on `qgis >=3.44.9` optionally — lightweight variant (no QGIS) supports `info`, `tiles --dry-run`, `version`; full variant (with QGIS) supports `render`, `tiles`, `export`, `serve`.
 
 - **pixi**: `pixi.toml` defines `qgis-rs` as source dependency built with `pixi-build-python` (maturin backend). Environments `py` (pure) and `py-qgis` (with QGIS) for testing.
 

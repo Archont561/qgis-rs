@@ -5,7 +5,7 @@ description: Install qgis-rs from npm with native-speed TypeScript API and Rust 
 
 # TypeScript / Node.js
 
-`qgis-rs` for Node.js ships a **NAPI-RS native addon** (`qgis-rs.<platform>.node`) and **Rust binaries** (`qgis-cli`, `qgis-plugin`) — both at native speed, plus TypeScript types.
+`qgis-rs` for Node.js ships a **NAPI-RS native addon** (`qgis-rs.<platform>.node`) at native speed, plus TypeScript types and **CLI wrappers** (`qgis-cli`, `qgis-plugin`) that run the Rust binaries from `crates/qgis-cli` / `crates/qgis-sdk` when they are installed.
 
 - **npm**: `npm install qgis-rs` → `require('qgis-rs')` + `qgis-cli` on PATH
 - **API**: `Extent`, `Crs`, `TilePlan`, `Project` via NAPI, QGIS backend optional
