@@ -4,6 +4,7 @@ title: Connect a vision reviewer to a real QGIS widget design loop
 status: To Do
 assignee: []
 created_date: '2026-10-03 08:50'
+updated_date: '2026-10-03 09:19'
 labels:
   - qgis-sdk
   - ui
@@ -11,9 +12,16 @@ labels:
   - visual-testing
 dependencies:
   - TASK-28
+  - TASK-36
 documentation:
   - .knowledge/qgis-ui-agent-design-loop.md
   - tools/pyqt-design-loop/README.md
+  - >-
+    backlog/docs/ui/doc-6 -
+    QGIS-SDK-Native-UI-Kit-and-Visual-Design-Loop-Strategy.md
+  - >-
+    backlog/docs/testing/doc-5 -
+    QGIS-SDK-Testing-Utilities-and-Cross-Language-Bridge-Contracts.md
 priority: medium
 type: enhancement
 ---
@@ -32,3 +40,15 @@ Promote the feasibility probe into an optional QGIS SDK visual-design workflow. 
 - [ ] #4 Widget behavior, signals, QGIS access, task execution, and bridge behavior remain covered by ordinary fixture-driven tests.
 - [ ] #5 The workflow runs in the restored Pixi QGIS environment and is documented without making model credentials a test prerequisite.
 <!-- AC:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+Use the native-first UI contract and typed widget specs from TASK-36; render one real qgis_sdk.ui.Dialog or plugin widget; capture with QWidget.grab; analyze constraints; route optional vision review through validated JSON only; require human approval before template changes.
+<!-- SECTION:PLAN:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+The UI design system dependency is TASK-36. The existing feasibility implementation remains TASK-28; this task covers real QGIS/PyQt widget integration and optional vision review.
+<!-- SECTION:NOTES:END -->
