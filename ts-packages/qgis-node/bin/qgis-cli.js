@@ -7,9 +7,9 @@
  * implementation using the NAPI addon.
  */
 
-const { spawn } = require("child_process");
-const path = require("path");
-const fs = require("fs");
+const { spawn } = require("node:child_process");
+const path = require("node:path");
+const fs = require("node:fs");
 
 // Try to find Rust binary
 function findBinary(name) {
@@ -23,11 +23,11 @@ function findBinary(name) {
 	// Also check for binary installed via cargo
 	const cargoHome =
 		process.env.CARGO_HOME ||
-		path.join(require("os").homedir(), ".cargo", "bin");
+		path.join(require("node:os").homedir(), ".cargo", "bin");
 	possiblePaths.push(path.join(cargoHome, name));
 
 	// Check if binary is on PATH
-	const { execSync } = require("child_process");
+	const { execSync } = require("node:child_process");
 	try {
 		const which = process.platform === "win32" ? "where" : "which";
 		const result = execSync(`${which} ${name}`, {
@@ -45,8 +45,8 @@ function findBinary(name) {
 			return p;
 		}
 		// Try with .exe on Windows
-		if (process.platform === "win32" && fs.existsSync(p + ".exe")) {
-			return p + ".exe";
+		if (process.platform === "win32" && fs.existsSync(`${p}.exe`)) {
+			return `${p}.exe`;
 		}
 	}
 	return null;

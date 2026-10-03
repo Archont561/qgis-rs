@@ -3,9 +3,9 @@
  * qgis-plugin — Node.js wrapper for Rust-native qgis-plugin binary
  */
 
-const { spawn } = require("child_process");
-const path = require("path");
-const fs = require("fs");
+const { spawn } = require("node:child_process");
+const path = require("node:path");
+const fs = require("node:fs");
 
 function findBinary(name) {
 	const possiblePaths = [
@@ -15,11 +15,11 @@ function findBinary(name) {
 	];
 	const cargoHome =
 		process.env.CARGO_HOME ||
-		path.join(require("os").homedir(), ".cargo", "bin");
+		path.join(require("node:os").homedir(), ".cargo", "bin");
 	possiblePaths.push(path.join(cargoHome, name));
 
 	try {
-		const { execSync } = require("child_process");
+		const { execSync } = require("node:child_process");
 		const which = process.platform === "win32" ? "where" : "which";
 		const result = execSync(`${which} ${name}`, {
 			encoding: "utf-8",
@@ -31,8 +31,8 @@ function findBinary(name) {
 
 	for (const p of possiblePaths) {
 		if (fs.existsSync(p)) return p;
-		if (process.platform === "win32" && fs.existsSync(p + ".exe"))
-			return p + ".exe";
+		if (process.platform === "win32" && fs.existsSync(`${p}.exe`))
+			return `${p}.exe`;
 	}
 	return null;
 }
@@ -76,7 +76,7 @@ function main() {
 			`qgis-plugin: Rust binary not found, trying Python fallback...`,
 		);
 		// Try Python CLI
-		const { spawn: pySpawn } = require("child_process");
+		const { spawn: pySpawn } = require("node:child_process");
 		const pyChild = pySpawn("python", ["-m", "qgis_sdk.cli", ...args], {
 			stdio: "inherit",
 		});

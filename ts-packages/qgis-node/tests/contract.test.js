@@ -44,7 +44,12 @@ test("exports the documented API and package version", () => {
 test("the engine advertises the operations this client uses", () => {
 	const { operations } = qgis.engineInfo();
 
-	for (const name of ["describe_extent", "plan_tiles", "project_info", "api_describe"]) {
+	for (const name of [
+		"describe_extent",
+		"plan_tiles",
+		"project_info",
+		"api_describe",
+	]) {
 		assert.ok(operations.includes(name), `engine does not serve ${name}`);
 	}
 });
@@ -90,7 +95,10 @@ test("property: finite extent text round trips through the native boundary", () 
 					Math.max(firstX, secondX),
 					Math.max(firstY, secondY),
 				);
-				assert.deepEqual(qgis.Extent.parse(String(extent)).toArray(), extent.toArray());
+				assert.deepEqual(
+					qgis.Extent.parse(String(extent)).toArray(),
+					extent.toArray(),
+				);
 			},
 		),
 		{ numRuns: 40 },
