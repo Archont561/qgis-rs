@@ -160,11 +160,14 @@ qgis-rs Python wheel            built from py-packages/qgis-rs
 │   ├── project.py       → Pythonic Project wrapper
 │   ├── render.py        → re-exports
 │   └── tiles.py         → re-exports
-└── bin/
-    └── qgis-cli         → Rust binary from crates/qgis-py/src/bin/qgis-cli.rs
 ```
 
-- **Rust workspace**: `crates/qgis-render` (pure Rust), `crates/qgis-cli` (CLI library + binary), `crates/qgis-py` (PyO3 bindings + `qgis-cli` binary)
+The `qgis-cli` command on PATH is the `[project.scripts]` console script
+(`qgis_rs.cli:main`), which drives the same Rust engine in-process. The
+standalone Rust binary is built from `crates/qgis-cli` and is not part of
+this wheel.
+
+- **Rust workspace**: `crates/qgis-render` (pure Rust), `crates/qgis-cli` (CLI library + binary), `crates/qgis-py` (PyO3 bindings)
 - **Python**: this directory — `python/qgis_rs/` (wrappers) + `pyproject.toml`, whose `[tool.maturin].manifest-path` points at `../../crates/qgis-py/Cargo.toml`
 - **Conda**: `pixi.toml` (pixi-build) + conda-forge recipe (see `conda-recipe/`)
 - **Design**: `../../crates/qgis-py/ARCHITECTURE.md` — why the crate and the wheel are split this way

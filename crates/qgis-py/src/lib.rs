@@ -14,8 +14,11 @@
 //!
 //! See `.knowledge/decisions/D09-wire-protocol-over-ffi.md`.
 //!
-//! The wheel also ships the `qgis-cli` binary built from `src/bin/qgis-cli.rs`;
-//! that is a separate target and does not go through this boundary.
+//! The `qgis-cli` command the wheel puts on PATH is the [project.scripts]
+//! console script `qgis_rs.cli:main`, which drives the engine through this
+//! same boundary; the standalone Rust binary lives in crates/qgis-cli. This
+//! crate ships no bin target of its own — a duplicate `qgis-cli` bin here
+//! used to clobber the real one in the shared workspace target directory.
 
 use pyo3::prelude::*;
 

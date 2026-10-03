@@ -1,17 +1,25 @@
 # crates/qgis-py — the Rust core of the `qgis-rs` Python distribution.
 #
-# Built two ways from one source:
-#   * as a PyO3 extension module, imported by Python as `qgis_rs._core`
-#     (built by maturin, driven from ../../py-packages/qgis-rs/pyproject.toml)
-#   * as the standalone `qgis-cli` binary, shipped on PATH by that same wheel
+# Builds the PyO3 extension module, imported by Python as `qgis_rs._core`
+# (built by maturin, driven from ../../py-packages/qgis-rs/pyproject.toml).
 #
 # The lib target is ~40 lines: it forwards one JSON string to `qgis-engine` and
 # hands one back (D09). The ergonomic Python API, the tests, the conda recipe
 # and the pixi `[package]` manifest live in ../../py-packages/qgis-rs/.
+#
+# This crate deliberately has NO [[bin]] targets. It used to declare a
+# `qgis-cli` wrapper bin, but bin names must be unique across the whole
+# workspace — every bin resolves to the same target/<profile>/<name>, so the
+# wrapper silently overwrote the real binary from crates/qgis-cli (whichever
+# crate linked last won), including the one crates/qgis-cli's own
+# CARGO_BIN_EXE tests execute. maturin's `pyo3` bindings never shipped the
+# bin in the wheel anyway: the wheel's `qgis-cli` on PATH is the
+# [project.scripts] console script `qgis_rs.cli:main`, which drives the same
+# engine in-process.
 
 [package]
 name = "qgis-py"
-description = "PyO3 extension module and qgis-cli binary behind the `qgis-rs` Python package"
+description = "PyO3 extension module behind the `qgis-rs` Python package"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -29,21 +37,13 @@ name = "qgis_rs_core"
 crate-type = ["cdylib"]
 path = "src/lib.rs"
 
-[[bin]]
-name = "qgis-cli"
-path = "src/bin/qgis-cli.rs"
-
 [dependencies]
 # The extension module needs nothing but the engine: no domain crate, no serde,
-# no error type. Everything else here belongs to the `qgis-cli` binary target.
+# no error type (D09).
 qgis-engine = { workspace = true }
-qgis-cli = { workspace = true }
-qgis-mcp = { workspace = true, optional = true }
-tokio = { workspace = true, optional = true }
 
 pyo3 = { version = "0.22" }
 
 [features]
-default = ["mcp", "python"]
-mcp = ["dep:qgis-mcp", "dep:tokio", "qgis-cli/mcp"]
+default = ["python"]
 python = ["pyo3/extension-module"]

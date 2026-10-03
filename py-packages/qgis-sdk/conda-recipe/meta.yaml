@@ -17,8 +17,9 @@ build:
     - cp target/release/qgis-plugin $PREFIX/bin/qgis-plugin
     - cp target/release/qgis-sdk $PREFIX/bin/qgis-sdk
     - chmod +x $PREFIX/bin/qgis-plugin $PREFIX/bin/qgis-sdk
-    # Also include qgis-cli for convenience (from qgis-rs crate)
-    - cargo build --release --manifest-path crates/qgis-py/Cargo.toml --bin qgis-cli
+    # Also include qgis-cli for convenience (canonical bin in crates/qgis-cli;
+    # crates/qgis-py is the extension module only and has no bin targets)
+    - cargo build --release --manifest-path crates/qgis-cli/Cargo.toml --bin qgis-cli
     - cp target/release/qgis-cli $PREFIX/bin/qgis-cli || true
     - chmod +x $PREFIX/bin/qgis-cli || true
     # Build Python wheel with maturin

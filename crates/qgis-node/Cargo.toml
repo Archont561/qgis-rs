@@ -1,9 +1,8 @@
 # crates/qgis-node — the Rust core of the `qgis-rs` npm package.
 #
-# Builds the NAPI addon plus the `qgis-cli` / `qgis-plugin` binaries that the
-# npm package shells out to. The addon is ~20 lines: it forwards one JSON string
-# to `qgis-engine` and hands one back (D09). The JS side — package.json,
-# index.js, the .d.ts and the CLI wrappers — lives in
+# Builds the NAPI addon only. The addon is ~20 lines: it forwards one JSON
+# string to `qgis-engine` and hands one back (D09). The JS side —
+# package.json, index.js, the .d.ts and the CLI wrappers — lives in
 # ../../ts-packages/qgis-node/, and drives this crate with:
 #
 #   napi build --platform --release \
@@ -11,10 +10,19 @@
 #
 # The positional destination `.` puts the compiled .node file next to the
 # package.json, so npm users never see this directory.
+#
+# This crate deliberately has NO [[bin]] targets. It used to declare
+# `qgis-cli` and `qgis-plugin` stubs, but bin names must be unique across the
+# whole workspace: every bin resolves to the same target/<profile>/<name>, so
+# the stubs silently overwrote the real binaries from crates/qgis-cli and
+# crates/qgis-sdk (whichever crate linked last won), and qgis-sdk's
+# CARGO_BIN_EXE-based integration tests ran the stub in CI. The npm wrappers
+# in ../../ts-packages/qgis-node/bin/ shell out to the real binaries found on
+# PATH or in target/release instead.
 
 [package]
 name = "qgis-node"
-description = "NAPI addon and CLI binaries behind the `qgis-rs` npm package"
+description = "NAPI addon behind the `qgis-rs` npm package"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -26,20 +34,9 @@ name = "qgis_node"
 crate-type = ["cdylib"]
 path = "src/lib.rs"
 
-[[bin]]
-name = "qgis-cli"
-path = "src/bin/qgis-cli.rs"
-
-[[bin]]
-name = "qgis-plugin"
-path = "src/bin/qgis-plugin.rs"
-
 [dependencies]
-# The addon needs nothing but the engine; `clap` and `qgis-cli` belong to the
-# two binary targets above.
+# The addon needs nothing but the engine (D09).
 qgis-engine = { workspace = true }
-qgis-cli = { workspace = true }
-clap = { workspace = true }
 
 napi = { version = "2.16", features = ["napi4"] }
 napi-derive = "2.16"
