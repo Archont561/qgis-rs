@@ -28,6 +28,15 @@ sources:
 | `vector_layer_feature_count(handle)` | `i64` | Number of features (-1 on error) |
 | `vector_layer_crs_authid(handle)` | `String` | CRS authority ID (e.g. `EPSG:4326`) |
 | `vector_layer_geometry_type_name(handle)` | `String` | Geometry type (e.g. `Point`) |
+| `vector_layer_fields(handle)` | `UniquePtr<QgsFieldsHandle>` | Owned copy of the layer schema |
+| `fields_count(handle)` | `i64` | Number of fields |
+| `fields_name(handle, index)` | `String` | Field name, empty for an invalid index |
+| `fields_type(handle, index)` | `String` | Provider type name, such as `Integer64` or `String` |
+| `fields_precision(handle, index)` | `i64` | Decimal precision, or `-1` for an invalid index |
+
+`vector_layer_fields` copies `QgsVectorLayer::fields()` into an opaque
+`QgsFieldsHandle`. The handle owns that schema copy, so it remains valid after
+the layer is dropped and does not expose Qt or QGIS types to Rust.
 
 ## Provider Model
 
@@ -65,7 +74,6 @@ fn layer_feature_count() {
 
 These are executable work items, not a second status tracker:
 
-- Field/attribute schema access (`QgsFields`, `QgsField`) — [TASK-5](../backlog/tasks/task-5%20-%20Bind-QgsFields-and-QgsField-schema-types-in-qgis-sys.md)
 - Feature and geometry values (`QgsFeature`, `QgsGeometry`) — [TASK-6](../backlog/tasks/task-6%20-%20Bind-QgsFeature-AttributeValue-conversions-and-QgsGeometry-in-qgis-sys.md)
 - Feature iteration and CRS (`QgsFeatureIterator`, `QgsCoordinateReferenceSystem`) — [TASK-7](../backlog/tasks/task-7%20-%20Bind-QgsFeatureIterator-and-QgsCoordinateReferenceSystem-in-qgis-sys.md)
 - Editing operations (`startEditing`, `addFeature`, `commitChanges`) — [TASK-11](../backlog/tasks/task-11%20-%20Bind-QgsVectorLayerEditBuffer-for-transactional-layer-editing.md)

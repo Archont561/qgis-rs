@@ -4,6 +4,7 @@ pub mod ffi {
         include!("qgis-sys/include/core/vector_layer.h");
 
         type QgsVectorLayerHandle;
+        type QgsFieldsHandle = crate::core::fields::fields::ffi::QgsFieldsHandle;
 
         fn vector_layer_new(
             uri: &str,
@@ -16,5 +17,6 @@ pub mod ffi {
         fn vector_layer_feature_count(handle: &QgsVectorLayerHandle) -> i64;
         fn vector_layer_crs_authid(handle: &QgsVectorLayerHandle) -> String;
         fn vector_layer_geometry_type_name(handle: &QgsVectorLayerHandle) -> String;
+        fn vector_layer_fields(handle: &QgsVectorLayerHandle) -> UniquePtr<QgsFieldsHandle>;
     }
 }

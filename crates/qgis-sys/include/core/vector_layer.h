@@ -1,5 +1,6 @@
 #pragma once
 
+#include "qgis-sys/include/core/fields.h"
 #include "qgis-sys/include/core/handle.h"
 #include "rust/cxx.h"
 
@@ -21,6 +22,8 @@ rust::String vector_layer_name(const QgsVectorLayerHandle& handle) noexcept;
 int64_t vector_layer_feature_count(const QgsVectorLayerHandle& handle) noexcept;
 rust::String vector_layer_crs_authid(const QgsVectorLayerHandle& handle) noexcept;
 rust::String vector_layer_geometry_type_name(
+    const QgsVectorLayerHandle& handle) noexcept;
+::std::unique_ptr<QgsFieldsHandle> vector_layer_fields(
     const QgsVectorLayerHandle& handle) noexcept;
 
 }  // namespace qgis_shim::core

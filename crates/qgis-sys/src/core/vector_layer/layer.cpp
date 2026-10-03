@@ -70,4 +70,15 @@ rust::String vector_layer_geometry_type_name(
     }
 }
 
+::std::unique_ptr<QgsFieldsHandle> vector_layer_fields(
+    const QgsVectorLayerHandle& handle) noexcept {
+    try {
+        QGIS_NULL_GUARD(handle, nullptr);
+        auto* fields = new ::QgsFields(real_const(handle)->fields());
+        return ::std::make_unique<QgsFieldsHandle>(static_cast<void*>(fields));
+    } catch (...) {
+        return nullptr;
+    }
+}
+
 }  // namespace qgis_shim::core
