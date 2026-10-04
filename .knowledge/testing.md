@@ -36,6 +36,26 @@ run doctests, and only that.
 
 The old `pixi run test` and `pixi run test-full` names are historical and are not current root tasks.
 
+### Running only what a change can break
+
+`pixi run gates` is the pre-push gate, not the inner loop. While working, run the narrowest thing
+that can still go red:
+
+- `pixi run -- cargo nextest run -p <crate>` — one crate.
+- `pixi run -- cargo nextest run -E 'rdeps(<crate>)'` — that crate **and every crate that depends on
+  it**; nextest's filter expressions read the Cargo graph, which is as close to "affected tests" as
+  this repository gets. `rdeps(qgis-protocol)` is 130 tests against the workspace's 247.
+- `pixi run -- cargo nextest run -E 'test(<substring>)'` — by test name, across the workspace.
+- `pixi run -e default python -m pytest <file> -q` / `-k <substring>` — one Python file or test.
+- `pixi run -- bun test <file>` — one TypeScript file.
+- `pixi run -- bun x turbo run test --filter='...[HEAD^1]'` — every package downstream of the last
+  commit. Note that all Rust crates are one turbo package (`@qgis/rust`), so inside `crates/` this
+  selects the whole workspace and `-p`/`-E` is the finer tool. On an offline machine add
+  `CARGO_NET_OFFLINE=true --env-mode=loose`, or the NAPI build reaches for crates.io.
+
+Turbo caches test results, so an unchanged package replays instead of re-running; `--force` defeats
+that and belongs in measurements, not in the loop.
+
 SDK-specific pure-Python and QGIS-hosted test separation is tracked by [TASK-1](../backlog/tasks/task-1%20-%20Make%20the%20full%20QGIS%20SDK%20test%20suite%20headless%20and%20CI-green.md), [TASK-2](../backlog/tasks/task-2%20-%20Add%20a%20dedicated%20QGIS%20SDK%20integration%20test%20runner%20and%20CI%20job.md), and [TASK-4](../backlog/tasks/task-4%20-%20Cover%20real%20QGIS%20network%20and%20task-manager%20integration.md). Property and fixture migration is [TASK-23](../backlog/tasks/task-23%20-%20Refactor-every-test-suite-onto-property-based-and-fixture-driven-testing.md).
 
 ### QGIS SDK runtime matrix
