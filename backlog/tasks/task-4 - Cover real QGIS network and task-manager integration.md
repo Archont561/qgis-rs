@@ -1,5 +1,5 @@
 ---
-id: task-4
+id: TASK-4
 title: Cover real QGIS network and task-manager integration
 status: To Do
 assignee: []
@@ -11,7 +11,7 @@ labels:
   - tasks
 milestone: m-3
 dependencies:
-  - task-2
+  - TASK-2
 documentation:
   - .knowledge/qgis-plugin-sdk.md
   - .knowledge/qgis-plugin-ui.md

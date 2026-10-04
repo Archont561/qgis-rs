@@ -4,14 +4,16 @@ title: Remove the cxx bridge from the xtask scaffold template
 status: Done
 assignee: []
 created_date: '2026-10-03 22:38'
-updated_date: '2026-10-04 08:39'
+updated_date: '2026-10-04 12:47'
 labels:
   - tech-debt
+milestone: m-0
 dependencies: []
 documentation:
   - .knowledge/decisions/D12-qgis-native-manager-over-c-abi.md
   - .agents/skills/tdd/SKILL.md
   - .agents/skills/refactor/SKILL.md
+priority: medium
 ---
 
 ## Description

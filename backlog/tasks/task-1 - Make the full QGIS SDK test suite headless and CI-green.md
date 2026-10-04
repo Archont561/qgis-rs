@@ -1,5 +1,5 @@
 ---
-id: task-1
+id: TASK-1
 title: Make the full QGIS SDK test suite headless and CI-green
 status: Done
 assignee: []

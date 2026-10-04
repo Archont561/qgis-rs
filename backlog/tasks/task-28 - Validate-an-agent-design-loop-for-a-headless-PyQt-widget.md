@@ -4,12 +4,13 @@ title: Validate an agent design loop for a headless PyQt widget
 status: Done
 assignee: []
 created_date: '2026-10-03 08:50'
-updated_date: '2026-10-03 08:50'
+updated_date: '2026-10-04 12:48'
 labels:
   - qgis-sdk
   - ui
   - agent
   - visual-testing
+milestone: m-3
 dependencies: []
 documentation:
   - .knowledge/qgis-ui-agent-design-loop.md

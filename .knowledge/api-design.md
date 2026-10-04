@@ -12,12 +12,18 @@ status: draft
 The API is organized in four layers:
 
 > This document is a target API specification, not an implementation-status
-> ledger. Executable work is tracked in Backlog.md: data access is TASK-5
-> through TASK-7, project/editing is TASK-10/TASK-11, rendering is TASK-12 and
-> TASK-25.3, server coverage is TASK-19, protocol documentation is TASK-20,
-> and the Python SDK CLI boundary is TASK-26. The pure-Rust subset already
+> ledger. Executable work is tracked in Backlog.md. The QGIS-backed half now
+> arrives as native-manager operations rather than per-concept bindings: layer
+> access, project info and batched features are TASK-25.2, rendering and
+> feature export are TASK-25.3, and the generated operation catalogue is
+> TASK-30. Server coverage is TASK-19, protocol documentation is TASK-20, and
+> the Python SDK CLI boundary is TASK-26. The pure-Rust subset already
 > implemented in `qgis-render` and `qgis-engine` is described by the current
 > crate tests; QGIS-backed operations remain explicitly gated by those tasks.
+>
+> TASK-5 through TASK-12 described the same surface as a `cxx::bridge` and were
+> archived on 2026-10-04, superseded by RFC 19 and D12. Sections below that
+> read like a handle-and-shim API are target shape, not the current boundary.
 
 1. **`qgis-render`** — core Rust library (the engine)
 2. **`qgis-cli`** — command-line interface

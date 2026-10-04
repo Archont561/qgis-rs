@@ -4,11 +4,13 @@ title: 'Separate Qt, QGIS, and WebEngine integration fixture gates'
 status: To Do
 assignee: []
 created_date: '2026-10-03 09:16'
+updated_date: '2026-10-04 12:48'
 labels:
   - testing
   - qt
   - qgis-sdk
   - integration
+milestone: m-4
 dependencies:
   - TASK-32
   - TASK-33

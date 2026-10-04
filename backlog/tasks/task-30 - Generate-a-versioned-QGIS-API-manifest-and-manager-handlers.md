@@ -4,13 +4,14 @@ title: Generate a versioned QGIS API manifest and manager handlers
 status: In Progress
 assignee: []
 created_date: '2026-10-03 08:57'
-updated_date: '2026-10-03 19:44'
+updated_date: '2026-10-04 12:48'
 labels:
   - rfc
   - ffi
   - cpp
   - codegen
   - api
+milestone: m-0
 dependencies:
   - TASK-25.4
 documentation:

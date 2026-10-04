@@ -4,11 +4,13 @@ title: Define the cross-language QGIS bridge test contract
 status: To Do
 assignee: []
 created_date: '2026-10-03 09:16'
+updated_date: '2026-10-04 12:48'
 labels:
   - testing
   - bridge
   - protocol
   - qgis-sdk
+milestone: m-4
 dependencies:
   - TASK-23
 documentation:

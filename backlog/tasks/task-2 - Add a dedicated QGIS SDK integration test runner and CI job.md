@@ -1,5 +1,5 @@
 ---
-id: task-2
+id: TASK-2
 title: Add a dedicated QGIS SDK integration test runner and CI job
 status: To Do
 assignee: []
@@ -11,7 +11,7 @@ labels:
   - testing
 milestone: m-3
 dependencies:
-  - task-1
+  - TASK-1
 documentation:
   - .knowledge/qgis-plugin-sdk.md
   - .knowledge/qgis-plugin-ui.md

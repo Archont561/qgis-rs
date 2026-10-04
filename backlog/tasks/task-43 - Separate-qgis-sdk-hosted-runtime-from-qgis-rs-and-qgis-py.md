@@ -4,6 +4,7 @@ title: Separate qgis-sdk hosted runtime from qgis-rs and qgis-py
 status: To Do
 assignee: []
 created_date: '2026-10-03 09:35'
+updated_date: '2026-10-04 12:48'
 labels:
   - qgis-sdk
   - python
@@ -13,7 +14,6 @@ labels:
 milestone: m-3
 dependencies:
   - TASK-40
-  - TASK-36
 documentation:
   - >-
     backlog/docs/architecture/doc-7 -
@@ -42,3 +42,12 @@ Make the QGIS plugin SDK dependency boundary explicit: qgis_sdk runtime uses PyQ
 - [ ] #5 No live QGIS or Qt objects cross qgis_rs._core, qgis_sdk._core, or Node NAPI boundaries
 - [ ] #6 Compatibility imports, plugin lifecycle behavior, and QGIS-hosted tests remain green under offscreen serialized execution
 <!-- AC:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+created: 2026-10-04 12:48
+---
+2026-10-04: dropped the TASK-36 dependency. TASK-43 is a dependency-boundary task under D13 - qgis_sdk never depends on qgis-py, and qgis_sdk._core stays optional tooling - while TASK-36 defines the declarative UI contract. The two are orthogonal: nothing in TASK-43 reads or changes the UI surface. The edge was blocking TASK-43, and TASK-44 behind it, on a task neither needs. TASK-40, which defines the product boundaries this task enforces, remains the real prerequisite and is Done.
+---
+<!-- COMMENTS:END -->

@@ -1,5 +1,5 @@
 ---
-id: task-3
+id: TASK-3
 title: Document and scaffold the declarative plugin and SDK APIs
 status: To Do
 assignee: []

@@ -155,16 +155,19 @@ file was first written on and the Arena sandbox of 2026-10-03.
 2. **Read the standing context** (skim, do not quote back): `AGENTS.md` (repo map, invariants, test
    layout), `CONTEXT.md` (orientation), and `.knowledge/decisions/` — **D01–D11 are load-bearing**;
    if you think one is wrong, bring a measurement, not an opinion.
-3. **List the open work**: `pixi run backlog task list --plain` (**36 To Do, 3 In Progress, 8 Done
-   across 47 task files** as of 2026-10-03 evening), or read `backlog/tasks/*.md` directly — the
-   frontmatter parses fine without the CLI, which matters before a restore. A task file carries
-   `dependencies`, `priority`, `ordinal`, `type`; spec docs live in `backlog/docs/`.
+3. **List the open work**: `pixi run backlog task list --plain` (**28 To Do, 1 In Progress, 13 Done
+   across 42 task files**, plus 7 archived, as of 2026-10-04), or read `backlog/tasks/*.md`
+   directly — the frontmatter parses fine without the CLI, which matters before a restore. A task
+   file carries `dependencies`, `priority`, `ordinal`, `type`; spec docs live in `backlog/docs/`.
+   Archived tasks live in `backlog/archive/tasks/`, which is where the CLI puts them — not in
+   `backlog/archive/` itself.
 4. **Filter honestly.** A task is a candidate only when every dependency is `Done`. Order candidates
    by priority (high → low), then `ordinal`. A spike that unblocks several tasks may jump the queue
    — say so explicitly when you propose it. Dependencies are strings, so they can point at nothing:
-   `task-7` depends on `TASK-6`, for which **no task file exists**, which silently blocks the whole
-   7 → 8 → 9/10 → 11/12 binding chain. Treat a dangling dependency as a finding to report, not as a
-   reason to skip the task in silence.
+   an id that resolves to no task file, or to a task sitting in the archive, blocks everything
+   behind it silently. The audit is cheap — parse every `dependencies:` entry and check it resolves
+   to a live task — and 2026-10-04 found seven such edges. Treat a dangling dependency as a finding
+   to report, not as a reason to skip the task in silence.
 5. **Do not re-propose finished work.** Check `git log --oneline -15`, recently merged PRs, and the
    latest release tag. Done tasks, merged decisions, and published releases stay done.
 

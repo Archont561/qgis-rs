@@ -4,11 +4,13 @@ title: Build the TypeScript QGIS bridge test harness
 status: To Do
 assignee: []
 created_date: '2026-10-03 09:16'
+updated_date: '2026-10-04 12:48'
 labels:
   - testing
   - typescript
   - bridge
   - fixtures
+milestone: m-4
 dependencies:
   - TASK-31
 documentation:

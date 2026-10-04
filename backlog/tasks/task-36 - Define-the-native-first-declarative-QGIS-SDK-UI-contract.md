@@ -4,11 +4,13 @@ title: Define the native-first declarative QGIS SDK UI contract
 status: To Do
 assignee: []
 created_date: '2026-10-03 09:19'
+updated_date: '2026-10-04 12:48'
 labels:
   - qgis-sdk
   - ui
   - api
   - design
+milestone: m-3
 dependencies:
   - TASK-3
 documentation:

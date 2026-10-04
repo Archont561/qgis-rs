@@ -12,8 +12,7 @@ labels:
   - features
   - deprecated
 milestone: m-1
-dependencies:
-  - TASK-5
+dependencies: []
 documentation:
   - backlog/docs/roadmap/doc-2 - QGIS-RS-Execution-Roadmap.md
   - .knowledge/qgis-vector-layer.md

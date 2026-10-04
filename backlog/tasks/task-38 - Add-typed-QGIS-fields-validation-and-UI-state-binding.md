@@ -4,11 +4,13 @@ title: 'Add typed QGIS fields, validation, and UI state binding'
 status: To Do
 assignee: []
 created_date: '2026-10-03 09:19'
+updated_date: '2026-10-04 12:48'
 labels:
   - qgis-sdk
   - ui
   - forms
   - qgis
+milestone: m-3
 dependencies:
   - TASK-36
 documentation:

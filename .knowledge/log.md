@@ -1,5 +1,51 @@
 # Bundle Update Log
 
+## 2026-10-04 (session 4)
+
+* **Change (backlog)**: the two findings that had been sitting unresolved for
+  two sessions are **fixed**, along with everything else the audit turned up.
+  The legacy `cxx::bridge` chain — TASK-7, 8, 9, 10, 11, 12 — is archived next
+  to TASK-6. This applied a ruling the project had already made and left
+  half-finished: all seven carried the `deprecated` label, TASK-6 had been
+  archived on 2026-10-03 with "superseded by RFC 19", D12 says the qgis-sys
+  CXX shims "are not the RFC 19 boundary", no `cxx::bridge` remains anywhere
+  in the tree, and the functional equivalents shipped in TASK-25.2 and
+  TASK-25.3. Each archived task now carries a comment saying so and how to
+  reopen it.
+* **Change (backlog)**: TASK-43 lost its dependency on TASK-36. TASK-43
+  enforces the D13 product boundary — `qgis-sdk` never depends on `qgis-py` —
+  and TASK-36 defines the declarative UI contract; nothing in 43 reads the UI
+  surface. The edge was blocking TASK-43, and TASK-44 behind it, on work
+  neither needs. TASK-40 was and remains the real prerequisite, and it is Done.
+* **Measurement**: the backlog is **42 live tasks (28 To Do, 1 In Progress,
+  13 Done) plus 7 archived**, down from 48/1. Every dependency now resolves to
+  a live task, every live task has a milestone and a priority, no cycles, and
+  no broken relative links under `backlog/`, `.knowledge/` or `.agents/`
+  except one pre-existing one in the vendored `caveman` skill. **16 tasks are
+  ready to start**, up from 12 — TASK-43 and TASK-31 among them.
+* **Measurement (what the audit found)**: seven defects nobody had reported.
+  Four tasks still used lowercase `id: task-N` while the rest used `TASK-N`,
+  and `TASK-36` depended on `TASK-3` across that boundary — the CLI resolves
+  ids case-insensitively, which is exactly why it had gone unnoticed.
+  Thirteen tasks had no milestone and TASK-45 had no priority. Five relative
+  links in `backlog/docs/` pointed at task files that had moved. And TASK-6
+  had been hand-placed in `backlog/archive/`, whereas the CLI reads and writes
+  `backlog/archive/tasks/` — `backlog task archive` fails with a bare "Failed
+  to archive task" until that directory exists, which is worth knowing because
+  the error names neither the path nor the reason.
+* **Idea (worth keeping)**: `backlog task archive` rewrites *inbound*
+  dependency edges as it archives — it printed "Removed references to TASK-8
+  from TASK-9, TASK-10" — but it does not touch edges held by tasks already in
+  the archive. Archiving a chain therefore leaves a partial graph that depends
+  on the order you archived in. The fix was to clear dependencies on every
+  archived task: inside the archive the edges schedule nothing, and the
+  supersession comment carries the history instead.
+* **Idea (not implemented)**: m-1 and m-2 are now nearly empty — m-1 is one
+  Done task, m-2 is TASK-19 plus two Done ones. Neither milestone is worth
+  retiring yet, since transactional editing genuinely has no native-manager
+  equivalent and TASK-19 is real open work, but if TASK-30 generates the
+  operation catalogue the two of them should probably fold into m-0.
+
 ## 2026-10-04 (session 3)
 
 * **Change (testing)**: TASK-23 is **closed**. AC#2: every crate with an
