@@ -76,6 +76,7 @@ requires-pixi = ">=0.79.0"
 rust = ">=1.96.0,<1.97"
 qgis = ">=3.44.9,<4"
 maturin = ">=1.7,<2"
+patchelf = ">=0.18,<0.19"
 pytest = ">=8,<9"
 pytest-cov = ">=5,<7"
 # The Python the project runs on is the Python QGIS is bundled with — not an
@@ -177,6 +178,9 @@ qgis = { workspace = true }
 # [feature.sdk.tasks].
 python = { workspace = true }
 maturin = { workspace = true }
+# Linux wheel builds copy QGIS/Qt shared libraries and rewrite their runtime
+# paths; maturin shells out to patchelf for that packaging step.
+patchelf = { workspace = true }
 # `maturin develop` shells out to `pip --version` before it does anything else
 # ("Failed to find pip (if working with a uv venv try `maturin develop --uv`)").
 # The pixi-build-python path never needed it, because it installed the built
