@@ -62,12 +62,6 @@ pub const REPO_LINTS: &[RepoLint] = &[
 /// suites. Coverage runs last because it is the most expensive producer and
 /// its artifacts are only interesting once everything else is green.
 pub fn gate(coverage: bool, offline: bool) -> Result<()> {
-    if offline {
-        // Set this inside xtask rather than in the shell alias: Cargo does not
-        // preserve its own CARGO_NET_* variables for the binary it launches,
-        // while child pixi/napi processes inherit variables set here.
-        std::env::set_var("CARGO_NET_OFFLINE", "true");
-    }
     step("repo lints (sources, boundaries, API manifest, taplo, actionlint)");
     // Keep these in-process and ordered as REPO_LINTS records: each costs
     // milliseconds and catches an invalid repository before any compile.
@@ -78,24 +72,24 @@ pub fn gate(coverage: bool, offline: bool) -> Result<()> {
     pixi("default", ["actionlint"])?;
 
     step("package lints (turbo fan-out)");
-    turbo(&["lint", NOT_DOCS])?;
+    turbo(&["lint", NOT_DOCS], offline)?;
 
     step("format drift gate");
-    turbo(&["format", NOT_DOCS])?;
+    turbo(&["format", NOT_DOCS], offline)?;
     assert_no_drift()?;
 
     step("tests (turbo fan-out; each package builds what it needs)");
-    turbo(&["test", NOT_DOCS])?;
+    turbo(&["test", NOT_DOCS], offline)?;
 
     // Filtered like every other fan-out: the docs site publishes nothing, and
     // without the filter turbo pulls its Astro build into the gate as a
     // dependency of a task it does not even define.
     step("publishable-package contents");
-    turbo(&["pack:check", NOT_DOCS])?;
+    turbo(&["pack:check", NOT_DOCS], offline)?;
 
     if coverage {
         step("coverage (rust lcov + python xml + js)");
-        turbo(&["coverage", NOT_DOCS])?;
+        turbo(&["coverage", NOT_DOCS], offline)?;
     }
 
     step("gate passed");
@@ -103,8 +97,12 @@ pub fn gate(coverage: bool, offline: bool) -> Result<()> {
 }
 
 /// Fan one task out across the workspace with turbo, in the `bun` environment.
-fn turbo(args: &[&str]) -> Result<()> {
-    let mut command = vec!["bun", "x", "turbo", "run"];
+fn turbo(args: &[&str], offline: bool) -> Result<()> {
+    let mut command = if offline {
+        vec!["env", "CARGO_NET_OFFLINE=true", "bun", "x", "turbo", "run"]
+    } else {
+        vec!["bun", "x", "turbo", "run"]
+    };
     command.extend_from_slice(args);
     pixi("bun", command)
 }
@@ -201,7 +199,7 @@ pub fn last<'a>(lines: &[&'a str], count: usize) -> Vec<&'a str> {
 
 /// Re-exported for `release`, which runs the same turbo fan-out.
 pub fn turbo_run(args: &[&str]) -> Result<()> {
-    turbo(args)
+    turbo(args, false)
 }
 
 /// `cargo` under the QGIS environment, for the release pipeline.
