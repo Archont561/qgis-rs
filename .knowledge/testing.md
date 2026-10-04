@@ -16,16 +16,23 @@ generated: { by: arena-agent/qgis-rs-kb-init, at: 2026-09-17T20:00:00Z }
 Repository-wide gates are owned by `crates/xtask` ([D10](decisions/D10-xtask-over-shell-scripts.md)):
 
 - `pixi run gates` — Rust, C++, package, and non-coverage checks.
-- `pixi run -- cargo test -p qgis-mcp --no-default-features` — QGIS-free capability
-  reporting and backend-unavailable behavior.
-- `pixi run -- cargo test -p qgis-engine --no-default-features` — QGIS-free native
-  operation errors.
-- `pixi run -- cargo test -p qgis-sys --no-default-features` — QGIS-free manager
-  adapter build.
-- `pixi run -- cargo test -p qgis-sys --test native_manager -- --test-threads=1` —
-  native-manager lifecycle, dispatch, and layer coverage.
-- `pixi run -- cargo test -p qgis-sys --test native_manager_shutdown -- --test-threads=1` —
-  owner-thread shutdown coverage.
+- `pixi run -- cargo nextest run -p qgis-mcp --no-default-features` — QGIS-free
+  capability reporting and backend-unavailable behavior.
+- `pixi run -- cargo nextest run -p qgis-engine --no-default-features` — QGIS-free
+  native operation errors.
+- `pixi run -- cargo nextest run -p qgis-sys --no-default-features` — QGIS-free
+  manager adapter build.
+- `pixi run -- cargo nextest run -p qgis-sys --features qgis-sys/qgis -E 'binary(/native_manager/)' --test-threads=1` —
+  native-manager lifecycle, dispatch, layer coverage and owner-thread shutdown.
+  The `qgis` feature is not optional here: without it these suites are compiled
+  out and nextest answers `no tests to run` rather than passing vacuously.
+- `pixi run -- cargo test --workspace --no-default-features --doc` — the crate-level
+  doc examples, which nextest does not run.
+
+The runner is **cargo-nextest** (declared in `pixi.toml`, carried in the offline pack):
+one process per test, so a Qt abort names the test that caused it instead of killing
+its whole binary, and the report is one line per test. `cargo test` remains the way to
+run doctests, and only that.
 
 The old `pixi run test` and `pixi run test-full` names are historical and are not current root tasks.
 

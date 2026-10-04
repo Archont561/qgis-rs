@@ -83,7 +83,7 @@ qgis-rs provides **safe Rust bindings** to QGIS's C++ core library, enabling:
 | **FFI** | CXX | Type-safe, automatic conversions, no unsafe boilerplate |
 | **Build** | Cargo + cxx-build | Standard Rust tooling with C++ compilation |
 | **Dependencies** | Pixi (conda-forge) | Reproducible environments, QGIS packages |
-| **Testing** | cargo test + pytest | Standard Rust testing + Python integration tests |
+| **Testing** | cargo-nextest + pytest | Per-test process isolation for Rust; `cargo test --doc` for doctests; Python integration tests |
 | **Docs** | Astro Starlight | Modern documentation with MDX support |
 | **CI** | GitHub Actions | Free for open source, good Rust support |
 
@@ -148,7 +148,7 @@ pixi shell
 cargo build
 
 # Test
-cargo test
+cargo nextest run
 ```
 
 ### Common Tasks

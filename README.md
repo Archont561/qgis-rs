@@ -431,7 +431,7 @@ find the repository root:
 
 ```jsonc
 // crates/package.json — the whole Cargo workspace as one package
-"test": "pixi run -e default setup && pixi run -e default cargo test --workspace --no-default-features -- --test-threads=1"
+"test": "pixi run -e default setup && pixi run -e default cargo nextest run --workspace --no-default-features --test-threads=1"
 ```
 
 That one line runs all 57 test binaries, including the QGIS-backed suites: `QGIS_PLUGINPATH` is
