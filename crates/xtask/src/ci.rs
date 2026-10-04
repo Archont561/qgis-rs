@@ -101,6 +101,9 @@ fn turbo(args: &[&str], offline: bool) -> Result<()> {
     let mut command = vec!["bun", "x", "turbo", "run"];
     command.extend_from_slice(args);
     if offline {
+        // Turbo's strict mode removes undeclared variables before package
+        // scripts; loose mode is what lets napi's Cargo inherit offline mode.
+        command.push("--env-mode=loose");
         pixi_with_env("bun", command, "CARGO_NET_OFFLINE", "true")
     } else {
         pixi("bun", command)
