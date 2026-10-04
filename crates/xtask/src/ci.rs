@@ -99,7 +99,15 @@ pub fn gate(coverage: bool, offline: bool) -> Result<()> {
 /// Fan one task out across the workspace with turbo, in the `bun` environment.
 fn turbo(args: &[&str], offline: bool) -> Result<()> {
     let mut command = if offline {
-        vec!["env", "CARGO_NET_OFFLINE=true", "bun", "x", "turbo", "run"]
+        vec![
+            "--",
+            "env",
+            "CARGO_NET_OFFLINE=true",
+            "bun",
+            "x",
+            "turbo",
+            "run",
+        ]
     } else {
         vec!["bun", "x", "turbo", "run"]
     };
