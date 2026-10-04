@@ -10,7 +10,7 @@ use std::path::Path;
 
 use anyhow::{bail, Context, Result};
 
-use crate::util::{capture, pixi, repo_root, run, step};
+use crate::util::{capture, pixi, pixi_with_env, repo_root, run, step};
 
 /// The docs site is excluded from every fan-out below: it is built and
 /// deployed by docs.yml, and pulling Astro into the gate would double the
@@ -98,21 +98,13 @@ pub fn gate(coverage: bool, offline: bool) -> Result<()> {
 
 /// Fan one task out across the workspace with turbo, in the `bun` environment.
 fn turbo(args: &[&str], offline: bool) -> Result<()> {
-    let mut command = if offline {
-        vec![
-            "--",
-            "env",
-            "CARGO_NET_OFFLINE=true",
-            "bun",
-            "x",
-            "turbo",
-            "run",
-        ]
-    } else {
-        vec!["bun", "x", "turbo", "run"]
-    };
+    let mut command = vec!["bun", "x", "turbo", "run"];
     command.extend_from_slice(args);
-    pixi("bun", command)
+    if offline {
+        pixi_with_env("bun", command, "CARGO_NET_OFFLINE", "true")
+    } else {
+        pixi("bun", command)
+    }
 }
 
 /// Fail if the formatters rewrote anything.
