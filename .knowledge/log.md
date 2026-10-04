@@ -1,5 +1,72 @@
 # Bundle Update Log
 
+## 2026-10-04 (session 2)
+
+* **Change (testing)**: The native manager has its own C++ tests, and the gate
+  runs them. `manager.cpp` kept the JSON envelope, the handle encoding and the
+  C ABI's malloc/free pair in an anonymous namespace inside a translation unit
+  that cannot be loaded without a QGIS prefix and a `QApplication` — so the
+  functions most likely to cost a leak, a truncated answer or a wrong layer
+  were the only ones nothing tested as units. They move to
+  `crates/qgis-sys/src/native_manager/conversions.cpp`, which depends on QtCore
+  and the standard library only, and `crates/qgis-sys/tests/cpp` builds that one
+  file against GoogleTest 1.18 and RapidCheck: 14 tests, 9 examples and 5
+  properties, headless, under the same warnings-as-errors contract `build.rs`
+  compiles the shim with. `xtask test-cpp` drives cmake/ninja/ctest and
+  `@qgis/rust`'s `test` script calls it, so `pixi run ci` covers the C++ suite
+  like every other (D10). No new dependency: cmake and ninja (TASK-24), gtest
+  and rapidcheck were already declared in `pixi.toml` and carried in the offline
+  pack — which matters, because this machine cannot run `pixi lock`.
+* **Change (ci)**: `cpp_sources` now walks the shim's `tests` tree, so
+  clang-format and the format-drift gate see C++ test files that were invisible
+  to them before. The counterpart is that clang-tidy is narrowed to
+  `crates/qgis-sys/src`: it is driven by `compile_commands.json`, which
+  `qgis-sys`'s build script writes only for what cargo compiles, and handing it
+  a CMake-built file makes it guess a command line and fail on the first Qt
+  include.
+* **Measurement**: the property over `copy_response` was written against
+  arbitrary byte strings and failed immediately — not on the conversion, but on
+  the test's own premise. `QString::fromStdString` decodes UTF-8 and substitutes
+  U+FFFD for what it cannot decode, so two distinct invalid sequences collapse
+  onto one key and a round-trip property is false for reasons that have nothing
+  to do with the manager. The properties now generate printable ASCII, which is
+  what the wire actually carries, and the replacement behaviour is pinned by an
+  example test instead of being hidden by the fix. Worth remembering the next
+  time a property is written over anything Qt will decode.
+* **Verified**: `pixi run gates` is **green on a restored airlock** — 3m35s cold,
+  1m56s warm — which the session skill said was impossible as recently as
+  yesterday. Both reasons it gave were fixed by `d24772c`: the gate forces
+  `--offline` and `--env-mode=loose`, so the napi build keeps `CARGO_HOME` and
+  its vendored sources, and `patchelf` is now declared and packed, so
+  `qgis-rs-py#build` produces a wheel locally. Baseline on `4a87ed2`: **194 Rust**
+  across 42 non-empty test-binary runs, **123 + 2 skipped** and **21** pytest,
+  **44** bun, **14** C++. `.agents/skills/session/` was corrected to say all of
+  this, including the restore's current figures (8708 blobs, 75732 verified
+  entries).
+* **Idea (not implemented)**: TASK-23 is **not** closeable and stays In Progress
+  on two ACs. AC#2 wants rstest fixtures instead of a hand-rolled setup helper
+  per test file; rstest is a workspace dependency but is used in exactly one
+  file, `crates/qgis-render/tests/tiles.rs`. AC#4 wants both TypeScript client
+  suites on fast-check; `ts-packages/qgis-node` has it, `ts-packages/qgis-sdk-bridge`
+  does not, so the bridge asserts none of the invariants the Rust properties do.
+  Both are local, offline-provable work — fast-check and rstest are already
+  installed — and neither needs a lock.
+* **Idea (not implemented)**: two backlog findings, neither acted on because
+  they change task metadata the user has not ruled on. **TASK-43's dependency on
+  TASK-36 looks wrong**: 43 is about the dependency graph (no `qgis-sdk` →
+  `qgis-py`, delete `_fallback_cli.py`) and 36 defines the declarative UI
+  contract; with that edge in place the hand-off at the end of the previous
+  session recommended a task its own metadata says is blocked, and TASK-44 is
+  blocked behind 26, 42 and 43 in turn. **TASK-6 is archived while still
+  `status: To Do`**, and TASK-7 depends on it, so the binding chain
+  7 → 8 → 9/10 → 11/12 — six tasks across m-1 and m-2 — is blocked by a task no
+  list shows. Either re-point TASK-7 at TASK-5 (Done) or record that the chain
+  is superseded by the RFC-19 native manager.
+* **Next session's opening prompt**: see the session report; in short, finish
+  TASK-23 by putting rstest fixtures through the Rust suites (AC#2) and a
+  fast-check property into `ts-packages/qgis-sdk-bridge` (AC#4), which closes
+  the task and unblocks TASK-31 and the 32/33/34 → 35 → 42 chain behind it.
+
 ## 2026-10-04
 
 * **Change (ci)**: The D13 product boundaries are decided by a program instead
