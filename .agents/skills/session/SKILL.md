@@ -29,14 +29,14 @@ export PATH="$HOME/.local/bin:$PATH"   # restore registers pixi there; your shel
 pixi run bun-install                   # node_modules is NOT part of the pack — see below
 ```
 
-**Verified 2026-10-03, from a sandbox with no pixi at all:** `scripts/restore.sh` finishes in about
-four minutes and needs only github.com. It fetches `sandbox/developer-linux-64` (8707 blobs,
-1705 MiB, every declared byte verified), wants ~8.1 GiB of scratch, and leaves behind
+**Verified again 2026-10-04, from a sandbox with no pixi at all:** `scripts/restore.sh` finishes
+in about four minutes and needs only github.com. It fetches `sandbox/developer-linux-64` (8708
+blobs, 1705.4 MiB, every declared byte verified), wants ~8.1 GiB of scratch, and leaves behind
 `pixi 0.81.0` + `pixi-sandbox 0.5.2` + `pixi-unpack 0.7.11` under `.pixi/tools/linux-64/`,
-`.pixi/envs/bun` (1.68 GiB), `.pixi/envs/default` (4.72 GiB), and a vendored crate graph of 162
+`.pixi/envs/bun` (1683.7 MiB), `.pixi/envs/default` (4725.1 MiB), and a vendored crate graph of 162
 crates at `.pixi-sandbox/vendor` wired in through `CARGO_HOME=.pixi-sandbox/cargo-home` (a pixi
 activation hook sets it; the project's `.cargo/` is left alone). It then re-verifies the tree
-against the manifest — 75727 entries, 0 failures — and symlinks `pixi` into `~/.local/bin`, which
+against the manifest — 75732 entries, 0 failures — and symlinks `pixi` into `~/.local/bin`, which
 an already-running shell will not see. Everything it writes is git-ignored (`.gitignore` ignores
 `.*`, plus an explicit `.pixi-sandbox/`), so `git status` stays clean after a restore.
 
@@ -133,23 +133,17 @@ file was first written on and the Arena sandbox of 2026-10-03.
   work, but `gh run view --log` and `…/actions/jobs/<id>/logs` return empty: the API 302s to
   `productionresultssa3.blob.core.windows.net`, which this sandbox cannot reach. Read a red run
   through its job/step *conclusions*, or ask the user to paste the log.
-- **`pixi run gates` is red on a restored airlock for two environmental reasons, neither of them
-  the code's fault.** Both reproduce exactly, and both have a workaround:
-  - **`qgis-rs#build` (the napi build) hits crates.io.** Turbo 2's default **strict env mode**
-    drops `CARGO_HOME` from the task environment, and `ts-packages/qgis-node`'s `build` is the one
-    package verb that shells straight to `cargo` instead of re-entering `pixi run -e default`. With
-    `CARGO_HOME` gone, the vendored source replacement goes with it and cargo tries to update the
-    index: `failed to get anyhow as a dependency of package qgis-cli` → `unable to update registry
-    crates-io`. Proof it is the variable and not the vendor tree: the same `bun run build` passes
-    inside `pixi run -e bun`, and fails under `env -u CARGO_HOME`. Workaround for a baseline:
-    `pixi run -e bun -- bun x turbo run test --env-mode=loose`. The candidate fix — `CARGO_HOME` in
-    turbo.json's `globalPassThroughEnv`, or routing that one script through `pixi run -e default` —
-    changes task hashing, so it belongs in a task with the user's sanction, not in a drive-by.
-  - **`qgis-rs-py#build` (maturin) dies on `Failed to execute 'patchelf'`.** `patchelf` is not
-    declared anywhere in `pixi.toml`, so the pack does not carry it; CI stays green because the
-    GitHub runner image supplies it. Adding it needs a `pixi lock`, which this machine cannot do.
-    Run that distribution's suite directly instead:
-    `pixi run -- bash -c 'cd "$PIXI_PROJECT_ROOT/py-packages/qgis-rs" && QGIS_REQUIRE_NATIVE=1 python -m pytest tests -q'`.
+- **`pixi run gates` is green on a restored airlock, as of `d24772c`.** It was red for two
+  environmental reasons until 2026-10-04 and both are now fixed in the repository, so do not
+  inherit the old workaround: the `gates` task runs `xtask ci --no-coverage --offline`, which fans
+  turbo out with `--env-mode=loose` and `CARGO_NET_OFFLINE=true` on the pixi process, so the napi
+  build keeps `CARGO_HOME` and resolves from `.pixi-sandbox/vendor` instead of reaching for
+  crates.io; and `patchelf` is now declared in `pixi.toml` and carried in the pack, so
+  `qgis-rs-py#build` produces a wheel here rather than dying on `Failed to execute 'patchelf'`.
+  Measured 2026-10-04 on a freshly restored sandbox: 3m35s cold, 1m56s warm, every fan-out green.
+  One caveat that is not a bug: the gate's format-drift step is `git diff --exit-code`, so it
+  fails on **any** uncommitted change, including your own work in progress. Commit first, then
+  run it — that is the order the pre-push hook uses.
 - QGIS tests need `QT_QPA_PLATFORM=offscreen` and `--test-threads=1`; the pixi tasks already set
   both, and `pixi run setup` is the one-time libqca link fix (`libqca-qt5.so.2` →
   `libqca-qt5.so.2.3.12`) — run it once after a restore, before the first test run.
@@ -243,20 +237,19 @@ the report:
 3. **Re-baseline on the merged tree.** `git fetch origin && git log --oneline origin/main -1` to
    confirm what merged, then `pixi run gates`. The number goes in the report and into the next
    opening prompt; it must rise with new work, never fall. The last recorded baseline, **measured
-   on a restored sandbox at `e4ff1a6` on 2026-10-03**, is:
+   by `pixi run gates` on a restored sandbox at `4a87ed2` on 2026-10-04**, is:
 
    | Suite | Count | How it was produced |
    | --- | --- | --- |
-   | Rust | **149 passing across 30 integration test files** (`crates/*/tests/*.rs`) | `turbo run test` |
+   | Rust | **194 passing across 42 non-empty test-binary runs** (31 integration files in `crates/*/tests/*.rs`, 5 of them re-run under the `qgis` feature) | `turbo run test` |
    | Python, `qgis-sdk` | **123 passed, 2 skipped** | `turbo run test` |
-   | Python, `qgis-rs` | **21 passed** | pytest run directly — its turbo `build` needs `patchelf` |
+   | Python, `qgis-rs` | **21 passed** | `turbo run test` — its `build` works here now that `patchelf` is packed |
    | Bun | **44** = 17 `@qgis-sdk/bridge` + 14 `@qgis/test-utils` + 13 `qgis-rs` (`ts-packages/qgis-node`) | `turbo run test` |
+   | C++ | **14 GoogleTest cases** (9 examples + 5 RapidCheck properties) in one ctest target | `xtask test-cpp`, called by `@qgis/rust`'s `test` |
 
-   The turbo numbers came from
-   `pixi run -e bun -- bun x turbo run test --filter=!qgis-rs-docs --filter=!qgis-rs-py --env-mode=loose`
-   (8 of 8 tasks green); `pixi run gates` itself is red here for the two environmental reasons in
-   §1, and lint/format are 7 of 7 green. Say which of those two numbers you are quoting — a gate
-   that was never run is not a green gate.
+   Every one of those came from a single green `pixi run gates`, so there is no longer a second
+   number to disambiguate — but say so anyway, because a gate that was never run is not a green
+   gate.
 4. **Record what you did not implement** in [`.knowledge/log.md`](/.knowledge/log.md) under a dated
    heading, newest first — the file is reverse-chronological — and end that entry with the next session's opening prompt, so the file in
    the tree and the message in the chat say the same thing. Proposals, alternatives weighed, and
