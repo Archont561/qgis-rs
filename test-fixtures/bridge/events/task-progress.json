@@ -1,0 +1,7 @@
+{
+  "bridge_version": 1,
+  "event": "task.progress",
+  "target": "qgis",
+  "request_id": "req-task-1",
+  "payload": { "task_id": "task-3", "progress": 40.0, "state": "running" }
+}

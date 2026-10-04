@@ -1,0 +1,50 @@
+{
+  "bridge_version": 1,
+  "namespace": "demo_plugin",
+  "kind": "plugin",
+  "version": "1.0",
+  "doc": "A plugin's own methods. Nothing here is built in; this manifest is the example the contract tests against.",
+  "methods": [
+    {
+      "name": "settings.get",
+      "call_kind": "plugin",
+      "permissions": [],
+      "args": {
+        "type": "object",
+        "properties": { "key": { "type": "string" } },
+        "required": ["key"],
+        "additional_properties": false
+      },
+      "result": { "type": "string" }
+    },
+    {
+      "name": "report.generate",
+      "call_kind": "plugin",
+      "permissions": ["file.write"],
+      "args": {
+        "type": "object",
+        "properties": {
+          "layer": { "$handle": "qgis.layer" },
+          "output": { "type": "string" }
+        },
+        "required": ["layer", "output"],
+        "additional_properties": false
+      },
+      "result": {
+        "type": "object",
+        "properties": { "path": { "type": "string" }, "bytes": { "type": "integer" } },
+        "required": ["path", "bytes"]
+      }
+    }
+  ],
+  "events": [
+    {
+      "name": "report.ready",
+      "payload": {
+        "type": "object",
+        "properties": { "path": { "type": "string" } },
+        "required": ["path"]
+      }
+    }
+  ]
+}

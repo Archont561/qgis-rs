@@ -1,0 +1,107 @@
+{
+  "bridge_version": 1,
+  "namespace": "qgis",
+  "kind": "qgis_host",
+  "version": "1.0",
+  "doc": "Calls that need a live QGIS. Unanswerable without one: host_unavailable, never a fake.",
+  "methods": [
+    {
+      "name": "layers.list",
+      "call_kind": "qgis_host",
+      "permissions": ["layer.read"],
+      "args": { "type": "object", "properties": {}, "additional_properties": false },
+      "result": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "handle": { "$handle": "qgis.layer" },
+            "name": { "type": "string" },
+            "layer_type": { "type": "string", "enum": ["vector", "raster", "unknown"] },
+            "crs_authid": { "type": "string" }
+          },
+          "required": ["handle", "name", "layer_type"]
+        }
+      }
+    },
+    {
+      "name": "layers.add_vector",
+      "call_kind": "qgis_host",
+      "permissions": ["layer.write"],
+      "args": {
+        "type": "object",
+        "properties": {
+          "uri": { "type": "string" },
+          "name": { "type": "string" },
+          "provider": { "type": "string", "enum": ["ogr", "memory", "postgres"] }
+        },
+        "required": ["uri", "name"],
+        "additional_properties": false
+      },
+      "result": {
+        "type": "object",
+        "properties": {
+          "handle": { "$handle": "qgis.layer" },
+          "is_valid": { "type": "boolean" }
+        },
+        "required": ["handle", "is_valid"]
+      }
+    },
+    {
+      "name": "layers.feature_count",
+      "call_kind": "qgis_host",
+      "permissions": ["layer.read"],
+      "args": {
+        "type": "object",
+        "properties": { "handle": { "$handle": "qgis.layer" } },
+        "required": ["handle"],
+        "additional_properties": false
+      },
+      "result": { "type": "integer" }
+    },
+    {
+      "name": "tasks.submit",
+      "call_kind": "qgis_host",
+      "permissions": ["task.run"],
+      "args": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "algorithm": { "type": "string" }
+        },
+        "required": ["name", "algorithm"],
+        "additional_properties": false
+      },
+      "result": {
+        "type": "object",
+        "properties": {
+          "task_id": { "type": "string" },
+          "state": { "type": "string", "enum": ["pending", "running", "success", "failure", "canceled"] }
+        },
+        "required": ["task_id", "state"]
+      }
+    }
+  ],
+  "events": [
+    {
+      "name": "task.progress",
+      "payload": {
+        "type": "object",
+        "properties": {
+          "task_id": { "type": "string" },
+          "progress": { "type": "number" },
+          "state": { "type": "string", "enum": ["pending", "running", "success", "failure", "canceled"] }
+        },
+        "required": ["task_id", "progress", "state"]
+      }
+    },
+    {
+      "name": "project.layers_changed",
+      "payload": {
+        "type": "object",
+        "properties": { "count": { "type": "integer" } },
+        "required": ["count"]
+      }
+    }
+  ]
+}

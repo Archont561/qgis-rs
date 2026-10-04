@@ -1,0 +1,13 @@
+{
+  "bridge_version": 1,
+  "request_id": "req-layers-1",
+  "ok": true,
+  "result": [
+    {
+      "handle": { "object_id": "obj-9c1a", "object_type": "qgis.layer", "session_id": "sess-1" },
+      "name": "Roads",
+      "layer_type": "vector",
+      "crs_authid": "EPSG:4326"
+    }
+  ]
+}

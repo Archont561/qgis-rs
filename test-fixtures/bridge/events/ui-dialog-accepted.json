@@ -1,0 +1,7 @@
+{
+  "bridge_version": 1,
+  "event": "dialog.accepted",
+  "target": "ui",
+  "request_id": "req-dialog-1",
+  "payload": { "handle": { "object_id": "obj-2b05", "object_type": "ui.dialog", "session_id": "sess-1" } }
+}

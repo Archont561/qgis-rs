@@ -1,0 +1,10 @@
+{
+  "bridge_version": 1,
+  "request_id": "req-layers-2",
+  "ok": false,
+  "error": {
+    "kind": "invalid_arguments",
+    "message": "layers.add_vector requires name",
+    "details": { "target": "qgis", "method": "layers.add_vector", "missing": ["name"] }
+  }
+}

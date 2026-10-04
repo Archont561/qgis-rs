@@ -1,0 +1,10 @@
+{
+  "bridge_version": 1,
+  "request_id": "req-layers-2",
+  "ok": false,
+  "error": {
+    "kind": "permission_denied",
+    "message": "layers.add_vector needs layer.write, which this plugin did not declare",
+    "details": { "target": "qgis", "method": "layers.add_vector", "permission": "layer.write" }
+  }
+}

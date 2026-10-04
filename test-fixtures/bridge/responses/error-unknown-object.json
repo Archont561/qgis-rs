@@ -1,0 +1,10 @@
+{
+  "bridge_version": 1,
+  "request_id": "req-layers-3",
+  "ok": false,
+  "error": {
+    "kind": "unknown_object",
+    "message": "object obj-9c1a is not known to session sess-2",
+    "details": { "object_id": "obj-9c1a", "object_type": "qgis.layer", "session_id": "sess-2" }
+  }
+}

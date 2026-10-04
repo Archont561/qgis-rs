@@ -1,0 +1,10 @@
+{
+  "bridge_version": 1,
+  "request_id": "req-ghost-1",
+  "ok": false,
+  "error": {
+    "kind": "unknown_target",
+    "message": "no bridge object named ghost_plugin in this session",
+    "details": { "target": "ghost_plugin" }
+  }
+}
