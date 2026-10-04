@@ -42,6 +42,8 @@
 //! release of the engine does not change the envelope, and a new envelope does
 //! not imply new geometry.
 
+pub mod bridge;
+
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 

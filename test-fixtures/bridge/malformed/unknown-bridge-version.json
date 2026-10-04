@@ -1,0 +1,7 @@
+{
+  "bridge_version": 99,
+  "request_id": "req-future-1",
+  "target": "qgis",
+  "method": "layers.list",
+  "args": {}
+}

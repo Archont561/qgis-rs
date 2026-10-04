@@ -1,0 +1,9 @@
+{
+  "bridge_version": 1,
+  "request_id": "req-layers-3",
+  "target": "qgis",
+  "method": "layers.feature_count",
+  "args": {
+    "handle": { "object_id": "obj-9c1a", "object_type": "qgis.layer", "session_id": "sess-2" }
+  }
+}

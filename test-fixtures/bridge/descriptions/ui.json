@@ -1,0 +1,73 @@
+{
+  "bridge_version": 1,
+  "namespace": "ui",
+  "kind": "ui",
+  "version": "1.0",
+  "doc": "Stateful UI operations. Results are acknowledgements; what the user did arrives as an event.",
+  "methods": [
+    {
+      "name": "dialog.open",
+      "call_kind": "ui",
+      "permissions": ["ui.show"],
+      "args": {
+        "type": "object",
+        "properties": {
+          "title": { "type": "string" },
+          "modal": { "type": "boolean" }
+        },
+        "required": ["title"],
+        "additional_properties": false
+      },
+      "result": {
+        "type": "object",
+        "properties": { "handle": { "$handle": "ui.dialog" } },
+        "required": ["handle"]
+      }
+    },
+    {
+      "name": "dialog.close",
+      "call_kind": "ui",
+      "permissions": ["ui.show"],
+      "args": {
+        "type": "object",
+        "properties": { "handle": { "$handle": "ui.dialog" } },
+        "required": ["handle"],
+        "additional_properties": false
+      },
+      "result": { "type": "boolean" }
+    },
+    {
+      "name": "message.info",
+      "call_kind": "ui",
+      "permissions": ["ui.message"],
+      "args": {
+        "type": "object",
+        "properties": {
+          "text": { "type": "string" },
+          "duration_seconds": { "type": "integer" }
+        },
+        "required": ["text"],
+        "additional_properties": false
+      },
+      "result": { "type": "boolean" }
+    }
+  ],
+  "events": [
+    {
+      "name": "dialog.accepted",
+      "payload": {
+        "type": "object",
+        "properties": { "handle": { "$handle": "ui.dialog" } },
+        "required": ["handle"]
+      }
+    },
+    {
+      "name": "theme.changed",
+      "payload": {
+        "type": "object",
+        "properties": { "theme": { "type": "string", "enum": ["light", "dark"] } },
+        "required": ["theme"]
+      }
+    }
+  ]
+}

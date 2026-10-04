@@ -1,0 +1,10 @@
+{
+  "bridge_version": 1,
+  "request_id": "req-layers-1",
+  "ok": false,
+  "error": {
+    "kind": "host_unavailable",
+    "message": "layers.list needs a running QGIS; this process has none",
+    "details": { "target": "qgis", "method": "layers.list", "requires": "qgis" }
+  }
+}

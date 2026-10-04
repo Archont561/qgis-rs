@@ -1,0 +1,7 @@
+{
+  "bridge_version": 1,
+  "request_id": "req-layers-9",
+  "target": "qgis",
+  "method": "layers.teleport",
+  "args": {}
+}

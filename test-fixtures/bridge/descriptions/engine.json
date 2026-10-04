@@ -1,0 +1,53 @@
+{
+  "bridge_version": 1,
+  "namespace": "engine",
+  "kind": "engine",
+  "version": "1.0",
+  "doc": "Pure engine calls forwarded to qgis-protocol. No QGIS, no Qt, deterministic.",
+  "methods": [
+    {
+      "name": "extent.describe",
+      "call_kind": "engine",
+      "permissions": [],
+      "args": {
+        "type": "object",
+        "properties": { "extent": { "type": "string" } },
+        "required": ["extent"],
+        "additional_properties": false
+      },
+      "result": {
+        "type": "object",
+        "properties": {
+          "xmin": { "type": "number" },
+          "ymin": { "type": "number" },
+          "xmax": { "type": "number" },
+          "ymax": { "type": "number" },
+          "width": { "type": "number" },
+          "height": { "type": "number" },
+          "is_valid": { "type": "boolean" }
+        },
+        "required": ["xmin", "ymin", "xmax", "ymax", "is_valid"]
+      }
+    },
+    {
+      "name": "tiles.plan",
+      "call_kind": "engine",
+      "permissions": [],
+      "args": {
+        "type": "object",
+        "properties": {
+          "extent": { "type": "string" },
+          "zooms": { "type": "string" }
+        },
+        "required": ["extent", "zooms"],
+        "additional_properties": false
+      },
+      "result": {
+        "type": "object",
+        "properties": { "total": { "type": "integer" } },
+        "required": ["total"]
+      }
+    }
+  ],
+  "events": []
+}

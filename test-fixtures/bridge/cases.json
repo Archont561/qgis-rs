@@ -1,0 +1,145 @@
+{
+  "bridge_version": 1,
+  "doc": "The catalogue of bridge contract vectors. This file is the only list of fixture files: Rust, Python and TypeScript all iterate it, so adding a vector here adds it to three suites at once. See .knowledge/bridge-test-contract.md.",
+  "session_id": "sess-1",
+  "descriptions": [
+    { "target": "engine", "kind": "engine", "file": "descriptions/engine.json" },
+    { "target": "qgis", "kind": "qgis_host", "file": "descriptions/qgis.json" },
+    { "target": "demo_plugin", "kind": "plugin", "file": "descriptions/plugin.json" },
+    { "target": "ui", "kind": "ui", "file": "descriptions/ui.json" }
+  ],
+  "requests": [
+    {
+      "file": "requests/engine-extent-describe.json",
+      "target": "engine",
+      "method": "extent.describe",
+      "expect": "valid",
+      "response": "responses/engine-extent-describe-success.json"
+    },
+    {
+      "file": "requests/qgis-layers-list.json",
+      "target": "qgis",
+      "method": "layers.list",
+      "expect": "valid",
+      "response": "responses/qgis-layers-list-success.json"
+    },
+    {
+      "file": "requests/qgis-layers-add-vector.json",
+      "target": "qgis",
+      "method": "layers.add_vector",
+      "expect": "valid",
+      "response": "responses/qgis-layers-add-vector-success.json"
+    },
+    {
+      "file": "requests/qgis-layers-feature-count.json",
+      "target": "qgis",
+      "method": "layers.feature_count",
+      "expect": "valid",
+      "response": null
+    },
+    {
+      "file": "requests/plugin-report-generate.json",
+      "target": "demo_plugin",
+      "method": "report.generate",
+      "expect": "valid",
+      "response": null
+    },
+    {
+      "file": "requests/ui-dialog-open.json",
+      "target": "ui",
+      "method": "dialog.open",
+      "expect": "valid",
+      "response": "responses/ui-dialog-open-success.json"
+    }
+  ],
+  "malformed": [
+    {
+      "file": "malformed/missing-request-id.json",
+      "error_kind": "invalid_request",
+      "why": "every request carries the caller's request_id; without one no answer can be correlated"
+    },
+    {
+      "file": "malformed/unknown-bridge-version.json",
+      "error_kind": "invalid_request",
+      "why": "a host answers in its own version or refuses; it never guesses at a future envelope"
+    },
+    {
+      "file": "malformed/positional-args.json",
+      "error_kind": "invalid_request",
+      "why": "args is an object, always — positional arguments are not part of this wire"
+    },
+    {
+      "file": "malformed/camel-case-method.json",
+      "error_kind": "unknown_method",
+      "why": "wire names are snake_case; the JavaScript client renames at its own edge"
+    },
+    {
+      "file": "malformed/unknown-method.json",
+      "error_kind": "unknown_method",
+      "why": "the target exists, the method is not in its manifest"
+    },
+    {
+      "file": "malformed/unknown-target.json",
+      "error_kind": "unknown_target",
+      "why": "no bridge object of that name is registered in this session"
+    },
+    {
+      "file": "malformed/missing-required-argument.json",
+      "error_kind": "invalid_arguments",
+      "why": "name is required by the manifest's argument schema"
+    },
+    {
+      "file": "malformed/unexpected-argument.json",
+      "error_kind": "invalid_arguments",
+      "why": "the schema sets additional_properties false; an unknown key is usually a typo for a real one"
+    },
+    {
+      "file": "malformed/wrong-argument-type.json",
+      "error_kind": "invalid_arguments",
+      "why": "name is a string in the manifest and a number here"
+    },
+    {
+      "file": "malformed/argument-not-in-enum.json",
+      "error_kind": "invalid_arguments",
+      "why": "provider is an enum; shapefile is not one of its members"
+    },
+    {
+      "file": "malformed/handle-from-another-session.json",
+      "error_kind": "unknown_object",
+      "why": "handles are session-scoped: sess-2's view of obj-9c1a is no view at all"
+    },
+    {
+      "file": "malformed/handle-of-wrong-type.json",
+      "error_kind": "unknown_object",
+      "why": "a qgis.layer handle is not a ui.dialog, even inside the right session"
+    }
+  ],
+  "responses": [
+    { "file": "responses/engine-extent-describe-success.json", "ok": true, "request_id": "req-extent-1" },
+    { "file": "responses/qgis-layers-list-success.json", "ok": true, "request_id": "req-layers-1" },
+    { "file": "responses/qgis-layers-add-vector-success.json", "ok": true, "request_id": "req-layers-2" },
+    { "file": "responses/ui-dialog-open-success.json", "ok": true, "request_id": "req-dialog-1" },
+    { "file": "responses/error-unknown-method.json", "ok": false, "error_kind": "unknown_method", "request_id": "req-layers-9" },
+    { "file": "responses/error-unknown-target.json", "ok": false, "error_kind": "unknown_target", "request_id": "req-ghost-1" },
+    { "file": "responses/error-invalid-arguments.json", "ok": false, "error_kind": "invalid_arguments", "request_id": "req-layers-2" },
+    { "file": "responses/error-permission-denied.json", "ok": false, "error_kind": "permission_denied", "request_id": "req-layers-2" },
+    { "file": "responses/error-unknown-object.json", "ok": false, "error_kind": "unknown_object", "request_id": "req-layers-3" },
+    { "file": "responses/error-host-unavailable.json", "ok": false, "error_kind": "host_unavailable", "request_id": "req-layers-1" }
+  ],
+  "events": [
+    { "file": "events/task-progress.json", "target": "qgis", "event": "task.progress", "correlated": true },
+    { "file": "events/ui-dialog-accepted.json", "target": "ui", "event": "dialog.accepted", "correlated": true },
+    { "file": "events/ui-theme-changed.json", "target": "ui", "event": "theme.changed", "correlated": false }
+  ],
+  "error_kinds": [
+    "invalid_request",
+    "unknown_target",
+    "unknown_method",
+    "invalid_arguments",
+    "permission_denied",
+    "unknown_object",
+    "host_unavailable",
+    "internal_error"
+  ],
+  "call_kinds": ["engine", "qgis_host", "plugin", "ui"]
+}

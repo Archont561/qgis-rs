@@ -1,0 +1,9 @@
+{
+  "bridge_version": 1,
+  "request_id": "req-layers-2",
+  "ok": true,
+  "result": {
+    "handle": { "object_id": "obj-4e77", "object_type": "qgis.layer", "session_id": "sess-1" },
+    "is_valid": true
+  }
+}

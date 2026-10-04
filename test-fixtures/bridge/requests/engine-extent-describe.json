@@ -1,0 +1,7 @@
+{
+  "bridge_version": 1,
+  "request_id": "req-extent-1",
+  "target": "engine",
+  "method": "extent.describe",
+  "args": { "extent": "14,50,15,51" }
+}

@@ -262,8 +262,11 @@ graph TB
 crates/        every Rust crate — protocol + engine, the QGIS stack, the PyO3 / NAPI cores, xtask
 py-packages/   maturin projects: pyproject.toml + Python sources + tests
 ts-packages/   Bun/npm projects: package.json + TS sources + tests
+test-fixtures/ language-neutral test vectors every language reads (the bridge contract, layer goldens)
 docs/          the Astro Starlight documentation site
+backlog/       the Markdown task board (pixi run backlog) and its specification documents
 scripts/       the few shell entry points that are still shell (see scripts/README.md)
+.agents/       versioned agent skills, pinned by skills-lock.json
 .knowledge/    design documents and decision records
 ```
 
@@ -275,13 +278,14 @@ exercise ([D11](.knowledge/decisions/D11-tests-outside-src.md)).
 
 | Crate / Package | Purpose | Status |
 |-----------------|---------|--------|
-| `qgis-protocol` | The wire format spoken across every FFI boundary: `EngineRequest`/`EngineResponse`, the closed `Operation` enum, `TRANSPORT_VERSION` | ✅ Active |
+| `qgis-protocol` | The wire format spoken across every FFI boundary: `EngineRequest`/`EngineResponse`, the closed `Operation` enum, `TRANSPORT_VERSION` — plus `bridge`, the plugin-bridge envelopes and their validator | ✅ Active |
 | `qgis-engine` | `invoke(request_json) -> response_json` — one dispatch arm per operation, and the only thing the bindings call | ✅ Active |
-| `qgis-sys` | Low-level CXX bindings | ✅ Active |
-| `qgis-render` | High-level rendering API | 🔨 Scaffolded (pure geometry works; QGIS backend pending) |
+| `qgis-sys` | The native QGIS manager behind one C ABI `qgis_invoke`, and its C++ shim ([D12](.knowledge/decisions/D12-qgis-native-manager-over-c-abi.md)) | ✅ Active |
+| `qgis-render` | High-level rendering API — extents, CRS, XYZ pyramids in pure Rust; QGIS-backed `render_map`/`export_features` through the native manager | ✅ Active |
 | `qgis-server` | HTTP server (WMS/WFS/OGC) | 🔨 Scaffolded (routing works; listener pending) |
 | `qgis-mcp` | Model Context Protocol server | ✅ Active (bundled into `qgis-cli mcp`) |
 | `qgis-cli` | Command-line tool (Rust binary + lib) | 🔨 Scaffolded (`mcp`, `info`, `tiles --dry-run` work) |
+| `qgis-styles` | Symbols, colours, labelling and layout types, serialisable to and from QGIS style JSON | ✅ Active |
 | `qgis-sdk` (Rust core) | Native helpers behind the Python SDK: `qgis_sdk._core` + the `qgis-plugin`/`qgis-sdk` CLIs (`crates/qgis-sdk`) | ✅ Active |
 | `qgis-py` (Rust core) | PyO3 module `qgis_rs._core` + the `qgis-cli` binary shipped by the Python wheel (`crates/qgis-py`) | ✅ Active |
 | `qgis-node` (Rust core) | NAPI addon + CLI binaries shipped by the npm package (`crates/qgis-node`) | ✅ Active |
@@ -290,6 +294,7 @@ exercise ([D11](.knowledge/decisions/D11-tests-outside-src.md)).
 | `qgis-rs` (Python) | Python bindings + CLI — dist at `py-packages/qgis-rs`, PyPI/conda | ✅ Active |
 | `qgis-rs` (npm) | TypeScript/Node.js bindings + CLI — dist at `ts-packages/qgis-node` | ✅ Active |
 | `@qgis-sdk/bridge` | QWebChannel bridge for plugin webviews — React/Vue/Svelte/Web-Components adapters (`ts-packages/qgis-sdk-bridge`) | ✅ Active |
+| `@qgis/test-utils` | Scripted QWebChannel, fixtures and fast-check arbitraries shared by the TypeScript suites (`ts-packages/test-utils`) | ✅ Active, private |
 
 ## 📦 Release model
 
@@ -355,7 +360,7 @@ The gate, in order (cheap failures first):
 1. `taplo` + `actionlint` on the manifests and workflows
 2. `turbo run lint` — biome, `cargo fmt --check`, clang-format, clippy, clang-tidy
 3. format-drift gate — `turbo run format`, then fail on a dirty tree
-4. `turbo run test` — Rust suites, both Python distributions, the NAPI addon, the bridge
+4. `turbo run test` — the Rust workspace under cargo-nextest (plus doctests and the C++ GoogleTest suite), both Python distributions, the NAPI addon, the bridge
 5. `turbo run pack:check` — each publishable package really contains what its `files` list claims
 6. `turbo run coverage` — Rust lcov + Python Cobertura XML into `target/coverage/`, uploaded to Codecov
 
@@ -431,14 +436,60 @@ find the repository root:
 
 ```jsonc
 // crates/package.json — the whole Cargo workspace as one package
-"test": "pixi run -e default setup && pixi run -e default cargo test --workspace --no-default-features -- --test-threads=1"
+"test": "pixi run -e default setup && pixi run -e default cargo nextest run --workspace --no-default-features --test-threads=1"
 ```
 
-That one line runs all 57 test binaries, including the QGIS-backed suites: `QGIS_PLUGINPATH` is
-declared in `[feature.py-runtime.activation.env]`, which is what let the `--fast` / `--full` split
-and its two cargo invocations collapse into one. The only verbs that are not one command are the two
-that have to *discover* something — the clang-tidy include paths and the clang-format file set —
+The runner is [**cargo-nextest**](https://nexte.st/), not `cargo test`: one process per test, so a
+test that aborts the process — Qt does, given the wrong order — names itself instead of taking its
+whole binary down, and the report is one line per test rather than per binary. The verb chains four
+runs: the workspace with `--no-default-features` (**247 tests**, every QGIS-free crate), then
+`qgis-sys` + `qgis-mcp` with their `qgis` features (**22 tests**, whose suites are
+`#![cfg(feature = "qgis")]` and were invisible to the gate before), then `cargo test --doc` for the
+four crate-level examples — nextest does not run doctests — and finally `xtask test-cpp`, the native
+manager's own GoogleTest/RapidCheck suite (**14 cases**) under ctest. `QGIS_PLUGINPATH` is declared
+in `[feature.py-runtime.activation.env]`, which is what let the `--fast` / `--full` split and its
+two cargo invocations collapse into this one verb. The only verbs that are not one command are the
+two that have to *discover* something — the clang-tidy include paths and the clang-format file set —
 which is why they are subcommands above rather than shell one-liners.
+
+### Testing just what you changed
+
+`pixi run gates` is the pre-push gate, not the inner loop: it rebuilds wheels and the NAPI addon and
+takes minutes. While working, run the narrowest thing that can still go red — then the gate once,
+before you push.
+
+```bash
+# Rust — one crate, or one crate and everything that depends on it
+pixi run -- cargo nextest run -p qgis-protocol
+pixi run -- cargo nextest run -E 'rdeps(qgis-protocol)'   # 130 tests: the crate + its dependents
+pixi run -- cargo nextest run -E 'test(bridge)'           # by test name, across the workspace
+pixi run -- cargo nextest run -p qgis-sys --features qgis-sys/qgis -E 'binary(/native_manager/)' --test-threads=1
+
+# Python — one file, one test, or one marker
+pixi run -e default python -m pytest py-packages/qgis-sdk/tests/test_bridge_contract.py -q
+pixi run -e default python -m pytest py-packages/qgis-sdk/tests -k handle -q
+
+# TypeScript — one file
+pixi run -- bun test ts-packages/qgis-sdk-bridge/tests/bridge-contract.test.ts
+
+# Everything downstream of what you have already committed, and nothing else
+pixi run -- bun x turbo run test --filter='...[HEAD^1]'
+pixi run -- bun x turbo run test --filter=@qgis-sdk/bridge   # one package and its dependencies
+```
+
+On a machine without crates.io (the offline sandbox, see
+[env-provisioning](.knowledge/env-provisioning.md)), prefix a bare turbo run with
+`CARGO_NET_OFFLINE=true` and `--env-mode=loose`: the `qgis-rs` npm package builds a NAPI addon, and
+`napi build` otherwise reaches for the registry. `pixi run gates` already does this for you — it is
+`xtask ci --offline`.
+
+`rdeps()` is the one worth remembering: nextest's filter expressions understand the crate graph, so
+`rdeps(qgis-protocol)` is literally "the tests that could be broken by this change". Turbo's
+`...[HEAD^1]` does the same for packages, but note that **every Rust crate is one turbo package**
+(`@qgis/rust`), so a change anywhere under `crates/` selects the whole Cargo workspace — inside
+`crates/`, reach for `-p` or `-E` instead. Turbo also caches: a second `turbo run test` with nothing
+changed replays the previous result instead of re-running it, which is why `--force` appears in CI
+measurements but should not appear in yours.
 
 The shell that remains, and why ([`scripts/README.md`](scripts/README.md)):
 
@@ -458,16 +509,18 @@ The shell that remains, and why ([`scripts/README.md`](scripts/README.md)):
 
 ## Performance
 
-Benchmarks on Intel i7-12700K, 32GB RAM:
+> [!NOTE]
+> This section used to carry a table of render/tile/iteration timings with no benchmark behind
+> them: no harness in the repository produced those numbers and nothing re-measures them, so they
+> have been removed rather than left to age. A reproducible benchmark — committed inputs, a
+> `pixi run` verb, numbers regenerated on demand — is tracked by
+> [TASK-22](backlog/tasks/task-22%20-%20Replace-the-stale-README-benchmark-table-with-a-reproducible-benchmark.md),
+> and this section will quote it when it exists.
 
-| Operation | qgis-rs | PyQGIS | Speedup |
-|-----------|---------|--------|---------|
-| Render 1920×1080 | 245ms | 892ms | **3.6×** |
-| Batch 100 maps | 24.1s | 89.2s | **3.7×** |
-| Tile pyramid (z10-14) | 3.2min | 11.8min | **3.7×** |
-| Feature iteration (1M) | 1.8s | 6.7s | **3.7×** |
-
-> Benchmarks use QGIS 3.44.9 with a complex project (15 layers, 2M features). Your mileage may vary.
+What *is* measured today is correctness, not speed: `pixi run gates` runs 247 + 22 Rust tests, 4
+doctests, 14 C++ cases, 190 Python tests across the two distributions and 95 Bun tests, and the
+cross-language golden vectors in `test-fixtures/` keep Rust, Python and TypeScript answering
+identically.
 
 ## Comparison
 
@@ -483,12 +536,14 @@ Benchmarks on Intel i7-12700K, 32GB RAM:
 ## Roadmap
 
 ### v0.1–v0.2 (current)
-- [x] CXX bindings foundation
-- [x] QgsApplication lifecycle
-- [x] QgsVectorLayer basics
-- [x] One-command gate, one-tag release model
-- [ ] Rendering pipeline (QgsMapSettings, QgsMapRendererJob)
+- [x] Native QGIS manager behind one C ABI, replacing the per-type CXX bridges ([D12](.knowledge/decisions/D12-qgis-native-manager-over-c-abi.md))
+- [x] QgsApplication lifecycle and owner-thread shutdown
+- [x] QgsVectorLayer: open, info, close, batched features, field schema
+- [x] Rendering pipeline — `render_map` and `export_features` answering from real QGIS
+- [x] One wire protocol for every binding, one-command gate, one-tag release model
+- [x] Cross-language bridge test contract with shared fixtures
 - [ ] Geometry operations (QgsGeometry)
+- [ ] Generated API manifest and manager handlers (TASK-30)
 
 ### v0.3
 - [ ] High-level `qgis-render` API
@@ -523,6 +578,12 @@ pixi run -e default lefthook install
 
 # The complete local gate — the same file CI runs
 pixi run ci
+
+# The pre-push gate, without the coverage producers
+pixi run gates
+
+# While working: just the affected tests (see "Testing just what you changed")
+pixi run -- cargo nextest run -E 'rdeps(<the crate you touched>)'
 
 # Repo-wide agent tools
 pixi run skills

@@ -1,0 +1,9 @@
+{
+  "bridge_version": 1,
+  "request_id": "req-extent-1",
+  "ok": true,
+  "result": {
+    "xmin": 14.0, "ymin": 50.0, "xmax": 15.0, "ymax": 51.0,
+    "width": 1.0, "height": 1.0, "is_valid": true
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "bridge_version": 1,
+  "request_id": "req-layers-4",
+  "target": "qgis",
+  "method": "layers.add_vector",
+  "args": ["/data/roads.gpkg", "Roads"]
+}

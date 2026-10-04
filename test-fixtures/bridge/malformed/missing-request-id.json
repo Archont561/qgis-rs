@@ -1,0 +1,6 @@
+{
+  "bridge_version": 1,
+  "target": "qgis",
+  "method": "layers.list",
+  "args": {}
+}

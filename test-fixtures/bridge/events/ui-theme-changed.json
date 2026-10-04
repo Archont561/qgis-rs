@@ -1,0 +1,6 @@
+{
+  "bridge_version": 1,
+  "event": "theme.changed",
+  "target": "ui",
+  "payload": { "theme": "dark" }
+}

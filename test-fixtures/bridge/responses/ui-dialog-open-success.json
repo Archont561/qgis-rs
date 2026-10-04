@@ -1,0 +1,6 @@
+{
+  "bridge_version": 1,
+  "request_id": "req-dialog-1",
+  "ok": true,
+  "result": { "handle": { "object_id": "obj-2b05", "object_type": "ui.dialog", "session_id": "sess-1" } }
+}
