@@ -17,6 +17,7 @@
 
 import { describe, expect, it } from "bun:test";
 import { createFixture, installBridgeGlobals } from "@qgis/test-utils";
+import fc from "fast-check";
 
 import { loadDescription, loadQgisApiDescription } from "../src/description.ts";
 import { QgisBridge } from "../src/window.ts";
@@ -26,9 +27,6 @@ const globals = createFixture(
 	(installed) => installed.restore(),
 	"file",
 );
-
-/** The installed channel, for a suite that needs to add an answer or read the call log. */
-const channel = createFixture(() => globals().channel, undefined, "file");
 
 describe("QgisBridge - EventTarget/WebSocket-like", () => {
 	it("should have WebSocket readyState constants", () => {
@@ -204,5 +202,129 @@ describe("Description loader - no codegen", () => {
 		const bridge = createBridgeFromDescription(desc, raw);
 		expect(bridge).toBeDefined();
 		expect(typeof (bridge as any).get_layer).toBe("function");
+	});
+});
+
+/**
+ * The invariants the Rust suites assert, asserted again here.
+ *
+ * `crates/qgis-protocol/tests/protocol.rs` states two properties about the transport: a
+ * request survives a JSON round trip with its operation and payload intact, and the set of
+ * operations is closed — every name the description advertises resolves, and nothing else
+ * does. Those are claims about a boundary, not about Rust, so the bridge has to honour them
+ * too: its boundary is the QWebChannel callback rather than a `&str`, and `@qgis/test-utils`
+ * scripts that channel exactly. Generated inputs are what make them properties instead of
+ * examples; the hand-written suites above still pin the specific answers that matter.
+ */
+describe("Properties - the invariants the Rust suites assert", () => {
+	/**
+	 * JSON that survives `JSON.parse(JSON.stringify(x))` unchanged.
+	 *
+	 * Deliberately narrower than `fc.jsonValue()`: that generator emits doubles, and `-0`
+	 * round-trips to `0`, which would fail a property that is about the transport rather than
+	 * about IEEE 754. Keys come from a fixed set for the same reason — a random `__proto__`
+	 * would be testing `JSON.parse`'s own prototype handling, not the bridge.
+	 */
+	const jsonValue = fc.letrec<{ value: unknown }>((tie) => ({
+		value: fc.oneof(
+			{ depthSize: "small", maxDepth: 3 },
+			fc.string(),
+			fc.integer({ min: -1_000_000, max: 1_000_000 }),
+			fc.boolean(),
+			fc.constant(null),
+			fc.array(tie("value"), { maxLength: 4 }),
+			fc.dictionary(
+				fc.constantFrom("a", "b", "id", "name", "count", "nested"),
+				tie("value"),
+				{ maxKeys: 4 },
+			),
+		),
+	})).value;
+
+	it("carries any JSON answer back to the caller unchanged", async () => {
+		const { createBridge } = await import("../src/window.ts");
+		const bridge = (await createBridge("my_bridge")) as any;
+
+		await fc.assert(
+			fc.asyncProperty(jsonValue, async (answer) => {
+				// The far side of a QWebChannel always serialises; the bridge is the thing
+				// that parses. Scripting a JSON string is therefore the honest fake.
+				globals().setAnswer("bridge", "get_layer", JSON.stringify(answer));
+				expect(await bridge.get_layer("some_layer")).toEqual(answer);
+			}),
+			{ numRuns: 40 },
+		);
+
+		// Leave the channel as the rest of this file expects to find it.
+		globals().setAnswer("bridge", "get_layer", undefined);
+	});
+
+	it("forwards arguments to the channel verbatim, without the callback", async () => {
+		const { createBridge } = await import("../src/window.ts");
+		const bridge = (await createBridge("my_bridge")) as any;
+
+		await fc.assert(
+			fc.asyncProperty(fc.array(jsonValue, { maxLength: 4 }), async (args) => {
+				await bridge.log(...args);
+
+				// QWebChannel appends the result callback. It is the bridge's, not the
+				// caller's, so it must not appear in what the far side was asked.
+				const call = globals().callLog.at(-1);
+				expect(call).toEqual({ object: "bridge", method: "log", args });
+			}),
+			{ numRuns: 40 },
+		);
+	});
+
+	it("exposes exactly the methods a description names, and no others", async () => {
+		const { createBridgeFromDescription } = await import(
+			"../src/description.ts"
+		);
+
+		fc.assert(
+			fc.property(
+				fc.uniqueArray(fc.stringMatching(/^[a-z][a-z0-9_]{0,11}$/), {
+					minLength: 1,
+					maxLength: 6,
+				}),
+				(names) => {
+					const raw: Record<string, unknown> = {};
+					for (const name of names) {
+						raw[name] = (...args: unknown[]) => {
+							const callback = args[args.length - 1] as (r: unknown) => void;
+							callback(JSON.stringify({ called: name }));
+						};
+					}
+					const description = {
+						name: "generated",
+						version: "0.1.0",
+						methods: names.map((name) => ({
+							name,
+							args: [],
+							arg_types: [],
+							return_type: "object",
+						})),
+						signals: [],
+					};
+
+					const built = createBridgeFromDescription(description, raw) as Record<
+						string,
+						unknown
+					>;
+
+					// Closed, in both directions: every advertised name resolves to something
+					// callable, and nothing callable appears that was not advertised.
+					for (const name of names) {
+						expect(typeof built[name]).toBe("function");
+					}
+					expect(
+						Object.keys(built)
+							.filter((key) => typeof built[key] === "function")
+							.sort(),
+					).toEqual([...names].sort());
+				},
+			),
+			{ numRuns: 40 },
+		);
 	});
 });
