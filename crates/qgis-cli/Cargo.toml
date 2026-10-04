@@ -28,3 +28,6 @@ tokio    = { workspace = true, optional = true }
 default = ["mcp", "qgis"]
 mcp     = ["dep:qgis-mcp", "dep:tokio"]
 qgis    = ["dep:qgis-mcp", "qgis-mcp/qgis"]
+
+[dev-dependencies]
+rstest = { workspace = true }

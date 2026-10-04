@@ -1,90 +1,152 @@
 //! End-to-end tests for the `qgis-cli` binary itself.
+//!
+//! Every test needs the same two things — a way to invoke the binary and a
+//! scratch directory to point it at — so both come from one `cli` fixture
+//! instead of the five free functions (`run`, `temp_dir`, `write_project`,
+//! `stdout_of`, `stderr_of`) this file used to open with. The fixture also
+//! removes its directory on drop, which the hand-rolled version never did.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
+
+use rstest::{fixture, rstest};
 
 const BINARY: &str = env!("CARGO_BIN_EXE_qgis-cli");
 
-/// Run the CLI and capture everything.
-fn run(args: &[&str]) -> std::process::Output {
-    Command::new(BINARY)
-        .args(args)
-        .output()
-        .unwrap_or_else(|error| panic!("run `qgis-cli {}`: {error}", args.join(" ")))
+/// One CLI invocation, already decoded.
+///
+/// Holding `stdout`/`stderr` as `String` is what retired `stdout_of` and
+/// `stderr_of`: a test asserts on `run.stdout` directly, and a failure message
+/// can print `run.stderr` without converting it again.
+struct Run {
+    status: std::process::ExitStatus,
+    stdout: String,
+    stderr: String,
 }
 
-fn temp_dir(name: &str) -> PathBuf {
-    let dir = std::env::temp_dir().join(format!("qgis-cli-it-{name}"));
-    std::fs::create_dir_all(&dir).expect("create dir");
-    dir
-}
-
-fn write_project(dir: &std::path::Path, name: &str) -> PathBuf {
-    let path = dir.join(name);
-    std::fs::write(&path, b"<qgis></qgis>").expect("write project");
-    path
-}
-
-fn stdout_of(output: &std::process::Output) -> String {
-    String::from_utf8_lossy(&output.stdout).to_string()
-}
-
-fn stderr_of(output: &std::process::Output) -> String {
-    String::from_utf8_lossy(&output.stderr).to_string()
-}
-
-#[test]
-fn version_reports_the_crate_version() {
-    let output = run(&["--version"]);
-    assert!(output.status.success(), "{}", stderr_of(&output));
-    assert!(stdout_of(&output).contains(env!("CARGO_PKG_VERSION")));
-}
-
-#[test]
-fn help_lists_every_subcommand() {
-    let output = run(&["--help"]);
-    assert!(output.status.success());
-
-    let help = stdout_of(&output);
-    for command in ["render", "tiles", "batch", "info", "serve", "export"] {
-        assert!(help.contains(command), "{command} missing from: {help}");
+impl Run {
+    fn succeeded(&self) -> bool {
+        self.status.success()
     }
 }
 
-#[test]
-fn a_dry_run_counts_tiles_without_rendering() {
-    let dir = temp_dir("dry-run");
-    let project = write_project(&dir, "map.qgs");
+/// The binary under test, plus a scratch directory of its own.
+struct Cli {
+    dir: PathBuf,
+}
 
-    let output = run(&[
+impl Cli {
+    fn new() -> Self {
+        // Unique per test: the previous fixed names (`qgis-cli-it-dry-run`
+        // and friends) were shared state between concurrent runs.
+        let unique = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("system clock is after the epoch")
+            .as_nanos();
+        let dir = std::env::temp_dir().join(format!("qgis-cli-it-{unique}"));
+        std::fs::create_dir_all(&dir).expect("create dir");
+        Self { dir }
+    }
+
+    /// Run the CLI and capture everything.
+    fn run(&self, args: &[&str]) -> Run {
+        let output = Command::new(BINARY)
+            .args(args)
+            .output()
+            .unwrap_or_else(|error| panic!("run `qgis-cli {}`: {error}", args.join(" ")));
+        Run {
+            status: output.status,
+            stdout: String::from_utf8_lossy(&output.stdout).into_owned(),
+            stderr: String::from_utf8_lossy(&output.stderr).into_owned(),
+        }
+    }
+
+    /// Write a minimal project file into the scratch directory.
+    fn project(&self, name: &str) -> PathBuf {
+        let path = self.dir.join(name);
+        std::fs::write(&path, b"<qgis></qgis>").expect("write project");
+        path
+    }
+
+    /// A path inside the scratch directory, as the CLI wants it: `&str`.
+    fn path(&self, name: &str) -> String {
+        utf8(&self.dir.join(name))
+    }
+}
+
+impl Drop for Cli {
+    fn drop(&mut self) {
+        std::fs::remove_dir_all(&self.dir).ok();
+    }
+}
+
+#[fixture]
+fn cli() -> Cli {
+    Cli::new()
+}
+
+fn utf8(path: &Path) -> String {
+    path.to_str().expect("utf-8").to_owned()
+}
+
+#[rstest]
+fn version_reports_the_crate_version(cli: Cli) {
+    let run = cli.run(&["--version"]);
+    assert!(run.succeeded(), "{}", run.stderr);
+    assert!(run.stdout.contains(env!("CARGO_PKG_VERSION")));
+}
+
+#[rstest]
+#[case("render")]
+#[case("tiles")]
+#[case("batch")]
+#[case("info")]
+#[case("serve")]
+#[case("export")]
+fn help_lists_every_subcommand(cli: Cli, #[case] command: &str) {
+    let run = cli.run(&["--help"]);
+    assert!(run.succeeded(), "{}", run.stderr);
+    assert!(
+        run.stdout.contains(command),
+        "{command} missing from: {}",
+        run.stdout
+    );
+}
+
+#[rstest]
+fn a_dry_run_counts_tiles_without_rendering(cli: Cli) {
+    let project = cli.project("map.qgs");
+
+    let run = cli.run(&[
         "tiles",
-        project.to_str().expect("utf-8"),
+        &utf8(&project),
         "-z",
         "10-14",
         "-b",
         "14,50,15,51",
         "-o",
-        dir.join("tiles").to_str().expect("utf-8"),
+        &cli.path("tiles"),
         "--dry-run",
     ]);
-    assert!(output.status.success(), "{}", stderr_of(&output));
+    assert!(run.succeeded(), "{}", run.stderr);
 
-    let stdout = stdout_of(&output);
-    assert!(stdout.contains("Would render 4568 tiles"), "{stdout}");
-    assert!(stdout.contains("z=10"), "{stdout}");
-    assert!(stdout.contains("24 tiles"), "{stdout}");
+    assert!(
+        run.stdout.contains("Would render 4568 tiles"),
+        "{}",
+        run.stdout
+    );
+    assert!(run.stdout.contains("z=10"), "{}", run.stdout);
+    assert!(run.stdout.contains("24 tiles"), "{}", run.stdout);
 }
 
-#[test]
-fn info_prints_json_without_needing_qgis() {
-    let dir = temp_dir("info");
-    let project = write_project(&dir, "map.qgz");
+#[rstest]
+fn info_prints_json_without_needing_qgis(cli: Cli) {
+    let project = cli.project("map.qgz");
 
-    let output = run(&["info", project.to_str().expect("utf-8"), "--json"]);
-    assert!(output.status.success(), "{}", stderr_of(&output));
+    let run = cli.run(&["info", &utf8(&project), "--json"]);
+    assert!(run.succeeded(), "{}", run.stderr);
 
-    let stdout = stdout_of(&output);
-    let parsed: serde_json::Value = serde_json::from_str(&stdout).expect("valid json");
+    let parsed: serde_json::Value = serde_json::from_str(&run.stdout).expect("valid json");
     assert_eq!(parsed["format"], "qgz");
     assert!(parsed["size_bytes"].as_u64().expect("size") > 0);
     assert!(parsed["note"]
@@ -93,73 +155,70 @@ fn info_prints_json_without_needing_qgis() {
         .contains("QGIS backend"));
 }
 
-#[test]
-fn operations_that_need_qgis_say_so() {
-    let dir = temp_dir("unwired");
-    let project = write_project(&dir, "map.qgs");
-    let target = dir.join("out.png");
+#[rstest]
+fn operations_that_need_qgis_say_so(cli: Cli) {
+    let project = cli.project("map.qgs");
+    let target = cli.path("out.png");
 
-    let output = run(&[
-        "render",
-        project.to_str().expect("utf-8"),
-        "-o",
-        target.to_str().expect("utf-8"),
-    ]);
-    assert!(!output.status.success());
-    let stderr = stderr_of(&output);
-    assert!(stderr.contains("QGIS backend"), "{stderr}");
-    assert!(!target.exists(), "nothing should have been written");
+    let run = cli.run(&["render", &utf8(&project), "-o", &target]);
+    assert!(!run.succeeded());
+    assert!(run.stderr.contains("QGIS backend"), "{}", run.stderr);
+    assert!(
+        !Path::new(&target).exists(),
+        "nothing should have been written"
+    );
 }
 
-#[test]
-fn a_missing_project_is_reported_with_its_path() {
-    let output = run(&["info", "/definitely/not/here.qgs"]);
-    assert!(!output.status.success());
-    let stderr = stderr_of(&output);
-    assert!(stderr.contains("project not found"), "{stderr}");
-    assert!(stderr.contains("/definitely/not/here.qgs"), "{stderr}");
+#[rstest]
+fn a_missing_project_is_reported_with_its_path(cli: Cli) {
+    let run = cli.run(&["info", "/definitely/not/here.qgs"]);
+    assert!(!run.succeeded());
+    assert!(run.stderr.contains("project not found"), "{}", run.stderr);
+    assert!(
+        run.stderr.contains("/definitely/not/here.qgs"),
+        "{}",
+        run.stderr
+    );
 }
 
-#[test]
-fn serve_needs_a_project_or_a_directory() {
-    let output = run(&["serve"]);
-    assert!(!output.status.success());
-    let stderr = stderr_of(&output);
-    assert!(stderr.contains("--projects-dir"), "{stderr}");
+#[rstest]
+fn serve_needs_a_project_or_a_directory(cli: Cli) {
+    let run = cli.run(&["serve"]);
+    assert!(!run.succeeded());
+    assert!(run.stderr.contains("--projects-dir"), "{}", run.stderr);
 }
 
-#[test]
-fn batch_reads_the_extents_csv_before_failing() {
-    let dir = temp_dir("batch");
-    let project = write_project(&dir, "map.qgs");
-    let extents = dir.join("extents.csv");
+#[rstest]
+fn batch_reads_the_extents_csv_before_failing(cli: Cli) {
+    let project = cli.project("map.qgs");
+    let extents = cli.path("extents.csv");
     std::fs::write(
         &extents,
         "name,minx,miny,maxx,maxy\nberlin,13.08,52.33,13.76,52.68\n",
     )
     .expect("write csv");
 
-    let output = run(&[
+    let run = cli.run(&[
         "batch",
-        project.to_str().expect("utf-8"),
+        &utf8(&project),
         "--extents",
-        extents.to_str().expect("utf-8"),
+        &extents,
         "-o",
-        dir.join("renders").to_str().expect("utf-8"),
+        &cli.path("renders"),
     ]);
-    assert!(!output.status.success());
+    assert!(!run.succeeded());
 
-    let stdout = stdout_of(&output);
     assert!(
-        stdout.contains("berlin: 13.08,52.33,13.76,52.68"),
-        "{stdout}"
+        run.stdout.contains("berlin: 13.08,52.33,13.76,52.68"),
+        "{}",
+        run.stdout
     );
-    assert!(stderr_of(&output).contains("QGIS backend"));
+    assert!(run.stderr.contains("QGIS backend"));
 }
 
-#[test]
-fn an_unknown_subcommand_is_a_usage_error() {
-    let output = run(&["teleport"]);
-    assert!(!output.status.success());
-    assert!(stderr_of(&output).contains("unrecognized subcommand"));
+#[rstest]
+fn an_unknown_subcommand_is_a_usage_error(cli: Cli) {
+    let run = cli.run(&["teleport"]);
+    assert!(!run.succeeded());
+    assert!(run.stderr.contains("unrecognized subcommand"));
 }

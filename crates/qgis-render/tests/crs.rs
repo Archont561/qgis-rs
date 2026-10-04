@@ -3,6 +3,7 @@
 
 use proptest::prelude::*;
 use qgis_render::*;
+use rstest::rstest;
 
 #[test]
 fn knows_the_web_mercator_crs() {
@@ -29,11 +30,14 @@ fn accepts_unknown_but_wellformed_codes() {
     assert!(!crs.is_geographic());
 }
 
-#[test]
-fn rejects_malformed_codes() {
-    for text in ["3857", "EPSG", "EPSG:abc", ":4326", "EPSG:"] {
-        assert!(Crs::from_auth_id(text).is_err(), "{text:?} should fail");
-    }
+#[rstest]
+#[case("3857")]
+#[case("EPSG")]
+#[case("EPSG:abc")]
+#[case(":4326")]
+#[case("EPSG:")]
+fn rejects_malformed_codes(#[case] text: &str) {
+    assert!(Crs::from_auth_id(text).is_err(), "{text:?} should fail");
 }
 
 proptest! {

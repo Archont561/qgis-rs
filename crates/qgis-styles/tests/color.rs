@@ -1,6 +1,7 @@
 //! Hex colour parsing, and what counts as malformed.
 
 use qgis_styles::*;
+use rstest::rstest;
 
 #[test]
 fn parses_hex_colors() {
@@ -12,8 +13,9 @@ fn parses_hex_colors() {
     assert_eq!(with_alpha.a, 128);
 }
 
-#[test]
-fn rejects_invalid_hex() {
-    assert!(Rgba::from_hex("#xyz").is_err());
-    assert!(Rgba::from_hex("#12345").is_err());
+#[rstest]
+#[case::not_hexadecimal("#xyz")]
+#[case::odd_length("#12345")]
+fn rejects_invalid_hex(#[case] text: &str) {
+    assert!(Rgba::from_hex(text).is_err(), "{text:?} should fail");
 }

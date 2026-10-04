@@ -1,29 +1,50 @@
 #![cfg(feature = "qgis")]
 
 use qgis_sys::native_manager_ffi as manager;
+use rstest::{fixture, rstest};
 use serde_json::{json, Value};
 
-fn response(request: Value) -> Value {
-    serde_json::from_str(&manager::invoke(&request.to_string())).expect("manager returns JSON")
+/// The native manager seen through its one entry point.
+///
+/// The two ways of asking it something used to be free functions at the top
+/// of the file; they are methods on a fixture now, so a test says what it
+/// needs in its signature.
+///
+/// `Copy` because one test hands it to four worker threads at once; the type
+/// is zero-sized, so a copy is free and each thread owns its own handle.
+#[derive(Clone, Copy)]
+struct Manager;
+
+impl Manager {
+    /// Send a raw envelope and return the parsed answer, error or not.
+    fn response(&self, request: Value) -> Value {
+        serde_json::from_str(&manager::invoke(&request.to_string())).expect("manager returns JSON")
+    }
+
+    /// The `result` of a request that must succeed.
+    fn ok(&self, operation: &str, payload: Value) -> Value {
+        let answer = self.response(json!({
+            "transport_version": 1,
+            "operation": operation,
+            "payload": payload,
+        }));
+        assert_eq!(answer["ok"], true, "manager rejected request: {answer}");
+        assert_eq!(answer["transport_version"], 1);
+        answer["result"].clone()
+    }
 }
 
-fn ok(operation: &str, payload: Value) -> Value {
-    let answer = response(json!({
-        "transport_version": 1,
-        "operation": operation,
-        "payload": payload,
-    }));
-    assert_eq!(answer["ok"], true, "manager rejected request: {answer}");
-    assert_eq!(answer["transport_version"], 1);
-    answer["result"].clone()
+#[fixture]
+fn native_manager() -> Manager {
+    Manager
 }
 
-#[test]
-fn manager_initializes_and_reports_engine_info() {
-    let initialized = ok("app_init", Value::Null);
+#[rstest]
+fn manager_initializes_and_reports_engine_info(native_manager: Manager) {
+    let initialized = native_manager.ok("app_init", Value::Null);
     assert_eq!(initialized["initialized"], true);
 
-    let info = ok("engine_info", Value::Null);
+    let info = native_manager.ok("engine_info", Value::Null);
     assert_eq!(info["transport_version"], 1);
     assert!(info["qgis_version"].as_str().unwrap().contains('.'));
     assert!(info["operations"]
@@ -33,12 +54,12 @@ fn manager_initializes_and_reports_engine_info() {
         .any(|operation| operation == "layer_new"));
 }
 
-#[test]
-fn engine_info_exposes_the_complete_native_operation_catalogue() {
-    let initialized = ok("app_init", Value::Null);
+#[rstest]
+fn engine_info_exposes_the_complete_native_operation_catalogue(native_manager: Manager) {
+    let initialized = native_manager.ok("app_init", Value::Null);
     assert_eq!(initialized["initialized"], true);
 
-    let info = ok("engine_info", Value::Null);
+    let info = native_manager.ok("engine_info", Value::Null);
     let mut operations: Vec<String> = info["operations"]
         .as_array()
         .expect("operation catalogue")
@@ -51,7 +72,7 @@ fn engine_info_exposes_the_complete_native_operation_catalogue() {
     assert_eq!(info["api_manifest_qgis_min_version"], "3.44.9");
     assert_eq!(info["api_manifest_qgis_tested_version"], "3.44.14");
 
-    let api = ok("api_describe", Value::Null);
+    let api = native_manager.ok("api_describe", Value::Null);
     let metadata = api["operation_metadata"]
         .as_object()
         .expect("generated operation metadata");
@@ -88,11 +109,11 @@ fn engine_info_exposes_the_complete_native_operation_catalogue() {
     assert_eq!(operations, expected);
 }
 
-#[test]
-fn manager_routes_vector_layer_operations_through_owned_ids() {
-    ok("app_init", Value::Null);
+#[rstest]
+fn manager_routes_vector_layer_operations_through_owned_ids(native_manager: Manager) {
+    native_manager.ok("app_init", Value::Null);
     let path = format!("{}/tests/fixtures/points.gpkg", env!("CARGO_MANIFEST_DIR"));
-    let created = ok(
+    let created = native_manager.ok(
         "layer_new",
         json!({"uri": path, "name": "points", "provider": "ogr"}),
     );
@@ -100,43 +121,43 @@ fn manager_routes_vector_layer_operations_through_owned_ids() {
     assert_eq!(created["is_valid"], true);
 
     assert_eq!(
-        ok("layer_is_valid", json!({"layer_id": layer_id}))["is_valid"],
+        native_manager.ok("layer_is_valid", json!({"layer_id": layer_id}))["is_valid"],
         true
     );
     assert_eq!(
-        ok("layer_name", json!({"layer_id": layer_id}))["name"],
+        native_manager.ok("layer_name", json!({"layer_id": layer_id}))["name"],
         "points"
     );
     assert_eq!(
-        ok("layer_feature_count", json!({"layer_id": layer_id}))["feature_count"],
+        native_manager.ok("layer_feature_count", json!({"layer_id": layer_id}))["feature_count"],
         3
     );
     assert_eq!(
-        ok("layer_crs_authid", json!({"layer_id": layer_id}))["auth_id"],
+        native_manager.ok("layer_crs_authid", json!({"layer_id": layer_id}))["auth_id"],
         "EPSG:4326"
     );
     assert!(
-        ok("layer_geometry_type_name", json!({"layer_id": layer_id}))["name"]
+        native_manager.ok("layer_geometry_type_name", json!({"layer_id": layer_id}))["name"]
             .as_str()
             .unwrap()
             .contains("Point")
     );
 
-    let fields = ok("layer_fields", json!({"layer_id": layer_id}));
+    let fields = native_manager.ok("layer_fields", json!({"layer_id": layer_id}));
     assert_eq!(fields["fields"][0]["name"], "fid");
     assert_eq!(fields["fields"][0]["type"], "Integer64");
     assert_eq!(fields["fields"][1]["name"], "name");
     assert_eq!(fields["fields"][1]["type"], "String");
 }
 
-#[test]
-fn manager_rejects_invalid_requests_and_ids_as_error_envelopes() {
+#[rstest]
+fn manager_rejects_invalid_requests_and_ids_as_error_envelopes(native_manager: Manager) {
     let malformed: Value = serde_json::from_str(&manager::invoke("not json")).unwrap();
     assert_eq!(malformed["ok"], false);
     assert_eq!(malformed["result"]["kind"], "invalid_request");
 
-    ok("app_init", Value::Null);
-    let invalid_id = response(json!({
+    native_manager.ok("app_init", Value::Null);
+    let invalid_id = native_manager.response(json!({
         "transport_version": 1,
         "operation": "layer_name",
         "payload": {"layer_id": 999_999}
@@ -145,13 +166,13 @@ fn manager_rejects_invalid_requests_and_ids_as_error_envelopes() {
     assert_eq!(invalid_id["result"]["kind"], "invalid_object_id");
 }
 
-#[test]
-fn concurrent_callers_are_serialized_by_the_manager_owner() {
-    ok("app_init", Value::Null);
+#[rstest]
+fn concurrent_callers_are_serialized_by_the_manager_owner(native_manager: Manager) {
+    native_manager.ok("app_init", Value::Null);
     let workers = (0..4)
         .map(|_| {
-            std::thread::spawn(|| {
-                let info = ok("engine_info", Value::Null);
+            std::thread::spawn(move || {
+                let info = native_manager.ok("engine_info", Value::Null);
                 assert_eq!(info["initialized"], true);
             })
         })
@@ -167,10 +188,10 @@ fn transport_version_is_available_without_starting_qgis() {
     assert_eq!(manager::transport_version(), 1);
 }
 
-#[test]
-fn manager_opens_reports_batches_and_closes_a_layer() {
-    ok("app_init", Value::Null);
-    let opened = ok(
+#[rstest]
+fn manager_opens_reports_batches_and_closes_a_layer(native_manager: Manager) {
+    native_manager.ok("app_init", Value::Null);
+    let opened = native_manager.ok(
         "layer_open",
         json!({
             "uri": format!("{}/tests/fixtures/points.gpkg", env!("CARGO_MANIFEST_DIR")),
@@ -182,7 +203,7 @@ fn manager_opens_reports_batches_and_closes_a_layer() {
     assert_eq!(opened["is_valid"], true);
     assert_eq!(opened["name"], "points");
 
-    let info = ok("layer_info", json!({"layer_id": layer_id}));
+    let info = native_manager.ok("layer_info", json!({"layer_id": layer_id}));
     assert_eq!(info["layer_id"], layer_id);
     assert_eq!(info["feature_count"], 3);
     assert_eq!(info["crs_authid"], "EPSG:4326");
@@ -199,7 +220,7 @@ fn manager_opens_reports_batches_and_closes_a_layer() {
         json!({"name": "name", "type": "String", "precision": 0})
     );
 
-    let page = ok(
+    let page = native_manager.ok(
         "layer_features",
         json!({"layer_id": layer_id, "offset": 0, "limit": 2}),
     );
@@ -226,7 +247,7 @@ fn manager_opens_reports_batches_and_closes_a_layer() {
         })
     );
 
-    let tail = ok(
+    let tail = native_manager.ok(
         "layer_features",
         json!({"layer_id": layer_id, "offset": 2, "limit": 2}),
     );
@@ -234,10 +255,10 @@ fn manager_opens_reports_batches_and_closes_a_layer() {
     assert_eq!(tail["next_offset"], Value::Null);
 
     assert_eq!(
-        ok("layer_close", json!({"layer_id": layer_id}))["closed"],
+        native_manager.ok("layer_close", json!({"layer_id": layer_id}))["closed"],
         true
     );
-    let closed = response(json!({
+    let closed = native_manager.response(json!({
         "transport_version": 1,
         "operation": "layer_info",
         "payload": {"layer_id": layer_id}
@@ -245,7 +266,7 @@ fn manager_opens_reports_batches_and_closes_a_layer() {
     assert_eq!(closed["ok"], false);
     assert_eq!(closed["result"]["kind"], "invalid_object_id");
 
-    let closed_twice = response(json!({
+    let closed_twice = native_manager.response(json!({
         "transport_version": 1,
         "operation": "layer_close",
         "payload": {"layer_id": layer_id}
@@ -254,9 +275,9 @@ fn manager_opens_reports_batches_and_closes_a_layer() {
     assert_eq!(closed_twice["result"]["kind"], "invalid_object_id");
 }
 
-#[test]
-fn phase_four_operations_render_and_export_real_qgis_artifacts() {
-    ok("app_init", Value::Null);
+#[rstest]
+fn phase_four_operations_render_and_export_real_qgis_artifacts(native_manager: Manager) {
+    native_manager.ok("app_init", Value::Null);
     let project = format!("{}/tests/fixtures/points.qgs", env!("CARGO_MANIFEST_DIR"));
     let output_dir =
         std::env::temp_dir().join(format!("qgis-rs-phase-four-{}", std::process::id()));
@@ -264,7 +285,7 @@ fn phase_four_operations_render_and_export_real_qgis_artifacts() {
     let image_path = output_dir.join("points.png");
     let geojson_path = output_dir.join("points.geojson");
 
-    let rendered = ok(
+    let rendered = native_manager.ok(
         "render_map",
         json!({
             "project": project,
@@ -282,7 +303,7 @@ fn phase_four_operations_render_and_export_real_qgis_artifacts() {
     assert!(rendered["bytes"].as_u64().unwrap() > 0);
     assert!(image_path.is_file());
 
-    let exported = ok(
+    let exported = native_manager.ok(
         "export_features",
         json!({
             "project": format!("{}/tests/fixtures/points.qgs", env!("CARGO_MANIFEST_DIR")),
@@ -306,10 +327,12 @@ fn phase_four_operations_render_and_export_real_qgis_artifacts() {
     let _ = std::fs::remove_dir_all(output_dir);
 }
 
-#[test]
-fn phase_four_operations_are_native_and_return_path_errors_not_placeholders() {
-    ok("app_init", Value::Null);
-    let info = ok("engine_info", Value::Null);
+#[rstest]
+fn phase_four_operations_are_native_and_return_path_errors_not_placeholders(
+    native_manager: Manager,
+) {
+    native_manager.ok("app_init", Value::Null);
+    let info = native_manager.ok("engine_info", Value::Null);
     for operation in ["render_map", "export_features"] {
         assert!(info["operations"]
             .as_array()
@@ -318,7 +341,7 @@ fn phase_four_operations_are_native_and_return_path_errors_not_placeholders() {
             .any(|advertised| advertised == operation));
     }
 
-    let render = response(json!({
+    let render = native_manager.response(json!({
         "transport_version": 1,
         "operation": "render_map",
         "payload": {"project": "/missing/project.qgs", "output": "/tmp/map.png"}
@@ -326,7 +349,7 @@ fn phase_four_operations_are_native_and_return_path_errors_not_placeholders() {
     assert_eq!(render["ok"], false);
     assert_eq!(render["result"]["kind"], "qgis");
 
-    let export = response(json!({
+    let export = native_manager.response(json!({
         "transport_version": 1,
         "operation": "export_features",
         "payload": {

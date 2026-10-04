@@ -1,6 +1,10 @@
 //! The command implementations that need no QGIS backend: the batch CSV
 //! parser, the `--layers` splitter, what `serve` says it would serve, and the
 //! `tiles --dry-run` plan.
+//!
+//! The project file every tile test needs is a fixture, and the two argument
+//! sets the tile tests used to build by hand come from a `tiles_args` fixture
+//! that each test adjusts with struct update syntax.
 
 use std::path::PathBuf;
 
@@ -8,6 +12,32 @@ use qgis_cli::cli::TilesArgs;
 use qgis_cli::commands::{parse_extent_rows, split_list, tiles, what_is_served};
 use qgis_render::Extent;
 use qgis_server::{Server, ServerConfig};
+use rstest::{fixture, rstest};
+
+/// A minimal project on disk, which `tiles` only has to be able to open.
+#[fixture]
+fn project_path() -> PathBuf {
+    let dir = std::env::temp_dir().join("qgis-cli-tests");
+    std::fs::create_dir_all(&dir).expect("create dir");
+    let path = dir.join("map.qgs");
+    std::fs::write(&path, b"<qgis></qgis>").expect("write");
+    path
+}
+
+/// The documented tile request: central Europe, z10-14, as a dry run.
+#[fixture]
+fn tiles_args(project_path: PathBuf) -> TilesArgs {
+    TilesArgs {
+        project: project_path,
+        zoom: "10-14".to_string(),
+        bounds: "14,50,15,51".to_string(),
+        output: PathBuf::from("tiles/"),
+        format: "png".to_string(),
+        tile_size: 256,
+        parallel: 4,
+        dry_run: true,
+    }
+}
 
 #[test]
 fn parses_the_documented_extents_csv() {
@@ -25,11 +55,16 @@ paris,2.22,48.81,2.47,48.91
     assert_eq!(rows[1].0, "paris");
 }
 
+#[rstest]
+#[case::too_few_columns("berlin,13.08,52.33")]
+#[case::not_a_number("berlin,13.08,52.33,13.76,x")]
+#[case::reversed_extent("berlin,13.76,52.33,13.08,52.68")]
+fn rejects_malformed_extent_rows(#[case] row: &str) {
+    assert!(parse_extent_rows(row).is_err(), "{row:?} should fail");
+}
+
 #[test]
-fn rejects_malformed_extent_rows() {
-    assert!(parse_extent_rows("berlin,13.08,52.33").is_err());
-    assert!(parse_extent_rows("berlin,13.08,52.33,13.76,x").is_err());
-    assert!(parse_extent_rows("berlin,13.76,52.33,13.08,52.68").is_err());
+fn an_empty_csv_has_no_rows() {
     assert!(parse_extent_rows("").expect("no rows").is_empty());
 }
 
@@ -41,50 +76,30 @@ fn splits_layer_lists() {
     );
 }
 
-#[test]
-fn describes_what_a_server_would_serve() {
-    let single = Server::new(ServerConfig::new(8080).with_project("map.qgs"));
-    assert_eq!(what_is_served(&single), "map.qgs");
-
-    let multi = Server::new(ServerConfig::new(8080).with_projects_dir("./maps"));
-    assert_eq!(what_is_served(&multi), "every project in ./maps");
-
-    let none = Server::new(ServerConfig::new(8080));
-    assert_eq!(what_is_served(&none), "nothing");
+#[rstest]
+#[case::single(ServerConfig::new(8080).with_project("map.qgs"), "map.qgs")]
+#[case::multi(
+    ServerConfig::new(8080).with_projects_dir("./maps"),
+    "every project in ./maps"
+)]
+#[case::unconfigured(ServerConfig::new(8080), "nothing")]
+fn describes_what_a_server_would_serve(#[case] config: ServerConfig, #[case] expected: &str) {
+    assert_eq!(what_is_served(&Server::new(config)), expected);
 }
 
-#[test]
-fn a_dry_run_tile_plan_counts_tiles() {
-    let result = tiles(TilesArgs {
-        project: project_path(),
-        zoom: "10-14".to_string(),
-        bounds: "14,50,15,51".to_string(),
-        output: PathBuf::from("tiles/"),
-        format: "png".to_string(),
-        tile_size: 256,
-        parallel: 4,
-        dry_run: true,
-    });
+#[rstest]
+fn a_dry_run_tile_plan_counts_tiles(tiles_args: TilesArgs) {
+    let result = tiles(tiles_args);
     assert!(result.is_ok(), "{result:?}");
-
-    let real_run = tiles(TilesArgs {
-        project: project_path(),
-        zoom: "10".to_string(),
-        bounds: "14,50,15,51".to_string(),
-        output: PathBuf::from("tiles/"),
-        format: "png".to_string(),
-        tile_size: 256,
-        parallel: 4,
-        dry_run: false,
-    });
-    let error = real_run.expect_err("needs the QGIS backend");
-    assert!(error.to_string().contains("QGIS backend"));
 }
 
-fn project_path() -> PathBuf {
-    let dir = std::env::temp_dir().join("qgis-cli-tests");
-    std::fs::create_dir_all(&dir).expect("create dir");
-    let path = dir.join("map.qgs");
-    std::fs::write(&path, b"<qgis></qgis>").expect("write");
-    path
+#[rstest]
+fn a_real_tile_run_stops_at_the_backend(tiles_args: TilesArgs) {
+    let error = tiles(TilesArgs {
+        zoom: "10".to_string(),
+        dry_run: false,
+        ..tiles_args
+    })
+    .expect_err("needs the QGIS backend");
+    assert!(error.to_string().contains("QGIS backend"));
 }

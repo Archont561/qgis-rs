@@ -4,16 +4,67 @@
 //! The tool list is a contract — an agent that discovered `plan_tiles`
 //! yesterday must still find it today — so it is asserted by name here.
 
+use std::ops::Deref;
+use std::path::{Path, PathBuf};
+
 use qgis_mcp::*;
 use qgis_render::Extent;
 use rmcp::handler::server::wrapper::Parameters;
+use rstest::{fixture, rstest};
 
-fn project_file(name: &str) -> std::path::PathBuf {
-    let dir = std::env::temp_dir().join("qgis-mcp-tests");
+/// A project file on disk that deletes itself afterwards.
+///
+/// Derefs to [`Path`], so it is used exactly where the previous
+/// `project_file(name) -> PathBuf` helper was.
+struct ProjectFile {
+    dir: PathBuf,
+    path: PathBuf,
+}
+
+impl ProjectFile {
+    fn as_path(&self) -> &Path {
+        &self.path
+    }
+
+    /// The path as the tool parameters want it: an owned `String`.
+    fn as_str(&self) -> String {
+        self.path.to_str().expect("utf-8").to_owned()
+    }
+}
+
+impl Deref for ProjectFile {
+    type Target = Path;
+
+    fn deref(&self) -> &Path {
+        &self.path
+    }
+}
+
+impl Drop for ProjectFile {
+    fn drop(&mut self) {
+        std::fs::remove_dir_all(&self.dir).ok();
+    }
+}
+
+/// A minimal project. Tests that care about the file name override it with
+/// `#[with("render.qgs")]`; the rest take the default.
+#[fixture]
+fn project_file(#[default("map.qgs")] name: &str) -> ProjectFile {
+    let unique = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .expect("system clock is after the epoch")
+        .as_nanos();
+    let dir = std::env::temp_dir().join(format!("qgis-mcp-tests-{unique}"));
     std::fs::create_dir_all(&dir).expect("create dir");
     let path = dir.join(name);
     std::fs::write(&path, b"<qgis></qgis>").expect("write");
-    path
+    ProjectFile { dir, path }
+}
+
+/// The MCP server under test.
+#[fixture]
+fn server() -> QgisMcpServer {
+    QgisMcpServer::new()
 }
 
 #[test]
@@ -115,10 +166,11 @@ fn plan_tiles_counts_the_documented_pyramid() {
     assert!(QgisMcpServer::plan_tiles_report("14,50,15,51", "99").is_err());
 }
 
-#[test]
-fn project_info_describes_a_project_without_qgis() {
-    let path = project_file("capabilities.qgs");
-    let info = QgisMcpServer::project_info_report(path.to_str().expect("utf-8")).expect("project");
+#[rstest]
+fn project_info_describes_a_project_without_qgis(
+    #[with("capabilities.qgs")] project_file: ProjectFile,
+) {
+    let info = QgisMcpServer::project_info_report(&project_file.as_str()).expect("project");
     assert_eq!(info.format, "qgs");
     assert!(info.size_bytes > 0);
     assert_eq!(info.crs, None);
@@ -129,10 +181,11 @@ fn project_info_describes_a_project_without_qgis() {
     assert!(format!("{error:?}").contains("not found"));
 }
 
-#[test]
-fn render_requests_are_validated_before_they_reach_qgis() {
-    let path = project_file("render.qgs");
-    let project = path.to_str().expect("utf-8").to_string();
+#[rstest]
+fn render_requests_are_validated_before_they_reach_qgis(
+    #[with("render.qgs")] project_file: ProjectFile,
+) {
+    let project = project_file.as_str();
 
     let good = RenderMapParams {
         project: project.clone(),
@@ -146,7 +199,7 @@ fn render_requests_are_validated_before_they_reach_qgis() {
         layout: None,
     };
     let (opened, settings) = QgisMcpServer::render_settings(&good).expect("valid request");
-    assert_eq!(opened.path(), path.as_path());
+    assert_eq!(opened.path(), project_file.as_path());
     assert_eq!(settings.width, 2048);
     assert_eq!(settings.height, 768);
     assert_eq!(settings.dpi, 300.0);
@@ -177,16 +230,17 @@ fn render_requests_are_validated_before_they_reach_qgis() {
     assert!(QgisMcpServer::render_settings(&missing).is_err());
 }
 
-#[test]
-fn render_and_export_handlers_cross_the_manager_boundary() {
-    let path = project_file("native-dispatch.qgs");
-    let project = path.to_str().expect("utf-8").to_string();
-    let server = QgisMcpServer::new();
+#[rstest]
+fn render_and_export_handlers_cross_the_manager_boundary(
+    #[with("native-dispatch.qgs")] project_file: ProjectFile,
+    server: QgisMcpServer,
+) {
+    let project = project_file.as_str();
 
     let render_error = server
         .render_map(Parameters(RenderMapParams {
             project: project.clone(),
-            output: path.with_extension("png").display().to_string(),
+            output: project_file.with_extension("png").display().to_string(),
             extent: None,
             width: Some(32),
             height: Some(32),
@@ -204,7 +258,7 @@ fn render_and_export_handlers_cross_the_manager_boundary() {
         .export_features(Parameters(ExportFeaturesParams {
             project,
             layer: "points".to_string(),
-            output: Some(path.with_extension("geojson").display().to_string()),
+            output: Some(project_file.with_extension("geojson").display().to_string()),
             filter: None,
             bbox: None,
             fields: None,
@@ -215,10 +269,9 @@ fn render_and_export_handlers_cross_the_manager_boundary() {
         .contains("unimplemented"));
 }
 
-#[test]
-fn export_requests_default_to_the_whole_world() {
-    let path = project_file("export.qgs");
-    let project = path.to_str().expect("utf-8").to_string();
+#[rstest]
+fn export_requests_default_to_the_whole_world(#[with("export.qgs")] project_file: ProjectFile) {
+    let project = project_file.as_str();
 
     let (opened, bbox) = QgisMcpServer::export_request(&ExportFeaturesParams {
         project,
@@ -229,11 +282,11 @@ fn export_requests_default_to_the_whole_world() {
         fields: None,
     })
     .expect("valid request");
-    assert_eq!(opened.path(), path.as_path());
+    assert_eq!(opened.path(), project_file.as_path());
     assert_eq!(bbox, Extent::new(-180.0, -90.0, 180.0, 90.0));
 
     let empty_layer = ExportFeaturesParams {
-        project: path.to_str().expect("utf-8").to_string(),
+        project: project_file.as_str(),
         layer: "  ".to_string(),
         output: None,
         filter: None,
@@ -243,9 +296,8 @@ fn export_requests_default_to_the_whole_world() {
     assert!(QgisMcpServer::export_request(&empty_layer).is_err());
 }
 
-#[test]
-fn tool_results_are_pretty_json() {
-    let server = QgisMcpServer::new();
+#[rstest]
+fn tool_results_are_pretty_json(server: QgisMcpServer) {
     let text = server
         .crs_info(Parameters(CrsInfoParams {
             auth_id: "EPSG:4326".to_string(),
@@ -257,9 +309,8 @@ fn tool_results_are_pretty_json() {
     assert_eq!(parsed["geographic"], true);
 }
 
-#[test]
-fn the_capabilities_tool_speaks_json() {
-    let server = QgisMcpServer::new();
+#[rstest]
+fn the_capabilities_tool_speaks_json(server: QgisMcpServer) {
     let text = server.capabilities().expect("text result");
     let parsed: serde_json::Value = serde_json::from_str(&text).expect("json");
     assert_eq!(parsed["server"], "qgis-cli");
