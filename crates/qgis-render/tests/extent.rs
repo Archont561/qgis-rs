@@ -3,6 +3,7 @@
 
 use proptest::prelude::*;
 use qgis_render::*;
+use rstest::rstest;
 
 #[test]
 fn parses_the_cli_form() {
@@ -23,11 +24,13 @@ fn round_trips_through_display() {
     );
 }
 
-#[test]
-fn rejects_incomplete_and_reversed_extents() {
-    for text in ["14,50,15", "a,b,c,d", "15,50,14,51", ""] {
-        assert!(Extent::parse(text).is_err(), "{text:?} should not parse");
-    }
+#[rstest]
+#[case::too_few_edges("14,50,15")]
+#[case::not_numbers("a,b,c,d")]
+#[case::reversed("15,50,14,51")]
+#[case::empty("")]
+fn rejects_incomplete_and_reversed_extents(#[case] text: &str) {
+    assert!(Extent::parse(text).is_err(), "{text:?} should not parse");
 }
 
 #[test]

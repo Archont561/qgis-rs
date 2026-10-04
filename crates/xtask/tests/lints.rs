@@ -2,20 +2,26 @@
 //! `files` list, a report that names every missing entry rather than the
 //! first, and the TOML files kept in taplo's canonical form.
 
+use rstest::rstest;
 use xtask::lints::{
     check_sources, clang_tidy_arguments, first_matching_file, glob_matches, looks_like_source,
     pack_check, setup_qca_in, QcaRepair, CANONICAL_TOML, COMPILED_CPP_DIR,
 };
 use xtask::util::{cpp_sources, repo_root};
 
-#[test]
-fn globs_match_the_way_the_npm_files_list_means_them() {
-    let package = repo_root().join("crates/xtask");
-    assert!(glob_matches(&package, "src/*.rs").expect("readable"));
-    assert!(glob_matches(&package.join("src"), "li*.rs").expect("readable"));
-    assert!(!glob_matches(&package, "*.node").expect("readable"));
-    // A glob under a directory that does not exist is a miss, not a crash.
-    assert!(!glob_matches(&package, "nowhere/*.node").expect("readable"));
+#[rstest]
+#[case::a_directory_prefix("", "src/*.rs", true)]
+#[case::a_stem_prefix("src", "li*.rs", true)]
+#[case::no_such_extension("", "*.node", false)]
+// A glob under a directory that does not exist is a miss, not a crash.
+#[case::no_such_directory("", "nowhere/*.node", false)]
+fn globs_match_the_way_the_npm_files_list_means_them(
+    #[case] under: &str,
+    #[case] glob: &str,
+    #[case] matches: bool,
+) {
+    let package = repo_root().join("crates/xtask").join(under);
+    assert_eq!(glob_matches(&package, glob).expect("readable"), matches);
 }
 
 #[test]

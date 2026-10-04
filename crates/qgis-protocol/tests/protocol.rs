@@ -6,6 +6,7 @@
 
 use proptest::prelude::*;
 use qgis_protocol::*;
+use rstest::rstest;
 use serde_json::{json, Value};
 
 #[test]
@@ -43,30 +44,30 @@ fn every_operation_is_listed_by_engine_info() {
     }
 }
 
-#[test]
-fn error_kinds_spell_themselves_the_way_serde_does() {
-    let kinds = [
-        ErrorKind::InvalidRequest,
-        ErrorKind::UnsupportedTransport,
-        ErrorKind::InvalidPayload,
-        ErrorKind::Io,
-        ErrorKind::ProjectNotFound,
-        ErrorKind::UnsupportedProject,
-        ErrorKind::InvalidExtent,
-        ErrorKind::InvalidZoomRange,
-        ErrorKind::UnknownCrs,
-        ErrorKind::UnknownImageFormat,
-        ErrorKind::Unimplemented,
-        ErrorKind::InvalidOperation,
-        ErrorKind::InvalidObjectId,
-        ErrorKind::NotInitialized,
-        ErrorKind::Qgis,
-        ErrorKind::Internal,
-    ];
-    for kind in kinds {
-        let encoded = serde_json::to_value(kind).expect("serialisable");
-        assert_eq!(encoded, json!(kind.as_str()));
-    }
+/// `as_str` and the serde encoding are one wire name, per kind.
+///
+/// One case per variant: the list is the contract, and a case that goes red
+/// names the kind that drifted instead of stopping the loop at the first one.
+#[rstest]
+#[case(ErrorKind::InvalidRequest)]
+#[case(ErrorKind::UnsupportedTransport)]
+#[case(ErrorKind::InvalidPayload)]
+#[case(ErrorKind::Io)]
+#[case(ErrorKind::ProjectNotFound)]
+#[case(ErrorKind::UnsupportedProject)]
+#[case(ErrorKind::InvalidExtent)]
+#[case(ErrorKind::InvalidZoomRange)]
+#[case(ErrorKind::UnknownCrs)]
+#[case(ErrorKind::UnknownImageFormat)]
+#[case(ErrorKind::Unimplemented)]
+#[case(ErrorKind::InvalidOperation)]
+#[case(ErrorKind::InvalidObjectId)]
+#[case(ErrorKind::NotInitialized)]
+#[case(ErrorKind::Qgis)]
+#[case(ErrorKind::Internal)]
+fn error_kinds_spell_themselves_the_way_serde_does(#[case] kind: ErrorKind) {
+    let encoded = serde_json::to_value(kind).expect("serialisable");
+    assert_eq!(encoded, json!(kind.as_str()));
 }
 
 #[test]

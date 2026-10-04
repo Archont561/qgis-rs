@@ -771,6 +771,7 @@ dependencies = [
  "qgis-mcp",
  "qgis-render",
  "qgis-server",
+ "rstest",
  "serde_json",
  "tokio",
 ]
@@ -782,6 +783,7 @@ dependencies = [
  "qgis-protocol",
  "qgis-render",
  "qgis-sys",
+ "rstest",
  "serde",
  "serde_json",
 ]
@@ -794,6 +796,7 @@ dependencies = [
  "qgis-render",
  "qgis-sys",
  "rmcp",
+ "rstest",
  "schemars",
  "serde",
  "serde_json",
@@ -815,6 +818,7 @@ name = "qgis-protocol"
 version = "0.1.0"
 dependencies = [
  "proptest",
+ "rstest",
  "serde",
  "serde_json",
 ]
@@ -848,6 +852,7 @@ dependencies = [
  "pyo3",
  "qgis-cli",
  "qgis-render",
+ "rstest",
  "serde",
  "serde_json",
  "thiserror",
@@ -858,6 +863,7 @@ name = "qgis-server"
 version = "0.1.0"
 dependencies = [
  "qgis-render",
+ "rstest",
  "serde",
 ]
 
@@ -865,6 +871,7 @@ dependencies = [
 name = "qgis-styles"
 version = "0.1.0"
 dependencies = [
+ "rstest",
  "serde",
  "serde_json",
  "thiserror",
@@ -877,6 +884,7 @@ dependencies = [
  "anyhow",
  "cc",
  "qgis-protocol",
+ "rstest",
  "serde_json",
  "walkdir",
 ]
@@ -1609,6 +1617,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "clap",
+ "rstest",
  "serde",
  "serde_json",
  "walkdir",

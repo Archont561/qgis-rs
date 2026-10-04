@@ -49,3 +49,6 @@ pyo3 = { version = "0.22" }
 [features]
 default = ["python"]
 python = ["pyo3/extension-module"]
+
+[dev-dependencies]
+rstest = { workspace = true }
