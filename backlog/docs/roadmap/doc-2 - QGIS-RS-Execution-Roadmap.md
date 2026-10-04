@@ -64,8 +64,8 @@ Bind the types needed to read features from a layer. These are tracked in
 Backlog.md rather than by a status table here:
 
 - `QgsFields` / `QgsField` → [TASK-5](../../tasks/task-5%20-%20Bind-QgsFields-and-QgsField-schema-types-in-qgis-sys.md)
-- `QgsFeature` / `QgsGeometry` → [TASK-6](../../archive/task-6%20-%20Bind-QgsFeature-AttributeValue-conversions-and-QgsGeometry-in-qgis-sys.md)
-- `QgsFeatureIterator` / CRS → [TASK-7](../../tasks/task-7%20-%20Bind-QgsFeatureIterator-and-QgsCoordinateReferenceSystem-in-qgis-sys.md)
+- `QgsFeature` / `QgsGeometry` → [TASK-6](../../archive/tasks/task-6%20-%20Bind-QgsFeature-AttributeValue-conversions-and-QgsGeometry-in-qgis-sys.md)
+- `QgsFeatureIterator` / CRS → [TASK-7](../../archive/tasks/task-7%20-%20Bind-QgsFeatureIterator-and-QgsCoordinateReferenceSystem-in-qgis-sys.md) — **archived, superseded by RFC 19**
 
 Validation remains a real GeoPackage fixture with attributes and geometry:
 
@@ -82,8 +82,8 @@ for feature in layer.features() {
 
 Project ownership and transactional editing are represented by:
 
-- [TASK-10](../../tasks/task-10%20-%20Bind-QgsProject-with-ownership-transfer-semantics-and-QgsFeatureRequest.md) — project and feature requests.
-- [TASK-11](../../tasks/task-11%20-%20Bind-QgsVectorLayerEditBuffer-for-transactional-layer-editing.md) — edit-buffer transactions.
+- [TASK-10](../../archive/tasks/task-10%20-%20Bind-QgsProject-with-ownership-transfer-semantics-and-QgsFeatureRequest.md) — project and feature requests. **Archived, superseded by RFC 19**; batched layer features shipped in TASK-25.2.
+- [TASK-11](../../archive/tasks/task-11%20-%20Bind-QgsVectorLayerEditBuffer-for-transactional-layer-editing.md) — edit-buffer transactions. **Archived, superseded by RFC 19**; transactional editing has no native-manager operation yet and is unclaimed.
 
 The examples in this section are target API design, not claims that the
 current crates already expose a `qgis` safe-wrapper crate.
@@ -94,7 +94,7 @@ The pure-Rust `qgis-render` surface and CLI are present, while QGIS-backed
 project rendering returns a structured unimplemented error until the native
 backend is complete. The work is split between:
 
-- [TASK-12](../../tasks/task-12%20-%20Bind-QgsMapSettings-and-QgsMapRendererSequentialJob-for-embedded-rendering.md) — direct rendering bindings.
+- [TASK-12](../../archive/tasks/task-12%20-%20Bind-QgsMapSettings-and-QgsMapRendererSequentialJob-for-embedded-rendering.md) — direct rendering bindings. **Archived, superseded by RFC 19**; `render_map` and `export_features` shipped in TASK-25.3.
 - [TASK-19](../../tasks/task-19%20-%20End-to-end-integration-test-suite-for-qgis-server-OGC-endpoints.md) — server integration.
 - [TASK-25.3](../../tasks/task-25.3%20-%20RFC-19-phase-4-render_map-and-export_features-against-real-QGIS.md) — rendering/export through the native manager.
 - [TASK-20](../../tasks/task-20%20-%20Document-the-engine-wire-protocol-in-the-docs-site.md) — public protocol reference.

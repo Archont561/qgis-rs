@@ -4,11 +4,13 @@ title: Refactor Python QGIS SDK testing utilities into fixture modules
 status: To Do
 assignee: []
 created_date: '2026-10-03 09:16'
+updated_date: '2026-10-04 12:48'
 labels:
   - testing
   - python
   - qgis-sdk
   - fixtures
+milestone: m-4
 dependencies:
   - TASK-31
 documentation:

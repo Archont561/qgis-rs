@@ -11,8 +11,7 @@ labels:
   - qgis-render
   - deprecated
 milestone: m-2
-dependencies:
-  - TASK-10
+dependencies: []
 documentation:
   - backlog/docs/roadmap/doc-2 - QGIS-RS-Execution-Roadmap.md
   - .knowledge/qgis-vector-layer.md

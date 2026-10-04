@@ -4,11 +4,13 @@ title: Add shared Python and TypeScript bridge contract fixtures
 status: To Do
 assignee: []
 created_date: '2026-10-03 09:16'
+updated_date: '2026-10-04 12:48'
 labels:
   - testing
   - bridge
   - protocol
   - cross-language
+milestone: m-4
 dependencies:
   - TASK-31
 documentation:

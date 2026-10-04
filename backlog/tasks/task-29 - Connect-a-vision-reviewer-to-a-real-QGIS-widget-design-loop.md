@@ -4,12 +4,13 @@ title: Connect a vision reviewer to a real QGIS widget design loop
 status: To Do
 assignee: []
 created_date: '2026-10-03 08:50'
-updated_date: '2026-10-03 09:19'
+updated_date: '2026-10-04 12:48'
 labels:
   - qgis-sdk
   - ui
   - agent
   - visual-testing
+milestone: m-3
 dependencies:
   - TASK-28
   - TASK-36

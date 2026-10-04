@@ -22,7 +22,7 @@ The renderer should treat QGIS project files as compatibility inputs. Its own st
 
 Related repository work:
 
-- [TASK-12](../../tasks/task-12%20-%20Bind-QgsMapSettings-and-QgsMapRendererSequentialJob-for-embedded-rendering.md) — native QGIS rendering baseline;
+- [TASK-12](../../archive/tasks/task-12%20-%20Bind-QgsMapSettings-and-QgsMapRendererSequentialJob-for-embedded-rendering.md) — native QGIS rendering baseline, archived as superseded by RFC 19;
 - [TASK-25.3](../../tasks/task-25.3%20-%20RFC-19-phase-4-render_map-and-export_features-against-real-QGIS.md) — native manager rendering/export;
 - [TASK-30](../../tasks/task-30%20-%20Generate-a-versioned-QGIS-API-manifest-and-manager-handlers.md) — versioned QGIS API manifest;
 - [doc-4](doc-4%20-%20QGIS-Native-Manager-and-API-Coverage-Strategy.md) — native manager and API coverage;
