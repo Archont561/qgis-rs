@@ -4,7 +4,7 @@
 
 use xtask::lints::{
     check_sources, clang_tidy_arguments, first_matching_file, glob_matches, looks_like_source,
-    pack_check, setup_qca_in, QcaRepair, CANONICAL_TOML,
+    pack_check, setup_qca_in, QcaRepair, CANONICAL_TOML, COMPILED_CPP_DIR,
 };
 use xtask::util::{cpp_sources, repo_root};
 
@@ -49,6 +49,7 @@ fn clang_tidy_uses_the_compile_database_for_native_sources() {
     let sources: Vec<std::path::PathBuf> = cpp_sources()
         .into_iter()
         .filter(|path| path.extension().is_some_and(|extension| extension == "cpp"))
+        .filter(|path| path.starts_with(repo_root().join(COMPILED_CPP_DIR)))
         .collect();
     assert!(
         !sources.is_empty(),
@@ -81,6 +82,34 @@ fn clang_tidy_uses_the_compile_database_for_native_sources() {
     assert!(
         args.iter().all(|arg| !arg.contains("cxxbridge")),
         "clang-tidy must not depend on a removed cxxbridge binding"
+    );
+}
+
+/// clang-tidy reads `compile_commands.json`, which `qgis-sys`'s build script
+/// writes for the sources cargo compiles. The GoogleTest suite is built by
+/// CMake instead, so it is not in that database and must not be handed to
+/// clang-tidy — it would fall back to a guessed command line and fail on the
+/// first Qt include.
+#[test]
+fn clang_tidy_skips_the_cpp_suite_the_compile_database_does_not_describe() {
+    let formatted: Vec<std::path::PathBuf> = cpp_sources();
+    assert!(
+        formatted
+            .iter()
+            .any(|path| path.ends_with("tests/cpp/conversions_test.cpp")),
+        "the suite should still be formatted"
+    );
+
+    let tidied: Vec<std::path::PathBuf> = formatted
+        .into_iter()
+        .filter(|path| path.extension().is_some_and(|extension| extension == "cpp"))
+        .filter(|path| path.starts_with(repo_root().join(COMPILED_CPP_DIR)))
+        .collect();
+    assert!(
+        tidied
+            .iter()
+            .all(|path| !path.to_string_lossy().contains("/tests/")),
+        "clang-tidy was handed a file the compile database has never seen"
     );
 }
 

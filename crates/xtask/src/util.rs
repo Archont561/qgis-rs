@@ -122,6 +122,17 @@ where
     Ok(())
 }
 
+/// The qgis-sys trees that hold hand-written C++.
+///
+/// `tests` is in the list because the shim's GoogleTest suite is C++ the
+/// repository maintains: before it was, a test file could be committed
+/// unformatted and the format-drift gate would still be green.
+pub const CPP_TREES: &[&str] = &[
+    "crates/qgis-sys/src",
+    "crates/qgis-sys/include",
+    "crates/qgis-sys/tests",
+];
+
 /// Every C++ source and header in the qgis-sys shim, sorted.
 ///
 /// Sorted because an unsorted walk makes clang-format's output order depend on
@@ -130,7 +141,7 @@ where
 #[must_use]
 pub fn cpp_sources() -> Vec<PathBuf> {
     let root = repo_root();
-    let mut files: Vec<PathBuf> = ["crates/qgis-sys/src", "crates/qgis-sys/include"]
+    let mut files: Vec<PathBuf> = CPP_TREES
         .iter()
         .flat_map(|directory| walkdir::WalkDir::new(root.join(directory)))
         .filter_map(std::result::Result::ok)

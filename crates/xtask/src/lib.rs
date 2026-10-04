@@ -26,6 +26,7 @@
 pub mod api_manifest;
 pub mod boundaries;
 pub mod ci;
+pub mod cpp;
 pub mod lints;
 pub mod release;
 pub mod scaffold;
@@ -42,6 +43,7 @@ use clap::{Parser, Subcommand};
     long_about = "Every repository-wide verb qgis-rs has. Run through pixi:\n  \
                   pixi run xtask ci [--no-coverage] [--offline]\n  \
                   pixi run xtask check-cpp [files...]\n  \
+                  pixi run xtask test-cpp\n  \
                   pixi run xtask format-cpp\n  \
                   pixi run xtask clang-tidy\n  \
                   pixi run xtask check-sources\n  \
@@ -80,6 +82,8 @@ pub enum Command {
     },
     /// Write clang-format's output over the native manager.
     FormatCpp,
+    /// Build and run the native manager's GoogleTest/RapidCheck suite.
+    TestCpp,
     /// clang-tidy over the native manager, discovering the include paths it needs.
     ClangTidy,
     /// Fail if a source file inside a package tree is hidden by .gitignore.
@@ -139,6 +143,7 @@ pub fn run(command: Command) -> Result<()> {
         } => ci::gate(!no_coverage, offline),
         Command::CheckCpp { files } => lints::check_cpp(&files),
         Command::FormatCpp => lints::format_cpp(),
+        Command::TestCpp => cpp::test_cpp(),
         Command::ClangTidy => lints::clang_tidy(),
         Command::CheckSources => lints::check_sources(),
         Command::CheckBoundaries => boundaries::check(&util::repo_root()),
