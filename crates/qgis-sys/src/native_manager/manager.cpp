@@ -1,5 +1,6 @@
 #include "native_manager/manager.h"
 
+#include "native_manager/conversions.h"
 #include "native_manager/generated/api_manifest.h"
 
 // The manager deliberately crosses a C ABI (malloc/free), uses Qt/QGIS
@@ -67,7 +68,16 @@ class QgsApplication {
 
 namespace {
 
-constexpr std::uint32_t kTransportVersion = 1;
+// The envelope, the handle encoding and the C ABI's buffer live in
+// conversions.cpp, which has no QGIS behind it and is therefore the half of
+// this manager that tests/cpp can load and exercise on its own.
+using qgis_rs::native_manager::compact_json;
+using qgis_rs::native_manager::copy_response;
+using qgis_rs::native_manager::failure;
+using qgis_rs::native_manager::free_response;
+using qgis_rs::native_manager::json_id;
+using qgis_rs::native_manager::kTransportVersion;
+using qgis_rs::native_manager::success;
 
 struct Request {
     explicit Request(std::string value) : json(std::move(value)) {}
@@ -75,50 +85,6 @@ struct Request {
     std::string json;
     std::promise<std::string> result;
 };
-
-QJsonObject success(const QJsonObject& result) {
-    return QJsonObject{{"transport_version", static_cast<int>(kTransportVersion)},
-                       {"ok", true},
-                       {"result", result}};
-}
-
-QJsonObject failure(const char* kind, const QString& message) {
-    return QJsonObject{{"transport_version", static_cast<int>(kTransportVersion)},
-                       {"ok", false},
-                       {"result", QJsonObject{{"kind", kind}, {"error", message}}}};
-}
-
-QJsonObject failure(const char* kind, const QString& message,
-                    const QJsonObject& detail) {
-    QJsonObject result{{"kind", kind}, {"error", message}};
-    for (auto it = detail.constBegin(); it != detail.constEnd(); ++it) {
-        result.insert(it.key(), it.value());
-    }
-    return QJsonObject{{"transport_version", static_cast<int>(kTransportVersion)},
-                       {"ok", false},
-                       {"result", result}};
-}
-
-std::string compact_json(const QJsonObject& object) {
-    return QJsonDocument(object).toJson(QJsonDocument::Compact).toStdString();
-}
-
-bool json_id(const QJsonObject& payload, quint64* id) {
-    const QJsonValue value = payload.value(QStringLiteral("layer_id"));
-    if (!value.isDouble()) {
-        return false;
-    }
-
-    const double number = value.toDouble();
-    if (number < 1.0 ||
-        number > static_cast<double>(std::numeric_limits<quint64>::max()) ||
-        number != static_cast<double>(static_cast<quint64>(number))) {
-        return false;
-    }
-
-    *id = static_cast<quint64>(number);
-    return true;
-}
 
 class ManagerHost {
    public:
@@ -937,16 +903,6 @@ ManagerHost& manager() {
     return *instance;
 }
 
-char* copy_response(const std::string& response) {
-    auto* buffer = static_cast<char*>(std::malloc(response.size() + 1));
-    if (buffer == nullptr) {
-        return nullptr;
-    }
-    std::memcpy(buffer, response.data(), response.size());
-    buffer[response.size()] = '\0';
-    return buffer;
-}
-
 }  // namespace
 
 extern "C" char* qgis_invoke(const char* request_json) noexcept {
@@ -962,7 +918,7 @@ extern "C" char* qgis_invoke(const char* request_json) noexcept {
 
 extern "C" void qgis_free(char* response_json) noexcept {
     try {
-        std::free(response_json);
+        free_response(response_json);
     } catch (...) {
     }
 }

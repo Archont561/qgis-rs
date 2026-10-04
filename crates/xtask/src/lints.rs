@@ -45,6 +45,15 @@ pub fn format_cpp() -> Result<()> {
     run("clang-format", args)
 }
 
+/// The C++ the cargo build compiles, and therefore the only C++ the compile
+/// database describes.
+///
+/// `cpp_sources` also walks the shim's GoogleTest suite, which CMake builds
+/// and cargo does not. clang-tidy is driven by `compile_commands.json`, so
+/// pointing it at a file that database has never heard of makes it fall back
+/// to a guessed command line and fail on the first Qt include.
+pub const COMPILED_CPP_DIR: &str = "crates/qgis-sys/src";
+
 /// Run clang-tidy over the native-manager sources using the compile database
 /// produced by `qgis-sys`'s build script.
 ///
@@ -66,6 +75,7 @@ pub fn clang_tidy() -> Result<()> {
     let sources: Vec<PathBuf> = cpp_sources()
         .into_iter()
         .filter(|path| path.extension().and_then(std::ffi::OsStr::to_str) == Some("cpp"))
+        .filter(|path| path.starts_with(root.join(COMPILED_CPP_DIR)))
         .collect();
     if sources.is_empty() {
         bail!("clang-tidy: no .cpp sources in the qgis-sys shim");

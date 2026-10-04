@@ -4,7 +4,7 @@ title: Refactor every test suite onto property-based and fixture-driven testing
 status: In Progress
 assignee: []
 created_date: '2026-10-02 23:06'
-updated_date: '2026-10-03 09:16'
+updated_date: '2026-10-04 10:54'
 labels:
   - refactor
   - testing
@@ -44,13 +44,13 @@ Do this suite by suite, and keep the example-based tests that document a specifi
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Rust: proptest and rstest are workspace dependencies, and qgis-render (extent, tiles, crs) plus qgis-protocol have property tests for their round-trips and invariants
+- [x] #1 Rust: proptest and rstest are workspace dependencies, and qgis-render (extent, tiles, crs) plus qgis-protocol have property tests for their round-trips and invariants
 - [ ] #2 Rust: repeated setup uses rstest fixtures and cases instead of a hand-rolled helper fn per test file
-- [ ] #3 Python: hypothesis is a test dependency of both distributions, with strategies for extents, zoom ranges and CRS auth ids
+- [x] #3 Python: hypothesis is a test dependency of both distributions, with strategies for extents, zoom ranges and CRS auth ids
 - [ ] #4 TypeScript: the client suites use @qgis/test-utils for shared setup and fast-check for the same invariants the Rust properties assert
-- [ ] #5 C++: a GoogleTest target builds and runs the shim's own tests headless, with RapidCheck properties for the string and handle conversions
-- [ ] #6 The C++ suite is wired into turbo so that pixi run ci covers it
-- [ ] #7 The cross-language golden values survive the migration and still agree
+- [x] #5 C++: a GoogleTest target builds and runs the shim's own tests headless, with RapidCheck properties for the string and handle conversions
+- [x] #6 The C++ suite is wired into turbo so that pixi run ci covers it
+- [x] #7 The cross-language golden values survive the migration and still agree
 <!-- AC:END -->
 
 ## Implementation Notes
@@ -69,4 +69,11 @@ The plan is intentionally documentation-only; implementation must proceed in sma
 Testing utilities and bridge-contract execution is decomposed into TASK-31 through TASK-35.
 
 TASK-31 defines the shared bridge contract; TASK-32 covers Python fixtures; TASK-33 covers the TypeScript harness; TASK-34 covers shared vectors; TASK-35 covers Qt/QGIS/WebEngine gates.
+
+2026-10-04: AC#5 and AC#6 are done, measured on a restored sandbox. The edge conversions of the shim - the JSON envelope, the handle encoding, and the C ABI malloc/free pair - moved out of manager.cpp into crates/qgis-sys/src/native_manager/conversions.cpp, which has no QGIS behind it and can therefore be loaded without starting QGIS. crates/qgis-sys/tests/cpp builds that one translation unit against GoogleTest 1.18 and RapidCheck under the same warnings-as-errors contract build.rs uses, and runs 14 tests headless: 9 examples and 5 properties covering envelope round-trip, failure detail merge, handle round-trip over the exact-integer range, fractional-handle rejection, and a byte-exact NUL-terminated response copy. xtask test-cpp drives cmake, ninja and ctest; the @qgis/rust test script calls it, so pixi run ci covers the suite. cmake and ninja from TASK-24, and gtest and rapidcheck, were already declared in pixi.toml and present in the offline pack, so this needed no new dependency and no pixi lock.
+
+
+2026-10-04: two findings from the property run. First, a property over arbitrary byte strings failed because QString::fromStdString replaces invalid UTF-8 with U+FFFD, collapsing distinct inputs onto one key; the properties now generate printable ASCII and the replacement behaviour is pinned by example instead of hidden. Second, clang-tidy reads compile_commands.json, which the qgis-sys build script writes only for the sources cargo compiles, so the CMake-built suite is excluded from clang-tidy while cpp_sources now includes it for clang-format - before this, C++ test files were invisible to the format-drift gate.
+
+2026-10-04: AC#2 and AC#4 are NOT met and the task stays In Progress. AC#2: rstest is a workspace dependency but is used in exactly one file (crates/qgis-render/tests/tiles.rs); every other crate still hand-rolls its per-file setup helper. AC#4: ts-packages/qgis-node uses fast-check and ts-packages/qgis-sdk-bridge uses @qgis/test-utils, but the bridge suite has no fast-check property, so the two client suites do not yet assert the same invariants the Rust properties do.
 <!-- SECTION:NOTES:END -->

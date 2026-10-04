@@ -336,6 +336,10 @@ check-cpp = { cmd = "cargo run -q -p xtask -- check-cpp", description = "clang-f
 # the native-manager compile database, Qt include paths, and the GCC dir carrying stddef.h — which
 # is why it is a program and not a flag.
 format-cpp = { cmd = "cargo run -q -p xtask -- format-cpp", description = "clang-format the native manager in place", default-environment = "default" }
+# The native manager's own GoogleTest/RapidCheck suite, built with the cmake
+# and ninja this environment already declares. @qgis/rust's `test` script calls
+# it, so the turbo fan-out and therefore `pixi run ci` cover it.
+test-cpp = { cmd = "cargo run -q -p xtask -- test-cpp", description = "Build and run the native manager's GoogleTest/RapidCheck suite", default-environment = "default" }
 clang-tidy = { cmd = "cargo run -q -p xtask -- clang-tidy", description = "clang-tidy over the native manager, discovering the include paths it needs", default-environment = "default" }
 lint-toml = { cmd = "cargo run -q -p xtask -- lint-toml", description = "taplo canonicality check for pixi.toml", default-environment = "default" }
 lint-actions = { cmd = "actionlint", description = "Lint .github/workflows/*.yml", default-environment = "default" }
