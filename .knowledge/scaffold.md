@@ -1,71 +1,39 @@
 ---
 type: Tool
-title: Scaffold Task
-description: The pixi run scaffold code-generation task for adding new QGIS type bindings.
+title: Native-manager Operation Scaffold
+description: Add a reviewed operation to the qgis-sys native-manager API manifest.
 status: stable
-tags: [scaffold, codegen, pixi, task]
-generated: { by: arena-agent/qgis-rs-kb-init, at: 2026-09-17T20:00:00Z }
+tags: [scaffold, codegen, pixi, native-manager]
 ---
 
-# Scaffold Task
+# Native-manager Operation Scaffold
+
+RFC 19 and [D12](decisions/D12-qgis-native-manager-over-c-abi.md) replaced the
+per-concept CXX bridge layout. The scaffold command no longer creates headers,
+`#[cxx::bridge]` modules, C++ shims, or `src/<layer>/<concept>/` trees.
 
 ## Usage
 
 ```bash
-pixi run scaffold <layer> <concept> <qgis_class> <short_name>
+pixi run scaffold <operation> <handler>
+# equivalently:
+pixi run xtask scaffold <operation> <handler>
 ```
 
-### Arguments
+Both arguments are identifiers from the native-manager contract:
 
-| Argument      | Example     | Description                              |
-|---------------|-------------|------------------------------------------|
-| `layer`       | `core`      | QGIS library layer (core, gui, analysis) |
-| `concept`     | `geometry`  | Directory name for the concept           |
-| `qgis_class`  | `QgsGeometry` | Full QGIS C++ class name              |
-| `short_name`  | `geometry`  | Short name for files and functions       |
+- `operation` is the snake_case protocol operation, such as `project_save`.
+- `handler` is the C++ handler identifier registered for that operation.
 
-### Example
+The command adds a `supported_manual` declaration and operation to
+`crates/qgis-sys/native_manager/generated/api_manifest.json`, validates the
+whole manifest, and regenerates:
 
-```bash
-pixi run scaffold core geometry QgsGeometry geometry
-```
+- `include/native_manager/generated/api_manifest.h`
+- `include/native_manager/generated/operation_table.inc`
 
-## Generated Files
-
-| File                                           | Purpose                          |
-|------------------------------------------------|----------------------------------|
-| `include/<layer>/<concept>.h`                  | CXX header with handle + function declarations |
-| `src/<layer>/<concept>/<short>.rs`             | `#[cxx::bridge]` with FFI signatures |
-| `src/<layer>/<concept>/<short>.cpp`            | C++ shim skeleton with TODO comments |
-| `src/<layer>/<concept>/mod.rs`                 | Rust module declaration          |
-
-## Wiring
-
-The scaffold task also:
-
-1. Appends `pub mod <concept>;` to `src/<layer>/mod.rs` (if not already present)
-2. Appends a `pub use` alias to `src/lib.rs` (if not already present)
-
-## Post-Scaffold Steps
-
-After scaffolding, you need to:
-
-1. **Edit the header** — add function declarations for your QGIS type's methods
-2. **Edit the `.rs` bridge** — add matching Rust signatures
-3. **Edit the `.cpp` shim** — implement the functions using real QGIS API
-4. **Build** — `pixi run -- cargo build -p qgis-sys`
-5. **Test** — add integration tests in `tests/` following [D11](decisions/D11-tests-outside-src.md)
-
-The scaffold/API documentation work is tracked by [TASK-3](../backlog/tasks/task-3%20-%20Document%20and%20scaffold%20the%20declarative%20plugin%20and%20SDK%20APIs.md); concrete bindings are tracked by [TASK-5](../backlog/tasks/task-5%20-%20Bind-QgsFields-and-QgsField-schema-types-in-qgis-sys.md) through [TASK-7](../backlog/tasks/task-7%20-%20Bind-QgsFeatureIterator-and-QgsCoordinateReferenceSystem-in-qgis-sys.md).
-
-## Template Details
-
-The generated header includes:
-- Handle declaration via `QGIS_DECLARE_HANDLE`
-- Include of the generated `.rs.h` bridge header
-- Placeholder function signatures
-
-The generated C++ shim includes:
-- `QGIS_DEFINE_HANDLE_DTOR` (commented out)
-- `QGIS_HANDLE_CAST` (commented out)
-- TODO comments for function implementations
+It refuses to overwrite an existing operation. The generated declaration is a
+review prompt, not a completed binding: review its version and semantics,
+implement the handler in the native manager, and add an integration test under
+`crates/qgis-sys/tests/`. Run `pixi run xtask api-manifest --check` to verify
+that the checked-in fragments still match the JSON source of truth.

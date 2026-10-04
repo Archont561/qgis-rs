@@ -1,7 +1,7 @@
 # scripts/
 
 **Repository-wide automation is not here — it is `crates/xtask`.**
-The gate, the C++ and TOML lints, the npm contents check, the qgis-sys
+The gate, the C++ and TOML lints, the npm contents check, the native-manager operation
 scaffolder, the libqca repair, the CI failure summary and the whole release
 pipeline are subcommands of one program, reached through one pixi task:
 
@@ -10,9 +10,12 @@ pixi run xtask ci [--no-coverage]
 pixi run xtask check-cpp [files...]
 pixi run xtask format-cpp
 pixi run xtask clang-tidy
+pixi run xtask check-sources
+pixi run xtask check-boundaries
 pixi run xtask lint-toml [files...]
 pixi run xtask pack-check <package-dir> <required...>
-pixi run xtask scaffold <layer> <concept> <QgisClass> <short_name>
+pixi run xtask api-manifest [--check] [--diff-against PATH]
+pixi run xtask scaffold <operation> <handler>
 pixi run xtask setup-qca
 pixi run xtask ci-failure-summary <log>
 pixi run xtask release <verify-version|prepare|build-artifacts|checksums|publish-crates|publish-github-packages>

@@ -4,7 +4,7 @@
 
 use xtask::lints::{
     check_sources, clang_tidy_arguments, first_matching_file, glob_matches, looks_like_source,
-    pack_check, CANONICAL_TOML,
+    pack_check, setup_qca_in, QcaRepair, CANONICAL_TOML,
 };
 use xtask::util::{cpp_sources, repo_root};
 
@@ -156,6 +156,45 @@ fn a_hidden_python_module_is_source_and_a_generated_declaration_is_not() {
     assert!(!looks_like_source(
         "py-packages/qgis-rs/dist/qgis_rs-0.1.0.whl"
     ));
+}
+
+#[test]
+fn qca_setup_reports_an_already_correct_soname_without_rewriting_it() {
+    let lib = std::env::temp_dir().join(format!("xtask-qca-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&lib);
+    std::fs::create_dir_all(&lib).expect("create lib dir");
+    let source = lib.join("libqca-qt5.so.2.3.12");
+    std::fs::write(&source, "library").expect("seed package file");
+    std::os::unix::fs::symlink(&source, lib.join("libqca-qt5.so.2")).expect("seed soname");
+
+    assert_eq!(
+        setup_qca_in(&lib).expect("inspect soname"),
+        QcaRepair::NothingToRepair
+    );
+    assert_eq!(
+        std::fs::read_link(lib.join("libqca-qt5.so.2")).expect("read soname"),
+        source
+    );
+    let _ = std::fs::remove_dir_all(&lib);
+}
+
+#[test]
+fn qca_setup_repairs_a_missing_soname_from_the_packaged_qt5_library() {
+    let lib = std::env::temp_dir().join(format!("xtask-qca-missing-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&lib);
+    std::fs::create_dir_all(&lib).expect("create lib dir");
+    let source = lib.join("libqca-qt5.so.2.3.12");
+    std::fs::write(&source, "library").expect("seed package file");
+
+    assert_eq!(
+        setup_qca_in(&lib).expect("repair soname"),
+        QcaRepair::Repaired
+    );
+    assert_eq!(
+        std::fs::read_link(lib.join("libqca-qt5.so.2")).expect("read soname"),
+        source
+    );
+    let _ = std::fs::remove_dir_all(&lib);
 }
 
 #[test]

@@ -1,7 +1,18 @@
 //! The gate's two pure helpers: the log tail, and the filter that decides
 //! which lines of a failed run name a cause worth putting in the summary.
 
-use xtask::ci::{last, INTERESTING};
+use xtask::ci::{last, INTERESTING, REPO_LINTS};
+
+#[test]
+fn repo_lints_check_generated_api_before_any_compile() {
+    assert_eq!(
+        REPO_LINTS
+            .iter()
+            .map(|lint| lint.name())
+            .collect::<Vec<_>>(),
+        ["check-sources", "check-boundaries", "api-manifest --check"]
+    );
+}
 
 #[test]
 fn the_tail_helper_keeps_order_and_bounds() {

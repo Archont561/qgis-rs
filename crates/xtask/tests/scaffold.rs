@@ -1,36 +1,52 @@
-//! The scaffolder's templates name each other consistently — a mismatch is a
-//! build failure in a generated file that does not say why — and wiring a new
-//! module into a `mod.rs` twice leaves one line, not two.
+//! The native-manager scaffolder extends the reviewed API manifest; it never
+//! recreates the CXX bridge tree that D12 replaced.
 
 use std::fs;
-use xtask::scaffold::{append_once, bridge_source, header_source, shim_source};
+
+use xtask::api_manifest::validate_manifest;
+use xtask::scaffold::operation;
+
+const MANIFEST: &str =
+    include_str!("../../../crates/qgis-sys/native_manager/generated/api_manifest.json");
 
 #[test]
-fn the_generated_files_name_each_other_consistently() {
-    let header = header_source("core", "geometry", "geometry", "QgsGeometryHandle");
-    let bridge = bridge_source("core", "geometry", "QgsGeometryHandle");
-    let shim = shim_source("core", "geometry", "QgsGeometry", "QgsGeometryHandle");
+fn scaffolding_adds_one_reviewable_native_manager_operation() {
+    let directory = std::env::temp_dir().join(format!(
+        "qgis-xtask-scaffold-operation-{}",
+        std::process::id()
+    ));
+    fs::create_dir_all(&directory).expect("create dir");
+    let path = directory.join("api_manifest.json");
+    fs::write(&path, MANIFEST).expect("seed manifest");
 
-    // The cxx bridge includes the header, and the header includes the
-    // bridge's generated counterpart — a mismatch here is a build failure
-    // in a place that does not name the cause.
-    assert!(header.contains("qgis-sys/src/core/geometry/geometry.rs.h"));
-    assert!(bridge.contains("include!(\"qgis-sys/include/core/geometry.h\")"));
-    assert!(shim.contains("#include \"qgis-sys/include/core/geometry.h\""));
-    assert!(shim.contains("::QgsGeometry"));
-    assert!(bridge.contains("type QgsGeometryHandle;"));
+    operation(&path, "project_save", "project_save").expect("scaffold operation");
+
+    let updated = fs::read_to_string(&path).expect("read manifest");
+    let manifest = validate_manifest(&updated).expect("scaffold remains valid");
+    assert!(manifest.operations.iter().any(|entry| {
+        entry.name == "project_save"
+            && entry.handler == "project_save"
+            && entry.codec == "json_object"
+            && entry.requires_initialization
+    }));
+    assert!(manifest.declarations.iter().any(|entry| {
+        entry.id == "NativeManager::project_save"
+            && entry.operation.as_deref() == Some("project_save")
+            && entry.handler.as_deref() == Some("project_save")
+    }));
 }
 
 #[test]
-fn appending_a_module_line_is_idempotent() {
-    let directory = std::env::temp_dir().join("qgis-xtask-scaffold-append");
+fn scaffolding_refuses_to_duplicate_an_operation() {
+    let directory = std::env::temp_dir().join(format!(
+        "qgis-xtask-scaffold-duplicate-{}",
+        std::process::id()
+    ));
     fs::create_dir_all(&directory).expect("create dir");
-    let path = directory.join("mod.rs");
-    fs::write(&path, "pub mod application;\n").expect("seed");
+    let path = directory.join("api_manifest.json");
+    fs::write(&path, MANIFEST).expect("seed manifest");
 
-    append_once(&path, "pub mod geometry;", "pub mod geometry;\n").expect("first append");
-    append_once(&path, "pub mod geometry;", "pub mod geometry;\n").expect("second append");
-
-    let contents = fs::read_to_string(&path).expect("read back");
-    assert_eq!(contents.matches("pub mod geometry;").count(), 1);
+    let error = operation(&path, "engine_info", "engine_info")
+        .expect_err("existing operation must not be overwritten");
+    assert!(error.to_string().contains("already exists"));
 }

@@ -8,10 +8,10 @@ use anyhow::{bail, Context, Result};
 
 use crate::util::{cpp_sources, repo_root, run};
 
-/// clang-format gate for the C++ shim.
+/// clang-format gate for the native manager.
 ///
 /// With arguments it checks exactly those files — that is how lefthook passes
-/// the staged ones — and with none it checks the whole shim. Assumes it runs
+/// the staged ones — and with none it checks the whole native manager. Assumes it runs
 /// inside the `default` pixi environment, which is where clang-tools lives.
 pub fn check_cpp(files: &[String]) -> Result<()> {
     let paths: Vec<PathBuf> = if files.is_empty() {
@@ -28,7 +28,7 @@ pub fn check_cpp(files: &[String]) -> Result<()> {
     run("clang-format", args)
 }
 
-/// Write clang-format's output for the C++ shim.
+/// Write clang-format's output for the native manager.
 ///
 /// The mirror of [`check_cpp`]: same sources, same discovery, but `-i` instead
 /// of `--dry-run --Werror`. A separate verb rather than a flag on `check-cpp`
@@ -319,15 +319,21 @@ pub fn check_sources() -> Result<()> {
     Ok(())
 }
 
-/// Link libqca under the Qt5 soname QGIS still dlopens, whichever flavour
-/// conda-forge installed. Idempotent, so every task that needs a live QGIS can
-/// call it unconditionally.
-pub fn setup_qca() -> Result<()> {
-    let prefix = std::env::var("CONDA_PREFIX")
-        .context("CONDA_PREFIX is not set — run this under `pixi run -e default`")?;
-    let lib = Path::new(&prefix).join("lib");
-    let target = lib.join("libqca-qt5.so.2");
+/// Outcome of checking the QCA soname required by QGIS.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum QcaRepair {
+    /// The package already supplied the expected file or link.
+    NothingToRepair,
+    /// A missing or incorrect link was replaced.
+    Repaired,
+}
 
+/// Ensure one library directory contains the Qt5 soname QGIS dlopens.
+///
+/// Public for `tests/lints.rs`, which builds isolated package layouts and
+/// verifies that a correct installation is not rewritten.
+pub fn setup_qca_in(lib: &Path) -> Result<QcaRepair> {
+    let target = lib.join("libqca-qt5.so.2");
     let source = if lib.join("libqca-qt6.so.2").exists() {
         lib.join("libqca-qt6.so.2")
     } else if lib.join("libqca-qt5.so.2.3.12").exists() {
@@ -336,14 +342,32 @@ pub fn setup_qca() -> Result<()> {
         bail!("no libqca found under {}", lib.display());
     };
 
-    // Replace rather than fail: the link may point at a library from a prefix
-    // that has since been rebuilt.
+    if target.is_file() && !target.is_symlink() {
+        return Ok(QcaRepair::NothingToRepair);
+    }
+    if target.is_symlink() && std::fs::read_link(&target).ok().as_ref() == Some(&source) {
+        return Ok(QcaRepair::NothingToRepair);
+    }
     if target.exists() || target.is_symlink() {
         std::fs::remove_file(&target)
             .with_context(|| format!("cannot replace {}", target.display()))?;
     }
     std::os::unix::fs::symlink(&source, &target)
         .with_context(|| format!("cannot link {} -> {}", target.display(), source.display()))?;
-    println!("{} -> {}", target.display(), source.display());
+    Ok(QcaRepair::Repaired)
+}
+
+/// Repair QCA in the active pixi prefix when the restored package needs it.
+pub fn setup_qca() -> Result<()> {
+    let prefix = std::env::var("CONDA_PREFIX")
+        .context("CONDA_PREFIX is not set — run this under `pixi run -e default`")?;
+    let lib = Path::new(&prefix).join("lib");
+    match setup_qca_in(&lib)? {
+        QcaRepair::NothingToRepair => println!("setup-qca: nothing to repair"),
+        QcaRepair::Repaired => println!(
+            "setup-qca: repaired {}",
+            lib.join("libqca-qt5.so.2").display()
+        ),
+    }
     Ok(())
 }

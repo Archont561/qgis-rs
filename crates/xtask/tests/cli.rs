@@ -17,6 +17,29 @@ fn the_gate_takes_its_one_flag() {
 }
 
 #[test]
+fn long_help_lists_every_repository_verb() {
+    let mut command = Cli::command();
+    let help = command.render_long_help().to_string();
+    for verb in [
+        "ci",
+        "check-cpp",
+        "format-cpp",
+        "clang-tidy",
+        "check-sources",
+        "check-boundaries",
+        "lint-toml",
+        "pack-check",
+        "setup-qca",
+        "ci-failure-summary",
+        "api-manifest",
+        "scaffold",
+        "release",
+    ] {
+        assert!(help.contains(verb), "long help omitted {verb}");
+    }
+}
+
+#[test]
 fn staged_files_reach_the_lints_as_arguments() {
     // lefthook passes the staged files positionally; a hook that passes
     // none must still mean "check the whole tree", not "check nothing".
