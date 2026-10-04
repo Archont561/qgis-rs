@@ -12,8 +12,8 @@ session that ends without writing one has handed the next session a reconstructi
 ## 1. Session opening prompt (written at close, pasted back at the next start)
 
 ```
-Confirm the pixi environments and baseline the suite (expect 149 Rust tests across 30 integration
-test files, 123 + 21 pytest, 44 bun — <the one or two environment facts that would otherwise waste
+Confirm the pixi environments and baseline the suite (expect 194 Rust tests across 42 non-empty
+test-binary runs, 123 + 21 pytest, 44 bun, 14 C++ — <the one or two environment facts that would otherwise waste
 the first ten minutes: whether .pixi/envs is already materialized or needs scripts/restore.sh,
 whether a publish-sandbox repack has landed on sandbox/developer-linux-64, whether gh and its
 write scope are present, anything new that needs vendoring before the tree builds offline>).
