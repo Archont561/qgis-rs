@@ -1,10 +1,10 @@
 ---
 id: TASK-23
 title: Refactor every test suite onto property-based and fixture-driven testing
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-10-02 23:06'
-updated_date: '2026-10-04 10:54'
+updated_date: '2026-10-04 12:27'
 labels:
   - refactor
   - testing
@@ -45,9 +45,9 @@ Do this suite by suite, and keep the example-based tests that document a specifi
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
 - [x] #1 Rust: proptest and rstest are workspace dependencies, and qgis-render (extent, tiles, crs) plus qgis-protocol have property tests for their round-trips and invariants
-- [ ] #2 Rust: repeated setup uses rstest fixtures and cases instead of a hand-rolled helper fn per test file
+- [x] #2 Rust: repeated setup uses rstest fixtures and cases instead of a hand-rolled helper fn per test file
 - [x] #3 Python: hypothesis is a test dependency of both distributions, with strategies for extents, zoom ranges and CRS auth ids
-- [ ] #4 TypeScript: the client suites use @qgis/test-utils for shared setup and fast-check for the same invariants the Rust properties assert
+- [x] #4 TypeScript: the client suites use @qgis/test-utils for shared setup and fast-check for the same invariants the Rust properties assert
 - [x] #5 C++: a GoogleTest target builds and runs the shim's own tests headless, with RapidCheck properties for the string and handle conversions
 - [x] #6 The C++ suite is wired into turbo so that pixi run ci covers it
 - [x] #7 The cross-language golden values survive the migration and still agree
@@ -76,4 +76,7 @@ TASK-31 defines the shared bridge contract; TASK-32 covers Python fixtures; TASK
 2026-10-04: two findings from the property run. First, a property over arbitrary byte strings failed because QString::fromStdString replaces invalid UTF-8 with U+FFFD, collapsing distinct inputs onto one key; the properties now generate printable ASCII and the replacement behaviour is pinned by example instead of hidden. Second, clang-tidy reads compile_commands.json, which the qgis-sys build script writes only for the sources cargo compiles, so the CMake-built suite is excluded from clang-tidy while cpp_sources now includes it for clang-format - before this, C++ test files were invisible to the format-drift gate.
 
 2026-10-04: AC#2 and AC#4 are NOT met and the task stays In Progress. AC#2: rstest is a workspace dependency but is used in exactly one file (crates/qgis-render/tests/tiles.rs); every other crate still hand-rolls its per-file setup helper. AC#4: ts-packages/qgis-node uses fast-check and ts-packages/qgis-sdk-bridge uses @qgis/test-utils, but the bridge suite has no fast-check property, so the two client suites do not yet assert the same invariants the Rust properties do.
+2026-10-04: AC#2 and AC#4 are done and TASK-23 is closed, measured on a restored sandbox with pixi run gates green. AC#2: rstest is now a dev-dependency of every crate that has an integration suite, and the hand-rolled per-file setup helpers are gone. qgis-cli/tests/cli.rs lost five free functions to one Cli fixture; qgis-sdk/tests/plugin_cli.rs lost five to one PluginCli fixture; qgis-engine, qgis-sys and qgis-mcp turned their send/ok/err/project_file helpers into fixture types; qgis-server, qgis-render and xtask turned single_project, multi_project, write_project and lawful_tree into fixtures. Types that own a scratch directory now remove it on Drop, and the fixed directory names that had already caused one CI flake are unique per test. Tables of inputs became cases at the same time: malformed CRS codes, malformed extents, invalid hex, every ErrorKind, every engine rejection kind, every route, every image format and the five single-violation boundary rules each report one result per input instead of stopping at the first failure. AC#4: ts-packages/qgis-sdk-bridge now states three fast-check properties over the scripted channel that @qgis/test-utils installs - any JSON answer returns to the caller unchanged, arguments reach the far side verbatim with the bridge callback stripped, and a description exposes exactly the methods it names. These are the transport invariants qgis-protocol asserts in proptest, restated at the bridge boundary. The JSON generator is narrower than fc.jsonValue on purpose: that generator emits doubles and negative zero round-trips to zero, which would fail a property about the transport for a reason unrelated to the transport.
+
+2026-10-04: suite counts after the migration, all green in one gate run of 2m2s. Rust 261 tests across 42 non-empty binaries, up from 194 - the rise is case expansion, not new assertions. Bun 47, up from 44, the three new bridge properties. Python unchanged at 123 passed plus 2 skipped and 21 passed. C++ unchanged at 14 GoogleTest cases in 1 ctest target. The cross-language golden values still agree: 4568 tiles for the z10-14 pyramid over 14,50,15,51, and tile_from_lon_lat at z10 of 13.9,51.1 is 10/551/342.
 <!-- SECTION:NOTES:END -->

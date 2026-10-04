@@ -1,5 +1,57 @@
 # Bundle Update Log
 
+## 2026-10-04 (session 3)
+
+* **Change (testing)**: TASK-23 is **closed**. AC#2: every crate with an
+  integration suite now has `rstest` as a dev-dependency, and the hand-rolled
+  setup helper at the top of each test file is gone. `qgis-cli/tests/cli.rs`
+  traded five free functions (`run`, `temp_dir`, `write_project`, `stdout_of`,
+  `stderr_of`) for one `cli` fixture; `qgis-sdk/tests/plugin_cli.rs` did the
+  same; `qgis-engine`, `qgis-sys` and `qgis-mcp` turned their `send`/`ok`/`err`
+  and `project_file` helpers into fixture types; `qgis-server`, `qgis-render`
+  and `xtask` turned `single_project`, `multi_project`, `write_project` and
+  `lawful_tree` into `#[fixture]`s. AC#4: `ts-packages/qgis-sdk-bridge` states
+  three `fast-check` properties over the scripted channel `@qgis/test-utils`
+  installs — any JSON answer returns unchanged, arguments reach the far side
+  verbatim with the bridge's callback stripped, and a description exposes
+  exactly the methods it names. Those are the two transport invariants
+  `qgis-protocol` asserts in proptest, restated at the bridge's boundary.
+* **Measurement**: **Rust 194 → 261** across the same 42 non-empty binaries,
+  **bun 44 → 47**; pytest (123 + 2 skipped, 21) and C++ (14) unchanged.
+  `pixi run gates` green in 2m2s. None of the +67 is a new assertion: it is
+  `#[case]` expansion. That is the point of the change — a loop over five
+  malformed CRS codes stopped at the first failure and reported one result,
+  whereas five cases report five, each named after the input that broke.
+* **Idea (acted on, worth repeating)**: types that own a scratch directory now
+  remove it on `Drop`, which the free functions they replaced mostly did not,
+  and their directory names are unique per test rather than fixed. The fixed
+  names were not hypothetical: `plugin_cli.rs` already carried a comment about
+  a CI flake caused by a leftover directory, and three other files had the same
+  bug without the comment.
+* **Measurement (TypeScript)**: the bridge's JSON generator is deliberately
+  narrower than `fc.jsonValue()`. That generator emits doubles, and `-0`
+  round-trips through JSON to `0`, so the round-trip property fails on an IEEE
+  754 detail that has nothing to do with the transport it is about. Object keys
+  come from a fixed set for the same reason — a generated `__proto__` would be
+  testing `JSON.parse`'s prototype handling. Same lesson as session 2's
+  `QString::fromStdString` finding: a property over "arbitrary" values is
+  usually a property about the generator until you narrow it.
+* **Operational**: this sandbox was **recycled mid-task**. `.pixi/`,
+  `~/.local/bin/pixi` and every `node_modules/` were gone, and the local branch
+  pointer had rewound to `main` while the working tree still held the committed
+  work as uncommitted changes. Recovery, in order: `sh scripts/restore.sh`
+  (~2 min), `git fetch origin arena/…` then
+  **`git reset --mixed origin/arena/…`** — `--mixed`, not `--soft`, so the index
+  matches the pushed tip and `git status` shows only the new work — and
+  `bun install --frozen-lockfile`. Note that npm answered normally even though
+  crates.io and prefix.dev still do not; the airlock's vendored crates cover
+  the former, and `bun.lock` plus a live registry covers the latter.
+* **Still open**: the two backlog findings from session 2 are unchanged and
+  still need the user's ruling — TASK-43's dependency on TASK-36 looks wrong,
+  and `backlog/archive/task-6` is archived while still `status: To Do` with
+  TASK-7 depending on it. Closing TASK-23 unblocks TASK-31 and the
+  32/33/34 → 35 → 42 chain behind it.
+
 ## 2026-10-04 (session 2)
 
 * **Change (testing)**: The native manager has its own C++ tests, and the gate
