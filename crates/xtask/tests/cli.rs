@@ -11,9 +11,15 @@ fn the_command_tree_is_well_formed() {
 }
 
 #[test]
-fn the_gate_takes_its_one_flag() {
-    let cli = Cli::try_parse_from(["xtask", "ci", "--no-coverage"]).expect("parses");
-    assert!(matches!(cli.command, Command::Ci { no_coverage: true }));
+fn the_gate_accepts_fast_and_offline_modes() {
+    let cli = Cli::try_parse_from(["xtask", "ci", "--no-coverage", "--offline"]).expect("parses");
+    assert!(matches!(
+        cli.command,
+        Command::Ci {
+            no_coverage: true,
+            offline: true
+        }
+    ));
 }
 
 #[test]

@@ -61,7 +61,13 @@ pub const REPO_LINTS: &[RepoLint] = &[
 /// gate fails before any compile, and only then does turbo fan out the package
 /// suites. Coverage runs last because it is the most expensive producer and
 /// its artifacts are only interesting once everything else is green.
-pub fn gate(coverage: bool) -> Result<()> {
+pub fn gate(coverage: bool, offline: bool) -> Result<()> {
+    if offline {
+        // Set this inside xtask rather than in the shell alias: Cargo does not
+        // preserve its own CARGO_NET_* variables for the binary it launches,
+        // while child pixi/napi processes inherit variables set here.
+        std::env::set_var("CARGO_NET_OFFLINE", "true");
+    }
     step("repo lints (sources, boundaries, API manifest, taplo, actionlint)");
     // Keep these in-process and ordered as REPO_LINTS records: each costs
     // milliseconds and catches an invalid repository before any compile.

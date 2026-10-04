@@ -40,7 +40,7 @@ use clap::{Parser, Subcommand};
     name = "xtask",
     about = "Repository automation for qgis-rs",
     long_about = "Every repository-wide verb qgis-rs has. Run through pixi:\n  \
-                  pixi run xtask ci [--no-coverage]\n  \
+                  pixi run xtask ci [--no-coverage] [--offline]\n  \
                   pixi run xtask check-cpp [files...]\n  \
                   pixi run xtask format-cpp\n  \
                   pixi run xtask clang-tidy\n  \
@@ -69,6 +69,9 @@ pub enum Command {
         /// Skip the coverage producers — the fast pre-push loop.
         #[arg(long)]
         no_coverage: bool,
+        /// Force Cargo subprocesses offline, including those spawned by napi.
+        #[arg(long)]
+        offline: bool,
     },
     /// clang-format gate for the native manager (given files, or the whole tree).
     CheckCpp {
@@ -130,7 +133,10 @@ pub enum Command {
 /// Propagates whatever the subcommand failed at, with the step named.
 pub fn run(command: Command) -> Result<()> {
     match command {
-        Command::Ci { no_coverage } => ci::gate(!no_coverage),
+        Command::Ci {
+            no_coverage,
+            offline,
+        } => ci::gate(!no_coverage, offline),
         Command::CheckCpp { files } => lints::check_cpp(&files),
         Command::FormatCpp => lints::format_cpp(),
         Command::ClangTidy => lints::clang_tidy(),

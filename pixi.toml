@@ -323,7 +323,7 @@ setup = { cmd = "cargo run -q -p xtask -- setup-qca", description = "Ensure the 
 # It runs in `default` (where cargo and the QGIS toolchain are) and re-enters
 # `-e bun` for every turbo fan-out, exactly as the shell gate did.
 ci = { cmd = "cargo run -q -p xtask -- ci", description = "The full gate: repo lints, turbo lint/format/test/pack:check, coverage", default-environment = "default" }
-gates = { cmd = "env CARGO_NET_OFFLINE=true cargo run -q -p xtask -- ci --no-coverage", description = "`ci` without coverage, forced offline for restored-sandbox verification", default-environment = "default" }
+gates = { cmd = "cargo run -q -p xtask -- ci --no-coverage --offline", description = "`ci` without coverage, forced offline for restored-sandbox verification", default-environment = "default" }
 
 # ── lint tooling (lefthook, the gate and CI share these) ──────────────────────
 # Optional arguments are staged files from lefthook; with none they check the
