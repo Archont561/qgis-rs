@@ -1,6 +1,8 @@
 //! The API-manifest generator's public seam: JSON in, validated/generated text out.
 
-use xtask::api_manifest::{render_generated_header, render_operation_table, validate_manifest};
+use xtask::api_manifest::{
+    check_summary, render_generated_header, render_operation_table, validate_manifest,
+};
 
 const MANIFEST: &str =
     include_str!("../../../crates/qgis-sys/native_manager/generated/api_manifest.json");
@@ -34,6 +36,15 @@ fn the_checked_in_manifest_has_a_complete_operation_registry() {
 
     let generated = render_operation_table(&manifest).expect("operation table renders");
     assert_eq!(generated, GENERATED_TABLE);
+}
+
+#[test]
+fn a_successful_check_summarizes_the_manifest_and_generated_fragments() {
+    let manifest = validate_manifest(MANIFEST).expect("checked-in API manifest is valid");
+    assert_eq!(
+        check_summary(&manifest, 2),
+        "api-manifest: 17 operations match 2 generated fragments"
+    );
 }
 
 #[test]

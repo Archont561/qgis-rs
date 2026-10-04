@@ -337,6 +337,19 @@ pub fn render_generated_header(manifest: &ApiManifest) -> String {
     )
 }
 
+/// One-line result printed after generated fragments have been verified.
+///
+/// Public for `tests/api_manifest.rs`: a silent successful drift check is easy
+/// to mistake for a check that never ran.
+#[must_use]
+pub fn check_summary(manifest: &ApiManifest, fragment_count: usize) -> String {
+    format!(
+        "api-manifest: {} operations match {} generated fragments",
+        manifest.operations.len(),
+        fragment_count
+    )
+}
+
 /// Run the repository command against the checked-in manifest.
 pub fn run(check: bool, diff_against: Option<&str>) -> Result<()> {
     let root = crate::util::repo_root();
@@ -378,6 +391,7 @@ pub fn generate(manifest_path: &Path, output_dir: &Path, check: bool) -> Result<
     if check {
         assert_generated(&table_path, &operation_table)?;
         assert_generated(&header_path, &header)?;
+        println!("{}", check_summary(&manifest, 2));
         return Ok(());
     }
 

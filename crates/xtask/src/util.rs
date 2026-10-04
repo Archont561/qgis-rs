@@ -93,6 +93,35 @@ where
     run("pixi", full)
 }
 
+/// Run a pixi command with one environment variable set on the pixi process.
+///
+/// Public for the local gate: setting `CARGO_NET_OFFLINE` inside the target
+/// command is too late because napi starts Cargo through another process.
+pub fn pixi_with_env<I, S>(environment: &str, args: I, key: &str, value: &str) -> Result<()>
+where
+    I: IntoIterator<Item = S>,
+    S: AsRef<OsStr>,
+{
+    let args: Vec<String> = args
+        .into_iter()
+        .map(|arg| arg.as_ref().to_string_lossy().into_owned())
+        .collect();
+    let status = Command::new("pixi")
+        .args(["run", "-e", environment, "--"])
+        .args(&args)
+        .env(key, value)
+        .current_dir(repo_root())
+        .status()
+        .context("cannot start pixi")?;
+    if !status.success() {
+        bail!(
+            "pixi run -e {environment} -- {} failed with {status}",
+            args.join(" ")
+        );
+    }
+    Ok(())
+}
+
 /// Every C++ source and header in the qgis-sys shim, sorted.
 ///
 /// Sorted because an unsorted walk makes clang-format's output order depend on

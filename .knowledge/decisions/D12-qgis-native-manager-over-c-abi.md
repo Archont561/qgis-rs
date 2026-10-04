@@ -234,6 +234,21 @@ by the shared fixtures. There are no wire-level camelCase aliases.
   operation names, error kinds, and JSON fixtures as the Rust engine and host
   clients.
 
+## Amendment: scaffolding follows the manifest boundary (2026-10-04)
+
+TASK-45 removes the obsolete per-concept CXX scaffolder. Teaching that template
+to generate pieces of the native manager would make a command invent ownership,
+threading, and dispatch structure that D12 deliberately centralizes in one
+hand-owned manager. It would also create a second source of truth beside the API
+manifest.
+
+`xtask scaffold` therefore scaffolds only a reviewed API-manifest operation: it
+adds the operation and its declaration to the JSON source of truth, validates
+the result, and lets `api-manifest` regenerate the two derived C++ fragments.
+The manager implementation and integration test remain deliberate hand-written
+work. The command creates no header, bridge module, C++ implementation, or
+`src/<layer>/<concept>/` tree.
+
 ## References
 
 - [RFC 19](https://github.com/Archont561/qgis-rs/issues/19)

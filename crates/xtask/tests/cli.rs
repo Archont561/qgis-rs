@@ -11,9 +11,38 @@ fn the_command_tree_is_well_formed() {
 }
 
 #[test]
-fn the_gate_takes_its_one_flag() {
-    let cli = Cli::try_parse_from(["xtask", "ci", "--no-coverage"]).expect("parses");
-    assert!(matches!(cli.command, Command::Ci { no_coverage: true }));
+fn the_gate_accepts_fast_and_offline_modes() {
+    let cli = Cli::try_parse_from(["xtask", "ci", "--no-coverage", "--offline"]).expect("parses");
+    assert!(matches!(
+        cli.command,
+        Command::Ci {
+            no_coverage: true,
+            offline: true
+        }
+    ));
+}
+
+#[test]
+fn long_help_lists_every_repository_verb() {
+    let mut command = Cli::command();
+    let help = command.render_long_help().to_string();
+    for verb in [
+        "ci",
+        "check-cpp",
+        "format-cpp",
+        "clang-tidy",
+        "check-sources",
+        "check-boundaries",
+        "lint-toml",
+        "pack-check",
+        "setup-qca",
+        "ci-failure-summary",
+        "api-manifest",
+        "scaffold",
+        "release",
+    ] {
+        assert!(help.contains(verb), "long help omitted {verb}");
+    }
 }
 
 #[test]

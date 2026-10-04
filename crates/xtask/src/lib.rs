@@ -40,13 +40,19 @@ use clap::{Parser, Subcommand};
     name = "xtask",
     about = "Repository automation for qgis-rs",
     long_about = "Every repository-wide verb qgis-rs has. Run through pixi:\n  \
-                  pixi run xtask ci\n  \
+                  pixi run xtask ci [--no-coverage] [--offline]\n  \
                   pixi run xtask check-cpp [files...]\n  \
-                  pixi run xtask check-boundaries\n  \
                   pixi run xtask format-cpp\n  \
-                  pixi run xtask api-manifest [--check] [--diff-against PATH]\n  \
                   pixi run xtask clang-tidy\n  \
-                  pixi run xtask release verify-version v1.2.3",
+                  pixi run xtask check-sources\n  \
+                  pixi run xtask check-boundaries\n  \
+                  pixi run xtask lint-toml [files...]\n  \
+                  pixi run xtask pack-check <package-dir> <required...>\n  \
+                  pixi run xtask setup-qca\n  \
+                  pixi run xtask ci-failure-summary <log>\n  \
+                  pixi run xtask api-manifest [--check] [--diff-against PATH]\n  \
+                  pixi run xtask scaffold <operation> <handler>\n  \
+                  pixi run xtask release <step>",
     version
 )]
 pub struct Cli {
@@ -63,15 +69,18 @@ pub enum Command {
         /// Skip the coverage producers — the fast pre-push loop.
         #[arg(long)]
         no_coverage: bool,
+        /// Force Cargo subprocesses offline, including those spawned by napi.
+        #[arg(long)]
+        offline: bool,
     },
-    /// clang-format gate for the C++ shim (given files, or the whole tree).
+    /// clang-format gate for the native manager (given files, or the whole tree).
     CheckCpp {
         /// Files to check; with none, every .cpp/.h under crates/qgis-sys.
         files: Vec<String>,
     },
-    /// Write clang-format's output over the C++ shim.
+    /// Write clang-format's output over the native manager.
     FormatCpp,
-    /// clang-tidy over the C++ shim, discovering the include paths it needs.
+    /// clang-tidy over the native manager, discovering the include paths it needs.
     ClangTidy,
     /// Fail if a source file inside a package tree is hidden by .gitignore.
     CheckSources,
@@ -105,16 +114,12 @@ pub enum Command {
         #[arg(long, value_name = "PATH")]
         diff_against: Option<String>,
     },
-    /// Scaffold a qgis-sys binding: header + cxx bridge + C++ shim + wiring.
+    /// Add a reviewable operation to the native-manager API manifest.
     Scaffold {
-        /// Layer directory, e.g. `core`.
-        layer: String,
-        /// Concept directory, e.g. `geometry`.
-        concept: String,
-        /// The QGIS class being bound, e.g. `QgsGeometry`.
-        qgis_class: String,
-        /// Short module name, e.g. `geometry`.
-        short_name: String,
+        /// Snake-case protocol operation name, e.g. `project_save`.
+        operation: String,
+        /// C++ native-manager handler identifier, e.g. `project_save`.
+        handler: String,
     },
     /// The release pipeline, step by step.
     #[command(subcommand)]
@@ -128,7 +133,10 @@ pub enum Command {
 /// Propagates whatever the subcommand failed at, with the step named.
 pub fn run(command: Command) -> Result<()> {
     match command {
-        Command::Ci { no_coverage } => ci::gate(!no_coverage),
+        Command::Ci {
+            no_coverage,
+            offline,
+        } => ci::gate(!no_coverage, offline),
         Command::CheckCpp { files } => lints::check_cpp(&files),
         Command::FormatCpp => lints::format_cpp(),
         Command::ClangTidy => lints::clang_tidy(),
@@ -145,12 +153,9 @@ pub fn run(command: Command) -> Result<()> {
             check,
             diff_against,
         } => api_manifest::run(check, diff_against.as_deref()),
-        Command::Scaffold {
-            layer,
-            concept,
-            qgis_class,
-            short_name,
-        } => scaffold::binding(&layer, &concept, &qgis_class, &short_name),
+        Command::Scaffold { operation, handler } => {
+            scaffold::repository_operation(&operation, &handler)
+        }
         Command::Release(step) => release::run(step),
     }
 }

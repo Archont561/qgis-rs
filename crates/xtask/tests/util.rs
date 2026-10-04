@@ -1,5 +1,5 @@
 //! The two bits of filesystem knowledge every subcommand starts from: where
-//! the repository root is, and which files are the C++ shim.
+//! the repository root is, and which files belong to the native manager.
 
 use xtask::util::{cpp_sources, repo_root};
 

@@ -76,6 +76,7 @@ requires-pixi = ">=0.79.0"
 rust = ">=1.96.0,<1.97"
 qgis = ">=3.44.9,<4"
 maturin = ">=1.7,<2"
+patchelf = "*"
 pytest = ">=8,<9"
 pytest-cov = ">=5,<7"
 # The Python the project runs on is the Python QGIS is bundled with — not an
@@ -177,6 +178,9 @@ qgis = { workspace = true }
 # [feature.sdk.tasks].
 python = { workspace = true }
 maturin = { workspace = true }
+# Linux wheel builds copy QGIS/Qt shared libraries and rewrite their runtime
+# paths; maturin shells out to patchelf for that packaging step.
+patchelf = { workspace = true }
 # `maturin develop` shells out to `pip --version` before it does anything else
 # ("Failed to find pip (if working with a uv venv try `maturin develop --uv`)").
 # The pixi-build-python path never needed it, because it installed the built
@@ -311,7 +315,7 @@ bun = { features = ["bun"] }
 xtask = { cmd = "cargo run -q -p xtask --", description = "Run a repository-automation subcommand (crates/xtask)", default-environment = "default" }
 
 # ── environment repair ────────────────────────────────────────────────────────
-setup = { cmd = "cargo run -q -p xtask -- setup-qca", description = "Link libqca under the Qt5 soname QGIS still asks for", default-environment = "default" }
+setup = { cmd = "cargo run -q -p xtask -- setup-qca", description = "Ensure the Qt5 QCA soname QGIS asks for is present", default-environment = "default" }
 
 # ── the gate ──────────────────────────────────────────────────────────────────
 # One call, run identically by a contributor before pushing and by ci.yml:
@@ -319,20 +323,20 @@ setup = { cmd = "cargo run -q -p xtask -- setup-qca", description = "Link libqca
 # It runs in `default` (where cargo and the QGIS toolchain are) and re-enters
 # `-e bun` for every turbo fan-out, exactly as the shell gate did.
 ci = { cmd = "cargo run -q -p xtask -- ci", description = "The full gate: repo lints, turbo lint/format/test/pack:check, coverage", default-environment = "default" }
-gates = { cmd = "cargo run -q -p xtask -- ci --no-coverage", description = "`ci` without the coverage producers — the fast pre-push loop", default-environment = "default" }
+gates = { cmd = "cargo run -q -p xtask -- ci --no-coverage --offline", description = "`ci` without coverage, forced offline for restored-sandbox verification", default-environment = "default" }
 
 # ── lint tooling (lefthook, the gate and CI share these) ──────────────────────
 # Optional arguments are staged files from lefthook; with none they check the
 # whole relevant tree.
-check-cpp = { cmd = "cargo run -q -p xtask -- check-cpp", description = "clang-format gate for the C++ shim (staged files, or the whole tree)", default-environment = "default" }
+check-cpp = { cmd = "cargo run -q -p xtask -- check-cpp", description = "clang-format gate for the native manager (staged files, or the whole tree)", default-environment = "default" }
 # The writing counterpart of check-cpp, and the fourth pass of the lint gate.
 # Both used to be steps inside scripts/rust-format.sh and scripts/rust-lint.sh;
 # as subcommands they are what lets @qgis/rust's `format` and `lint` scripts be
 # one line each. clang-tidy in particular has to discover its own include paths —
-# the hashed cxxbridge out-dir, qt vs qt6, the GCC dir carrying stddef.h — which
+# the native-manager compile database, Qt include paths, and the GCC dir carrying stddef.h — which
 # is why it is a program and not a flag.
-format-cpp = { cmd = "cargo run -q -p xtask -- format-cpp", description = "clang-format the C++ shim in place", default-environment = "default" }
-clang-tidy = { cmd = "cargo run -q -p xtask -- clang-tidy", description = "clang-tidy over the C++ shim, discovering the include paths it needs", default-environment = "default" }
+format-cpp = { cmd = "cargo run -q -p xtask -- format-cpp", description = "clang-format the native manager in place", default-environment = "default" }
+clang-tidy = { cmd = "cargo run -q -p xtask -- clang-tidy", description = "clang-tidy over the native manager, discovering the include paths it needs", default-environment = "default" }
 lint-toml = { cmd = "cargo run -q -p xtask -- lint-toml", description = "taplo canonicality check for pixi.toml", default-environment = "default" }
 lint-actions = { cmd = "actionlint", description = "Lint .github/workflows/*.yml", default-environment = "default" }
 lint-commit = { cmd = "convco check --from-stdin", description = "Validate a commit message against the conventional-commit spec", default-environment = "default" }
@@ -352,8 +356,8 @@ version-set = { cmd = "bun scripts/version.ts --set", description = "Rewrite eve
 changelog = { cmd = "convco changelog", description = "Preview the conventional-commit changelog for the pending release", default-environment = "default" }
 
 # ── codegen ───────────────────────────────────────────────────────────────────
-# Usage: pixi run scaffold <layer> <concept> <QgisClass> <short_name>
-scaffold = { cmd = "cargo run -q -p xtask -- scaffold", description = "Scaffold a qgis-sys binding: header + cxx bridge + C++ shim + wiring", default-environment = "default" }
+# Usage: pixi run scaffold <operation> <handler>
+scaffold = { cmd = "cargo run -q -p xtask -- scaffold", description = "Add an operation to the native-manager API manifest and regenerate its fragments", default-environment = "default" }
 
 # ── internal staged-file plumbing ─────────────────────────────────────────────
 # lefthook's js-biome job checks exactly the files being committed. Repo-wide

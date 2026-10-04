@@ -401,14 +401,15 @@ Everything a human, a hook or CI does to the **repository as a whole** is a subc
 
 ```bash
 pixi run xtask ci [--no-coverage]            # the gate
-pixi run xtask check-cpp [files...]          # clang-format on the C++ shim
-pixi run xtask format-cpp                    # clang-format writes for the C++ shim
+pixi run xtask check-cpp [files...]          # clang-format on the native manager
+pixi run xtask format-cpp                    # clang-format writes for the native manager
 pixi run xtask clang-tidy                    # clang-tidy, discovering its own include paths
 pixi run xtask check-sources                 # no source file hidden by .gitignore
+pixi run xtask check-boundaries              # manifests obey D13 product boundaries
 pixi run xtask lint-toml  [files...]         # taplo canonicality
 pixi run xtask pack-check <dir> <required…>  # the published tarball has what `files` promises
 pixi run xtask api-manifest [--check] [--diff-against PATH] # validate/generate API coverage
-pixi run xtask scaffold <layer> <concept> <QgisClass> <short>
+pixi run xtask scaffold <operation> <handler>
 pixi run xtask setup-qca
 pixi run xtask release <step>
 ```
