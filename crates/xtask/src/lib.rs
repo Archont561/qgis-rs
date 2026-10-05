@@ -41,7 +41,7 @@ use clap::{Parser, Subcommand};
     name = "xtask",
     about = "Repository automation for qgis-rs",
     long_about = "Every repository-wide verb qgis-rs has. Run through pixi:\n  \
-                  pixi run xtask ci [--no-coverage] [--offline]\n  \
+                  pixi run xtask ci [--no-coverage] [--offline] [--stage STAGE]\n  \
                   pixi run xtask check-cpp [files...]\n  \
                   pixi run xtask test-cpp\n  \
                   pixi run xtask format-cpp\n  \
@@ -74,6 +74,9 @@ pub enum Command {
         /// Force Cargo subprocesses offline, including those spawned by napi.
         #[arg(long)]
         offline: bool,
+        /// Run one slice of the gate instead of all of it — what a CI lane does.
+        #[arg(long, value_name = "STAGE")]
+        stage: Option<ci::Stage>,
     },
     /// clang-format gate for the native manager (given files, or the whole tree).
     CheckCpp {
@@ -140,7 +143,8 @@ pub fn run(command: Command) -> Result<()> {
         Command::Ci {
             no_coverage,
             offline,
-        } => ci::gate(!no_coverage, offline),
+            stage,
+        } => ci::gate(!no_coverage, offline, stage),
         Command::CheckCpp { files } => lints::check_cpp(&files),
         Command::FormatCpp => lints::format_cpp(),
         Command::TestCpp => cpp::test_cpp(),

@@ -3,6 +3,7 @@
 //! list lefthook appends to `check-cpp`.
 
 use clap::{CommandFactory, Parser};
+use xtask::ci::Stage;
 use xtask::{Cli, Command};
 
 #[test]
@@ -17,9 +18,30 @@ fn the_gate_accepts_fast_and_offline_modes() {
         cli.command,
         Command::Ci {
             no_coverage: true,
-            offline: true
+            offline: true,
+            stage: None,
         }
     ));
+}
+
+/// Every CI lane is one of these spellings, so a typo in `ci.yml` fails at
+/// argument parsing rather than by quietly running a different stage.
+#[test]
+fn the_gate_accepts_one_stage_at_a_time() {
+    for (flag, expected) in [
+        ("repo", Stage::Repo),
+        ("lint", Stage::Lint),
+        ("test", Stage::Test),
+        ("coverage", Stage::Coverage),
+    ] {
+        let cli = Cli::try_parse_from(["xtask", "ci", "--stage", flag]).expect("parses");
+        let Command::Ci { stage, .. } = cli.command else {
+            panic!("--stage {flag} did not parse as the ci subcommand");
+        };
+        assert_eq!(stage, Some(expected));
+    }
+
+    assert!(Cli::try_parse_from(["xtask", "ci", "--stage", "lints"]).is_err());
 }
 
 #[test]
