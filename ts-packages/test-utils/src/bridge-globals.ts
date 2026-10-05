@@ -31,6 +31,22 @@ export interface ScriptedChannel {
 	transport: unknown;
 }
 
+/**
+ * What to install instead of the built-in script.
+ *
+ * Both fields default to the built-ins, so `installBridgeGlobals()` with no
+ * argument behaves exactly as it always has. A caller that already owns a
+ * scripted transport — `createBridgeHarness` does — passes its own objects
+ * here, so the loader path and the facade path exercise one script rather than
+ * two that can drift.
+ */
+export interface BridgeGlobalsOverrides {
+	/** The objects the channel exposes. `bridge` is also published as `my_bridge`. */
+	objects?: { bridge?: ScriptedBridgeObject; qgis?: ScriptedBridgeObject };
+	/** The two descriptions Python injects on `window`. */
+	descriptions?: { bridge?: unknown; qgis?: unknown };
+}
+
 export interface InstalledBridgeGlobals {
 	/** The channel the fake `QWebChannel` hands to the bridge. */
 	channel: ScriptedChannel;
@@ -180,7 +196,9 @@ const QGIS_API_DESCRIPTION = {
  * these are process-wide. [`createFixture`](./fixture.ts) is the intended way to
  * get that pairing, including across `bun:test`'s file boundaries.
  */
-export function installBridgeGlobals(): InstalledBridgeGlobals {
+export function installBridgeGlobals(
+	injected: BridgeGlobalsOverrides = {},
+): InstalledBridgeGlobals {
 	const scope = globalThis as unknown as Record<string, unknown>;
 	const callLog: BridgeCall[] = [];
 	const overrides = new Map<string, Answer>();
@@ -216,8 +234,8 @@ export function installBridgeGlobals(): InstalledBridgeGlobals {
 		return built;
 	};
 
-	const bridge = build("bridge", BRIDGE_METHODS);
-	const qgis = build("qgis", QGIS_METHODS);
+	const bridge = injected.objects?.bridge ?? build("bridge", BRIDGE_METHODS);
+	const qgis = injected.objects?.qgis ?? build("qgis", QGIS_METHODS);
 	const channel: ScriptedChannel = {
 		objects: { bridge, my_bridge: bridge, qgis },
 		transport: { kind: "scripted" },
@@ -248,8 +266,14 @@ export function installBridgeGlobals(): InstalledBridgeGlobals {
 	define("QWebChannel", QWebChannelMock);
 	define("qt", { webChannelTransport: channel.transport });
 	define("window", globalThis);
-	define("__QGIS_BRIDGE_DESCRIPTION__", BRIDGE_DESCRIPTION);
-	define("__QGIS_API_DESCRIPTION__", QGIS_API_DESCRIPTION);
+	define(
+		"__QGIS_BRIDGE_DESCRIPTION__",
+		injected.descriptions?.bridge ?? BRIDGE_DESCRIPTION,
+	);
+	define(
+		"__QGIS_API_DESCRIPTION__",
+		injected.descriptions?.qgis ?? QGIS_API_DESCRIPTION,
+	);
 
 	let restored = false;
 
