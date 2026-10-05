@@ -1,5 +1,58 @@
 # Bundle Update Log
 
+## 2026-10-05 (session 5)
+
+* **Change (testing)**: TASK-33 is **closed**. `@qgis/test-utils` gained
+  `createBridgeHarness`, which owns the thing every facade suite used to
+  hand-roll: descriptions, call recording with request ids, scripted and held
+  answers, structured rejections, events. `installBridgeGlobals` keeps its
+  signature and now accepts the harness's objects, so the loader path and the
+  facade path exercise one script instead of two that could drift. Shared
+  assertions and `fast-check` arbitraries sit beside it. Bun tests went
+  47 → 119 (`@qgis/test-utils` 14 → 37, `@qgis-sdk/bridge` 68 → 82) with no
+  socket, timer or QWebEngine dependency.
+* **Idea (the contract, as it is)**: writing the suites pinned behaviour that
+  was previously only implied, and it is not what a reader would guess.
+  `QgisBridge.call` hands the caller's callback the **raw wire answer** and
+  resolves its promise with the **decoded** value — for a JSON answer the two
+  differ. A string answer that fails `JSON.parse` passes through unchanged
+  rather than throwing. `TasksAPI.run` reports `task_id: "unknown"` for both an
+  empty answer and truncated JSON, so a caller cannot tell a finished task from
+  a mangled reply. These are encoded as tests, not filed as bugs; changing any
+  of them is a deliberate API decision with a test to update.
+* **Change (CI)**: TASK-46 splits the gate into lanes. The split lives in
+  `xtask`, not in YAML, because of D10 — a workflow step carries no build logic
+  and a contributor must be able to run locally exactly what CI runs.
+  `ci::Stage` is `Repo | Lint | Test | Coverage`, `Stage::steps` names what each
+  owns, and `crates/xtask/tests/ci.rs` asserts the stages concatenate to
+  `GATE_STEPS` with no step claimed twice. That test is the point: without it a
+  lane can silently stop running a step, or two lanes can pay for the same one,
+  and nothing in the YAML would notice. `pixi run gates` still walks every
+  stage in order; `pixi run xtask ci --stage <name>` runs exactly one, and
+  `ci.yml` does nothing else.
+* **Measurement (why the cache was the real cost)**: every `actions/cache` key
+  ended in `${{ github.sha }}`, so every run missed its exact key *by
+  construction*, restored from a `restore-keys` prefix, and then saved a fresh
+  ~3.2 GiB pair at the end. Read from the Actions API before the change: 12
+  caches holding **13.3 GB against a 10 GB limit**, meaning roughly four runs
+  evicted everything earlier runs had written and pull-request runs and `main`
+  runs evicted each other. The post-step saves alone were 58 s of a 9 m 08 s
+  job. Keys are now lockfile-only (`pixi.lock`, `Cargo.lock`,
+  `bun.lock` + `turbo.json`). A sha in a cache key is a write-only cache.
+* **Idea (two small ones worth keeping)**: clippy and rustc write different
+  fingerprints into `target/`, so the lint and test lanes need *separate* cargo
+  cache keys — one shared key has them invalidating each other every run, which
+  looks like a cache that simply never works. And branch protection wants one
+  stable required check, so the fan-out ends in an `always()` aggregate job
+  named `CI` that is red unless every lane succeeded; required checks point
+  there and never need updating when a lane is added.
+* **Idea (not implemented)**: coverage is now restricted to `push` and
+  `workflow_dispatch` rather than deleted. It is an instrumented rebuild of
+  what the test lane just built, nothing blocks on its result
+  (`fail_ci_if_error: false`), and the trend line only needs `main`. If
+  coverage ever gates a merge it has to move back onto the pull-request path
+  and be paid for.
+
 ## 2026-10-04 (session 4)
 
 * **Change (backlog)**: the two findings that had been sitting unresolved for
