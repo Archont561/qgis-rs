@@ -1,10 +1,20 @@
-# One required CI job, and it runs one command: `pixi run ci`
-# (`xtask ci`, crates/xtask). Everything this workflow does besides that is toolchain
-# setup and caching, which is the only thing a CI file should own — if a step
-# here knew how to build or test something, the local gate and CI could
-# disagree, and CI would be the only place you could find out.
+# The gate, fanned out across four lanes — and every lane runs one command:
+# `pixi run xtask ci --stage <name>` (`crates/xtask`). Nothing in this file
+# knows how to build or test anything, which is the only way the local gate and
+# CI can be the same object (D10). The *split* is in xtask too: `Stage::steps`
+# lists what each lane owns and `crates/xtask/tests/ci.rs` asserts the stages
+# partition `GATE_STEPS`, so a lane cannot quietly stop running a step.
 #
-# What this file deliberately does NOT do any more, and why:
+#   repo      seconds, no compiler — repo lints + the format-drift gate
+#   lint      clippy and biome
+#   test      the test fan-out and the publishable-package check
+#   coverage  the instrumented rebuild; only on main, and it blocks nothing
+#
+# `repo` gates the two expensive lanes, so a formatting violation costs one
+# minute instead of nine. `lint` and `test` run in parallel: that trades runner
+# minutes for wall clock on purpose (TASK-46 records both numbers).
+#
+# What this file deliberately does NOT do, and why:
 #
 #   * no actions/setup-python — pixi's `default` environment already carries
 #     the interpreter QGIS was compiled against (3.12.*). A second interpreter
@@ -13,14 +23,11 @@
 #     ships cargo plus a version-matched llvm-profdata/llvm-cov pair in its
 #     sysroot, which is everything cargo-llvm-cov shells out to.
 #   * no `python -m venv` + `pip install maturin pytest pytest-cov` — the pixi
-#     environment IS the target interpreter, maturin/pytest/pytest-cov are
-#     declared in pixi.toml, and `maturin develop` accepts the CONDA_PREFIX
-#     that environment exports. A venv layered on top would only hide QGIS's
-#     own site-packages.
-#   * no per-package `maturin develop` / `pytest` steps — the turbo `build`
-#     task for each Python distribution builds *and* installs its wheel, and
-#     `test`/`coverage` depend on it. CI used to recompile those crates a
-#     second time after turbo had already built them.
+#     environment IS the target interpreter, and those tools are declared in
+#     pixi.toml.
+#   * no cache key containing `github.sha` — that guaranteed a miss on every
+#     run, a multi-GiB save on top of it, and eviction of the caches the next
+#     run wanted. Keys are lockfile-only; see .github/actions/setup-workspace.
 name: CI
 
 on:
@@ -45,84 +52,30 @@ env:
   CARGO_INCREMENTAL: "0"
 
 jobs:
-  ci:
-    name: CI
+  repo:
+    name: repo lints and format
     runs-on: ubuntu-latest
-    timeout-minutes: 180
-
+    # Measured worst case for this lane is well under a minute; the timeout is
+    # a stuck-runner guard, not a budget (it replaces a blanket 180).
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Set up pixi
-        uses: prefix-dev/setup-pixi@d3f436a425481402e6a95a1d1fc10331c708cd9e # v0.10.2
+      # No cargo cache: this lane runs rustfmt, taplo, actionlint, biome and
+      # the in-process repo lints. None of them compiles a crate.
+      - uses: ./.github/actions/setup-workspace
         with:
-          pixi-version: v0.81.0
-          run-install: false
-          cache: false
-
-      # Environment cache keyed on the lockfile: a hit skips the heavy
-      # QGIS/rust solve and download entirely. The exact sha in the key means a
-      # partially written cache is never poisoned — actions/cache only saves on
-      # a full key miss.
-      - name: Cache the pixi environments
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: .pixi/envs
-          key: pixi-envs-${{ runner.os }}-${{ hashFiles('pixi.lock') }}-${{ github.sha }}
-          restore-keys: |
-            pixi-envs-${{ runner.os }}-${{ hashFiles('pixi.lock') }}-
-            pixi-envs-${{ runner.os }}-
-
-      - name: Install the pixi environments
-        run: pixi install --locked -e default -e bun
-
-      # Registry downloads and build output, including qgis-sys's C++ compile.
-      # Plain actions/cache rather than Swatinem/rust-cache: cargo lives inside
-      # the pixi environment here, not on the runner's PATH, and rust-cache
-      # shells out to it during setup.
-      - name: Cache cargo and target
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            ~/.cargo/registry/index
-            ~/.cargo/registry/cache
-            ~/.cargo/git/db
-            target
-          key: cargo-${{ runner.os }}-${{ hashFiles('Cargo.lock') }}-${{ github.sha }}
-          restore-keys: |
-            cargo-${{ runner.os }}-${{ hashFiles('Cargo.lock') }}-
-            cargo-${{ runner.os }}-
-
-      # Turbo's content-hash cache lets the gate skip packages whose inputs did
-      # not change since the last run on this branch.
-      - name: Cache the turborepo task cache
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: .turbo/cache
-          key: turbo-${{ runner.os }}-${{ hashFiles('bun.lock') }}-${{ github.sha }}
-          restore-keys: |
-            turbo-${{ runner.os }}-${{ hashFiles('bun.lock') }}-
-            turbo-${{ runner.os }}-
-
-      # Bun cannot live in `default`: conda-forge qgis needs icu >=78.3 while
-      # bun needs icu >=75.1,<76, so the two never solve together.
-      - name: Install the Bun workspace from the root lockfile
-        run: pixi run -e bun bun-install
+          cargo: "false"
 
       - name: Verify every manifest states the same version
         run: pixi run -e bun version-check
 
-      # THE gate. Identical to what a contributor runs before pushing.
-      # Produces target/coverage/{rust-lcov.info,python-*.xml} on the way.
-      - name: Run the CI gate
+      - name: Repo lints and format drift
         id: gate
         run: |
           set -o pipefail
-          pixi run ci 2>&1 | tee gate.log
+          pixi run xtask ci --stage repo 2>&1 | tee gate.log
 
-      # The full log is a click away in the UI, but a failure summary that
-      # travels with the API (an annotation and the job summary) is what makes
-      # a red run diagnosable from a terminal, a bot, or a phone.
       - name: Summarize the failure
         if: ${{ failure() && steps.gate.outcome == 'failure' }}
         run: pixi run xtask ci-failure-summary gate.log
@@ -131,7 +84,109 @@ jobs:
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: gate-log
+          name: gate-log-repo
+          path: gate.log
+          if-no-files-found: ignore
+          retention-days: 7
+
+  lint:
+    name: package lints
+    needs: [repo]
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # Clippy writes its own fingerprints into `target/`; a separate suffix
+      # keeps this lane and the test lane from invalidating each other.
+      - uses: ./.github/actions/setup-workspace
+        with:
+          cache-suffix: lint
+
+      - name: Package lints
+        id: gate
+        run: |
+          set -o pipefail
+          pixi run xtask ci --stage lint 2>&1 | tee gate.log
+
+      - name: Summarize the failure
+        if: ${{ failure() && steps.gate.outcome == 'failure' }}
+        run: pixi run xtask ci-failure-summary gate.log
+
+      - name: Upload the gate log
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: gate-log-lint
+          path: gate.log
+          if-no-files-found: ignore
+          retention-days: 7
+
+  test:
+    name: tests
+    needs: [repo]
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: ./.github/actions/setup-workspace
+        with:
+          cache-suffix: test
+
+      - name: Tests and package contents
+        id: gate
+        run: |
+          set -o pipefail
+          pixi run xtask ci --stage test 2>&1 | tee gate.log
+
+      - name: Summarize the failure
+        if: ${{ failure() && steps.gate.outcome == 'failure' }}
+        run: pixi run xtask ci-failure-summary gate.log
+
+      - name: Upload the gate log
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: gate-log-test
+          path: gate.log
+          if-no-files-found: ignore
+          retention-days: 7
+
+  coverage:
+    name: coverage
+    # Only where it is read. Coverage is an instrumented rebuild of everything
+    # the test lane just built, and nothing gates on its result
+    # (`fail_ci_if_error: false`), so paying for it on every pull-request push
+    # bought a Codecov comment at the price of the slowest step in the gate.
+    # It still runs on every merge to main, which is what the trend line is
+    # drawn from, and `workflow_dispatch` covers "I want it on this branch".
+    if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
+    needs: [test]
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: ./.github/actions/setup-workspace
+        with:
+          cache-suffix: coverage
+
+      - name: Coverage
+        id: gate
+        run: |
+          set -o pipefail
+          pixi run xtask ci --stage coverage 2>&1 | tee gate.log
+
+      - name: Summarize the failure
+        if: ${{ failure() && steps.gate.outcome == 'failure' }}
+        run: pixi run xtask ci-failure-summary gate.log
+
+      - name: Upload the gate log
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: gate-log-coverage
           path: gate.log
           if-no-files-found: ignore
           retention-days: 7
@@ -155,3 +210,28 @@ jobs:
           directory: target/coverage
           fail_ci_if_error: false
           token: ${{ secrets.CODECOV_TOKEN }}
+
+  # One name for branch protection to require, so adding or renaming a lane
+  # never silently un-protects `main`: this job is red unless every lane that
+  # ran is green, and `always()` means a skipped coverage lane is not a pass
+  # smuggled in by a cancelled dependency.
+  gate:
+    name: CI
+    if: ${{ always() }}
+    needs: [repo, lint, test]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check every lane
+        run: |
+          set -euo pipefail
+          printf 'repo=%s lint=%s test=%s\n' \
+            '${{ needs.repo.result }}' \
+            '${{ needs.lint.result }}' \
+            '${{ needs.test.result }}'
+          for result in '${{ needs.repo.result }}' '${{ needs.lint.result }}' '${{ needs.test.result }}'; do
+            if [ "$result" != "success" ]; then
+              echo "::error title=CI::a lane did not succeed"
+              exit 1
+            fi
+          done

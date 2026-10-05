@@ -1,0 +1,81 @@
+name: Set up the qgis-rs workspace
+description: >-
+  Install pixi, restore the environment/cargo/turbo caches and install the
+  frozen Bun workspace — everything a CI lane needs before it can run
+  `pixi run xtask ci --stage <name>`.
+
+# Written once because the gate now runs on several runners (TASK-46). The
+# alternative was the same twenty lines copied into every lane, which is how a
+# cache key drifts between jobs and one lane quietly stops hitting it.
+inputs:
+  cargo:
+    description: >-
+      Restore the cargo registry and `target/`. A lane that only runs repo
+      lints never compiles, so it skips a ~1.6 GiB restore it would not read.
+    required: false
+    default: "true"
+  cache-suffix:
+    description: >-
+      Distinguishes the `target/` a lane writes. Clippy and rustc produce
+      different artifacts for the same crate, so sharing one key would make
+      each lane invalidate the other's entry on every run.
+    required: false
+    default: shared
+
+runs:
+  using: composite
+  steps:
+    - name: Set up pixi
+      uses: prefix-dev/setup-pixi@d3f436a425481402e6a95a1d1fc10331c708cd9e # v0.10.2
+      with:
+        pixi-version: v0.81.0
+        run-install: false
+        cache: false
+
+    # Keyed on the lockfile and nothing else. The key used to end in
+    # `${{ github.sha }}`, which guaranteed a miss on every run and a fresh
+    # ~1.6 GiB save on top of it; four runs then exceeded the 10 GB repository
+    # budget and evicted the caches the next run wanted (TASK-46).
+    - name: Cache the pixi environments
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: .pixi/envs
+        key: pixi-envs-${{ runner.os }}-${{ hashFiles('pixi.lock') }}
+        restore-keys: |
+          pixi-envs-${{ runner.os }}-
+
+    - name: Install the pixi environments
+      shell: bash
+      run: pixi install --locked -e default -e bun
+
+    - name: Cache cargo and target
+      if: ${{ inputs.cargo == 'true' }}
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: |
+          ~/.cargo/registry/index
+          ~/.cargo/registry/cache
+          ~/.cargo/git/db
+          target
+        key: cargo-${{ runner.os }}-${{ inputs.cache-suffix }}-${{ hashFiles('Cargo.lock') }}
+        restore-keys: |
+          cargo-${{ runner.os }}-${{ inputs.cache-suffix }}-
+          cargo-${{ runner.os }}-
+
+    # Turbo validates every entry against its own task hash, so this one is
+    # safe across commits. It is also small — most expensive tasks are
+    # `"cache": false` in turbo.json — which is exactly why it is cheap to keep.
+    - name: Cache the turborepo task cache
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: .turbo/cache
+        key: turbo-${{ runner.os }}-${{ inputs.cache-suffix }}-${{ hashFiles('bun.lock', 'turbo.json') }}
+        restore-keys: |
+          turbo-${{ runner.os }}-${{ inputs.cache-suffix }}-
+          turbo-${{ runner.os }}-
+
+    # Bun cannot live in `default`: conda-forge qgis needs icu >=78.3 while bun
+    # needs icu >=75.1,<76, so the two never solve together.
+    - name: Install the Bun workspace from the root lockfile
+      shell: bash
+      run: pixi run -e bun bun-install

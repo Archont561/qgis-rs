@@ -55,41 +55,135 @@ pub const REPO_LINTS: &[RepoLint] = &[
     RepoLint::CheckApiManifest,
 ];
 
-/// Run the whole gate.
+/// A slice of the gate that can run on its own runner.
+///
+/// The split exists so CI can fail a formatting violation in under a minute
+/// instead of after the test fan-out, and it lives **here** rather than in
+/// YAML on purpose: a workflow that re-spelled these steps would be a second
+/// gate, free to drift from the one a contributor runs ([D10]). `ci.yml`
+/// calls `xtask ci --stage <name>`, `pixi run ci` calls every stage in this
+/// order, and [`tests/ci.rs`] asserts the two agree.
+///
+/// [D10]: /.knowledge/decisions/D10-xtask-over-shell-scripts.md
+#[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
+pub enum Stage {
+    /// Repo-wide lints and the format-drift gate. Seconds, and no compile.
+    Repo,
+    /// The package lint fan-out — clippy and biome.
+    Lint,
+    /// The test fan-out plus the publishable-package check.
+    Test,
+    /// The coverage producers: the most expensive, and nothing gates on them.
+    Coverage,
+}
+
+impl Stage {
+    /// Stable command spelling, as `--stage` accepts it.
+    #[must_use]
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::Repo => "repo",
+            Self::Lint => "lint",
+            Self::Test => "test",
+            Self::Coverage => "coverage",
+        }
+    }
+
+    /// The gate steps this stage owns, in execution order.
+    ///
+    /// Public because the partition is the contract: `tests/ci.rs` checks that
+    /// concatenating these in [`STAGES`] order reproduces [`GATE_STEPS`]
+    /// exactly, so a step cannot be dropped from CI by being moved between
+    /// stages, nor run twice by being listed in both.
+    #[must_use]
+    pub const fn steps(self) -> &'static [&'static str] {
+        match self {
+            Self::Repo => &["repo lints", "format drift gate"],
+            Self::Lint => &["package lints"],
+            Self::Test => &["tests", "publishable-package contents"],
+            Self::Coverage => &["coverage"],
+        }
+    }
+
+    /// Run just this stage.
+    fn run(self, offline: bool) -> Result<()> {
+        match self {
+            Self::Repo => {
+                step("repo lints (sources, boundaries, API manifest, taplo, actionlint)");
+                // Keep these in-process and ordered as REPO_LINTS records: each
+                // costs milliseconds and catches an invalid repository before
+                // any compile.
+                for lint in REPO_LINTS {
+                    lint.run()?;
+                }
+                pixi("default", ["xtask", "lint-toml"])?;
+                pixi("default", ["actionlint"])?;
+
+                step("format drift gate");
+                turbo(&["format", NOT_DOCS], offline)?;
+                assert_no_drift()
+            }
+            Self::Lint => {
+                step("package lints (turbo fan-out)");
+                turbo(&["lint", NOT_DOCS], offline)
+            }
+            Self::Test => {
+                step("tests (turbo fan-out; each package builds what it needs)");
+                turbo(&["test", NOT_DOCS], offline)?;
+
+                // Filtered like every other fan-out: the docs site publishes
+                // nothing, and without the filter turbo pulls its Astro build
+                // into the gate as a dependency of a task it does not define.
+                step("publishable-package contents");
+                turbo(&["pack:check", NOT_DOCS], offline)
+            }
+            Self::Coverage => {
+                step("coverage (rust lcov + python xml + js)");
+                turbo(&["coverage", NOT_DOCS], offline)
+            }
+        }
+    }
+}
+
+/// Every stage, in the order the whole gate runs them.
 ///
 /// Order is deliberate: the cheap repo-wide lints fail in seconds, the format
 /// gate fails before any compile, and only then does turbo fan out the package
-/// suites. Coverage runs last because it is the most expensive producer and
-/// its artifacts are only interesting once everything else is green.
-pub fn gate(coverage: bool, offline: bool) -> Result<()> {
-    step("repo lints (sources, boundaries, API manifest, taplo, actionlint)");
-    // Keep these in-process and ordered as REPO_LINTS records: each costs
-    // milliseconds and catches an invalid repository before any compile.
-    for lint in REPO_LINTS {
-        lint.run()?;
+/// suites. Coverage is last because it is the most expensive producer and its
+/// artifacts are only interesting once everything else is green.
+pub const STAGES: &[Stage] = &[Stage::Repo, Stage::Lint, Stage::Test, Stage::Coverage];
+
+/// The whole gate's steps, in order — the list the stages must partition.
+pub const GATE_STEPS: &[&str] = &[
+    "repo lints",
+    "format drift gate",
+    "package lints",
+    "tests",
+    "publishable-package contents",
+    "coverage",
+];
+
+/// Run the whole gate, or one stage of it.
+///
+/// `coverage` is honoured only for the whole gate: a caller that asked for
+/// `--stage coverage` means it, and silently doing nothing would be a green
+/// run that proved nothing.
+///
+/// # Errors
+///
+/// Propagates the first failing stage, with the step named.
+pub fn gate(coverage: bool, offline: bool, stage: Option<Stage>) -> Result<()> {
+    if let Some(stage) = stage {
+        stage.run(offline)?;
+        step(&format!("stage {} passed", stage.name()));
+        return Ok(());
     }
-    pixi("default", ["xtask", "lint-toml"])?;
-    pixi("default", ["actionlint"])?;
 
-    step("package lints (turbo fan-out)");
-    turbo(&["lint", NOT_DOCS], offline)?;
-
-    step("format drift gate");
-    turbo(&["format", NOT_DOCS], offline)?;
-    assert_no_drift()?;
-
-    step("tests (turbo fan-out; each package builds what it needs)");
-    turbo(&["test", NOT_DOCS], offline)?;
-
-    // Filtered like every other fan-out: the docs site publishes nothing, and
-    // without the filter turbo pulls its Astro build into the gate as a
-    // dependency of a task it does not even define.
-    step("publishable-package contents");
-    turbo(&["pack:check", NOT_DOCS], offline)?;
-
-    if coverage {
-        step("coverage (rust lcov + python xml + js)");
-        turbo(&["coverage", NOT_DOCS], offline)?;
+    for stage in STAGES {
+        if *stage == Stage::Coverage && !coverage {
+            continue;
+        }
+        stage.run(offline)?;
     }
 
     step("gate passed");
