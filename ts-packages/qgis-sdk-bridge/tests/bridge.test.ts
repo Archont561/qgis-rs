@@ -16,7 +16,11 @@
  */
 
 import { describe, expect, it } from "bun:test";
-import { createFixture, installBridgeGlobals } from "@qgis/test-utils";
+import {
+	createFixture,
+	installBridgeGlobals,
+	jsonValue,
+} from "@qgis/test-utils";
 import fc from "fast-check";
 
 import { loadDescription, loadQgisApiDescription } from "../src/description.ts";
@@ -217,29 +221,10 @@ describe("Description loader - no codegen", () => {
  * examples; the hand-written suites above still pin the specific answers that matter.
  */
 describe("Properties - the invariants the Rust suites assert", () => {
-	/**
-	 * JSON that survives `JSON.parse(JSON.stringify(x))` unchanged.
-	 *
-	 * Deliberately narrower than `fc.jsonValue()`: that generator emits doubles, and `-0`
-	 * round-trips to `0`, which would fail a property that is about the transport rather than
-	 * about IEEE 754. Keys come from a fixed set for the same reason — a random `__proto__`
-	 * would be testing `JSON.parse`'s own prototype handling, not the bridge.
-	 */
-	const jsonValue = fc.letrec<{ value: unknown }>((tie) => ({
-		value: fc.oneof(
-			{ depthSize: "small", maxDepth: 3 },
-			fc.string(),
-			fc.integer({ min: -1_000_000, max: 1_000_000 }),
-			fc.boolean(),
-			fc.constant(null),
-			fc.array(tie("value"), { maxLength: 4 }),
-			fc.dictionary(
-				fc.constantFrom("a", "b", "id", "name", "count", "nested"),
-				tie("value"),
-				{ maxKeys: 4 },
-			),
-		),
-	})).value;
+	// The JSON generator lives in `@qgis/test-utils` now: it is deliberately
+	// narrower than `fc.jsonValue()` (no `-0`, no generated object keys), and
+	// the Python and TypeScript suites that assert the same transport
+	// invariants should narrow it the same way. See `src/arbitraries.ts`.
 
 	it("carries any JSON answer back to the caller unchanged", async () => {
 		const { createBridge } = await import("../src/window.ts");
