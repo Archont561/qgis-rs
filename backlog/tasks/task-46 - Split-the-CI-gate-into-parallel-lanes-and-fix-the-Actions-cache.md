@@ -4,7 +4,7 @@ title: Split the CI gate into parallel lanes and fix the Actions cache
 status: Done
 assignee: []
 created_date: '2026-10-05 20:06'
-updated_date: '2026-10-05 21:26'
+updated_date: '2026-10-05 21:34'
 labels:
   - ci
   - tooling
@@ -97,4 +97,6 @@ Splitting one `CI` job into several renames the required status check on branch 
 2026-10-05, cache evidence for AC#4. The sha-free keys behaved as intended on their second run: pixi-envs-Linux-e4c085a2... was written by the 20:49 run and restored by the 21:14 run on its exact key (last_accessed_at moved, no re-save), and the post-step saves in the lint lane took 18s against the 58s the sha-keyed workflow spent saving on every single run. The steady-state set is now 7 entries - pixi-envs 1.56 GiB, cargo per lane 1.58 GiB x2, three turbo entries under 1 MiB - about 4.7 GiB, against 13.3 GB before and a 10 GB limit. The 6 stale sha-suffixed entries from earlier runs are still listed; this token cannot DELETE caches (403), so they age out on the 7-day TTL or by eviction, which is why the number above is the projection and not today's reading.
 
 2026-10-05: follow-up for whoever merges this - point branch protection's required check at the aggregate job named CI and drop the old single job from the required list, otherwise the requirement names a job that no longer exists and every pull request waits forever.
+
+2026-10-05, the exact-key hit AC#4 asked for, on the third run (37375893747, same tree except one markdown file): every cache hit its exact key, so the composite action's post step had nothing to save and took 1s - against 18s on the run that wrote the new keys and 58s on every single run of the sha-keyed workflow. Warm-cache lane times: repo 41s, package lints 1m40s, tests 5m36s, aggregate CI green; 6m45s from trigger to verdict for the whole graph.
 <!-- SECTION:NOTES:END -->
