@@ -4,7 +4,7 @@ title: Split the CI gate into parallel lanes and fix the Actions cache
 status: In Progress
 assignee: []
 created_date: '2026-10-05 20:06'
-updated_date: '2026-10-05 20:27'
+updated_date: '2026-10-05 21:07'
 labels:
   - ci
   - tooling
@@ -87,4 +87,8 @@ Splitting one `CI` job into several renames the required status check on branch 
 2026-10-05: AC#8 is open until the pull request's own run provides the after numbers: this machine can read the Actions API but cannot run a GitHub runner, so the before/after comparison has to be measured on the PR and the first push to main.
 
 2026-10-05: AC#4 is half-proven on this machine - no key in the tree contains github.sha, which is checkable here, but its evidence clause (an exact-key hit on a second run, and total cache usage back under 10 GB) needs two runs of the new workflow. Left unchecked until the pull request produces them.
+
+2026-10-05, measured: BEFORE (one serial job, Actions API) - pull request 37209263878 8m02s, 37207845699 6m41s, 37203669230 10m27s; push to main 37209959616 9m11s, 37204316549 8m14s, 37193403905 9m23s. Caches 12 entries / 13.3 GB against a 10 GB limit. AFTER, first run of the lanes (37371971802): the repo lane - checkout, composite setup, version check, repo lints, format-drift gate - was created at 20:48:38, started at 20:48:45 and finished green at 20:49:54, so 1m09s of runner time and 1m16s from trigger to verdict. That is the number the split was for: a formatting violation is now reported in about a minute instead of after the whole nine.
+
+2026-10-05, a real failure mode the first run exposed: lint and test were created at 20:49:55 and never got a runner - zero steps executed - and GitHub cancelled both at 21:04:57, exactly 15 minutes later; the relock guard on the same commit was starved and cancelled the same way. Yesterday the single CI job started 3 seconds after creation and relock ran beside it, so this is GitHub-hosted capacity for the account at the moment, not the workflow. It is still a cost of the fan-out worth writing down: one serial job needs one runner at a time, while this shape asks for two at once and a starved lane takes the whole run down with it. If it recurs, the lever is to merge lint into test rather than to raise timeouts, since a job that never starts does not consume its timeout-minutes.
 <!-- SECTION:NOTES:END -->
