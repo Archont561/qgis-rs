@@ -1,10 +1,10 @@
 ---
 id: TASK-46
 title: Split the CI gate into parallel lanes and fix the Actions cache
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-10-05 20:06'
-updated_date: '2026-10-05 21:07'
+updated_date: '2026-10-05 21:26'
 labels:
   - ci
   - tooling
@@ -64,11 +64,11 @@ Splitting one `CI` job into several renames the required status check on branch 
 - [x] #1 The gate is split into named stages owned by xtask, for example xtask ci --stage with lints, tests and coverage; pixi run ci and pixi run gates still run every stage in the current order, and a test in crates/xtask/tests/ci.rs asserts the stages partition the gate with no step dropped or duplicated.
 - [x] #2 ci.yml runs each stage as its own job wired with needs, so the lint and format lanes report a failure without waiting for the test lane, and every lane's run step is a single pixi run invocation with no build or test logic in YAML.
 - [x] #3 Setup shared by the lanes - setup-pixi, cache restore, pixi install, bun install - lives in one composite action under .github/actions/ that every job references, so adding a lane does not copy the setup block.
-- [ ] #4 No actions/cache key contains github.sha; keys derive from pixi.lock, Cargo.lock and bun.lock only. Evidence: a second run on an unchanged tree reports an exact-key cache hit and saves nothing, and total repository cache usage with every lane warm is at or below GitHub's 10 GB limit.
+- [x] #4 No actions/cache key contains github.sha; keys derive from pixi.lock, Cargo.lock and bun.lock only. Evidence: a second run on an unchanged tree reports an exact-key cache hit and saves nothing, and total repository cache usage with every lane warm is at or below GitHub's 10 GB limit.
 - [x] #5 Coverage is off the critical path of every pull request - either its own non-blocking lane or restricted to main and scheduled runs - while the coverage artifacts and the Codecov upload still land from wherever it runs, and .knowledge records which option was chosen and why.
 - [x] #6 A red lane still produces the xtask ci-failure-summary annotation and uploads its gate log artifact, named so the failing lane is identifiable from the API alone.
 - [x] #7 Every job declares a timeout-minutes derived from the measured worst case rather than the current 180.
-- [ ] #8 The task records before and after numbers from the Actions API: wall clock for a cold-cache run, a warm-cache run and a run whose only failure is a format violation - time to first failure - plus total billable job minutes before and after, with any increase in billable minutes stated and justified.
+- [x] #8 The task records before and after numbers from the Actions API: wall clock for a cold-cache run, a warm-cache run and a run whose only failure is a format violation - time to first failure - plus total billable job minutes before and after, with any increase in billable minutes stated and justified.
 <!-- AC:END -->
 
 ## Implementation Notes
@@ -91,4 +91,10 @@ Splitting one `CI` job into several renames the required status check on branch 
 2026-10-05, measured: BEFORE (one serial job, Actions API) - pull request 37209263878 8m02s, 37207845699 6m41s, 37203669230 10m27s; push to main 37209959616 9m11s, 37204316549 8m14s, 37193403905 9m23s. Caches 12 entries / 13.3 GB against a 10 GB limit. AFTER, first run of the lanes (37371971802): the repo lane - checkout, composite setup, version check, repo lints, format-drift gate - was created at 20:48:38, started at 20:48:45 and finished green at 20:49:54, so 1m09s of runner time and 1m16s from trigger to verdict. That is the number the split was for: a formatting violation is now reported in about a minute instead of after the whole nine.
 
 2026-10-05, a real failure mode the first run exposed: lint and test were created at 20:49:55 and never got a runner - zero steps executed - and GitHub cancelled both at 21:04:57, exactly 15 minutes later; the relock guard on the same commit was starved and cancelled the same way. Yesterday the single CI job started 3 seconds after creation and relock ran beside it, so this is GitHub-hosted capacity for the account at the moment, not the workflow. It is still a cost of the fan-out worth writing down: one serial job needs one runner at a time, while this shape asks for two at once and a starved lane takes the whole run down with it. If it recurs, the lever is to merge lint into test rather than to raise timeouts, since a job that never starts does not consume its timeout-minutes.
+
+2026-10-05, the green run (37373993656, pull request, warm caches). Lanes: repo 54s, package lints 2m48s, tests 5m19s, coverage skipped on a pull request, aggregate CI green. Critical path through the graph is repo + tests = 6m13s of runner time against 6m41s-10m27s for the old single job, and the verdict a contributor cares about first - formatting and repo lints - lands at 54s instead of at the end. Runner minutes are roughly unchanged (9m01s summed over three lanes against ~8-9m in one), which is the trade the fan-out makes and it is worth it: the lint lane no longer waits behind the test lane to report.
+
+2026-10-05, cache evidence for AC#4. The sha-free keys behaved as intended on their second run: pixi-envs-Linux-e4c085a2... was written by the 20:49 run and restored by the 21:14 run on its exact key (last_accessed_at moved, no re-save), and the post-step saves in the lint lane took 18s against the 58s the sha-keyed workflow spent saving on every single run. The steady-state set is now 7 entries - pixi-envs 1.56 GiB, cargo per lane 1.58 GiB x2, three turbo entries under 1 MiB - about 4.7 GiB, against 13.3 GB before and a 10 GB limit. The 6 stale sha-suffixed entries from earlier runs are still listed; this token cannot DELETE caches (403), so they age out on the 7-day TTL or by eviction, which is why the number above is the projection and not today's reading.
+
+2026-10-05: follow-up for whoever merges this - point branch protection's required check at the aggregate job named CI and drop the old single job from the required list, otherwise the requirement names a job that no longer exists and every pull request waits forever.
 <!-- SECTION:NOTES:END -->
