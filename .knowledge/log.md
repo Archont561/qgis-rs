@@ -1,5 +1,21 @@
 # Bundle Update Log
 
+## 2026-10-06 (session 9)
+
+* **Landed in PR #37**: TASK-48 added `pixi run xtask affected`, which combines the merge-base diff with staged, unstaged, deleted, renamed and untracked paths; selects Rust reverse dependents with nextest; selects downstream Python/TypeScript/docs packages through Turbo; and falls back to the full gate for shared or unknown inputs. A representative `@qgis/test-utils` edit took 0.382 s cold and 0.267 s warm.
+* **Landed in PR #37**: TASK-47 replaced the split `QApplication`/static `QgsApplication` lifecycle with one real headless `QgsApplication`, released layers and QGIS registries first, destroyed the application on its owner thread, and only then let that thread exit. Thirty loaded focused processes and three consecutive local gates passed; PR and merged-main CI were green with no post-success SIGSEGV.
+* **Coverage audit and ordering decision**: fresh offline reports measured Rust 60.81% (2574/4233), `qgis-sdk` Python 53.13% (4127/7768), and `qgis-rs` Python 75.60% (381/504), 56.63% combined. TASK-49 now owns the honest 95% target and is blocked by 19 architectural tasks, with eight direct terminal dependencies: TASK-30, TASK-4, TASK-13, TASK-37, TASK-38, TASK-39, TASK-41 and TASK-44. Coverage follows those boundaries rather than freezing obsolete internals.
+* **Post-merge evidence**: PR #37 merged at `b0df3a0`. Main CI run 37525708171 was green: repo 52 s, package lints 1m56s, tests 6m06s, coverage 4m35s, aggregate green; Codecov upload succeeded. No publish-sandbox run was path-triggered. The PR run and relock were also green.
+* **Next session opening prompt**:
+
+  > Confirm the pixi environments; this Arena checkout may need `bash scripts/restore.sh` and `pixi run bun-install`. Main is `b0df3a0`; its CI run 37525708171 was fully green, including coverage. Expect roughly 303 Rust tests plus 5 doctests, 394 passed/4 skipped plus 21 pytest, 132 Bun, 14 C++, and 50 docs pages.
+  >
+  > Read `.knowledge/log.md` — the 2026-10-06 session 9 entry records TASK-47/TASK-48, the coverage audit, and TASK-49's dependency graph — and `AGENTS.md` for house rules.
+  >
+  > Continue TASK-30, the only In Progress task: generate the versioned QGIS API manifest and manager handlers. Read the task before coding, preserve its existing plan and public seams, and identify which AC can be proved locally. TASK-49 must remain blocked until its eight direct architectural dependencies are Done; do not start coverage expansion early.
+  >
+  > Propose the TASK-30 slice and stop. House rules are in `AGENTS.md` (D10: automation is an xtask subcommand, not a shell script; D11: tests live in `tests/`, never in `src/`), and session templates are in `.agents/skills/session/`.
+
 ## 2026-10-06 (session 8)
 
 * **Change (docs + lint)**: TASK-20 is **closed**. The engine wire protocol has
