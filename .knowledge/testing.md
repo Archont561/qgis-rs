@@ -56,6 +56,15 @@ that can still go red:
 Turbo caches test results, so an unchanged package replays instead of re-running; `--force` defeats
 that and belongs in measurements, not in the loop.
 
+For a single entry point over those rules, run `pixi run xtask affected`. It compares committed
+changes with the merge base of `origin/main` and also includes staged, unstaged, deleted, renamed,
+and untracked files. Rust paths become nextest `rdeps(<crate>)` selections; Python, TypeScript, and
+docs paths become downstream Turbo package filters. Use `--dry-run` to inspect the deterministic
+plan, `--base <ref>` to compare with another base, and `--force` only when measuring without
+Turbo's cache. Root manifests and lockfiles, shared fixtures, workflow files, scripts, and xtask's
+own gate automation deliberately fall back to `pixi run gates`; an unknown top-level path does the
+same. This is an inner-loop accelerator, not a replacement for the full pre-push gate.
+
 SDK-specific pure-Python and QGIS-hosted test separation is tracked by [TASK-1](../backlog/tasks/task-1%20-%20Make%20the%20full%20QGIS%20SDK%20test%20suite%20headless%20and%20CI-green.md), [TASK-2](../backlog/tasks/task-2%20-%20Add%20a%20dedicated%20QGIS%20SDK%20integration%20test%20runner%20and%20CI%20job.md), and [TASK-4](../backlog/tasks/task-4%20-%20Cover%20real%20QGIS%20network%20and%20task-manager%20integration.md). Property and fixture migration is [TASK-23](../backlog/tasks/task-23%20-%20Refactor-every-test-suite-onto-property-based-and-fixture-driven-testing.md).
 
 ### The six test commands (TASK-35)

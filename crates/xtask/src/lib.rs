@@ -23,6 +23,7 @@
 //! the crate is `publish = false` — but the tests are a consumer like any
 //! other, and a consumer is exactly what the public API is for.
 
+pub mod affected;
 pub mod api_manifest;
 pub mod boundaries;
 pub mod bridge_fixtures;
@@ -44,6 +45,7 @@ use clap::{Parser, Subcommand};
     about = "Repository automation for qgis-rs",
     long_about = "Every repository-wide verb qgis-rs has. Run through pixi:\n  \
                   pixi run xtask ci [--no-coverage] [--offline] [--stage STAGE]\n  \
+                  pixi run xtask affected [--base REF] [--dry-run] [--force]\n  \
                   pixi run xtask check-cpp [files...]\n  \
                   pixi run xtask test-cpp\n  \
                   pixi run xtask format-cpp\n  \
@@ -70,6 +72,18 @@ pub struct Cli {
 /// The subcommands, one per repository-wide verb.
 #[derive(Debug, Subcommand)]
 pub enum Command {
+    /// Plan and run checks affected by local and branch changes.
+    Affected {
+        /// Compare committed changes with this ref instead of origin/main's merge base.
+        #[arg(long, value_name = "REF")]
+        base: Option<String>,
+        /// Print the deterministic plan without executing it.
+        #[arg(long)]
+        dry_run: bool,
+        /// Ignore Turbo's cache for selected package checks.
+        #[arg(long)]
+        force: bool,
+    },
     /// The whole gate: repo lints, turbo lint/format/test/pack:check, coverage.
     Ci {
         /// Skip the coverage producers — the fast pre-push loop.
@@ -148,6 +162,11 @@ pub enum Command {
 /// Propagates whatever the subcommand failed at, with the step named.
 pub fn run(command: Command) -> Result<()> {
     match command {
+        Command::Affected {
+            base,
+            dry_run,
+            force,
+        } => affected::run(base.as_deref(), dry_run, force),
         Command::Ci {
             no_coverage,
             offline,
