@@ -1,5 +1,62 @@
 # Bundle Update Log
 
+## 2026-10-06 (session 6)
+
+* **Change (bridge contract)**: TASK-34 is **closed**. The language-neutral
+  `test-fixtures/bridge/cases.json` catalogue and its explicit golden vectors
+  remain the one source consumed by Rust, Python/Hypothesis, and
+  TypeScript/fast-check. `pixi run xtask validate-bridge-fixtures` now gives the
+  tree a cheap structural gate: strict catalogue, description, schema,
+  request, response, and event parsing rejects unknown fields, missing or
+  mismatched request IDs, non-snake-case canonical wire names, incompatible
+  versions, broken catalogue links, and inconsistent envelopes. Deliberately
+  malformed vectors are exempt from canonical envelope parsing and continue
+  to be proven by the protocol suites. The command runs in the repository-lint
+  CI lane, before a compiler-heavy package lane.
+* **Measurement**: PR #31 was green before merge and main CI run 37428650577
+  was green after merge: repo lints 1m03s, package lints 2m02s, tests 5m56s,
+  coverage 2m57s. Focused evidence was 5 new xtask validator tests, 46 Python
+  bridge-contract tests passing with 2 environment skips, and 132 Bun tests.
+  The expected whole-tree baseline is now **266 Rust tests across 43 non-empty
+  test-binary runs, 123 + 21 pytest (2 skipped in qgis-sdk), 132 Bun, and 14
+  C++**.
+* **Idea (not implemented)**: TASK-30 remains the only In Progress task and
+  should be revisited before another broad initiative. TASK-34 advances its
+  shared-fixture criterion, but does not prove TASK-30's generated core
+  operations, runtime ownership mappings, or clang-AST/API-upgrade extraction.
+  Take one of those remaining vertical slices rather than treating the shared
+  fixture gate as proof of the whole manifest pipeline.
+* **Operational**: this sandbox restored both pixi environments from
+  `sandbox/developer-linux-64`; GitHub and `gh` had write access, package
+  registries remained unavailable, and the vendored graph was sufficient.
+  The sandbox transport branch remains behind main; PR #31 did not touch a
+  sandbox input, so no repack was path-triggered.
+
+Next session should start with:
+
+> Confirm the pixi environments and baseline the suite (expect 266 Rust tests
+> across 43 non-empty test-binary runs, 123 + 21 pytest with 2 qgis-sdk skips,
+> 132 Bun, and 14 C++; `.pixi/envs/default` and `.pixi/envs/bun` were restored
+> and are materialized, GitHub works but package registries do not, and
+> `sandbox/developer-linux-64` is behind main but no repack was path-triggered
+> by PR #31).
+>
+> Read `.knowledge/log.md` — the 2026-10-06 (session 6) heading lists one open
+> implementation direction — and `AGENTS.md` for the house rules.
+>
+> I want to continue TASK-30 this session. TASK-34 has closed its shared-fixture
+> slice; do not re-open that work. Inspect the remaining acceptance criteria and
+> choose one narrow vertical slice among generated core operations and codecs,
+> representative runtime ownership/mapping tests, or clang-AST/API-upgrade
+> extraction. Prefer the smallest slice that produces executable evidence and
+> keeps `qgis-protocol` the normative contract; adding dependencies is out of
+> scope in this airlocked sandbox.
+>
+> Propose the slice and stop. House rules are in `AGENTS.md` (D10: automation is
+> an xtask subcommand, not a shell script; D11: tests live in `tests/`, never in
+> `src/`), the session procedure and its templates are in
+> `.agents/skills/session/`.
+
 ## 2026-10-05 (session 5)
 
 * **Change (testing)**: TASK-33 is **closed**. `@qgis/test-utils` gained
