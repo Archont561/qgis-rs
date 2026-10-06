@@ -1,5 +1,125 @@
 # Bundle Update Log
 
+## 2026-10-06 (session 7)
+
+* **Change (testing)**: TASK-32 is **closed**. `qgis_sdk.testing` is a package
+  now — `environment`, `calls`, `iface`, `ui`, `bridge`, `qgis_api`, `network`,
+  `tasks`, `processing`, `data`, `strategies`, `plugin` — with a facade
+  `__init__.py` that re-exports every legacy name and re-registers every legacy
+  fixture, so the pytest11 entry point and every existing import keep working.
+  qgis-sdk went 169 → **353 passing** with the same 4 skips.
+* **Idea (what the split was actually for)**: splitting a 2k-line module into
+  twelve is bookkeeping; the point was that three of the fakes could not fail.
+  `FakeNetworkManager` answered *every* URL with `{"mock": true}`, so a test
+  passed against a URL it never meant to call. `FakeTaskManager.add_task` ran
+  the work inside the call, so "is the button disabled while the task runs?"
+  was unaskable. `FakeBridge` was a bag of canned methods, so no test touched
+  the envelope protocol it is supposed to stand in for. The new
+  `FakeNetworkTransport` answers only scripted routes and raises
+  `NoScriptedReply` otherwise; `FakeTaskManager(auto_run=False)` runs nothing
+  until `run_next()`; `BridgeHarness` runs the real check order against the
+  shared `test-fixtures/bridge/` vectors. The permissive originals are kept
+  under their old names for compatibility, which is the deliberate trade: new
+  names are strict, old names stay lax.
+* **Idea (not implemented)**: nothing in the tree yet *uses* the strict fakes
+  except the new tests. The qgis-sdk suite, the scaffold template emitted by
+  `qgis-plugin new`, and doc examples still reach for `fake_network_manager`
+  and the auto-running task manager. Migrating them — and then deciding whether
+  the permissive defaults get a deprecation path — is a separate, mechanical
+  task worth filing rather than smuggling into a refactor.
+* **Measurement (an AC that cannot be proven the obvious way)**: AC#7 says pure
+  tests must not initialize Qt or QGIS. The obvious assertion —
+  `"PyQt5.QtWidgets" not in sys.modules` after `import qgis_sdk.testing` —
+  **fails, and would always fail**: the parent `qgis_sdk/__init__.py` imports
+  the Qt funnel and the PyQGIS runtime probe, so the bindings are loaded before
+  the testing package has a say. The honest assertions are static and
+  behavioural: an AST scan of every `testing/*.py` for module-scope imports of
+  `PyQt5|PyQt6|PySide6|qgis` (and of `hypothesis` outside `strategies.py`),
+  plus a subprocess that imports the fakes and asserts `QApplication.instance()`
+  and `QgsApplication.instance()` are both `None`. Confirmed end-to-end by
+  re-running the full suite under a `sitecustomize.py` meta-path blocker for
+  those four modules: 352 passed, 5 skipped, zero failures.
+* **Idea (a green test that asserted nothing)**: `pytest.skip.Exception`
+  (`Skipped`) derives from `BaseException`, so a test written as
+  `with pytest.raises(Exception): fn_that_skips()` lets the skip escape the
+  context manager and marks *the asserting test* skipped. It shows up as one
+  extra skip in the summary and nothing else. Catch `pytest.skip.Exception`
+  explicitly. Worth knowing anywhere a suite asserts on its own skip logic.
+* **Idea (facade mechanics, pytest 8.4)**: a `@pytest.fixture` is no longer a
+  function carrying `_pytestfixturefunction`; it is a
+  `FixtureFunctionDefinition` carrying `_fixture_function_marker`. A facade that
+  re-exports fixtures must recognise both, and a test that checks "is this
+  fixture registered?" should read
+  `request._fixturemanager._arg2fixturedefs` rather than call the fixture.
+* **Measurement**: `pixi run gates` green on the merged tree — Rust **278**
+  (256 default + 22 under the `qgis` feature) plus 5 doctests, pytest **374
+  passed / 4 skipped** (qgis-sdk 353 + 4, qgis-rs 21), Bun **132** (37
+  `@qgis/test-utils` + 82 `@qgis-sdk/bridge` + 13 `qgis-rs`), C++ ctest 1/1
+  (`conversions`). PR #33 was green before merge; main CI run 37436051874 was
+  green after it (repo lints, package lints, tests, coverage, the `CI`
+  aggregate), as was the Docs run 37437153858. Job log *text* was unreadable
+  from this sandbox — the Actions log endpoint redirects to Azure blob storage,
+  which is blocked — so those verdicts come from `gh run view --json jobs`.
+* **Measurement (a flake worth naming, not yet filed)**: one `pixi run gates`
+  run failed with `SIGSEGV` on
+  `qgis-sys::native_manager_shutdown shutdown_releases_layers_left_open_on_the_owner_thread`
+  — nextest printed `test result: ok. 1 passed` and *then* the process aborted
+  with signal 11 during teardown (`QThreadStorage: Thread ... exited after
+  QThreadStorage 5 destroyed`, `QApplication was not created in the main()
+  thread`). The identical tree passed on the immediately preceding and
+  following runs, so it is a crash in QGIS/Qt process shutdown rather than a
+  test failure. It is unrelated to this session's change (the only diff from a
+  green run was `.knowledge/log.md`), but a test binary that can abort after
+  reporting success will eventually redden CI at random; it belongs in TASK-35,
+  which already owns deterministic `QgsApplication` startup and shutdown.
+
+* **Operational**: both pixi environments restored from
+  `sandbox/developer-linux-64`; GitHub and `gh` had write access; crates.io and
+  prefix.dev stayed unreachable, so no dependency or lockfile change was
+  possible (none was needed). No sandbox input changed, so no repack was
+  path-triggered. Note for the backlog CLI: `pixi run backlog` re-quotes
+  arguments through a shell, so an apostrophe inside `--notes` text aborts the
+  command with "Expected closing single quote" — write notes without
+  apostrophes.
+
+Next session should start with:
+
+> Confirm the pixi environments and baseline the suite with `pixi run gates`
+> (expect Rust 278 — 256 default plus 22 under the `qgis` feature — and 5
+> doctests, pytest 374 passed / 4 skipped, Bun 132, C++ ctest 1/1;
+> `.pixi/envs/default` and `.pixi/envs/bun` restore from
+> `sandbox/developer-linux-64`, GitHub works, package registries do not, so
+> adding a dependency or relocking is out of scope).
+>
+> Read `.knowledge/log.md` — the 2026-10-06 (session 7) heading — and
+> `AGENTS.md` for the house rules.
+>
+> I want TASK-35 this session: separate the Qt, QGIS and WebEngine integration
+> fixture gates. TASK-32 landed the layer detection, the markers
+> (`pure_python`, `qt`, `qgis`, `webengine`, `network`, `tasks`) and
+> collection-time skipping, so do not re-open that; TASK-35 is about the
+> *gates* — one offscreen `QApplication` per session, deterministic
+> `QgsApplication` startup and shutdown run serialized, WebEngine behind its own
+> optional gate that ordinary bridge tests never depend on, the documented
+> command list, and a gate that proves no fixture leaks between layers. Expect
+> the real work to be in `qgis_sdk/testing/environment.py` and `plugin.py` plus
+> an `xtask` subcommand for the gate commands (D10 — not a shell script).
+>
+> One of the two gate runs at the end of session 7 died with `SIGSEGV` in
+> `qgis-sys::native_manager_shutdown` *after* the test reported `ok` — a crash
+> in Qt/QGIS process teardown, green on a re-run of the identical tree. Treat
+> it as in scope for the deterministic-shutdown criterion, not as a mystery.
+>
+> Also worth filing while you are there: nothing in the tree yet uses the strict
+> fakes TASK-32 added. The suite, the `qgis-plugin new` scaffold and the doc
+> examples still use the permissive `fake_network_manager` and the auto-running
+> task manager.
+>
+> Propose the slice and stop. House rules are in `AGENTS.md` (D10: automation is
+> an xtask subcommand, not a shell script; D11: tests live in `tests/`, never in
+> `src/`), the session procedure and its templates are in
+> `.agents/skills/session/`.
+
 ## 2026-10-06 (session 6)
 
 * **Change (bridge contract)**: TASK-34 is **closed**. The language-neutral
