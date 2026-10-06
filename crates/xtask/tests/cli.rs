@@ -49,6 +49,7 @@ fn long_help_lists_every_repository_verb() {
     let mut command = Cli::command();
     let help = command.render_long_help().to_string();
     for verb in [
+        "affected",
         "ci",
         "check-cpp",
         "format-cpp",
@@ -66,6 +67,27 @@ fn long_help_lists_every_repository_verb() {
     ] {
         assert!(help.contains(verb), "long help omitted {verb}");
     }
+}
+
+#[test]
+fn affected_accepts_a_base_and_non_executing_modes() {
+    let cli = Cli::try_parse_from([
+        "xtask",
+        "affected",
+        "--base",
+        "HEAD~2",
+        "--dry-run",
+        "--force",
+    ])
+    .expect("parses");
+    assert!(matches!(
+        cli.command,
+        Command::Affected {
+            base: Some(ref base),
+            dry_run: true,
+            force: true,
+        } if base == "HEAD~2"
+    ));
 }
 
 #[test]

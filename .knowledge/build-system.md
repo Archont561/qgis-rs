@@ -89,6 +89,18 @@ Current Qt modules: `QtCore`, `QtGui`, `QtWidgets`, `QtXml`.
 
 The build script generates `compile_commands.json` at the workspace root for clangd/clang-tidy integration. This file is gitignored.
 
+## Native application shutdown order
+
+The owner thread constructs a real headless `QgsApplication`, not a base
+`QApplication`. Shutdown on that same thread is ordered: release registered layers,
+call `QgsApplication::exitQgis()` so providers and process-wide registries stop,
+then destroy the `QgsApplication`, and only then let the owner thread exit. The
+application must not be leaked past owner-thread exit: Qt thread-local cleanup can
+otherwise run after its `QThreadStorage` owner has been destroyed, producing the
+intermittent post-test SIGSEGV tracked by TASK-47. The remaining Qt warning that the
+application was not created in `main()` describes the accepted dedicated-owner-thread
+architecture in D12; it is not permission to move destruction to another thread.
+
 ## Rerun Triggers
 
 ```rust

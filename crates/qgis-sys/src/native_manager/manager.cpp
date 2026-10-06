@@ -8,6 +8,7 @@
 // provides the stronger compile/test checks for this boundary.
 // NOLINTBEGIN
 
+#include <qgsapplication.h>
 #include <qgsconfig.h>
 #include <qgscoordinatereferencesystem.h>
 #include <qgsfeature.h>
@@ -54,17 +55,6 @@
 #include <thread>
 #include <utility>
 #include <vector>
-
-// Including qgsapplication.h triggers a static initializer in some QGIS
-// conda-forge builds. Keep a narrow declaration here so this manager
-// translation unit remains the only owner of QGIS operations on the C ABI path.
-class QgsApplication {
-   public:
-    static void setPrefixPath(const QString& prefix_path, bool use_default_paths);
-    static QString prefixPath();
-    static void initQgis();
-    static void exitQgis();
-};
 
 namespace {
 
@@ -232,7 +222,7 @@ class ManagerHost {
         const QString prefix = qEnvironmentVariable("CONDA_PREFIX");
         QgsApplication::setPrefixPath(
             prefix.isEmpty() ? QgsApplication::prefixPath() : prefix, true);
-        application_ = std::make_unique<QApplication>(argc_, argv_);
+        application_ = std::make_unique<QgsApplication>(argc_, argv_, false);
         QgsApplication::initQgis();
         initialized_ = true;
         return success(
@@ -864,10 +854,11 @@ class ManagerHost {
                 QgsApplication::exitQgis();
                 initialized_ = false;
             }
-            // QGIS owns process-wide Qt/plugin state. After exitQgis(), keep
-            // the QApplication allocation leaked rather than running its
-            // destructor during shared-library teardown.
-            application_.release();
+            // Destroy the application on the same owner thread that created it,
+            // after QGIS has released providers and registries. Leaking it past
+            // owner-thread exit leaves Qt thread-local state referring to a
+            // thread whose QThreadStorage has already been destroyed.
+            application_.reset();
         } catch (...) {
         }
     }
@@ -885,7 +876,7 @@ class ManagerHost {
     bool owner_failed_ = false;
     bool stopping_ = false;
     bool initialized_ = false;
-    std::unique_ptr<QApplication> application_;
+    std::unique_ptr<QgsApplication> application_;
     quint64 next_id_ = 1;
     // Qt 5's QHash requires copyable values, so the index stores raw pointers
     // while this adjacent owner vector keeps every live QGIS object in a
