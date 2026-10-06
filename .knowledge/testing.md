@@ -79,6 +79,51 @@ Do not create a `QApplication` or `QgsApplication` in a normal unit test;
 use the fakes for pure-Python tests and the subprocess/host fixtures for native
 coverage. This keeps modal dialogs and QGIS singletons out of pytest teardown.
 
+### `qgis_sdk.testing` is a package, one module per concern (TASK-32)
+
+`qgis_sdk/testing.py` became `qgis_sdk/testing/` in the layout
+[doc-5](../backlog/docs/testing/doc-5%20-%20QGIS-SDK-Testing-Utilities-and-Cross-Language-Bridge-Contracts.md)
+specifies — `environment`, `calls`, `iface`, `ui`, `bridge`, `qgis_api`,
+`network`, `tasks`, `processing`, `data`, `strategies`, `plugin` — with
+`__init__.py` as the compatibility facade. Every pre-split name and every
+fixture name still resolves through `qgis_sdk.testing`, and
+`tests/test_testing_layers.py` holds the frozen list that says so.
+
+Four things are new rather than moved:
+
+- **`Call`/`CallLog`** — one shape for every recorded call (`target`, dotted
+  `method`, keyword `args`). Each fake owns one and accepts one, so handing
+  several fakes `calls=shared_calls` makes cross-fake ordering assertable. The
+  old per-fake lists (`iface.messages`, `manager.requests`) are untouched.
+- **`FakeNetworkTransport`** — scripted replies keyed by `(method, url)`, with
+  `reply`, `reply_sequence`, `fail`, `delay` (virtual seconds, nothing sleeps),
+  `redirect` and request history. An unscripted route **raises**
+  `NoScriptedReply`; the older `FakeNetworkManager` keeps its permissive
+  `{"mock": true}` default because existing suites rely on it.
+- **`FakeTaskManager.submit`/`run_next`/`chain`/`group`** — the explicit
+  `PENDING → RUNNING → SUCCESS|FAILURE|CANCELED` machine, with `auto_run=False`
+  for tests that need to decide when work happens. The celery-shaped
+  `FakeTask`/`add_task` surface keeps celery's `STARTED`/`REVOKED` spellings;
+  `canonical_state()` maps between the two vocabularies.
+- **`BridgeHarness`** — a real router over the shared manifests in
+  `test-fixtures/bridge/`: envelope, version, target, method, permissions, then
+  arguments, in the order `crates/qgis-protocol`'s `validate_request` uses. The
+  same malformed vectors are replayed through it in
+  `tests/test_testing_bridge.py`, so the Python host and the Rust validator are
+  proven to refuse the same input for the same reason — without sharing code.
+
+`qgis_sdk.testing.strategies` holds the Hypothesis strategies (extents, zoom
+ranges, CRS auth ids, plugin names, field specs, bridge requests/responses,
+network responses, task transition paths). They generate **pure data only**;
+the facade imports the module defensively so the SDK still imports where
+`hypothesis` is absent.
+
+Markers are now `qgis`, `qt`, `webengine`, `pure_python`, `network`, `tasks`,
+and the collection hook skips a marked test **before its body runs** when the
+layer is unreachable — `QgisTestEnvironment.layers` is what it reads. No module
+under `qgis_sdk/testing/` imports PyQt or PyQGIS at module scope, which is
+asserted from the source rather than from a lucky process.
+
 ## Environment Requirements
 
 | Variable                    | Value                                    | Why                        |

@@ -162,6 +162,39 @@ def test_content_fetcher(fake_content_fetcher):
     assert called
 ```
 
+`fake_network_manager` answers anything with `{"mock": true}`, which is handy
+but lets a test pass against a URL it never meant to call. When the point of
+the test *is* the network, use `fake_network_transport`: it answers only what
+you scripted, and raises `NoScriptedReply` for anything else.
+
+```python
+from qgis_sdk.testing import FakeResponse, NoScriptedReply
+
+def test_retry_gives_up_after_the_second_failure(fake_network_transport):
+    fake_network_transport.reply_sequence("GET", "https://example.test/flaky", [
+        FakeResponse(status_code=503),
+        FakeResponse(status_code=200, json_data={"ok": True}),
+    ])
+    assert fetch_with_retry("https://example.test/flaky") == {"ok": True}
+
+def test_a_typo_in_the_url_is_not_silently_a_200(fake_network_transport):
+    fake_network_transport.reply("GET", "https://example.test/layers", json_data=[])
+    with pytest.raises(NoScriptedReply):
+        fake_network_transport.get("https://example.test/laeyrs")
+
+def test_a_timeout_does_not_take_a_timeout(fake_network_transport):
+    fake_network_transport.fail("GET", "https://example.test/slow",
+                                raises=TimeoutError("timed out"))
+    fake_network_transport.delay("GET", "https://example.test/slow", 30.0)
+    with pytest.raises(TimeoutError):
+        fake_network_transport.get("https://example.test/slow")
+    assert fake_network_transport.clock == 30.0   # virtual seconds; nothing slept
+```
+
+`fail(...)` also takes `error=` / `status_code=` for an error *response*,
+`redirect(method, url, to=...)` records hops in `response.history`, and
+`transport.requests` keeps every request with both `url` and `original_url`.
+
 ### Test Tasks
 
 ```python
@@ -199,6 +232,89 @@ def test_task_cancel():
     t.cancel()
     assert t.is_canceled()
 ```
+
+`fake_task_manager` runs work the moment you submit it, which is fine for
+"does this function work" but cannot express *when* something happened. For
+that, `manual_task_manager` runs nothing until you say so:
+
+```python
+def test_the_button_is_disabled_while_the_task_runs(manual_task_manager, fake_iface):
+    panel = Panel(fake_iface, tasks=manual_task_manager)
+    panel.start_export()
+    assert panel.button.enabled is False     # still PENDING — nothing has run
+    manual_task_manager.run_next()
+    assert panel.button.enabled is True
+
+def test_a_failed_step_cancels_the_rest_of_the_chain(manual_task_manager):
+    chain = manual_task_manager.chain([prepare, explode, publish])
+    manual_task_manager.run_all()
+    assert [t.state for t in chain] == ["SUCCESS", "FAILURE", "CANCELED"]
+```
+
+States are `PENDING`, `RUNNING`, `SUCCESS`, `FAILURE`, `CANCELED`; each task
+keeps `transitions` and `progress_history`, progress is monotonic, and an
+illegal move raises `IllegalTransition`. `canonical_state()` translates to and
+from celery's `STARTED`/`REVOKED` names the older fakes use.
+
+### Test the bridge protocol
+
+`fake_bridge` is a stand-in object with a few canned methods. `BridgeHarness`
+is the protocol itself — envelopes, permissions, argument schemas and the
+error kinds a real host answers:
+
+```python
+def test_the_ui_handles_a_denied_permission(bridge_harness_factory):
+    harness = bridge_harness_factory(
+        descriptions={"qgis": manifest},
+        handlers={("qgis", "layers.list"): lambda args: [{"id": "l1"}]},
+        session_id="sess-1",
+        permissions=[],                      # grant nothing
+    )
+    answer = harness.invoke({
+        "bridge_version": 1, "request_id": "req-1",
+        "target": "qgis", "method": "layers.list", "args": {},
+    })
+    assert answer["error"]["kind"] == "permission_denied"
+
+    harness.grant("layer.read")
+    assert harness.invoke({...})["ok"] is True
+```
+
+Checks run in the host's order — envelope, version, target, method,
+permissions, arguments — and the error kind is always one of
+`invalid_request`, `unknown_target`, `unknown_method`, `invalid_arguments`,
+`permission_denied`, `unknown_object`, `host_unavailable`, `internal_error`.
+A handler raises `HostError(kind, message)` to choose a kind; anything else it
+raises is reported as `internal_error`. Events go the other way with
+`harness.emit(target, event, payload)` and `harness.on_event(listener)`.
+
+### Assert across fakes with one call log
+
+```python
+def test_the_layer_is_added_before_the_message(shared_calls, fake_iface):
+    plugin = MyPlugin(fake_iface, calls=shared_calls)
+    plugin.import_file("roads.gpkg")
+    assert shared_calls.paths() == ["qgis.layers.add", "iface.message.push"]
+    shared_calls.assert_called_once("iface", "message.push", level="success")
+```
+
+Every fake records `Call(target, method, args)`; passing `calls=` to several
+fakes (or using the `shared_calls` fixture) puts them in one ordered log.
+
+### Property-based tests
+
+```python
+from hypothesis import given
+from qgis_sdk.testing import strategies as qst
+
+@given(qst.extents())
+def test_the_extent_survives_a_round_trip(extent):
+    assert parse_extent(format_extent(extent)) == extent
+```
+
+Strategies cover extents, zoom ranges, CRS auth ids, plugin names, field
+specs, object handles, request and response envelopes, network responses and
+task transitions — pure data only, no live QGIS objects.
 
 ## Fake Classes Reference
 
@@ -417,6 +533,15 @@ All fixtures are available after `pytest_plugins = ["qgis_sdk.testing"]`:
 | `mock_features` | `Callable` | `count → List[FakeFeature]` |
 | `mock_source` | `Callable` | `feature_count → FakeSource` |
 | `mock_context` | `Callable` | `values → FakeContext` |
+| `fake_network_transport` | `FakeNetworkTransport` | Scripted transport; unscripted routes raise |
+| `manual_task_manager` | `FakeTaskManager` | `auto_run=False` — runs nothing until `run_next()` |
+| `bridge_harness_factory` | `type[BridgeHarness]` | Build a harness from your own manifests |
+| `shared_calls` | `CallLog` | One empty log to hand several fakes |
+| `qgis_environment` | `QgisTestEnvironment` | Which layers this process can reach |
+| `qgis_available`, `pure_python` | `bool` | Session-scoped answers from the same probe |
+| `qt_app` | `QApplication` | Offscreen Qt application, or a skip |
+| `qgis_app` | `QgsApplication` | The host's live application, or a skip |
+| `webengine_app` | `QApplication` | Qt application with QtWebEngine, or a skip |
 
 Additional aliases: `mock_features_fixture`, `mock_source_fixture`, `mock_context_fixture`, `fake_action_factory_fixture`, etc. for backwards compatibility.
 
@@ -438,9 +563,20 @@ def test_needs_network():
 @pytest.mark.tasks
 def test_needs_tasks():
     pass
+
+@pytest.mark.qt
+def test_needs_a_qt_binding():
+    pass
+
+@pytest.mark.pure_python
+def test_must_not_have_qgis_imported():
+    pass
 ```
 
-Registered via `pytest_configure`.
+Registered via `pytest_configure`. A test marked for a layer this process
+cannot reach is **skipped at collection time, before its body runs** — it is
+never quietly handed a fake instead, and the skip reason names the missing
+layer.
 
 ## Scaffold Integration
 
