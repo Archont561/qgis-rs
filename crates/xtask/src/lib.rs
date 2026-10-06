@@ -54,6 +54,7 @@ use clap::{Parser, Subcommand};
                   pixi run xtask check-boundaries\n  \
                   pixi run xtask validate-bridge-fixtures\n  \
                   pixi run xtask check-protocol-docs\n  \
+                  pixi run xtask check-api-operations\n  \
                   pixi run xtask lint-toml [files...]\n  \
                   pixi run xtask pack-check <package-dir> <required...>\n  \
                   pixi run xtask setup-qca\n  \
@@ -115,6 +116,8 @@ pub enum Command {
     ValidateBridgeFixtures,
     /// Fail if the wire-protocol reference page drifts from `qgis-protocol`.
     CheckProtocolDocs,
+    /// Fail if the API manifest and `qgis-protocol` disagree about operations.
+    CheckApiOperations,
     /// taplo canonicality check for the manifests kept in canonical form.
     LintToml {
         /// Files to check; with none, pixi.toml.
@@ -182,6 +185,7 @@ pub fn run(command: Command) -> Result<()> {
             bridge_fixtures::run(&util::repo_root().join("test-fixtures/bridge"))
         }
         Command::CheckProtocolDocs => protocol_docs::run(&util::repo_root()),
+        Command::CheckApiOperations => api_manifest::run_wire_operations_check(),
         Command::LintToml { files } => lints::lint_toml(&files),
         Command::PackCheck {
             package_dir,

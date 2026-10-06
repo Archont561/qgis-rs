@@ -57,6 +57,7 @@ fn long_help_lists_every_repository_verb() {
         "check-sources",
         "check-boundaries",
         "check-protocol-docs",
+        "check-api-operations",
         "lint-toml",
         "pack-check",
         "setup-qca",

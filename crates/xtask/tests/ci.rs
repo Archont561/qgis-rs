@@ -61,7 +61,8 @@ fn repo_lints_check_generated_api_before_any_compile() {
             "check-boundaries",
             "api-manifest --check",
             "validate-bridge-fixtures",
-            "check-protocol-docs"
+            "check-protocol-docs",
+            "check-api-operations"
         ]
     );
 }

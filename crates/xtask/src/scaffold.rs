@@ -65,7 +65,7 @@ pub fn repository_operation(name: &str, handler: &str) -> Result<()> {
     operation(&manifest, name, handler)?;
     crate::api_manifest::run(false, None)?;
     println!(
-        "scaffold: added native-manager operation {name} with handler {handler}; review its declaration and implement the handler"
+        "scaffold: added native-manager operation {name} with handler {handler}; review its declaration, implement the handler, and add the matching `Operation` variant to qgis-protocol — `xtask check-api-operations` fails until both sides spell it"
     );
     Ok(())
 }

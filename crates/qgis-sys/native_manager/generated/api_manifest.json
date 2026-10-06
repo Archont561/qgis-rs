@@ -287,6 +287,39 @@
       "scope": "provider-specific",
       "status": "provider_optional",
       "reason": "Provider availability is reported by runtime capabilities."
+    },
+    {
+      "scope": "engine-transport",
+      "status": "unsupported",
+      "reason": "Liveness probing is answered by the pure-Rust engine and never reaches the QGIS owner thread.",
+      "operations": [
+        "ping"
+      ]
+    },
+    {
+      "scope": "engine-geometry-and-tiles",
+      "status": "unsupported",
+      "reason": "Extent, CRS and XYZ tile maths are pure-Rust engine operations with no QGIS object lifecycle.",
+      "operations": [
+        "describe_extent",
+        "extent_contains",
+        "extent_intersects",
+        "describe_crs",
+        "describe_zoom_range",
+        "tile_from_lon_lat",
+        "tile_bounds",
+        "plan_tiles"
+      ]
+    },
+    {
+      "scope": "engine-project-inspection",
+      "status": "unsupported",
+      "reason": "Project file inspection and the legacy project render are served by the engine without a native-manager handler.",
+      "operations": [
+        "project_info",
+        "project_layers",
+        "render_project"
+      ]
     }
   ],
   "operations": [
