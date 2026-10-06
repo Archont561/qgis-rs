@@ -578,6 +578,35 @@ cannot reach is **skipped at collection time, before its body runs** — it is
 never quietly handed a fake instead, and the skip reason names the missing
 layer.
 
+### Running one layer at a time
+
+Skipping is the right default and the wrong way to *prove* a layer works. When
+you need the stronger claim, run a gate: it narrows the suite to one layer and
+fails if that layer is missing.
+
+```bash
+# Everything that needs no runtime at all — the fakes, the bridge harness
+bun --filter=qgis-sdk-py run test:pure
+
+# Real widgets, offscreen
+bun --filter=qgis-sdk-py run test:qt
+
+# A real QgsApplication, constructed and shut down by the suite, serialized
+bun --filter=qgis-sdk-py run test:qgis
+
+# Optional, and deliberately not on the default path
+bun --filter=qgis-sdk-py run test:webengine
+```
+
+```console
+$ QGIS_TEST_LAYER=qgis python -m pytest tests -q
+4 passed, 394 deselected
+```
+
+The plain `test` verb still runs everything and skips what it cannot reach —
+that is the one CI fans out. Use a gate when "it was skipped" would be the
+wrong answer.
+
 ## Scaffold Integration
 
 `qgis-plugin new` now scaffolds tests with fixtures:

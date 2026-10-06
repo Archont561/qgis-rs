@@ -15,9 +15,11 @@ from __future__ import annotations
 
 import os
 
+from . import gates
 from .bridge import BridgeHarness, FakeBridge
 from .calls import CallLog
 from .environment import detect_qgis_environment
+from .qgis_lifecycle import qgis_application as _qgis_application
 from .iface import FakeIface, fake_action_factory
 from .network import (
     FakeContentFetcher,
@@ -53,18 +55,81 @@ try:
 except ImportError:  # pragma: no cover - the SDK is importable without pytest
     pytest = None  # type: ignore[assignment]
 
+#: Where the resolved gate is stashed between `pytest_configure` and
+#: collection. A `StashKey` rather than a module global so two pytest sessions
+#: in one interpreter — which is exactly what this package's own tests do —
+#: cannot read each other's state.
+if pytest is not None:  # pragma: no branch - pytest is present wherever tests run
+    _GATE_KEY = pytest.StashKey()
+else:  # pragma: no cover - the SDK is importable without pytest
+    _GATE_KEY = None  # type: ignore[assignment]
+
 
 def pytest_configure(config):
-    """Register markers for qgis_sdk tests."""
+    """Register markers, and refuse a gate this environment cannot run.
+
+    The refusal happens here rather than during collection because it is not
+    a property of any single test: asking for the ``qgis`` gate on a machine
+    without QGIS is a wrong *command*, and a wrong command should fail before
+    it has collected anything.
+    """
+    import pytest as _pytest
+
     for name, description in MARKERS.items():
         config.addinivalue_line("markers", f"{name}: {description}")
 
+    try:
+        gate = gates.requested_gate(os.environ)
+    except ValueError as exc:
+        raise _pytest.UsageError(str(exc)) from exc
+    if gate is None:
+        return
+
+    reason = gates.unreachable_reason(gate, detect_qgis_environment())
+    if reason is not None:
+        raise _pytest.UsageError(reason)
+
+    if gate == "qgis" and gates.parallelism_of(config) > 1:
+        raise _pytest.UsageError(
+            "the qgis gate must run serialized: QgsApplication is a process-wide "
+            "singleton and parallel workers would share it"
+        )
+
+    config.stash[_GATE_KEY] = gate
+
+
+def pytest_report_header(config):
+    """Say which layers exist and which gate is running, once, at the top."""
+    environment = detect_qgis_environment()
+    gate = config.stash.get(_GATE_KEY, None) if hasattr(config, "stash") else None
+    layers = ", ".join(sorted(environment.layers))
+    return f"qgis-sdk layers: {layers}; gate: {gate or 'all (skips allowed)'}"
+
 
 def pytest_collection_modifyitems(config, items):
-    """Skip environment-specific tests before their bodies can touch QGIS."""
+    """Narrow the run to the requested gate, or skip unreachable layers.
+
+    Two modes, and the difference between them is the whole point of the
+    gates. Without a gate the suite is permissive: a test whose layer is
+    missing is skipped before its body runs, never handed a fake. With a gate
+    the suite is narrow and strict: only that layer's tests are kept, and a
+    skip for a missing runtime cannot occur because ``pytest_configure``
+    already refused the run.
+    """
     import pytest as _pytest
 
     environment = detect_qgis_environment()
+    gate = config.stash.get(_GATE_KEY, None) if hasattr(config, "stash") else None
+
+    if gate is not None:
+        selected, deselected = [], []
+        for item in items:
+            markers = {mark.name for mark in item.iter_markers()}
+            (selected if gates.selected_by(gate, markers) else deselected).append(item)
+        if deselected:
+            config.hook.pytest_deselected(items=deselected)
+        items[:] = selected
+
     skips = {
         "qgis": _pytest.mark.skip(reason="requires an importable qgis.core runtime"),
         "qt": _pytest.mark.skip(reason="requires an importable PyQt5 runtime"),
@@ -117,22 +182,49 @@ if pytest is not None:
         yield app
 
     @pytest.fixture(scope="session")
-    def qgis_app(qgis_environment):
-        """Return the host's live QgsApplication, or skip safely.
+    def qgis_app(request, qgis_environment):
+        """The live QgsApplication these tests should run against.
 
-        A plain pytest process may import PyQGIS without being a QGIS host.
-        This fixture intentionally does not construct or tear down a native
-        ``QgsApplication``: some QGIS/Qt builds abort during pytest shutdown.
-        Use it from a QGIS-hosted test runner, while pure-Python tests continue
-        to use the SDK fakes and fallback implementations.
+        Three cases, in order, and the order is the whole design:
+
+        1. **A host is already running one** — a plugin's tests inside QGIS.
+           Adopt it; never construct or tear down someone else's singleton.
+        2. **The ``qgis`` gate is active** — the caller asserted this layer
+           works, so construct one through :func:`qgis_runtime` rather than
+           skipping. A gate that skipped here would be a green that proved
+           nothing, which is the exact failure the gates exist to prevent.
+        3. **Neither** — a plain pytest process that merely happens to have
+           PyQGIS importable. Skip, as before: constructing a native
+           application nobody asked for is how a suite starts aborting at
+           interpreter shutdown.
         """
         qgis_environment.require_qgis()
         from qgis.core import QgsApplication
 
         app = QgsApplication.instance()
-        if app is None:
-            pytest.skip("qgis.core is installed, but no QgsApplication is running")
-        return app
+        if app is not None:
+            return app
+        if request.config.stash.get(_GATE_KEY, None) == "qgis":
+            return request.getfixturevalue("qgis_runtime")
+        pytest.skip("qgis.core is installed, but no QgsApplication is running")
+
+    @pytest.fixture(scope="session")
+    def qgis_runtime(qgis_environment):
+        """A real ``QgsApplication``, constructed and shut down by this fixture.
+
+        The difference from :func:`qgis_app` is ownership. ``qgis_app`` adopts
+        the host's application and skips when there is none, which is what a
+        plugin's own tests want. This fixture is what the ``qgis`` gate wants:
+        it *creates* the application in a plain pytest process, so the gate
+        proves the QGIS layer works rather than proving it was absent.
+
+        Session-scoped because ``QgsApplication`` is a process-wide singleton,
+        and torn down with ``exitQgis()`` before interpreter shutdown — see
+        :mod:`qgis_sdk.testing.qgis_lifecycle`.
+        """
+        qgis_environment.require_qgis()
+        with _qgis_application() as application:
+            yield application
 
     @pytest.fixture(scope="session")
     def webengine_app(qgis_environment, qt_app):
