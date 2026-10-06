@@ -390,71 +390,85 @@ impl EngineResponse {
     }
 }
 
-/// The machine-readable classification carried by every failure.
+/// Declare the failure classifications once.
 ///
-/// A client maps these onto its own language's exceptions — `invalid_extent`
-/// is a `ValueError` in Python and a `TypeError`-free plain `Error` in
-/// JavaScript, `project_not_found` is a `FileNotFoundError`. Without it every
-/// client would have to pattern-match on English error prose, which is the
-/// other way the same rule gets written down twice.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum ErrorKind {
-    /// The request itself could not be read as an [`EngineRequest`].
-    InvalidRequest,
-    /// The request's `transport_version` is not one this engine serves.
-    UnsupportedTransport,
-    /// The payload is missing a field, or a field has the wrong type.
-    InvalidPayload,
-    /// A file or directory could not be read or written.
-    Io,
-    /// The project file does not exist.
-    ProjectNotFound,
-    /// The file is neither `.qgs` nor `.qgz`.
-    UnsupportedProject,
-    /// A string could not be read as `minx,miny,maxx,maxy`.
-    InvalidExtent,
-    /// A string could not be read as a zoom level or `min-max` range.
-    InvalidZoomRange,
-    /// The authority code is not shaped like `EPSG:3857`.
-    UnknownCrs,
-    /// An output path has no recognisable image-format extension.
-    UnknownImageFormat,
-    /// The operation needs the optional native QGIS backend.
-    Unimplemented,
-    /// The operation name is not served by the native manager.
-    InvalidOperation,
-    /// An object ID is missing, stale, or has the wrong type.
-    InvalidObjectId,
-    /// The native manager must be initialized before this operation.
-    NotInitialized,
-    /// QGIS rejected an operation or returned an unusable object.
-    Qgis,
-    /// The native manager caught an unexpected internal failure.
-    Internal,
+/// The enum, each kind's wire spelling and the list a generator or a
+/// documentation gate reads are generated from the same line per kind. They
+/// used to be two hand-maintained lists that a new variant could leave
+/// disagreeing; now the only way to add a kind is to add it to all three at
+/// once.
+macro_rules! error_kinds {
+    ($( $(#[$doc:meta])* $variant:ident => $wire:literal ),+ $(,)?) => {
+        /// The machine-readable classification carried by every failure.
+        ///
+        /// A client maps these onto its own language's exceptions —
+        /// `invalid_extent` is a `ValueError` in Python and a `TypeError`-free
+        /// plain `Error` in JavaScript, `project_not_found` is a
+        /// `FileNotFoundError`. Without it every client would have to
+        /// pattern-match on English error prose, which is the other way the
+        /// same rule gets written down twice.
+        #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+        #[serde(rename_all = "snake_case")]
+        pub enum ErrorKind {
+            $( $(#[$doc])* $variant, )+
+        }
+
+        impl ErrorKind {
+            /// The wire spelling of this kind.
+            #[must_use]
+            pub const fn as_str(self) -> &'static str {
+                match self {
+                    $( Self::$variant => $wire, )+
+                }
+            }
+
+            /// Every classification this transport defines, in declaration
+            /// order.
+            ///
+            /// Public because the published error table is checked against it
+            /// — `pixi run xtask check-protocol-docs` fails when the docs
+            /// site documents a kind that does not exist, or omits one that
+            /// does. A kind that never reaches this slice is a kind the
+            /// documentation may silently drop.
+            #[must_use]
+            pub const fn all() -> &'static [Self] {
+                &[ $( Self::$variant, )+ ]
+            }
+        }
+    };
 }
 
-impl ErrorKind {
-    /// The wire spelling of this kind.
-    #[must_use]
-    pub const fn as_str(self) -> &'static str {
-        match self {
-            Self::InvalidRequest => "invalid_request",
-            Self::UnsupportedTransport => "unsupported_transport",
-            Self::InvalidPayload => "invalid_payload",
-            Self::Io => "io",
-            Self::ProjectNotFound => "project_not_found",
-            Self::UnsupportedProject => "unsupported_project",
-            Self::InvalidExtent => "invalid_extent",
-            Self::InvalidZoomRange => "invalid_zoom_range",
-            Self::UnknownCrs => "unknown_crs",
-            Self::UnknownImageFormat => "unknown_image_format",
-            Self::Unimplemented => "unimplemented",
-            Self::InvalidOperation => "invalid_operation",
-            Self::InvalidObjectId => "invalid_object_id",
-            Self::NotInitialized => "not_initialized",
-            Self::Qgis => "qgis",
-            Self::Internal => "internal",
-        }
-    }
+error_kinds! {
+    /// The request itself could not be read as an [`EngineRequest`].
+    InvalidRequest => "invalid_request",
+    /// The request's `transport_version` is not one this engine serves.
+    UnsupportedTransport => "unsupported_transport",
+    /// The payload is missing a field, or a field has the wrong type.
+    InvalidPayload => "invalid_payload",
+    /// A file or directory could not be read or written.
+    Io => "io",
+    /// The project file does not exist.
+    ProjectNotFound => "project_not_found",
+    /// The file is neither `.qgs` nor `.qgz`.
+    UnsupportedProject => "unsupported_project",
+    /// A string could not be read as `minx,miny,maxx,maxy`.
+    InvalidExtent => "invalid_extent",
+    /// A string could not be read as a zoom level or `min-max` range.
+    InvalidZoomRange => "invalid_zoom_range",
+    /// The authority code is not shaped like `EPSG:3857`.
+    UnknownCrs => "unknown_crs",
+    /// An output path has no recognisable image-format extension.
+    UnknownImageFormat => "unknown_image_format",
+    /// The operation needs the optional native QGIS backend.
+    Unimplemented => "unimplemented",
+    /// The operation name is not served by the native manager.
+    InvalidOperation => "invalid_operation",
+    /// An object ID is missing, stale, or has the wrong type.
+    InvalidObjectId => "invalid_object_id",
+    /// The native manager must be initialized before this operation.
+    NotInitialized => "not_initialized",
+    /// QGIS rejected an operation or returned an unusable object.
+    Qgis => "qgis",
+    /// The native manager caught an unexpected internal failure.
+    Internal => "internal",
 }

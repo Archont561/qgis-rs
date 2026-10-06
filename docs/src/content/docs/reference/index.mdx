@@ -55,6 +55,15 @@ Plugin development SDK (Python). See [Plugin Development](/guides/plugin-develop
 - [`network`](/reference/network) — QgsNetworkAccessManager wrapper
 - [`tasks`](/reference/tasks) — QgsTaskManager wrapper
 
+## The transport
+
+Every language binding — Python, Node, and the CLI's own client — reaches the
+engine through one versioned JSON envelope rather than a per-language FFI
+surface.
+
+- [`wire-protocol`](/reference/wire-protocol) — the request/response envelope,
+  `TRANSPORT_VERSION`, every operation and every error kind
+
 ## Modules
 
 ### Rendering

@@ -68,6 +68,34 @@ fn every_operation_is_listed_by_engine_info() {
 fn error_kinds_spell_themselves_the_way_serde_does(#[case] kind: ErrorKind) {
     let encoded = serde_json::to_value(kind).expect("serialisable");
     assert_eq!(encoded, json!(kind.as_str()));
+    assert!(
+        ErrorKind::all().contains(&kind),
+        "{} is a variant but is missing from ErrorKind::all()",
+        kind.as_str()
+    );
+}
+
+/// `ErrorKind::all()` is the list a generator or a documentation gate reads.
+///
+/// It has to be complete and unambiguous, because the only thing standing
+/// between the published error table and the enum is this slice: a kind that
+/// never reaches it is a kind the docs are free to omit without anything
+/// going red.
+#[test]
+fn every_error_kind_is_listed_once_and_parses_from_its_wire_name() {
+    let all = ErrorKind::all();
+
+    let mut spellings: Vec<&str> = all.iter().map(|kind| kind.as_str()).collect();
+    spellings.sort_unstable();
+    let mut deduped = spellings.clone();
+    deduped.dedup();
+    assert_eq!(spellings, deduped, "two kinds share one wire spelling");
+
+    for kind in all {
+        let parsed: ErrorKind = serde_json::from_value(json!(kind.as_str()))
+            .unwrap_or_else(|_| panic!("{} does not parse back", kind.as_str()));
+        assert_eq!(parsed, *kind);
+    }
 }
 
 #[test]
