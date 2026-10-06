@@ -25,6 +25,7 @@
 
 pub mod api_manifest;
 pub mod boundaries;
+pub mod bridge_fixtures;
 pub mod ci;
 pub mod cpp;
 pub mod lints;
@@ -48,6 +49,7 @@ use clap::{Parser, Subcommand};
                   pixi run xtask clang-tidy\n  \
                   pixi run xtask check-sources\n  \
                   pixi run xtask check-boundaries\n  \
+                  pixi run xtask validate-bridge-fixtures\n  \
                   pixi run xtask lint-toml [files...]\n  \
                   pixi run xtask pack-check <package-dir> <required...>\n  \
                   pixi run xtask setup-qca\n  \
@@ -93,6 +95,8 @@ pub enum Command {
     CheckSources,
     /// Fail if a manifest contradicts the D13 product boundaries.
     CheckBoundaries,
+    /// Validate the shared Python/TypeScript bridge contract fixtures.
+    ValidateBridgeFixtures,
     /// taplo canonicality check for the manifests kept in canonical form.
     LintToml {
         /// Files to check; with none, pixi.toml.
@@ -151,6 +155,9 @@ pub fn run(command: Command) -> Result<()> {
         Command::ClangTidy => lints::clang_tidy(),
         Command::CheckSources => lints::check_sources(),
         Command::CheckBoundaries => boundaries::check(&util::repo_root()),
+        Command::ValidateBridgeFixtures => {
+            bridge_fixtures::run(&util::repo_root().join("test-fixtures/bridge"))
+        }
         Command::LintToml { files } => lints::lint_toml(&files),
         Command::PackCheck {
             package_dir,
