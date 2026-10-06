@@ -116,3 +116,91 @@ fn invalid_statuses_and_duplicate_operations_are_rejected() {
     let message = error.to_string();
     assert!(message.contains("status") || message.contains("duplicate operation"));
 }
+
+// --- The manifest as the single authority for wire spellings -----------------
+//
+// `Operation::all()` is a hand-written list of wire names, and the manifest
+// generates another. Nothing used to compare them, so a native operation could
+// be added, renamed or dropped on one side while the other stayed silent —
+// which is the second hand-written operation spelling table TASK-30 AC#2
+// forbids. These tests damage each side in turn and require the gate to say so.
+
+#[test]
+fn the_manifest_accounts_for_every_operation_the_transport_serves() {
+    let manifest = validate_manifest(MANIFEST).expect("checked-in API manifest is valid");
+    let served = qgis_protocol::Operation::all();
+    xtask::api_manifest::check_wire_operations(&manifest, served)
+        .expect("the manifest partitions the served operations");
+    assert_eq!(
+        xtask::api_manifest::wire_check_summary(&manifest, served.len()),
+        "check-api-operations: 17 generated plus 12 excluded operations account for all 29 \
+         wire spellings"
+    );
+}
+
+#[test]
+fn a_generated_operation_the_transport_does_not_serve_is_named() {
+    let mut manifest = validate_manifest(MANIFEST).expect("checked-in API manifest is valid");
+    manifest.operations[6].name = "layer_opened".to_string();
+    let error =
+        xtask::api_manifest::check_wire_operations(&manifest, qgis_protocol::Operation::all())
+            .expect_err("a renamed operation must fail the gate");
+    let message = error.to_string();
+    assert!(message.contains("layer_opened"), "{message}");
+    assert!(message.contains("layer_open"), "{message}");
+}
+
+#[test]
+fn an_operation_dropped_from_the_manifest_is_not_silently_absorbed() {
+    let mut manifest = validate_manifest(MANIFEST).expect("checked-in API manifest is valid");
+    let dropped = manifest.operations.pop().expect("manifest has operations");
+    let error =
+        xtask::api_manifest::check_wire_operations(&manifest, qgis_protocol::Operation::all())
+            .expect_err("a dropped operation must fail the gate");
+    assert!(error.to_string().contains(&dropped.name));
+}
+
+#[test]
+fn an_operation_added_to_the_transport_alone_is_named() {
+    let manifest = validate_manifest(MANIFEST).expect("checked-in API manifest is valid");
+    let mut served: Vec<&str> = qgis_protocol::Operation::all().to_vec();
+    served.push("layer_rename");
+    let error = xtask::api_manifest::check_wire_operations(&manifest, &served)
+        .expect_err("an unreviewed transport operation must fail the gate");
+    assert!(error.to_string().contains("layer_rename"));
+}
+
+#[test]
+fn an_exclusion_for_an_operation_nobody_serves_is_named() {
+    let mut manifest = validate_manifest(MANIFEST).expect("checked-in API manifest is valid");
+    manifest.exclusions[0]
+        .operations
+        .push("tile_retire".to_string());
+    let error =
+        xtask::api_manifest::check_wire_operations(&manifest, qgis_protocol::Operation::all())
+            .expect_err("a stale exclusion must fail the gate");
+    assert!(error.to_string().contains("tile_retire"));
+}
+
+#[test]
+fn an_operation_cannot_be_generated_and_excluded_at_once() {
+    let both = MANIFEST.replace(
+        r#""reason": "Qt widgets and QgisInterface require a host-owned GUI thread.""#,
+        r#""reason": "Qt widgets and QgisInterface require a host-owned GUI thread.",
+      "operations": ["layer_open"]"#,
+    );
+    let error = validate_manifest(&both).expect_err("an excluded generated operation must fail");
+    assert!(error.to_string().contains("layer_open"));
+}
+
+#[test]
+fn a_supported_exclusion_cannot_carry_operations() {
+    let supported = MANIFEST.replace(
+        r#""scope": "engine-transport",
+      "status": "unsupported","#,
+        r#""scope": "engine-transport",
+      "status": "supported","#,
+    );
+    let error = validate_manifest(&supported).expect_err("a supported exclusion must fail");
+    assert!(error.to_string().contains("engine-transport"));
+}

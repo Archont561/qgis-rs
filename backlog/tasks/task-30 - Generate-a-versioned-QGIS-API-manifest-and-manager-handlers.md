@@ -4,7 +4,7 @@ title: Generate a versioned QGIS API manifest and manager handlers
 status: In Progress
 assignee: []
 created_date: '2026-10-03 08:57'
-updated_date: '2026-10-04 12:48'
+updated_date: '2026-10-06 21:30'
 labels:
   - rfc
   - ffi
@@ -48,4 +48,7 @@ Build the version-pinned extraction and generation pipeline described in the QGI
 2026-10-03: Native `engine_info` now advertises manifest metadata, and `api_describe` routes through the generated handler registry. Cross-language/runtime gates and the full clang-AST extraction/API-diff pipeline remain outstanding; keep this task In Progress until Pixi/QGIS validation is available.
 
 2026-10-03: Added required per-operation codec metadata to the manifest and generated registry, and exposed it through `api_describe.operation_metadata`; Python and TypeScript contract tests now advertise the capability as well. The manifest/registry still require compile-time validation once Cargo/QGIS tooling is available.
+2026-10-06: Made the manifest the single authority for wire spellings. `qgis-protocol`'s `Operation::all()` and the manifest's `operations` were two hand-maintained lists of the same snake_case names with nothing comparing them — the second spelling table AC#2 forbids. A sixth repo lint, `pixi run xtask check-api-operations`, now requires the manifest to *partition* the 29 served names: 17 generated operations plus 12 named by explicit exclusions (`engine-transport`, `engine-geometry-and-tiles`, `engine-project-inspection`), each with a status and a reason. `Exclusion` gained an optional `operations` field (manifest_version stays 1); `validate_manifest` rejects an operation that is both generated and excluded, excluded twice, or excluded under a `supported*` status. Proven by damage, not by a green print: dropping `layer_fields`, renaming `layer_open`, and adding a protocol-only `layer_rename` each exit 1 naming the drift (the rename names both directions). Seven new tests in `crates/xtask/tests/api_manifest.rs` (13 total).
+
+AC status after this slice — none ticked, all still have unproven parts: AC#1 covers only the reviewed core/data slice, with no clang-AST extractor (worth recording: the `default` env has no `clang++` driver, but `clang-check`/`clang-query` plus `qgis-sys`'s `compile_commands.json` make `clang-check -ast-dump=json` a viable offline extractor); AC#2's compile half is proven here (the generated `operation_table.inc` is `#include`d by `manager.cpp` and the 22-test `qgis`-feature suite is green) and its no-second-table half is now enforced, but the codec side is still one `json_object` for every operation; AC#3 still lacks representative runtime tests per mapping category; AC#4 has no shared fixtures for generated operations; AC#5 has `check_upgrade` and its test but no pinned baseline manifest in the gate.
 <!-- SECTION:NOTES:END -->
