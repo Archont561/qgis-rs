@@ -77,6 +77,19 @@
   SDK, while this is the **Rust** `qgis-sys` native manager teardown path. Hence
   a separate task rather than a checkbox on a task that would have closed
   around it.
+* **Post-merge**: PR #35 squash-merged to `main` at **`7a631b6`**. All three
+  triggered workflows green — CI 37446421611 (12m55s), **`publish sandbox`
+  37446421553 (4m40s)** and Docs 37447906450 (50s). The repack *was*
+  path-triggered this time, unlike session 7: adding `qgis-protocol` to
+  `crates/xtask/Cargo.toml` changed `Cargo.lock`, which is a sandbox input, so
+  `sandbox/developer-linux-64` advanced `66c0990` → `4367a18` and a restore is
+  now current with main.
+* **Baseline on merged `7a631b6`** (`pixi run gates` green): Rust **290** —
+  268 nextest workspace `--no-default-features` plus 22 under the `qgis`
+  feature — plus **5** doctests; `qgis-sdk` pytest **394 passed / 4 skipped**;
+  `qgis-rs` pytest **21**; Bun **132**; C++ **14**; docs **50** pages. The Rust
+  count moved 278 → 290 because TASK-20 added 11 `protocol_docs` tests and one
+  `ErrorKind::all()` assertion.
 * **Operational**: both pixi environments restored from
   `sandbox/developer-linux-64` via `scripts/restore.sh` (8708 blobs, 1705 MiB,
   162 vendored crates); `pixi run setup` repaired `libqca-qt5.so.2`. Cold gate
@@ -97,13 +110,15 @@
 Next session should start with:
 
 > Confirm the pixi environments and baseline the suite with `pixi run gates`
-> (expect Rust **278** — 256 workspace plus 22 under the `qgis` feature — and 5
+> (expect Rust **290** — 268 workspace plus 22 under the `qgis` feature — and 5
 > doctests, `qgis-sdk` pytest **394 passed / 4 skipped**, `qgis-rs` pytest 21,
 > Bun 132, C++ 14 in one ctest target, docs 50 pages. An Arena sandbox starts
 > with no `pixi` binary, so `scripts/restore.sh` is the first command, then
-> `pixi run bun-install` and `pixi run setup`. GitHub answers; crates.io,
-> prefix.dev and conda-forge do not, so adding a dependency or relocking is out
-> of scope. Never run bare `bun x turbo run test` — use `pixi run gates`.)
+> `pixi run bun-install` and `pixi run setup`; `sandbox/developer-linux-64` is
+> at `4367a18` and current with main, so the restore needs no catch-up. GitHub
+> answers; crates.io, prefix.dev and conda-forge do not, so adding a dependency
+> or relocking is out of scope. Never run bare `bun x turbo run test` — it
+> loses the offline cargo env and dies on crates.io TLS; use `pixi run gates`.)
 >
 > Read `.knowledge/log.md` — the 2026-10-06 (session 8) heading — and
 > `AGENTS.md` for the house rules.
