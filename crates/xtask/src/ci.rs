@@ -24,6 +24,7 @@ pub enum RepoLint {
     CheckBoundaries,
     CheckApiManifest,
     ValidateBridgeFixtures,
+    CheckProtocolDocs,
 }
 
 impl RepoLint {
@@ -35,6 +36,7 @@ impl RepoLint {
             Self::CheckBoundaries => "check-boundaries",
             Self::CheckApiManifest => "api-manifest --check",
             Self::ValidateBridgeFixtures => "validate-bridge-fixtures",
+            Self::CheckProtocolDocs => "check-protocol-docs",
         }
     }
 
@@ -46,6 +48,7 @@ impl RepoLint {
             Self::ValidateBridgeFixtures => {
                 crate::bridge_fixtures::run(&repo_root().join("test-fixtures/bridge"))
             }
+            Self::CheckProtocolDocs => crate::protocol_docs::run(&repo_root()),
         }
     }
 }
@@ -59,6 +62,7 @@ pub const REPO_LINTS: &[RepoLint] = &[
     RepoLint::CheckBoundaries,
     RepoLint::CheckApiManifest,
     RepoLint::ValidateBridgeFixtures,
+    RepoLint::CheckProtocolDocs,
 ];
 
 /// A slice of the gate that can run on its own runner.

@@ -324,6 +324,18 @@ Fakes: `FakeIface`, `FakeAction`, `FakeDialog`, `FakeWebView`, `FakeBridge`,
 `pure_python` skip a test whose layer is missing instead of handing it a fake.
 See [Testing Fixtures Guide](https://archont561.github.io/qgis-rs/guides/testing-fixtures/).
 
+Skipping is the right default and a poor proof. To assert that a layer really
+works, run its gate — it narrows the suite to that layer and **fails** if the
+layer is missing:
+
+```bash
+bun run test            # everything, skipping what this machine cannot reach
+bun run test:pure       # no Qt, no QGIS, no WebEngine — the fakes and the harness
+bun run test:qt         # real widgets, offscreen
+bun run test:qgis       # a real QgsApplication, built and shut down by the suite
+bun run test:webengine  # optional, and deliberately not on the default path
+```
+
 ## Development
 
 From the repository root:

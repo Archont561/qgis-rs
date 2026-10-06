@@ -411,6 +411,60 @@ def test_needs_qgis(): ...
 def test_needs_webengine(): ...
 ```
 
+| Marker | Means | Skipped when |
+| --- | --- | --- |
+| `qt` | needs real PyQt5 widgets | PyQt5 is not importable |
+| `qgis` | needs `qgis.core` | PyQGIS is not importable |
+| `webengine` | needs `PyQt5.QtWebEngineWidgets` | QtWebEngine is not installed |
+| `pure_python` | asserts the **no-QGIS** fallback | QGIS *is* importable |
+| `network`, `tasks` | describes what the test is about | never — they demand no runtime |
+
+A test whose layer is missing is skipped **before its body runs**, never
+quietly handed a fake.
+
+## Execution-layer gates
+
+The markers above make one command work everywhere by skipping what it cannot
+reach. That is right for the default suite and wrong for a gate: *"the QGIS
+layer works here"* cannot be proved by a run in which every QGIS test skipped.
+
+Setting `QGIS_TEST_LAYER` flips the policy — it narrows the run to one layer
+and makes a missing layer an **error**:
+
+| Gate | Command | Runs |
+| --- | --- | --- |
+| pure | `bun --filter=qgis-sdk-py run test:pure` | every test that demands no runtime (including the fakes and `BridgeHarness`) |
+| qt | `bun --filter=qgis-sdk-py run test:qt` | tests marked `qt`, offscreen |
+| qgis | `bun --filter=qgis-sdk-py run test:qgis` | tests marked `qgis`, against a real `QgsApplication`, serialized |
+| webengine | `bun --filter=qgis-sdk-py run test:webengine` | tests marked `webengine` — optional, and not on the default path |
+
+```console
+$ QGIS_TEST_LAYER=webengine python -m pytest tests
+ERROR: the webengine gate was requested but this environment cannot reach the
+webengine layer (reachable: pure, qgis, qt). A gate that skips is a gate that
+proved nothing, so this is an error rather than a skip.
+```
+
+Only the ungated `test` verb is fanned out by turbo, which is what keeps
+QtWebEngine off the critical path of ordinary bridge protocol tests. The
+`qgis` gate additionally refuses `pytest-xdist`: `QgsApplication` is a
+process-wide singleton, and parallel workers would share it.
+
+The cross-language contract — the shared `test-fixtures/bridge` vectors that
+Rust, Python and TypeScript all consume — is a separate axis, gated by
+`pixi run xtask validate-bridge-fixtures` and covered in the full
+`pixi run gates`.
+
+### Fixtures by layer
+
+| Fixture | Layer | Gives you |
+| --- | --- | --- |
+| `qgis_environment` | — | the detected layers, as an immutable value |
+| `qt_app` | qt | one session `QApplication`, `QT_QPA_PLATFORM=offscreen` |
+| `qgis_app` | qgis | the host's application, or one the `qgis` gate built |
+| `qgis_runtime` | qgis | a `QgsApplication` this fixture constructs **and** shuts down |
+| `webengine_app` | webengine | `qt_app` with `QtWebEngineWidgets` imported first |
+
 ## Scaffold
 
 `qgis-plugin new` generates:

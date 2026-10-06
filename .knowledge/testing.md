@@ -58,6 +58,31 @@ that and belongs in measurements, not in the loop.
 
 SDK-specific pure-Python and QGIS-hosted test separation is tracked by [TASK-1](../backlog/tasks/task-1%20-%20Make%20the%20full%20QGIS%20SDK%20test%20suite%20headless%20and%20CI-green.md), [TASK-2](../backlog/tasks/task-2%20-%20Add%20a%20dedicated%20QGIS%20SDK%20integration%20test%20runner%20and%20CI%20job.md), and [TASK-4](../backlog/tasks/task-4%20-%20Cover%20real%20QGIS%20network%20and%20task-manager%20integration.md). Property and fixture migration is [TASK-23](../backlog/tasks/task-23%20-%20Refactor-every-test-suite-onto-property-based-and-fixture-driven-testing.md).
 
+### The six test commands (TASK-35)
+
+Six things get tested, and they do not all need the same machine. Each has one
+command, and the layer gates are **strict**: a gate whose layer is missing
+fails rather than skipping, because a gate that skipped has proved nothing.
+`QGIS_TEST_LAYER` narrows the run to one layer and turns the permissive
+skip-what-you-cannot-reach policy off.
+
+| What | Command | Needs |
+| --- | --- | --- |
+| **Pure** — no Qt, no QGIS, no WebEngine | `pixi run -- bun --filter=qgis-sdk-py run test:pure` | nothing |
+| **Fake-host** — the fakes and `BridgeHarness`, host behaviour without a host | included in the pure gate (the fakes import no Qt) | nothing |
+| **Qt** — real widgets, offscreen | `pixi run -- bun --filter=qgis-sdk-py run test:qt` | PyQt5 |
+| **QGIS** — a real `QgsApplication`, serialized | `pixi run -- bun --filter=qgis-sdk-py run test:qgis` | `qgis.core` |
+| **WebEngine** — optional, off the default path | `pixi run -- bun --filter=qgis-sdk-py run test:webengine` | `PyQt5.QtWebEngineWidgets` |
+| **Cross-language contract** — the shared `test-fixtures/bridge` vectors in Rust, Python and TypeScript | `pixi run xtask validate-bridge-fixtures` then `pixi run gates` | nothing |
+
+`pixi run -- bun --filter=qgis-sdk-py run test` remains the permissive
+whole-suite run and is the only one turbo fans out, so WebEngine never becomes
+a dependency of ordinary bridge tests. The selection policy is pure data in
+`qgis_sdk.testing.gates` and tested in `tests/test_layer_gates.py`; the gates
+overlap on purpose (a test marked both `qt` and `webengine` runs in both) but
+never leave a test in no gate at all, which is why `pure` is defined by the
+*absence* of a layer marker rather than the presence of `pure_python`.
+
 ### QGIS SDK runtime matrix
 
 The SDK suite is intentionally runnable in two modes:
@@ -67,10 +92,15 @@ The SDK suite is intentionally runnable in two modes:
   `pixi run -e default env QGIS_REQUIRE_NATIVE=1 python -m pytest py-packages/qgis-sdk/tests -v`.
   `QT_QPA_PLATFORM=offscreen` is set before the SDK is imported. The reusable
   `qgis_environment`, `qgis_available`, `pure_python`, and `qgis_app` fixtures
-  describe the runtime; `qgis_app` only returns a live host-owned
-  `QgsApplication` and otherwise skips safely. The committed simple-plugin
-  integration test starts its own subprocess so native startup and teardown
-  cannot corrupt the main pytest process.
+  describe the runtime. `qgis_app` resolves in three steps: adopt the host's
+  live `QgsApplication` when there is one, otherwise construct one through the
+  `qgis_runtime` fixture **when the `qgis` gate is active**, otherwise skip.
+  Only the middle case creates a native application, and only because the gate
+  asserted the layer exists; `qgis_sdk.testing.qgis_lifecycle` owns that
+  lifecycle and calls `exitQgis()` before interpreter teardown, which is what
+  the "aborts during pytest shutdown" folklore was really about. The committed
+  simple-plugin integration test starts its own subprocess so native startup
+  and teardown cannot corrupt the main pytest process.
 
 The package registers `qgis_sdk.testing` through its `pytest11` entry point;
 `tests/conftest.py` also registers the same plugin only when that entry point is

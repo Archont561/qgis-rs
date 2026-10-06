@@ -55,6 +55,7 @@ fn long_help_lists_every_repository_verb() {
         "clang-tidy",
         "check-sources",
         "check-boundaries",
+        "check-protocol-docs",
         "lint-toml",
         "pack-check",
         "setup-qca",

@@ -1,0 +1,242 @@
+---
+title: Engine Wire Protocol
+description: The versioned JSON envelope every qgis-rs binding speaks — request, response, operations, and error kinds
+---
+
+# Engine wire protocol
+
+Every qgis-rs language binding exposes exactly **one** function —
+`invoke(request_json) -> response_json` — and this page is what those two
+strings are. The wire is the interface
+([D09](https://github.com/Archont561/qgis-rs/blob/main/.knowledge/decisions/D09-wire-protocol-over-ffi.md)):
+adding a capability is a new variant in `qgis-protocol`, not a new PyO3
+function, a new NAPI export, a new `.pyi` entry and a release of two packages.
+
+:::note[This page is gated]
+The operation and error tables below are checked against `qgis-protocol` on
+every CI run by `pixi run xtask check-protocol-docs`. A name that exists in
+the enum but not in the table — or the other way round — fails the build, and
+the Python column is compared against the real mapping in
+`py-packages/qgis-rs/python/qgis_rs/_transport.py`.
+:::
+
+## Naming: `snake_case`, everywhere
+
+{/* protocol-docs:naming:begin */}
+Everything on the wire is `snake_case` — field names, operation names and
+error kinds alike. The payloads carry `qgis-render`'s own types serialised by
+the serde derives those types already have, and those derives are
+`snake_case`; one convention for the whole envelope is worth more than a
+camelCase envelope wrapped around snake_case contents.
+
+The **JavaScript client renames at its own edge**, in
+`ts-packages/qgis-node/src/index.js`, which it had to do anyway to look like
+idiomatic JavaScript. Python does **not** rename: `qgis_rs` uses the wire
+spelling as-is.
+{/* protocol-docs:naming:end */}
+
+## Envelope
+
+### `EngineRequest`
+
+```json
+{
+  "transport_version": 1,
+  "operation": "describe_extent",
+  "payload": { "extent": "14,50,15,51" }
+}
+```
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `transport_version` | integer | The envelope shape the caller speaks. Checked against the engine's. |
+| `operation` | string | One of the [operations](#operations) below. A **closed** set — an unknown name is a parse error, not a no-op. |
+| `payload` | any | The operation's arguments. Defaults to `null`, so an argument-less operation omits the field rather than being special-cased. |
+
+### `EngineResponse`
+
+```json
+{
+  "transport_version": 1,
+  "ok": true,
+  "result": { "width": 1.0, "height": 1.0, "is_valid": true }
+}
+```
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `transport_version` | integer | Always *this engine's* version, even when the request carried a different one — the answer is in the engine's dialect whatever the question was written in. |
+| `ok` | boolean | `false` means the request was understood and refused. It is not a Rust error: a binding that cannot parse a response at all is a different, worse bug. |
+| `result` | any | The operation's answer, or the [failure object](#errors) when `ok` is `false`. |
+
+### `TRANSPORT_VERSION`
+
+{/* protocol-docs:transport-version:begin */}
+This page documents **`TRANSPORT_VERSION` 1**.
+{/* protocol-docs:transport-version:end */}
+
+It is bumped when a request or response field changes meaning — a new required
+field, a changed default, a removed operation. An engine that receives a
+version it does not know answers `ok: false` with
+`unsupported_transport` rather than guessing, so a client built against a
+future transport fails loudly against an old engine instead of silently
+reading the wrong field.
+
+`TRANSPORT_VERSION` and `qgis_render::VERSION` are **two numbers on purpose**:
+the first is the shape of the envelope, the second is the release of the
+engine. A patch release of the engine does not change the envelope, and a new
+envelope does not imply new geometry.
+
+### Binary artifacts are paths, not bytes
+
+A rendered map and an exported layer are files. Version 1 carries the **path**
+the operation wrote plus metadata about it, never the image or feature bytes
+inline as base64 or a JSON array. The caller supplies an output path it can
+see, the manager validates path and format before it touches QGIS, an existing
+file is overwritten (atomically is not promised), and the caller owns the
+result — shutting the engine down does not delete it. Paths are local to the
+engine process, because version 1 is in-process; an out-of-process transport
+needing a shared filesystem is a new transport version, not a quiet change of
+meaning here.
+
+## Operations
+
+Operations marked **native** need the optional QGIS backend. Without it they
+answer `ok: false` — `unimplemented` for the manager lifecycle and layer
+registry, `qgis` when the build simply has no backend loaded.
+
+{/* protocol-docs:operations:begin */}
+| Operation | Payload | Result |
+| --- | --- | --- |
+| `ping` | any (echoed) | `{ engine, echo }` — proves the boundary is live without needing valid domain input |
+| `engine_info` | none | `{ engine, version, transport_version, max_zoom, max_latitude, operations[] }` |
+| `api_describe` | none | **native** — generated manifest metadata, live handler registry and `operation_metadata` |
+| `app_init` | none | **native** — `{}`; initializes the standalone QGIS manager |
+| `app_shutdown` | none | **native** — `{ shutdown, released_layer_count }` |
+| `layer_open` | `{ uri, provider, name? }` | **native** — `{ layer_id, is_valid, name }` |
+| `layer_info` | `{ layer_id }` | **native** — `{ layer_id, is_valid, name, feature_count, crs_authid, geometry_type_name, fields[] }` |
+| `layer_close` | `{ layer_id }` | **native** — `{ layer_id, closed }` |
+| `layer_features` | `{ layer_id, offset?, limit? }` (limit defaults to 100) | **native** — `{ layer_id, offset, limit, next_offset, total, features[] }` |
+| `layer_new` | `{ uri, provider, name? }` | **native** — `{ layer_id, is_valid, name }` |
+| `layer_is_valid` | `{ layer_id }` | **native** — boolean |
+| `layer_name` | `{ layer_id }` | **native** — string |
+| `layer_feature_count` | `{ layer_id }` | **native** — integer |
+| `layer_crs_authid` | `{ layer_id }` | **native** — string, for example `EPSG:4326` |
+| `layer_geometry_type_name` | `{ layer_id }` | **native** — string |
+| `layer_fields` | `{ layer_id }` | **native** — `[{ name, type, precision }]` |
+| `describe_extent` | `{ extent }` — `"minx,miny,maxx,maxy"` or `{ min_x, min_y, max_x, max_y }` | `{ extent, width, height, is_valid }` |
+| `extent_contains` | `{ extent, x, y }` | `{ contains }` |
+| `extent_intersects` | `{ extent, other }` | `{ intersects }` |
+| `describe_crs` | `{ text }` — for example `"EPSG:3857"` | `{ auth_id, name, units, is_geographic }` |
+| `describe_zoom_range` | `{ zooms }` — `12`, `"10-14"` or `{ min, max }` | `{ zooms, count }` |
+| `tile_from_lon_lat` | `{ z, lon, lat }` | `{ tile, bounds }` |
+| `tile_bounds` | `{ tile: { z, x, y } }` | `{ bounds }` — EPSG:4326 |
+| `plan_tiles` | `{ bounds, zooms, include_tiles? }` | `{ bounds, zooms, tile_count, levels[], tiles[]? }` — enumeration is opt-in |
+| `project_info` | `{ path }` — `.qgs` or `.qgz` | project metadata |
+| `project_layers` | `{ path }` | `{ layers[] }` |
+| `render_map` | `{ project, output, width?, height?, dpi?, crs?, extent?, layers[]?, layout? }` | **native** — `{ path, format, bytes, width, height }` |
+| `export_features` | `{ project, layer, output, filter?, bbox?, fields[]? }` | **native** — `{ path, format, bytes, layer, feature_count }` |
+| `render_project` | legacy alias: `{ path, ... }` is rewritten to `render_map`'s `{ project, ... }` | **native** — as `render_map` |
+{/* protocol-docs:operations:end */}
+
+### Discovering them at runtime
+
+Do not assume your own build's list. `engine_info` reports what the engine on
+the other side actually serves:
+
+```python
+import qgis_rs
+qgis_rs.invoke("engine_info")["operations"]
+```
+
+The `describe_*` operations exist so that no client re-implements a rule
+locally "because it is only arithmetic" — the width of an extent, the units of
+a CRS, the number of levels in a zoom range. That arithmetic is the thing this
+project is the definition of.
+
+## Errors
+
+A failure is a normal response with `ok: false`, and its `result` is always
+the same shape:
+
+```json
+{
+  "transport_version": 1,
+  "ok": false,
+  "result": {
+    "kind": "invalid_extent",
+    "error": "14,50 is not minx,miny,maxx,maxy",
+    "detail": "…"
+  }
+}
+```
+
+`kind` is the machine-readable classification — clients branch on it instead
+of pattern-matching English prose. `error` is the human-readable message, and
+any remaining keys are that failure's extra fields.
+
+{/* protocol-docs:errors:begin */}
+| Kind | Python exception | JavaScript |
+| --- | --- | --- |
+| `invalid_request` | `InvalidInput` | `EngineError` (`kind: "invalid_request"`) |
+| `unsupported_transport` | `TransportMismatch` | `EngineError` (`kind: "unsupported_transport"`) |
+| `invalid_payload` | `InvalidInput` | `EngineError` (`kind: "invalid_payload"`) |
+| `io` | `EngineIOError` | `EngineError` (`kind: "io"`) |
+| `project_not_found` | `ProjectNotFound` | `EngineError` (`kind: "project_not_found"`) |
+| `unsupported_project` | `InvalidInput` | `EngineError` (`kind: "unsupported_project"`) |
+| `invalid_extent` | `InvalidInput` | `EngineError` (`kind: "invalid_extent"`) |
+| `invalid_zoom_range` | `InvalidInput` | `EngineError` (`kind: "invalid_zoom_range"`) |
+| `unknown_crs` | `InvalidInput` | `EngineError` (`kind: "unknown_crs"`) |
+| `unknown_image_format` | `InvalidInput` | `EngineError` (`kind: "unknown_image_format"`) |
+| `unimplemented` | `Unimplemented` | `EngineError` (`kind: "unimplemented"`) |
+| `invalid_operation` | `InvalidInput` | `EngineError` (`kind: "invalid_operation"`) |
+| `invalid_object_id` | `InvalidInput` | `EngineError` (`kind: "invalid_object_id"`) |
+| `not_initialized` | `InvalidInput` | `EngineError` (`kind: "not_initialized"`) |
+| `qgis` | `InvalidInput` | `EngineError` (`kind: "qgis"`) |
+| `internal` | `InvalidInput` | `EngineError` (`kind: "internal"`) |
+{/* protocol-docs:errors:end */}
+
+### What each client does with a kind
+
+**Python** raises a subclass of `qgis_rs.EngineError`, which also inherits the
+built-in exception a caller would naturally reach for — so
+`except ValueError` and `except qgis_rs.EngineError` both catch the same
+object:
+
+| Class | Also inherits | Raised for |
+| --- | --- | --- |
+| `InvalidInput` | `ValueError` | every kind without a better match — "the engine refused these values" |
+| `ProjectNotFound` | `FileNotFoundError` | `project_not_found` |
+| `EngineIOError` | `OSError` | `io` |
+| `Unimplemented` | `NotImplementedError` | `unimplemented` |
+| `TransportMismatch` | `RuntimeError` | `unsupported_transport` |
+
+**JavaScript** has one class, `EngineError`, carrying `.kind` and `.detail`;
+the wire kind is passed through verbatim. Two kinds can also be raised by the
+client itself, without the engine having said anything:
+
+- `unsupported_transport` — the client compares every answer's
+  `transport_version` against its own and throws locally on a mismatch.
+- `invalid_request` — the fallback when a failure envelope carries no `kind`.
+
+## Adding an operation
+
+1. A variant on `Operation` in `crates/qgis-protocol`, plus its wire spelling
+   in `Operation::all()`.
+2. A payload struct in `crates/qgis-engine/src/payload.rs` and a match arm in
+   `crates/qgis-engine`.
+3. A test in `crates/qgis-engine/tests/engine.rs` — that is where the boundary
+   is covered.
+4. A row in the table above, or `pixi run xtask check-protocol-docs` fails.
+
+The ergonomic classes live in the host languages
+(`py-packages/qgis-rs/python/qgis_rs/_api.py`,
+`ts-packages/qgis-node/src/index.js`), never in the binding crates, and there
+are no pure-Python or pure-JS fallbacks.
+
+## See also
+
+- [API Design](/concepts/api-design) — the public surface built on this transport
+- [Architecture](/concepts/architecture) — where the engine sits
+- [Typed Bridge](/reference/bridge) — the *other* protocol, between a plugin's
+  Python host and its web view

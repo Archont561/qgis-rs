@@ -1617,6 +1617,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "clap",
+ "qgis-protocol",
  "rstest",
  "serde",
  "serde_json",
