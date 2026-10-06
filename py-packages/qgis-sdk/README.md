@@ -25,7 +25,7 @@ qgis-sdk = better PyQGIS + declarative plugin/algorithm/UI definitions + Rust CL
 | `WebDialog`, `@web_bridge` | QWebEngineView + HTML/CSS/JS + QWebChannel bridge (Python ↔ JS via `pyqtSlot` + `runJavaScript`). |
 | `generate_ts_bridge()`, `generate_package()` | Generate TypeScript types from Python bridge classes → `bridge.d.ts` with Promise+callback overloads, for `@qgis-sdk/bridge`. |
 | `@qgis-sdk/bridge` (npm) | Typed bridge runtime: auto-injects `qrc:///qtwebchannel/qwebchannel.js`, `createBridge<T>()` Promise API, React `useQgisBridge`, Vue composable, Web Components `<qgis-bridge>`. |
-| `qgis_sdk.testing` | Pytest fixtures + fakes: `FakeIface`, `FakeDialog`, `FakeWebView`, `FakeBridge`, `mock_features/source/context`, `fake_iface`, `fake_bridge`, etc. Discoverable via `pytest_plugins = ["qgis_sdk.testing"]`. |
+| `qgis_sdk.testing` | Pytest fixtures + fakes, one module per concern: `FakeIface`, `FakeDialog`, `FakeWebView`, `BridgeHarness`, `FakeNetworkTransport`, the `PENDING/RUNNING/SUCCESS/FAILURE/CANCELED` `FakeTaskManager`, `Call`/`CallLog`, `mock_features/source/context`, and Hypothesis strategies in `qgis_sdk.testing.strategies`. Discoverable via `pytest_plugins = ["qgis_sdk.testing"]`. |
 | `qgis_core()` / `require_qgis()` | Lazy PyQGIS access with an actionable error when the bindings are missing. |
 
 ## Using it
@@ -293,7 +293,36 @@ def test_bridge(fake_bridge):
     assert fake_bridge.get_layer()["name"] == "test_layer"
 ```
 
-Fakes: `FakeIface`, `FakeAction`, `FakeDialog`, `FakeWebView`, `FakeBridge`, `mock_features()`, `mock_source()`. See [Testing Fixtures Guide](https://archont561.github.io/qgis-rs/guides/testing-fixtures/).
+Deterministic by construction — nothing sleeps, nothing opens a socket, and
+nothing answers a question the test did not script:
+
+```python
+def test_a_retry_gives_up_after_the_second_failure(fake_network_transport):
+    fake_network_transport.reply_sequence("GET", "https://example.test/api", [
+        FakeResponse(status_code=503),
+        FakeResponse(status_code=200, json_data={"ok": True}),
+    ])
+    ...  # an unscripted URL raises NoScriptedReply instead of inventing a 200
+
+def test_the_task_runs_when_i_say_so(manual_task_manager):
+    task = manual_task_manager.submit(work)
+    assert task.state == "PENDING"
+    manual_task_manager.run_next()
+    assert task.state == "SUCCESS"
+
+def test_the_bridge_refuses_an_unknown_method(bridge_harness_factory):
+    harness = bridge_harness_factory(descriptions={"qgis": manifest})
+    answer = harness.invoke({"bridge_version": 1, "request_id": "req-1",
+                             "target": "qgis", "method": "layers.teleport", "args": {}})
+    assert answer["error"]["kind"] == "unknown_method"
+```
+
+Fakes: `FakeIface`, `FakeAction`, `FakeDialog`, `FakeWebView`, `FakeBridge`,
+`BridgeHarness`, `FakeNetworkTransport`, `FakeTaskManager`, `Call`/`CallLog`,
+`mock_features()`, `mock_source()`, plus Hypothesis strategies in
+`qgis_sdk.testing.strategies`. Markers `qgis`, `qt`, `webengine` and
+`pure_python` skip a test whose layer is missing instead of handing it a fake.
+See [Testing Fixtures Guide](https://archont561.github.io/qgis-rs/guides/testing-fixtures/).
 
 ## Development
 

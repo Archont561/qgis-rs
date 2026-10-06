@@ -27,6 +27,25 @@ Entry point `pytest11` in `pyproject.toml` also auto-discovers:
 qgis_sdk = "qgis_sdk.testing"
 ```
 
+## Module map
+
+`qgis_sdk.testing` is a package; importing from it is unchanged, and every
+fixture keeps its name.
+
+| Module | What lives there |
+|--------|------------------|
+| `environment` | `QgisTestEnvironment`, `detect_qgis_environment()` — pure / Qt / QGIS / WebEngine |
+| `calls` | `Call`, `CallLog` — one recorded shape for every fake |
+| `iface` | `FakeIface`, `FakeAction` |
+| `ui` | `FakeDialog`, `FakeDialogWidget`, `FakeWebView`, `FakeWebPage`, `FakeWebChannel` |
+| `bridge` | `BridgeHarness`, `HostError`, `validate_value()`, and the legacy `FakeBridge` |
+| `qgis_api` | `FakeQgisAPI` and the `window.qgis` sub-APIs |
+| `network` | `FakeNetworkTransport`, `FakeResponse`, and the requests-like fakes |
+| `tasks` | the `PENDING/RUNNING/SUCCESS/FAILURE/CANCELED` machine, plus the celery-shaped fakes |
+| `processing`, `data` | `FakeContext`, `FakeSink`, `mock_source()`, `FakeFeature`, `FakeGeometry` |
+| `strategies` | Hypothesis strategies for pure values |
+| `plugin` | the pytest plugin: fixtures and markers |
+
 ## Fake Classes
 
 ### FakeNetworkResponse, FakeNetworkManager, FakeContentFetcher
@@ -214,6 +233,125 @@ bridge.log("msg")
 bridge.process('{"action": "buffer"}')
 ```
 
+### CallLog — one shape for every call
+
+```python
+from qgis_sdk.testing import CallLog, FakeIface, FakeNetworkTransport
+
+calls = CallLog()
+iface = FakeIface(calls=calls)
+transport = FakeNetworkTransport(calls=calls)
+
+transport.reply("GET", "https://example.test/api", json_data={"ok": True})
+transport.get("https://example.test/api")
+iface.messageBar().pushMessage("done")
+
+calls.paths()                       # ["network.get", "iface.message.push"]
+calls.for_target("iface")
+calls.for_method("network.get")
+calls.assert_called_once("iface", "message.push", text="done")
+calls.assert_not_called("network", "post")
+calls.reset()
+```
+
+Sharing one log across fakes is what makes cross-fake ordering assertable.
+The old per-fake lists (`iface.messages`, `manager.requests`) still work.
+
+### FakeNetworkTransport — scripted, no sockets, no sleeping
+
+```python
+from qgis_sdk.testing import FakeNetworkTransport, FakeResponse, NoScriptedReply
+
+transport = FakeNetworkTransport()
+transport.reply("GET", "https://example.test/layers", json_data={"layers": []})
+transport.reply_sequence("GET", "https://example.test/flaky", [
+    FakeResponse(status_code=503),
+    FakeResponse(status_code=200, json_data={"ok": True}),
+])
+transport.fail("GET", "https://example.test/down", error="connection refused")
+transport.fail("GET", "https://example.test/slow", raises=TimeoutError("timed out"))
+transport.delay("GET", "https://example.test/layers", 2.5)   # virtual seconds
+transport.redirect("GET", "https://example.test/old", to="https://example.test/new")
+
+transport.get("https://example.test/layers")
+transport.clock        # 2.5 — nothing slept
+transport.requests     # request history
+transport.calls        # CallLog
+transport.reset()
+```
+
+An unscripted route raises `NoScriptedReply`; a redirect cycle raises
+`RedirectLoop`. (`FakeNetworkManager` keeps its permissive `{"mock": true}`
+default for older suites.)
+
+### Deterministic tasks
+
+```python
+from qgis_sdk.testing import FakeTaskManager
+
+manager = FakeTaskManager(auto_run=False)
+task = manager.submit(work, description="count", on_progress=print)
+task.state          # "PENDING"
+manager.run_next()
+task.state          # "SUCCESS" — or "FAILURE" when work raised
+task.transitions    # ["PENDING", "RUNNING", "SUCCESS"]
+task.progress_history
+
+chain = manager.chain([first, then, finally_])   # each link gets the previous result
+group = manager.group([a, b, c])                 # independent
+manager.cancel(task)                             # PENDING/RUNNING -> CANCELED
+```
+
+Progress is monotonic and illegal moves raise `IllegalTransition`. The
+celery-shaped `FakeTask`/`add_task` surface is unchanged and keeps celery's
+`STARTED`/`REVOKED` names; `canonical_state()` maps between the two.
+
+### BridgeHarness — the protocol, not a bag of methods
+
+```python
+from qgis_sdk.testing import BridgeHarness, HostError
+
+harness = BridgeHarness(
+    descriptions={"qgis": qgis_manifest},
+    handlers={("qgis", "layers.list"): lambda args: []},
+    session_id="sess-1",
+    permissions=["layer.read"],      # omit to grant everything the manifest declares
+)
+
+response = harness.invoke({
+    "bridge_version": 1, "request_id": "req-1",
+    "target": "qgis", "method": "layers.list", "args": {},
+})
+response["ok"], response["request_id"]
+
+harness.invoke_json(text)            # the shape a QWebChannel endpoint sees
+harness.emit("qgis", "task.progress", {"task_id": "task-3", "progress": 40.0},
+             request_id="req-7")
+harness.on_event(listener)           # returns unsubscribe
+harness.calls                        # CallLog of every request
+harness.handle_for("qgis.layer", "obj-9c1a")
+```
+
+Checks run in the order a host must make them — envelope, version, target,
+method, permissions, arguments — and answer the closed error-kind set
+(`invalid_request`, `unknown_target`, `unknown_method`, `invalid_arguments`,
+`permission_denied`, `unknown_object`, `host_unavailable`, `internal_error`).
+A handler raises `HostError(kind, message)` to pick its own kind; anything
+else it raises becomes `internal_error`.
+
+### Hypothesis strategies
+
+```python
+from qgis_sdk.testing import strategies as qst
+
+qst.extents()               qst.zoom_ranges()        qst.crs_auth_ids()
+qst.plugin_names()          qst.field_specs()        qst.object_handles()
+qst.bridge_requests(manifest)   qst.bridge_responses()
+qst.network_responses()     qst.task_transitions()   qst.values_for_schema(schema)
+```
+
+Pure data only — no live QGIS objects, by design.
+
 ## Pytest Fixtures
 
 | Fixture | Returns | Description |
@@ -234,9 +372,20 @@ bridge.process('{"action": "buffer"}')
 | `mock_features` | `Callable` | `count → List[FakeFeature]` |
 | `mock_source` | `Callable` | `feature_count → FakeSource` |
 | `mock_context` | `Callable` | `values → FakeContext` |
+| `fake_network_transport` | `FakeNetworkTransport` | Scripted transport; unscripted routes raise |
+| `manual_task_manager` | `FakeTaskManager(auto_run=False)` | Runs nothing until `run_next()` |
+| `bridge_harness_factory` | `type[BridgeHarness]` | Build a harness from your manifests |
+| `shared_calls` | `CallLog` | An empty log to hand several fakes |
+| `qgis_environment` | `QgisTestEnvironment` | What this process can reach |
+| `qgis_available`, `pure_python` | `bool` | Session-scoped layer answers |
+| `qt_app` | `QApplication` | Offscreen Qt app, or a skip |
+| `qgis_app` | `QgsApplication` | The host's live app, or a skip |
+| `webengine_app` | `QApplication` | Qt app with QtWebEngine imported, or a skip |
 
 Aliases: `mock_features_fixture`, `mock_source_fixture`, `mock_context_fixture`.
-Markers: `network`, `tasks`, `qgis`, `webengine`.
+Markers: `pure_python`, `qt`, `qgis`, `webengine`, `network`, `tasks`. A test
+marked for a layer this process cannot reach is skipped at collection time,
+before its body runs — never handed a fake instead.
 
 ### Usage
 

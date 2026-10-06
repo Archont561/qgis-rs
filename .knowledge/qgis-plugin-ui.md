@@ -518,6 +518,15 @@ el.addEventListener('qgis-message', e => console.log(e.detail));
 - `mock_features(count)`, `mock_source(feature_count)`, `mock_context(values)`
 - Factories: `fake_action_factory`, `fake_dialog_factory`, `fake_webview_factory`, `fake_bridge_factory`
 
+**Since TASK-32 it is a package (`qgis_sdk/testing/`, one module per concern) with four facilities the list above did not have.** Every name and fixture above still imports from `qgis_sdk.testing`; see `.knowledge/testing.md` for the layout.
+
+- `Call` / `CallLog` (`calls.py`) — one recorded shape for every fake. Hand the same log to several fakes (fixture `shared_calls`) and cross-fake ordering becomes assertable: `calls.paths()`, `for_target`, `for_method`, `assert_called_once`, `assert_not_called`.
+- `FakeNetworkTransport` (`network.py`, fixture `fake_network_transport`) — scripted replies, failures, redirects, sequences and *virtual* delays. An unscripted route raises `NoScriptedReply` instead of inventing a 200; nothing sleeps and nothing opens a socket. `FakeNetworkManager` keeps its permissive `{"mock": true}` default for older suites.
+- An explicit task state machine (`tasks.py`, fixture `manual_task_manager`) — `PENDING → RUNNING → SUCCESS|FAILURE|CANCELED`, monotonic progress, `run_next()`, `chain()`, `group()`, `cancel()`. A chain link whose predecessor failed is CANCELED, never run. The celery-shaped `FakeTask`/`add_task` surface is unchanged; `canonical_state()` maps between the vocabularies.
+- `BridgeHarness` (`bridge.py`, fixture `bridge_harness_factory`) — drives the real envelope protocol against the shared `test-fixtures/bridge/` vectors, in the host's check order (envelope → version → target → method → permissions → args) and answers the closed error-kind set `invalid_request, unknown_target, unknown_method, invalid_arguments, permission_denied, unknown_object, host_unavailable, internal_error`.
+- `qgis_sdk.testing.strategies` — Hypothesis strategies over pure data (extents, CRS auth ids, plugin names, field specs, request/response envelopes, task transitions).
+- Markers `pure_python`, `qt`, `qgis`, `webengine`, `network`, `tasks`: a test whose layer this process cannot reach is **skipped at collection time**, never handed a fake instead.
+
 **Fixtures discoverable via `pytest_plugins = ["qgis_sdk.testing"]` or entry point `pytest11`:**
 
 ```python
