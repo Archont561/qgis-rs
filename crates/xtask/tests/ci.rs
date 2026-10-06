@@ -56,7 +56,12 @@ fn repo_lints_check_generated_api_before_any_compile() {
             .iter()
             .map(|lint| lint.name())
             .collect::<Vec<_>>(),
-        ["check-sources", "check-boundaries", "api-manifest --check"]
+        [
+            "check-sources",
+            "check-boundaries",
+            "api-manifest --check",
+            "validate-bridge-fixtures"
+        ]
     );
 }
 
