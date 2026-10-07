@@ -4,7 +4,7 @@ title: Generate a versioned QGIS API manifest and manager handlers
 status: In Progress
 assignee: []
 created_date: '2026-10-03 08:57'
-updated_date: '2026-10-06 21:30'
+updated_date: '2026-10-07 11:13'
 labels:
   - rfc
   - ffi
@@ -33,7 +33,7 @@ Build the version-pinned extraction and generation pipeline described in the QGI
 <!-- AC:BEGIN -->
 - [ ] #1 The generator records every discovered public declaration as supported, supported_manual, partial, unsupported, host_only, provider_optional, or deprecated with a reason and QGIS version range.
 - [ ] #2 The generated manifest produces compilable manager handlers/codecs and an api.describe capability report without introducing a second hand-written operation spelling table.
-- [ ] #3 Ownership, invalidation, overload, enum, QVariant, binary-artifact, and paging mappings are explicit and have representative runtime tests.
+- [x] #3 Ownership, invalidation, overload, enum, QVariant, binary-artifact, and paging mappings are explicit and have representative runtime tests.
 - [ ] #4 Rust, Python, TypeScript, and C++ consume shared protocol fixtures for generated core operations and exact error envelopes.
 - [ ] #5 A QGIS upgrade produces an API diff and fails review when declarations are silently dropped or ownership metadata changes.
 <!-- AC:END -->
@@ -51,4 +51,6 @@ Build the version-pinned extraction and generation pipeline described in the QGI
 2026-10-06: Made the manifest the single authority for wire spellings. `qgis-protocol`'s `Operation::all()` and the manifest's `operations` were two hand-maintained lists of the same snake_case names with nothing comparing them — the second spelling table AC#2 forbids. A sixth repo lint, `pixi run xtask check-api-operations`, now requires the manifest to *partition* the 29 served names: 17 generated operations plus 12 named by explicit exclusions (`engine-transport`, `engine-geometry-and-tiles`, `engine-project-inspection`), each with a status and a reason. `Exclusion` gained an optional `operations` field (manifest_version stays 1); `validate_manifest` rejects an operation that is both generated and excluded, excluded twice, or excluded under a `supported*` status. Proven by damage, not by a green print: dropping `layer_fields`, renaming `layer_open`, and adding a protocol-only `layer_rename` each exit 1 naming the drift (the rename names both directions). Seven new tests in `crates/xtask/tests/api_manifest.rs` (13 total).
 
 AC status after this slice — none ticked, all still have unproven parts: AC#1 covers only the reviewed core/data slice, with no clang-AST extractor (worth recording: the `default` env has no `clang++` driver, but `clang-check`/`clang-query` plus `qgis-sys`'s `compile_commands.json` make `clang-check -ast-dump=json` a viable offline extractor); AC#2's compile half is proven here (the generated `operation_table.inc` is `#include`d by `manager.cpp` and the 22-test `qgis`-feature suite is green) and its no-second-table half is now enforced, but the codec side is still one `json_object` for every operation; AC#3 still lacks representative runtime tests per mapping category; AC#4 has no shared fixtures for generated operations; AC#5 has `check_upgrade` and its test but no pinned baseline manifest in the gate.
+
+2026-10-07: Added seven QGIS-feature runtime tests at the public native_manager_ffi::invoke JSON boundary in crates/qgis-sys/tests/api_mappings.rs. They cover distinct manager-owned IDs, invalidation after close, request-bearing getFeatures filtering, stable enum names, integer/string QVariant scalars, path-based PNG/GeoJSON artifact metadata, and gap-free offset/limit paging. Verified with pixi run -- cargo test --offline -p qgis-sys --features qgis -- --test-threads=1: 18 passed, including the seven new mapping tests. AC#3 is proven; TASK-30 remains In Progress while the other criteria are open.
 <!-- SECTION:NOTES:END -->
