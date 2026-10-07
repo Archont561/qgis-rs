@@ -46,7 +46,7 @@ impl RepoLint {
         match self {
             Self::CheckSources => crate::lints::check_sources(),
             Self::CheckBoundaries => crate::boundaries::check(&repo_root()),
-            Self::CheckApiManifest => crate::api_manifest::run(true, None),
+            Self::CheckApiManifest => crate::api_manifest::verify_repository(&repo_root()),
             Self::ValidateBridgeFixtures => {
                 crate::bridge_fixtures::run(&repo_root().join("test-fixtures/bridge"))
             }

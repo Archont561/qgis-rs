@@ -61,11 +61,13 @@ pub fn operation(manifest_path: &Path, name: &str, handler: &str) -> Result<()> 
 /// Scaffold an operation in the repository manifest and regenerate fragments.
 pub fn repository_operation(name: &str, handler: &str) -> Result<()> {
     let root = crate::util::repo_root();
-    let manifest = root.join("crates/qgis-sys/native_manager/generated/api_manifest.json");
+    let manifest = root.join(crate::api_manifest::MANIFEST_PATH);
     operation(&manifest, name, handler)?;
     crate::api_manifest::run(false, None)?;
     println!(
-        "scaffold: added native-manager operation {name} with handler {handler}; review its declaration, implement the handler, and add the matching `Operation` variant to qgis-protocol — `xtask check-api-operations` fails until both sides spell it"
+        "scaffold: added native-manager operation {name} with handler {handler}; review its declaration, implement the handler, and add the matching `Operation` variant to qgis-protocol — `xtask check-api-operations` fails until both sides spell it, and `check-api-manifest` fails until the pinned baseline is promoted with `cp {} {}`",
+        crate::api_manifest::MANIFEST_PATH,
+        crate::api_manifest::BASELINE_PATH
     );
     Ok(())
 }
