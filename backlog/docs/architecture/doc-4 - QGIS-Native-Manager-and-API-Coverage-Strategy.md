@@ -309,7 +309,7 @@ The API generator and manager need more than “it compiles”:
 5. **Runtime smoke tests:** one representative operation per module, headless and serialized. Keep large feature/raster results bounded.
 6. **Fuzz/property tests:** malformed JSON, unknown operations, stale IDs, wrong type tags, enum values, paging limits, path traversal, and cancellation. Never fuzz uncontrolled live QGIS state.
 7. **Version matrix:** build/test against each supported QGIS minor line. Record `Since`, deprecated, and provider-availability constraints in the manifest.
-8. **API diff:** a QGIS upgrade produces a report of added, removed, changed, and newly unsupported declarations before code generation is accepted.
+8. **API diff:** a QGIS upgrade produces a report of added, removed, changed, and newly unsupported declarations before code generation is accepted. The checked-in `api_manifest.json` is diffed against a pinned reviewed snapshot (`api_manifest.baseline.json`) on every gate run, and any drift — a declaration or operation added, dropped, re-owned or restatused, a changed handler or codec, or a moved QGIS version pin — fails the lint until the reviewer promotes the new surface into the snapshot in the same commit.
 9. **Crash boundary:** C++ exceptions become error envelopes; assert that no C++ exception crosses the ABI. Do not claim in-process recovery from segmentation faults.
 
 ## Recommended first implementation

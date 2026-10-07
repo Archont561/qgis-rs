@@ -114,6 +114,22 @@ pub struct OperationDefinition {
     pub requires_initialization: bool,
 }
 
+/// The checked-in manifest: the reviewed source of truth for the native
+/// manager's generated operations.
+pub const MANIFEST_PATH: &str = "crates/qgis-sys/native_manager/generated/api_manifest.json";
+
+/// The pinned reviewed snapshot the gate diffs the manifest against.
+///
+/// A QGIS upgrade (or any reviewed API change) edits [`MANIFEST_PATH`] and
+/// updates this file in the same commit, so the API diff is reviewable and a
+/// declaration cannot be dropped or re-owned silently. See
+/// [`check_baseline`].
+pub const BASELINE_PATH: &str =
+    "crates/qgis-sys/native_manager/generated/api_manifest.baseline.json";
+
+/// Where `api-manifest` writes the generated C++ fragments.
+pub const GENERATED_DIR: &str = "crates/qgis-sys/include/native_manager/generated";
+
 /// Parse and validate one manifest at the public generator seam.
 pub fn validate_manifest(contents: &str) -> Result<ApiManifest> {
     let manifest: ApiManifest =
@@ -347,6 +363,153 @@ pub fn check_upgrade(previous: &ApiManifest, current: &ApiManifest) -> Result<()
     Ok(())
 }
 
+/// Require the reviewed surface to be exactly what the pinned baseline says.
+///
+/// [`check_upgrade`] answers "did this upgrade drop or re-own anything", which
+/// permits additions and ignores everything a snapshot has to catch. This is
+/// the stricter review gate the manifest is checked against on every run:
+/// compared to the pinned baseline, a declaration may not be dropped, added,
+/// re-owned or given a different status, an operation may not be dropped,
+/// added or changed, and the QGIS version pin may not move — because every one
+/// of those is an API decision a reviewer is supposed to see.
+///
+/// Additions are drift too, and deliberately so: the extractor slice will
+/// discover declarations in bulk, and without this a regenerated manifest could
+/// grow a hundred unreviewed declarations and stay green. Reporting additions
+/// also makes the promotion mechanical — the diff of the baseline file between
+/// two commits *is* the reviewed API diff.
+///
+/// Every violation is collected before failing: a rename shows up as a drop
+/// and an addition, and fixing one per gate run would waste review cycles.
+///
+/// # Errors
+///
+/// Fails when the current manifest differs from the pinned snapshot in any
+/// declaration, operation, or QGIS version pin.
+pub fn check_baseline(pinned: &ApiManifest, current: &ApiManifest) -> Result<()> {
+    let mut drift: Vec<String> = Vec::new();
+
+    if pinned.manifest_version != current.manifest_version {
+        drift.push(format!(
+            "manifest version changed: {} -> {}",
+            pinned.manifest_version, current.manifest_version
+        ));
+    }
+    if pinned.qgis.min_version != current.qgis.min_version {
+        drift.push(format!(
+            "minimum QGIS version changed: {} -> {}",
+            pinned.qgis.min_version, current.qgis.min_version
+        ));
+    }
+    if pinned.qgis.tested_version != current.qgis.tested_version {
+        drift.push(format!(
+            "tested QGIS version changed: {} -> {}",
+            pinned.qgis.tested_version, current.qgis.tested_version
+        ));
+    }
+
+    for declaration in &pinned.declarations {
+        match current
+            .declarations
+            .iter()
+            .find(|candidate| candidate.id == declaration.id)
+        {
+            None => drift.push(format!("declaration dropped: {}", declaration.id)),
+            Some(next) if next.ownership != declaration.ownership => {
+                drift.push(format!(
+                    "ownership changed for declaration {}: {:?} -> {:?}",
+                    declaration.id, declaration.ownership, next.ownership
+                ));
+            }
+            Some(next) if next.status != declaration.status => {
+                drift.push(format!(
+                    "status changed for declaration {}: {} -> {}",
+                    declaration.id, declaration.status, next.status
+                ));
+            }
+            Some(_) => {}
+        }
+    }
+    for declaration in &current.declarations {
+        if !pinned
+            .declarations
+            .iter()
+            .any(|candidate| candidate.id == declaration.id)
+        {
+            drift.push(format!("declaration added: {}", declaration.id));
+        }
+    }
+
+    for operation in &pinned.operations {
+        match current
+            .operations
+            .iter()
+            .find(|candidate| candidate.name == operation.name)
+        {
+            None => drift.push(format!("operation dropped: {}", operation.name)),
+            Some(next) => {
+                let mut changes: Vec<String> = Vec::new();
+                if next.handler != operation.handler {
+                    changes.push(format!(
+                        "handler: {} -> {}",
+                        operation.handler, next.handler
+                    ));
+                }
+                if next.codec != operation.codec {
+                    changes.push(format!("codec: {} -> {}", operation.codec, next.codec));
+                }
+                if next.requires_initialization != operation.requires_initialization {
+                    changes.push(format!(
+                        "requires_initialization: {} -> {}",
+                        operation.requires_initialization, next.requires_initialization
+                    ));
+                }
+                if !changes.is_empty() {
+                    drift.push(format!(
+                        "operation changed: {} ({})",
+                        operation.name,
+                        changes.join(", ")
+                    ));
+                }
+            }
+        }
+    }
+    for operation in &current.operations {
+        if !pinned
+            .operations
+            .iter()
+            .any(|candidate| candidate.name == operation.name)
+        {
+            drift.push(format!("operation added: {}", operation.name));
+        }
+    }
+
+    if drift.is_empty() {
+        return Ok(());
+    }
+    bail!(
+        "API manifest differs from the pinned baseline {BASELINE_PATH}:\n  - {}\n\
+         If this API change is reviewed, promote it into the baseline in the same commit:\n  \
+         cp {MANIFEST_PATH} {BASELINE_PATH}",
+        drift.join("\n  - ")
+    )
+}
+
+/// One-line result printed after the manifest has been diffed against the pin.
+///
+/// Public for `tests/api_manifest.rs`, like [`check_summary`]: a check whose
+/// success prints nothing is indistinguishable from a check that never ran.
+#[must_use]
+pub fn baseline_summary(manifest: &ApiManifest) -> String {
+    format!(
+        "api-manifest baseline: {BASELINE_PATH} matches at QGIS {} with {} declarations and {} \
+         operations",
+        manifest.qgis.tested_version,
+        manifest.declarations.len(),
+        manifest.operations.len()
+    )
+}
+
 /// Require the manifest to account for every wire operation the transport
 /// serves, in both directions.
 ///
@@ -450,8 +613,7 @@ pub fn wire_check_summary(manifest: &ApiManifest, served: usize) -> String {
 /// Propagates a manifest that does not parse, and any disagreement
 /// [`check_wire_operations`] reports.
 pub fn run_wire_operations_check() -> Result<()> {
-    let manifest_path =
-        crate::util::repo_root().join("crates/qgis-sys/native_manager/generated/api_manifest.json");
+    let manifest_path = crate::util::repo_root().join(MANIFEST_PATH);
     let manifest = validate_manifest(
         &fs::read_to_string(&manifest_path)
             .with_context(|| format!("read API manifest {}", manifest_path.display()))?,
@@ -502,9 +664,14 @@ pub fn check_summary(manifest: &ApiManifest, fragment_count: usize) -> String {
 }
 
 /// Run the repository command against the checked-in manifest.
+///
+/// `--check` verifies the checked-in state and rewrites nothing; without it,
+/// the generated fragments are rewritten from the manifest. `--diff-against`
+/// additionally answers the narrower upgrade question
+/// ([`check_upgrade`]) before either mode runs.
 pub fn run(check: bool, diff_against: Option<&str>) -> Result<()> {
     let root = crate::util::repo_root();
-    let manifest_path = root.join("crates/qgis-sys/native_manager/generated/api_manifest.json");
+    let manifest_path = root.join(MANIFEST_PATH);
     if let Some(previous_path) = diff_against {
         let current = validate_manifest(
             &fs::read_to_string(&manifest_path)
@@ -521,11 +688,43 @@ pub fn run(check: bool, diff_against: Option<&str>) -> Result<()> {
             previous_path.display()
         );
     }
-    generate(
-        &manifest_path,
-        &root.join("crates/qgis-sys/include/native_manager/generated"),
-        check,
-    )
+    if check {
+        return verify_repository(&root);
+    }
+    generate(&manifest_path, &root.join(GENERATED_DIR), false)
+}
+
+/// Verify the checked-in manifest: the pinned baseline diff, then the
+/// generated fragments.
+///
+/// This is the single verification the gate's `check-api-manifest` lint and
+/// the `api-manifest --check` command both run, so a developer cannot get a
+/// green from the command a lint would fail.
+///
+/// The root is a parameter rather than [`crate::util::repo_root`] so
+/// `tests/api_manifest.rs` can damage a scratch copy of the generated tree and
+/// require this exact function to say what drifted.
+///
+/// # Errors
+///
+/// Fails when either file does not parse or validate, when the manifest has
+/// drifted from the pin ([`check_baseline`]), or when a generated fragment is
+/// stale.
+pub fn verify_repository(root: &Path) -> Result<()> {
+    let manifest_path = root.join(MANIFEST_PATH);
+    let baseline_path = root.join(BASELINE_PATH);
+    let manifest = validate_manifest(
+        &fs::read_to_string(&manifest_path)
+            .with_context(|| format!("read API manifest {}", manifest_path.display()))?,
+    )?;
+    let pinned = validate_manifest(
+        &fs::read_to_string(&baseline_path)
+            .with_context(|| format!("read pinned API baseline {}", baseline_path.display()))?,
+    )?;
+    check_baseline(&pinned, &manifest)?;
+    generate(&manifest_path, &root.join(GENERATED_DIR), true)?;
+    println!("{}", baseline_summary(&manifest));
+    Ok(())
 }
 
 /// Validate the manifest and write its generated fragments, or check that the
