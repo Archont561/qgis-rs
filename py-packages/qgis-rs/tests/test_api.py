@@ -160,25 +160,61 @@ def test_layer_lifecycle_golden_values_match_the_shared_wire_fixture() -> None:
 
     for operation in ("layer_open", "layer_info", "layer_close", "layer_features"):
         assert operation in operations
-        request = fixture["operations"][operation]["request"]
+        case = fixture["operations"][operation]
+        request = case["request"]
+        response = case["response"]
         assert request["transport_version"] == qgis_rs.TRANSPORT_VERSION
         assert request["operation"] == operation
+        assert response == {
+            "transport_version": qgis_rs.TRANSPORT_VERSION,
+            "ok": True,
+            "result": response["result"],
+        }
 
-    assert fixture["operations"]["layer_open"]["result"] == {
+    assert fixture["operations"]["layer_open"]["response"]["result"] == {
         "layer_id": 7,
         "is_valid": True,
         "name": "points",
     }
-    info = fixture["operations"]["layer_info"]["result"]
+    info = fixture["operations"]["layer_info"]["response"]["result"]
     assert info["feature_count"] == 3
     assert [field["name"] for field in info["fields"]] == ["fid", "name"]
 
-    page = fixture["operations"]["layer_features"]["result"]
+    page = fixture["operations"]["layer_features"]["response"]["result"]
     assert page["limit"] == 2
     assert page["next_offset"] == 2
     assert len(page["features"]) == 2
     assert page["features"][0]["attributes"] == {"fid": 1, "name": "alpha"}
+
     assert fixture["errors"] == {
-        "closed_layer": "invalid_object_id",
-        "invalid_layer": "invalid_object_id",
+        "closed_layer": {
+            "request": {
+                "transport_version": 1,
+                "operation": "layer_info",
+                "payload": {"layer_id": 7},
+            },
+            "response": {
+                "transport_version": 1,
+                "ok": False,
+                "result": {
+                    "kind": "invalid_object_id",
+                    "error": "the layer_id is not live",
+                },
+            },
+        },
+        "invalid_layer": {
+            "request": {
+                "transport_version": 1,
+                "operation": "layer_info",
+                "payload": {"layer_id": 0},
+            },
+            "response": {
+                "transport_version": 1,
+                "ok": False,
+                "result": {
+                    "kind": "invalid_object_id",
+                    "error": "layer_id must be a positive integer",
+                },
+            },
+        },
     }

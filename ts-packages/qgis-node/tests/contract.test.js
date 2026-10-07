@@ -201,30 +201,63 @@ test("layer lifecycle golden values match the shared wire fixture", () => {
 		"layer_features",
 	]) {
 		assert.ok(operations.includes(name), `engine does not serve ${name}`);
-		assert.equal(
-			fixture.operations[name].request.transport_version,
-			qgis.TRANSPORT_VERSION,
-		);
-		assert.equal(fixture.operations[name].request.operation, name);
+		const { request, response } = fixture.operations[name];
+		assert.equal(request.transport_version, qgis.TRANSPORT_VERSION);
+		assert.equal(request.operation, name);
+		assert.deepEqual(response, {
+			transport_version: qgis.TRANSPORT_VERSION,
+			ok: true,
+			result: response.result,
+		});
 	}
 
-	assert.deepEqual(fixture.operations.layer_open.result, {
+	assert.deepEqual(fixture.operations.layer_open.response.result, {
 		layer_id: 7,
 		is_valid: true,
 		name: "points",
 	});
 	assert.deepEqual(
-		fixture.operations.layer_info.result.fields.map((field) => field.name),
+		fixture.operations.layer_info.response.result.fields.map(
+			(field) => field.name,
+		),
 		["fid", "name"],
 	);
 
-	const page = fixture.operations.layer_features.result;
+	const page = fixture.operations.layer_features.response.result;
 	assert.equal(page.limit, 2);
 	assert.equal(page.next_offset, 2);
 	assert.equal(page.features.length, 2);
 	assert.deepEqual(page.features[0].attributes, { fid: 1, name: "alpha" });
 	assert.deepEqual(fixture.errors, {
-		closed_layer: "invalid_object_id",
-		invalid_layer: "invalid_object_id",
+		closed_layer: {
+			request: {
+				transport_version: 1,
+				operation: "layer_info",
+				payload: { layer_id: 7 },
+			},
+			response: {
+				transport_version: 1,
+				ok: false,
+				result: {
+					kind: "invalid_object_id",
+					error: "the layer_id is not live",
+				},
+			},
+		},
+		invalid_layer: {
+			request: {
+				transport_version: 1,
+				operation: "layer_info",
+				payload: { layer_id: 0 },
+			},
+			response: {
+				transport_version: 1,
+				ok: false,
+				result: {
+					kind: "invalid_object_id",
+					error: "layer_id must be a positive integer",
+				},
+			},
+		},
 	});
 });

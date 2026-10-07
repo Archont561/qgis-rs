@@ -4,7 +4,7 @@ title: Generate a versioned QGIS API manifest and manager handlers
 status: In Progress
 assignee: []
 created_date: '2026-10-03 08:57'
-updated_date: '2026-10-07 14:44'
+updated_date: '2026-10-07 20:23'
 labels:
   - rfc
   - ffi
@@ -34,7 +34,7 @@ Build the version-pinned extraction and generation pipeline described in the QGI
 - [ ] #1 The generator records every discovered public declaration as supported, supported_manual, partial, unsupported, host_only, provider_optional, or deprecated with a reason and QGIS version range.
 - [x] #2 The generated manifest produces compilable manager handlers/codecs and an api.describe capability report without introducing a second hand-written operation spelling table.
 - [x] #3 Ownership, invalidation, overload, enum, QVariant, binary-artifact, and paging mappings are explicit and have representative runtime tests.
-- [ ] #4 Rust, Python, TypeScript, and C++ consume shared protocol fixtures for generated core operations and exact error envelopes.
+- [x] #4 Rust, Python, TypeScript, and C++ consume shared protocol fixtures for generated core operations and exact error envelopes.
 - [x] #5 A QGIS upgrade produces an API diff and fails review when declarations are silently dropped or ownership metadata changes.
 <!-- AC:END -->
 
@@ -59,4 +59,6 @@ AC status after this slice — none ticked, all still have unproven parts: AC#1 
 2026-10-07 (AC#5): The gate had an API diff it never ran. `check_upgrade` could already refuse a dropped declaration or changed ownership, but `RepoLint::CheckApiManifest` called `run(true, None)`, so the diff path had no trigger outside unit tests. A pinned reviewed snapshot now sits beside the manifest at `crates/qgis-sys/native_manager/generated/api_manifest.baseline.json` (QGIS 3.44.14, 17 declarations, 17 operations), and one `verify_repository(root)` — used by the gate lint and by `api-manifest --check`, so the documented command cannot print a green a lint would fail — diffs it before checking the generated fragments. New `check_baseline(pinned, current)` is exact in both directions (declaration or operation added, dropped, re-owned, restatused; changed handler, codec or requires_initialization; moved manifest version or QGIS version pin) and reports every drift in one run; a filled-in promotion command rides in the failure text, and `scaffold` prints it too. doc-4 verification gate 8 now names the mechanism. Proven by damage on the real tree: dropping `QgsVectorLayer::fields` with its operation exits 1 naming both; re-owning `Qgis::version` exits 1 printing `Some("borrowed_snapshot") -> Some("qgis_owned")`; a pin that gained an unreviewed declaration exits 1 naming it — each restored and re-verified green. `crates/xtask/tests/api_manifest.rs` grew 13 to 19 tests, including one that builds a scratch tree, passes it, then damages it three ways and requires the same `verify_repository` to name the drift each time. Residual: no real QGIS upgrade was exercised — one QGIS (3.44.14) exists in this environment and the package indexes are unreachable — so the AC is proven at file level through the gate entry point rather than by moving the QGIS minor. pixi run gates green at 301 workspace tests; AC#5 ticked.
 
 2026-10-07 (AC#2): Added per-operation `request_codec` and `result_codec` identifiers to the version-1 API manifest, generated C++ operation table, compiled manager registry, and `api.describe.operation_metadata`; retained `codec: json_object` as the generic envelope for compatibility. The generator validates identifier syntax, the pinned baseline reports request/result codec drift, and scaffold output gives new operations placeholder values. The public `qgis_sys::native_manager_ffi::invoke` test requires non-placeholder codec identifiers for all 17 operations and distinct `render_map`/`layer_open` profiles. Verified with `pixi run xtask api-manifest --check`, `pixi run xtask check-api-operations`, xtask manifest/scaffold tests, and the full QGIS-feature qgis-sys test suite. This supersedes the 2026-10-06 status sentence above that said the codec side remained one `json_object`; AC#2 is now proven, while AC#1 and AC#4 remain open.
+
+2026-10-07: Expanded test-fixtures/layer-lifecycle.json to carry complete versioned success and invalid_object_id response envelopes. Rust protocol and native-manager integration tests, Python and Node client tests, and the C++ conversion suite now read the same cases. The live manager test compares layer_open, layer_info, layer_features, layer_close, and exact invalid-ID envelopes, substituting only the fixture path and runtime layer ID. Focused Rust, Python, Bun, C++, and QGIS-feature tests passed.
 <!-- SECTION:NOTES:END -->

@@ -19,8 +19,10 @@
 #include <rapidcheck.h>
 #include <rapidcheck/gtest.h>
 
+#include <QFile>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QJsonParseError>
 #include <QJsonValue>
 #include <QString>
 #include <cstdint>
@@ -49,6 +51,22 @@ constexpr std::uint64_t kMaxExactJsonInteger = 1ULL << 53U;
 /// Parse a compact JSON document back into the object it was printed from.
 QJsonObject reparse(const std::string& json) {
     return QJsonDocument::fromJson(QByteArray::fromStdString(json)).object();
+}
+
+/// Read the shared Rust/Python/TypeScript/C++ lifecycle contract.
+QJsonObject shared_lifecycle_fixture() {
+    QFile file(QString::fromUtf8(QGIS_LAYER_LIFECYCLE_FIXTURE_PATH));
+    EXPECT_TRUE(file.open(QIODevice::ReadOnly)) << file.errorString().toStdString();
+    if (!file.isOpen()) {
+        return {};
+    }
+
+    QJsonParseError error;
+    const QJsonDocument document = QJsonDocument::fromJson(file.readAll(), &error);
+    EXPECT_EQ(error.error, QJsonParseError::NoError)
+        << error.errorString().toStdString();
+    EXPECT_TRUE(document.isObject());
+    return document.object();
 }
 
 /// A QJsonObject of string values, from a generated map. Enough shape to prove
@@ -126,6 +144,53 @@ TEST(Envelope, FailureReplacesTextThatIsNotUtf8) {
 
     EXPECT_EQ(envelope.value("result").toObject().value("error").toString(),
               QString(QChar(0xFFFD)));
+}
+
+TEST(Envelope, SharedLifecycleSuccessFixturesMatchTheTransportContract) {
+    const QJsonObject fixture = shared_lifecycle_fixture();
+    const QJsonObject operations = fixture.value("operations").toObject();
+    ASSERT_EQ(operations.size(), 4);
+
+    for (auto it = operations.constBegin(); it != operations.constEnd(); ++it) {
+        const QJsonObject test_case = it.value().toObject();
+        const QJsonObject request = test_case.value("request").toObject();
+        EXPECT_EQ(request.value("transport_version").toInt(),
+                  static_cast<int>(kTransportVersion));
+        EXPECT_EQ(request.value("operation").toString().toStdString(),
+                  it.key().toStdString());
+
+        const QJsonObject expected = test_case.value("response").toObject();
+        ASSERT_TRUE(expected.value("ok").toBool());
+        const QJsonObject actual =
+            reparse(compact_json(success(expected.value("result").toObject())));
+        EXPECT_EQ(compact_json(actual), compact_json(expected))
+            << it.key().toStdString();
+    }
+}
+
+TEST(Envelope, SharedLifecycleErrorFixturesMatchExactErrorEnvelopes) {
+    const QJsonObject fixture = shared_lifecycle_fixture();
+    const QJsonObject errors = fixture.value("errors").toObject();
+    ASSERT_EQ(errors.size(), 2);
+
+    for (auto it = errors.constBegin(); it != errors.constEnd(); ++it) {
+        const QJsonObject test_case = it.value().toObject();
+        const QJsonObject request = test_case.value("request").toObject();
+        EXPECT_EQ(request.value("transport_version").toInt(),
+                  static_cast<int>(kTransportVersion));
+        EXPECT_EQ(request.value("operation").toString().toStdString(), "layer_info");
+
+        const QJsonObject expected = test_case.value("response").toObject();
+        const QJsonObject result = expected.value("result").toObject();
+        QJsonObject detail = result;
+        detail.remove("kind");
+        detail.remove("error");
+        const std::string kind = result.value("kind").toString().toStdString();
+        const QJsonObject actual = reparse(compact_json(
+            failure(kind.c_str(), result.value("error").toString(), detail)));
+        EXPECT_EQ(compact_json(actual), compact_json(expected))
+            << it.key().toStdString();
+    }
 }
 
 /// Whatever the payload, the envelope around it is the one the protocol
