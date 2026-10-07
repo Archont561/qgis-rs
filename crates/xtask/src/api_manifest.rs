@@ -105,12 +105,24 @@ pub struct Exclusion {
     pub operations: Vec<String>,
 }
 
-/// A manager operation, serialization codec, and handler strategy.
+/// The generic JSON envelope codec used by a manager operation.
+fn default_json_object_codec() -> String {
+    "json_object".to_string()
+}
+
+/// A manager operation, request/result codecs, and handler strategy.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct OperationDefinition {
     pub name: String,
     pub handler: String,
+    /// The backwards-compatible outer JSON-object codec.
     pub codec: String,
+    /// The operation-specific request payload codec identifier.
+    #[serde(default = "default_json_object_codec")]
+    pub request_codec: String,
+    /// The operation-specific successful result codec identifier.
+    #[serde(default = "default_json_object_codec")]
+    pub result_codec: String,
     pub requires_initialization: bool,
 }
 
@@ -232,6 +244,12 @@ pub fn validate_manifest(contents: &str) -> Result<ApiManifest> {
         }
         if !valid_cpp_identifier(&operation.codec) {
             bail!("invalid codec name {:?}", operation.codec);
+        }
+        if !valid_cpp_identifier(&operation.request_codec) {
+            bail!("invalid request codec name {:?}", operation.request_codec);
+        }
+        if !valid_cpp_identifier(&operation.result_codec) {
+            bail!("invalid result codec name {:?}", operation.result_codec);
         }
         if !operation_names.insert(&operation.name) {
             bail!("duplicate operation: {}", operation.name);
@@ -458,6 +476,18 @@ pub fn check_baseline(pinned: &ApiManifest, current: &ApiManifest) -> Result<()>
                 if next.codec != operation.codec {
                     changes.push(format!("codec: {} -> {}", operation.codec, next.codec));
                 }
+                if next.request_codec != operation.request_codec {
+                    changes.push(format!(
+                        "request_codec: {} -> {}",
+                        operation.request_codec, next.request_codec
+                    ));
+                }
+                if next.result_codec != operation.result_codec {
+                    changes.push(format!(
+                        "result_codec: {} -> {}",
+                        operation.result_codec, next.result_codec
+                    ));
+                }
                 if next.requires_initialization != operation.requires_initialization {
                     changes.push(format!(
                         "requires_initialization: {} -> {}",
@@ -629,8 +659,13 @@ pub fn render_operation_table(manifest: &ApiManifest) -> Result<String> {
     let mut output = String::new();
     for operation in &manifest.operations {
         output.push_str(&format!(
-            "QGIS_NATIVE_OPERATION(\"{}\", {}, \"{}\", {});\n",
-            operation.name, operation.handler, operation.codec, operation.requires_initialization
+            "QGIS_NATIVE_OPERATION(\"{}\", {}, \"{}\", \"{}\", \"{}\", {});\n",
+            operation.name,
+            operation.handler,
+            operation.codec,
+            operation.request_codec,
+            operation.result_codec,
+            operation.requires_initialization
         ));
     }
     Ok(output)

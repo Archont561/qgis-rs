@@ -80,11 +80,25 @@ fn engine_info_exposes_the_complete_native_operation_catalogue(native_manager: M
     for (name, entry) in metadata {
         assert_eq!(entry["name"], name.as_str());
         assert_eq!(entry["codec"], "json_object");
+        assert!(entry["request_codec"].as_str().is_some(), "{name}");
+        assert!(entry["result_codec"].as_str().is_some(), "{name}");
+        assert_ne!(entry["request_codec"], "json_object", "{name}");
+        assert_ne!(entry["result_codec"], "json_object", "{name}");
         assert!(entry["requires_initialization"].is_boolean());
     }
     let render_metadata = &metadata["render_map"];
     assert_eq!(render_metadata["codec"], "json_object");
     assert_eq!(render_metadata["requires_initialization"], true);
+    assert_eq!(render_metadata["request_codec"], "render_map_request");
+    assert_eq!(render_metadata["result_codec"], "render_map_result");
+
+    let layer_open_metadata = &metadata["layer_open"];
+    assert_eq!(layer_open_metadata["request_codec"], "layer_open_request");
+    assert_eq!(layer_open_metadata["result_codec"], "layer_open_result");
+    assert_ne!(
+        layer_open_metadata["request_codec"],
+        metadata["layer_features"]["request_codec"]
+    );
 
     let mut expected = vec![
         "app_init",

@@ -46,6 +46,8 @@ pub fn operation(manifest_path: &Path, name: &str, handler: &str) -> Result<()> 
         name: name.to_string(),
         handler: handler.to_string(),
         codec: "json_object".to_string(),
+        request_codec: "json_object".to_string(),
+        result_codec: "json_object".to_string(),
         requires_initialization: true,
     });
 

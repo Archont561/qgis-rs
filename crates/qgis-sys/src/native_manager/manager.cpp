@@ -210,6 +210,8 @@ class ManagerHost {
 
         Handler handler;
         const char* codec;
+        const char* request_codec;
+        const char* result_codec;
         bool requires_initialization;
     };
 
@@ -270,10 +272,13 @@ class ManagerHost {
         for (const auto& name : operation_names) {
             const auto definition = registry.constFind(name);
             operation_metadata.insert(
-                name, QJsonObject{{"name", name},
-                                  {"codec", QString::fromLatin1(definition->codec)},
-                                  {"requires_initialization",
-                                   definition->requires_initialization}});
+                name,
+                QJsonObject{
+                    {"name", name},
+                    {"codec", QString::fromLatin1(definition->codec)},
+                    {"request_codec", QString::fromLatin1(definition->request_codec)},
+                    {"result_codec", QString::fromLatin1(definition->result_codec)},
+                    {"requires_initialization", definition->requires_initialization}});
         }
 
         QJsonObject result =
@@ -767,10 +772,11 @@ class ManagerHost {
     static const QHash<QString, OperationDefinition>& operation_registry() {
         static const QHash<QString, OperationDefinition> registry = [] {
             QHash<QString, OperationDefinition> definitions;
-#define QGIS_NATIVE_OPERATION(NAME, HANDLER, CODEC, REQUIRES_INITIALIZATION) \
-    definitions.insert(                                                      \
-        QStringLiteral(NAME),                                                \
-        OperationDefinition{&ManagerHost::HANDLER, CODEC, REQUIRES_INITIALIZATION})
+#define QGIS_NATIVE_OPERATION(NAME, HANDLER, CODEC, REQUEST_CODEC, RESULT_CODEC,        \
+                              REQUIRES_INITIALIZATION)                                  \
+    definitions.insert(QStringLiteral(NAME),                                            \
+                       OperationDefinition{&ManagerHost::HANDLER, CODEC, REQUEST_CODEC, \
+                                           RESULT_CODEC, REQUIRES_INITIALIZATION})
 #include "native_manager/generated/operation_table.inc"
 #undef QGIS_NATIVE_OPERATION
             return definitions;
