@@ -190,7 +190,10 @@ For the long tail, generate operation names from a qualified class/member identi
 - supported module and provider capabilities;
 - type/method manifest version;
 - operation names, version ranges, and required feature flags;
+- each generated operation's request and successful-result codec identifiers, alongside the generic JSON envelope codec;
 - excluded or partial operations only in a developer-facing coverage report, not as silently accepted calls.
+
+The generated native-manager registry carries `request_codec` and `result_codec` identifiers from the reviewed API manifest into `api.describe`. These identify each operation's payload/result shape; they do not add another operation-name table or change the version-1 JSON envelope.
 
 ## Supporting the complete API
 

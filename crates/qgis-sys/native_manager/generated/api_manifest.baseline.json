@@ -327,103 +327,137 @@
       "name": "app_init",
       "handler": "initialize",
       "requires_initialization": false,
-      "codec": "json_object"
+      "codec": "json_object",
+      "request_codec": "empty_payload",
+      "result_codec": "application_state_result"
     },
     {
       "name": "app_shutdown",
       "handler": "shutdown",
       "requires_initialization": false,
-      "codec": "json_object"
+      "codec": "json_object",
+      "request_codec": "empty_payload",
+      "result_codec": "shutdown_result"
     },
     {
       "name": "engine_info",
       "handler": "engine_info",
       "requires_initialization": true,
-      "codec": "json_object"
+      "codec": "json_object",
+      "request_codec": "empty_payload",
+      "result_codec": "engine_info_result"
     },
     {
       "name": "api_describe",
       "handler": "api_describe",
       "requires_initialization": true,
-      "codec": "json_object"
+      "codec": "json_object",
+      "request_codec": "empty_payload",
+      "result_codec": "api_description_result"
     },
     {
       "name": "render_map",
       "handler": "render_map",
       "requires_initialization": true,
-      "codec": "json_object"
+      "codec": "json_object",
+      "request_codec": "render_map_request",
+      "result_codec": "render_map_result"
     },
     {
       "name": "export_features",
       "handler": "export_features",
       "requires_initialization": true,
-      "codec": "json_object"
+      "codec": "json_object",
+      "request_codec": "export_features_request",
+      "result_codec": "export_features_result"
     },
     {
       "name": "layer_open",
       "handler": "layer_open",
       "requires_initialization": true,
-      "codec": "json_object"
+      "codec": "json_object",
+      "request_codec": "layer_open_request",
+      "result_codec": "layer_open_result"
     },
     {
       "name": "layer_info",
       "handler": "layer_info",
       "requires_initialization": true,
-      "codec": "json_object"
+      "codec": "json_object",
+      "request_codec": "layer_id_request",
+      "result_codec": "layer_info_result"
     },
     {
       "name": "layer_close",
       "handler": "layer_close",
       "requires_initialization": true,
-      "codec": "json_object"
+      "codec": "json_object",
+      "request_codec": "layer_id_request",
+      "result_codec": "layer_close_result"
     },
     {
       "name": "layer_features",
       "handler": "layer_features",
       "requires_initialization": true,
-      "codec": "json_object"
+      "codec": "json_object",
+      "request_codec": "layer_features_request",
+      "result_codec": "layer_features_result"
     },
     {
       "name": "layer_new",
       "handler": "layer_new",
       "requires_initialization": true,
-      "codec": "json_object"
+      "codec": "json_object",
+      "request_codec": "layer_new_request",
+      "result_codec": "layer_new_result"
     },
     {
       "name": "layer_is_valid",
       "handler": "layer_is_valid",
       "requires_initialization": true,
-      "codec": "json_object"
+      "codec": "json_object",
+      "request_codec": "layer_id_request",
+      "result_codec": "layer_is_valid_result"
     },
     {
       "name": "layer_name",
       "handler": "layer_name",
       "requires_initialization": true,
-      "codec": "json_object"
+      "codec": "json_object",
+      "request_codec": "layer_id_request",
+      "result_codec": "layer_name_result"
     },
     {
       "name": "layer_feature_count",
       "handler": "layer_feature_count",
       "requires_initialization": true,
-      "codec": "json_object"
+      "codec": "json_object",
+      "request_codec": "layer_id_request",
+      "result_codec": "layer_feature_count_result"
     },
     {
       "name": "layer_crs_authid",
       "handler": "layer_crs_authid",
       "requires_initialization": true,
-      "codec": "json_object"
+      "codec": "json_object",
+      "request_codec": "layer_id_request",
+      "result_codec": "layer_crs_authid_result"
     },
     {
       "name": "layer_geometry_type_name",
       "handler": "layer_geometry_type_name",
       "requires_initialization": true,
-      "codec": "json_object"
+      "codec": "json_object",
+      "request_codec": "layer_id_request",
+      "result_codec": "layer_geometry_type_name_result"
     },
     {
       "name": "layer_fields",
       "handler": "layer_fields",
       "requires_initialization": true,
-      "codec": "json_object"
+      "codec": "json_object",
+      "request_codec": "layer_id_request",
+      "result_codec": "layer_fields_result"
     }
   ]
 }

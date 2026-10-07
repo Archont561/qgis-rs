@@ -44,6 +44,16 @@ fn the_checked_in_manifest_has_a_complete_operation_registry() {
         .declarations
         .iter()
         .all(|declaration| !declaration.reason.is_empty()));
+    assert!(manifest.operations.iter().all(|operation| {
+        operation.request_codec != "json_object" && operation.result_codec != "json_object"
+    }));
+    let layer_open = manifest
+        .operations
+        .iter()
+        .find(|operation| operation.name == "layer_open")
+        .expect("layer_open codec metadata");
+    assert_eq!(layer_open.request_codec, "layer_open_request");
+    assert_eq!(layer_open.result_codec, "layer_open_result");
 
     let generated = render_operation_table(&manifest).expect("operation table renders");
     assert_eq!(generated, GENERATED_TABLE);
@@ -92,6 +102,33 @@ fn operation_handlers_must_match_the_supported_declaration() {
     );
     let error = validate_manifest(&mismatch).expect_err("handler mismatch must fail");
     assert!(error.to_string().contains("handler"));
+}
+
+#[test]
+fn codec_names_must_be_cpp_identifiers() {
+    let invalid_request = MANIFEST.replace(
+        "\"request_codec\": \"layer_open_request\"",
+        "\"request_codec\": \"layer-open-request\"",
+    );
+    assert_ne!(
+        invalid_request, MANIFEST,
+        "fixture contains request codec metadata"
+    );
+    let error =
+        validate_manifest(&invalid_request).expect_err("invalid request codec name must fail");
+    assert!(error.to_string().contains("request codec"));
+
+    let invalid_result = MANIFEST.replace(
+        "\"result_codec\": \"layer_open_result\"",
+        "\"result_codec\": \"layer-open-result\"",
+    );
+    assert_ne!(
+        invalid_result, MANIFEST,
+        "fixture contains result codec metadata"
+    );
+    let error =
+        validate_manifest(&invalid_result).expect_err("invalid result codec name must fail");
+    assert!(error.to_string().contains("result codec"));
 }
 
 #[test]
@@ -304,6 +341,8 @@ fn baseline_drift_names_an_added_declaration_and_operation() {
             name: "layer_rename".to_string(),
             handler: "layer_rename".to_string(),
             codec: "json_object".to_string(),
+            request_codec: "layer_rename_request".to_string(),
+            result_codec: "layer_rename_result".to_string(),
             requires_initialization: true,
         });
 
@@ -333,6 +372,8 @@ fn baseline_drift_reports_every_change_in_one_run() {
     let mut current = pinned.clone();
     current.declarations.pop();
     current.declarations[0].status = "partial".to_string();
+    current.operations[0].request_codec = "reviewed_request".to_string();
+    current.operations[0].result_codec = "reviewed_result".to_string();
     let mut added = current.declarations[0].clone();
     added.id = "QgsVectorLayer::setName".to_string();
     current.declarations.push(added);
@@ -342,6 +383,8 @@ fn baseline_drift_reports_every_change_in_one_run() {
     for expected in [
         "declaration dropped",
         "status changed",
+        "request_codec: empty_payload -> reviewed_request",
+        "result_codec: application_state_result -> reviewed_result",
         "declaration added",
         "cp crates/qgis-sys/native_manager/generated/api_manifest.json",
     ] {

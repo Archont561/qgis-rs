@@ -27,6 +27,8 @@ fn scaffolding_adds_one_reviewable_native_manager_operation() {
         entry.name == "project_save"
             && entry.handler == "project_save"
             && entry.codec == "json_object"
+            && entry.request_codec == "json_object"
+            && entry.result_codec == "json_object"
             && entry.requires_initialization
     }));
     assert!(manifest.declarations.iter().any(|entry| {
