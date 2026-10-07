@@ -31,9 +31,11 @@ manager; clients do not issue one request per feature.
 ## Fixture
 
 `crates/qgis-sys/tests/fixtures/points.gpkg` contains three EPSG:4326 point
-features with fields `fid` and `name`. The canonical request and copied values
-live in [`test-fixtures/layer-lifecycle.json`](../test-fixtures/layer-lifecycle.json)
-and are asserted by the Rust protocol, Python, and TypeScript suites.
+features with fields `fid` and `name`. The canonical requests and complete versioned response envelopes, including
+exact `invalid_object_id` errors, live in
+[`test-fixtures/layer-lifecycle.json`](../test-fixtures/layer-lifecycle.json).
+The Rust protocol and live native-manager suites, Python, TypeScript, and C++
+conversion tests all consume that same fixture.
 
 ## Lifecycle
 

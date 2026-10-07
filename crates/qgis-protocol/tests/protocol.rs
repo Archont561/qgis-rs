@@ -107,6 +107,11 @@ fn responses_carry_this_builds_transport_version() {
     assert!(!EngineResponse::failure(json!({})).ok);
 }
 
+fn shared_lifecycle_response(fixture: &Value, operation: &str) -> EngineResponse {
+    serde_json::from_value(fixture["operations"][operation]["response"].clone())
+        .unwrap_or_else(|_| panic!("{operation} response envelope uses the protocol"))
+}
+
 #[test]
 fn layer_lifecycle_types_match_the_shared_golden_fixture() {
     let fixture: Value =
@@ -121,18 +126,25 @@ fn layer_lifecycle_types_match_the_shared_golden_fixture() {
         serde_json::from_value(open_request.payload).expect("typed layer.open payload");
     assert_eq!(typed_open.provider, "ogr");
     assert_eq!(typed_open.name.as_deref(), Some("points"));
-    let open_response: LayerOpenResponse =
-        serde_json::from_value(fixture["operations"]["layer_open"]["result"].clone())
-            .expect("typed layer.open result");
-    assert_eq!(open_response.layer_id, 7);
 
+    for operation in ["layer_open", "layer_info", "layer_close", "layer_features"] {
+        let response = shared_lifecycle_response(&fixture, operation);
+        assert_eq!(response.transport_version, TRANSPORT_VERSION);
+        assert!(response.ok, "{operation} fixture is a success response");
+        assert_eq!(
+            serde_json::to_value(&response).expect("response envelope serialises"),
+            fixture["operations"][operation]["response"]
+        );
+    }
+
+    let open_response = shared_lifecycle_response(&fixture, "layer_open");
+    let typed_open_response: LayerOpenResponse =
+        serde_json::from_value(open_response.result).expect("typed layer.open result");
+    assert_eq!(typed_open_response.layer_id, 7);
+
+    let info_response = shared_lifecycle_response(&fixture, "layer_info");
     let info: LayerInfoResponse =
-        serde_json::from_value(fixture["operations"]["layer_info"]["result"].clone())
-            .expect("typed layer.info result");
-    assert_eq!(
-        serde_json::to_value(&info).expect("serialisable"),
-        fixture["operations"]["layer_info"]["result"]
-    );
+        serde_json::from_value(info_response.result).expect("typed layer.info result");
     assert_eq!(info.fields[0].type_name, "Integer64");
 
     let info_request: LayerIdRequest =
@@ -140,17 +152,34 @@ fn layer_lifecycle_types_match_the_shared_golden_fixture() {
             .expect("typed layer.info payload");
     assert_eq!(info_request.layer_id, 7);
 
+    let feature_response = shared_lifecycle_response(&fixture, "layer_features");
     let feature_page: LayerFeaturesResponse =
-        serde_json::from_value(fixture["operations"]["layer_features"]["result"].clone())
-            .expect("typed layer.features result");
+        serde_json::from_value(feature_response.result).expect("typed layer.features result");
     assert_eq!(feature_page.features.len(), 2);
     assert_eq!(feature_page.next_offset, Some(2));
     assert_eq!(feature_page.features[0].attributes["name"], "alpha");
 
+    let close_response = shared_lifecycle_response(&fixture, "layer_close");
     let close: LayerCloseResponse =
-        serde_json::from_value(fixture["operations"]["layer_close"]["result"].clone())
-            .expect("typed layer.close result");
+        serde_json::from_value(close_response.result).expect("typed layer.close result");
     assert!(close.closed);
+
+    for error_name in ["closed_layer", "invalid_layer"] {
+        let request: EngineRequest =
+            serde_json::from_value(fixture["errors"][error_name]["request"].clone())
+                .unwrap_or_else(|_| panic!("{error_name} request uses the protocol"));
+        assert_eq!(request.operation, Operation::LayerInfo);
+        let response: EngineResponse =
+            serde_json::from_value(fixture["errors"][error_name]["response"].clone())
+                .unwrap_or_else(|_| panic!("{error_name} response uses the protocol"));
+        assert_eq!(response.transport_version, TRANSPORT_VERSION);
+        assert!(!response.ok);
+        assert_eq!(response.result["kind"], "invalid_object_id");
+        assert_eq!(
+            serde_json::to_value(response).expect("error envelope serialises"),
+            fixture["errors"][error_name]["response"]
+        );
+    }
 }
 
 #[test]

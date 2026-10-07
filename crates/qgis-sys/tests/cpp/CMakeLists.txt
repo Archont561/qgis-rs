@@ -31,6 +31,9 @@ add_executable(conversions_test
 )
 
 target_include_directories(conversions_test PRIVATE "${SHIM_DIR}/include")
+target_compile_definitions(conversions_test PRIVATE
+  QGIS_LAYER_LIFECYCLE_FIXTURE_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../../../../test-fixtures/layer-lifecycle.json"
+)
 
 # The same warnings-as-errors contract build.rs compiles the shim under, so a
 # warning cannot be introduced here and discovered by the Rust build instead.

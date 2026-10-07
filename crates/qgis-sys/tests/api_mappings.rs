@@ -10,15 +10,16 @@ struct NativeManager;
 
 impl NativeManager {
     fn response(&self, operation: &str, payload: Value) -> Value {
-        serde_json::from_str(&manager::invoke(
-            &json!({
-                "transport_version": 1,
-                "operation": operation,
-                "payload": payload,
-            })
-            .to_string(),
-        ))
-        .expect("native manager returns a JSON envelope")
+        self.response_request(&json!({
+            "transport_version": 1,
+            "operation": operation,
+            "payload": payload,
+        }))
+    }
+
+    fn response_request(&self, request: &Value) -> Value {
+        serde_json::from_str(&manager::invoke(&request.to_string()))
+            .expect("native manager returns a JSON envelope")
     }
 
     fn ok(&self, operation: &str, payload: Value) -> Value {
@@ -71,6 +72,11 @@ fn project_path() -> String {
     format!("{}/tests/fixtures/points.qgs", env!("CARGO_MANIFEST_DIR"))
 }
 
+fn lifecycle_fixture() -> Value {
+    serde_json::from_str(include_str!("../../../test-fixtures/layer-lifecycle.json"))
+        .expect("shared layer lifecycle fixture is valid JSON")
+}
+
 fn output_dir(test_name: &str) -> PathBuf {
     let directory =
         std::env::temp_dir().join(format!("qgis-rs-task30-{test_name}-{}", std::process::id()));
@@ -79,6 +85,45 @@ fn output_dir(test_name: &str) -> PathBuf {
     }
     std::fs::create_dir_all(&directory).expect("create test output directory");
     directory
+}
+
+#[test]
+fn generated_layer_lifecycle_matches_shared_request_response_fixtures() {
+    let native_manager = NativeManager;
+    native_manager.initialize();
+    let fixture = lifecycle_fixture();
+
+    let mut open_request = fixture["operations"]["layer_open"]["request"].clone();
+    open_request["payload"]["uri"] = json!(points_path());
+    let open_response = native_manager.response_request(&open_request);
+    assert_eq!(open_response["ok"], true);
+    let layer_id = open_response["result"]["layer_id"]
+        .as_u64()
+        .expect("manager returns an opaque layer id");
+    let mut expected_open = fixture["operations"]["layer_open"]["response"].clone();
+    expected_open["result"]["layer_id"] = json!(layer_id);
+    assert_eq!(open_response, expected_open);
+
+    for operation in ["layer_info", "layer_features", "layer_close"] {
+        let mut request = fixture["operations"][operation]["request"].clone();
+        request["payload"]["layer_id"] = json!(layer_id);
+        let actual = native_manager.response_request(&request);
+        let mut expected = fixture["operations"][operation]["response"].clone();
+        expected["result"]["layer_id"] = json!(layer_id);
+        assert_eq!(actual, expected, "{operation} response must match fixture");
+    }
+
+    for error_name in ["closed_layer", "invalid_layer"] {
+        let mut request = fixture["errors"][error_name]["request"].clone();
+        if error_name == "closed_layer" {
+            request["payload"]["layer_id"] = json!(layer_id);
+        }
+        assert_eq!(
+            native_manager.response_request(&request),
+            fixture["errors"][error_name]["response"],
+            "{error_name} error envelope must match fixture"
+        );
+    }
 }
 
 #[test]
