@@ -4,6 +4,7 @@ title: Package the Rust-native qgis-plugin and qgis-sdk CLI
 status: To Do
 assignee: []
 created_date: '2026-10-03 09:35'
+updated_date: '2026-10-08 18:14'
 labels:
   - qgis-sdk
   - cli
@@ -42,4 +43,5 @@ Ship one canonical Rust plugin-development CLI through Python and optional Node 
 - [ ] #4 QGIS integration commands launch controlled offscreen QGIS/Python processes with explicit runtime requirements and cancellation
 - [ ] #5 Package manifests, wheels, npm artifacts, checksums, and release checks verify the binaries and generated files
 - [ ] #6 CLI tests cover stdout/stderr/exit codes, subprocess signals, filesystem boundaries, generated snapshots, and no duplicate fallback semantics
+- [ ] #7 Generated-file snapshots verify that supplied or default author and email values are applied consistently to generated plugin code and metadata.txt for every scaffold mode supported by the canonical Rust CLI.
 <!-- AC:END -->

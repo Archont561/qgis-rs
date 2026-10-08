@@ -1,0 +1,43 @@
+{
+  "skill_name": "audit",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Audit crates/qgis-protocol for code-quality issues. If you find a verified, behavior-preserving refactor, create a focused backlog task for it. Do not change source code.",
+      "expected_output": "A scoped evidence-based audit with concrete file and line references, relevant refactor and clean-code principles, checks actually run, and a focused backlog task only for validated refactoring work. The task requires the repository's TDD workflow. No source files are changed.",
+      "files": [],
+      "expectations": [
+        "Reads the refactor and clean-code-principles skills and checks relevant project guidance before concluding.",
+        "Reports only evidence-backed findings with concrete locations and a behavior-preserving recommendation.",
+        "Searches for an existing backlog item and uses the backlog CLI rather than editing task metadata by hand.",
+        "Any created task requires a user-confirmed public seam, a behavior test before implementation, and focused verification per the TDD skill.",
+        "Does not modify production source code during the audit."
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Audit the operation registry. The API docs say the registry is the single source of truth, but an integration test expects a different operation list. Figure out which one is wrong and create the refactor task.",
+      "expected_output": "The audit identifies the conflict, does not decide which contract is authoritative, and uses grill-me to ask a focused clarification question. It pauses task creation until the user answers and makes no source changes.",
+      "files": [],
+      "expectations": [
+        "Identifies the disagreement between docs and test as a contract ambiguity.",
+        "Does not silently privilege the test, docs, or implementation.",
+        "Uses grill-me when available, or asks a focused clarification directly and pauses when skill invocation is unavailable.",
+        "Does not create a task whose acceptance criteria assume one side of the conflict.",
+        "Does not modify source code."
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Please audit crates/qgis-protocol for maintainability and give me a report only. Don't create tickets or change code.",
+      "expected_output": "A scoped audit report with concrete evidence, relevant principles, and checks actually performed. It respects report-only scope and creates no backlog task or source changes.",
+      "files": [],
+      "expectations": [
+        "Keeps the scan within crates/qgis-protocol and relevant context needed to verify its findings.",
+        "Uses concrete evidence and distinguishes verified findings from suggestions.",
+        "Honors the explicit report-only instruction and creates no backlog task.",
+        "Does not modify source code or claim unrun checks passed."
+      ]
+    }
+  ]
+}
