@@ -2,17 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Optional
-
-
-def _get_iface(iface=None):
-    if iface is not None:
-        return iface
-    try:
-        from qgis.utils import iface as qgis_iface
-        return qgis_iface
-    except ImportError:
-        return None
+from ._resolver import resolve_qgis_resource
 
 
 class MessageAPI:
@@ -20,7 +10,7 @@ class MessageAPI:
         self.iface = iface
 
     def _push(self, title: str, message: str, level: int = 0, duration: int = 5) -> bool:
-        iface = _get_iface(self.iface)
+        iface = resolve_qgis_resource("iface", self.iface)
         if not iface:
             print(f"[Message] {title}: {message}")
             return True
