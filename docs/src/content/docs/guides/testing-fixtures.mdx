@@ -603,6 +603,19 @@ $ QGIS_TEST_LAYER=qgis python -m pytest tests -q
 4 passed, 394 deselected
 ```
 
+`bun --filter=qgis-sdk-py run test` runs the `pure`, `qt` and `qgis` gates in
+that order, each strict, and it is what CI runs. The pure-Python suite and the
+QGIS integration suite are therefore separate passes, and each one fails if its
+layer is missing. Every pass prints a header line that says which runtime backed
+it, for example `qgis-sdk runtime: backend=qgis, qgis=3.44.14-Solothurn; layers:
+pure, qgis, qt; gate: qgis`.
+
+The QGIS integration test starts QGIS in a child interpreter. The child runs with
+`QT_QPA_PLATFORM=offscreen`, is killed after 300 seconds, and on failure its exit
+status, the QGIS release, and its stdout and stderr are reported in full. The
+committed `simple_plugin` fixture is read-only input, and the test checks that its
+files are unchanged afterwards.
+
 The plain `test` verb still runs everything and skips what it cannot reach —
 that is the one CI fans out. Use a gate when "it was skipped" would be the
 wrong answer.

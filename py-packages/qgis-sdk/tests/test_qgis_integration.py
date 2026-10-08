@@ -7,12 +7,11 @@ imported like a small downstream plugin would be.
 
 from __future__ import annotations
 
-import os
-import subprocess
-import sys
 from pathlib import Path
 
 import pytest
+
+from qgis_subprocess import run_in_subprocess, tree_digest
 
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures" / "simple_plugin"
@@ -97,23 +96,10 @@ finally:
     qgis_app.exitQgis()
 '''
 
-    environment = os.environ.copy()
-    environment["QT_QPA_PLATFORM"] = "offscreen"
-    pythonpath = [str(FIXTURE_DIR)]
-    if environment.get("PYTHONPATH"):
-        pythonpath.append(environment["PYTHONPATH"])
-    environment["PYTHONPATH"] = os.pathsep.join(pythonpath)
+    before = tree_digest(FIXTURE_DIR)
+    run = run_in_subprocess(script, cwd=FIXTURE_DIR, pythonpath=[FIXTURE_DIR])
+    assert run.succeeded, run.diagnostics(qgis_version=qgis_environment.qgis_version)
 
-    result = subprocess.run(
-        [sys.executable, "-c", script],
-        cwd=FIXTURE_DIR,
-        env=environment,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    assert result.returncode == 0, (
-        "QGIS integration subprocess failed\n"
-        f"stdout:\n{result.stdout}\n"
-        f"stderr:\n{result.stderr}"
-    )
+    # The fixture is committed, read-only input: the subprocess imports it and
+    # writes only into its own temporary directory.
+    assert tree_digest(FIXTURE_DIR) == before, "the simple_plugin fixture was modified"
