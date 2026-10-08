@@ -6,6 +6,7 @@
 			"outputs": ["dist/**", "*.node"],
 			"inputs": [
 				"src/**",
+				"bunup.config.ts",
 				"package.json",
 				"tsconfig.json",
 				"tsconfig.*.json",
@@ -26,6 +27,7 @@
 			]
 		},
 		"typecheck": {
+			"dependsOn": ["^build"],
 			"outputs": [],
 			"inputs": [
 				"src/**",

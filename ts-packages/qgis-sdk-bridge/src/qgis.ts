@@ -1,17 +1,17 @@
 /** qgis-sdk-bridge qgis.ts — high-level QGIS API for JS, built with bun */
 
-import { loadQgisApiDescription } from "./description";
-import { IfaceAPI } from "./qgis/iface";
+import { loadQgisApiDescription } from "@/description";
+import { IfaceAPI } from "@/qgis/iface";
 
 // Sub-APIs
-import { LayersAPI, type QgisLayerInfo } from "./qgis/layers";
-import { MessageAPI } from "./qgis/message";
-import { NetworkAPI, type QgisNetworkResponse } from "./qgis/network";
-import { ProcessingAPI } from "./qgis/processing";
-import { ProjectAPI, type QgisProjectInfo } from "./qgis/project";
-import { SettingsAPI } from "./qgis/settings";
-import { type QgisTaskHandle, TasksAPI } from "./qgis/tasks";
-import type { QgisBridge } from "./window";
+import { LayersAPI, type QgisLayerInfo } from "@/qgis/layers";
+import { MessageAPI } from "@/qgis/message";
+import { NetworkAPI, type QgisNetworkResponse } from "@/qgis/network";
+import { ProcessingAPI } from "@/qgis/processing";
+import { ProjectAPI, type QgisProjectInfo } from "@/qgis/project";
+import { SettingsAPI } from "@/qgis/settings";
+import { type QgisTaskHandle, TasksAPI } from "@/qgis/tasks";
+import type { QgisBridge } from "@/window";
 
 export type {
 	QgisLayerInfo,
@@ -108,10 +108,10 @@ export interface QgisBridgeResult<T = any> {
 }
 
 export async function createQgisBridge<T = QgisBridge>(
-	objectName: string | import("./window").BridgeOptions = "bridge",
-	options: import("./window").BridgeOptions = {},
+	objectName: string | import("@/window").BridgeOptions = "bridge",
+	options: import("@/window").BridgeOptions = {},
 ): Promise<QgisBridgeResult<T>> {
-	const { createBridge } = await import("./window.js");
+	const { createBridge } = await import("@/window.js");
 
 	const opts =
 		typeof objectName === "string" ? { objectName, ...options } : objectName;

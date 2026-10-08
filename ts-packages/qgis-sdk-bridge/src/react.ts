@@ -14,9 +14,9 @@ import {
 	createQgisBridge,
 	onQgisMessage,
 	type QgisBridge,
-} from "./index.js";
-import type { QgisAPI } from "./qgis.js";
-import type { BridgeOptions } from "./window.js";
+} from "@/index.js";
+import type { QgisAPI } from "@/qgis.js";
+import type { BridgeOptions } from "@/window.js";
 
 export interface BridgeState<T = QgisBridge> {
 	bridge: (T & QgisBridge) | null;
@@ -133,7 +133,7 @@ export function createReactHook<T = QgisBridge>(React: any) {
 					? { objectName, ...options }
 					: objectName;
 
-			import("./index.js").then(({ createBridge }) => {
+			import("@/index.js").then(({ createBridge }) => {
 				(createBridge as any)(opts)
 					.then((b: any) => {
 						setBridge(b);
@@ -165,7 +165,7 @@ export function createQgisReactHook<T = QgisBridge>(React: any) {
 					? { objectName, ...options }
 					: objectName;
 
-			import("./index.js").then(({ createQgisBridge }) => {
+			import("@/index.js").then(({ createQgisBridge }) => {
 				(createQgisBridge as any)(opts)
 					.then((res: any) => {
 						setBridge(res.bridge);

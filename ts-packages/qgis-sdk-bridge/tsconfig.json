@@ -7,7 +7,14 @@
 		"lib": ["ES2023", "DOM", "DOM.Iterable"],
 		"types": ["bun"],
 		"outDir": "dist",
-		"rootDir": "src"
+		"rootDir": "src",
+		// Keep package-local imports short; `$` is reserved for the rare
+		// repository-wide import that intentionally crosses a package boundary.
+		"baseUrl": ".",
+		"paths": {
+			"@/*": ["src/*"],
+			"$/*": ["../../*"]
+		}
 	},
 	"include": ["src/**/*.ts"],
 	// Tests are typechecked by `tsconfig.test.json` instead of being excluded silently: this

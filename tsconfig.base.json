@@ -16,6 +16,10 @@
 		"module": "ESNext",
 		"moduleResolution": "bundler",
 
+		// Import aliases are deliberately package-owned: `@/` means that package's
+		// `src/`, while `$/` means the monorepo root. Keeping them beside each
+		// package's `include` prevents an alias from changing meaning accidentally.
+
 		// Strictness. The two flags below are not part of `strict`, and both earn
 		// their place: `exactOptionalPropertyTypes` separates "absent" from
 		// "explicitly undefined", and `noUncheckedIndexedAccess` stops an unchecked
@@ -32,8 +36,8 @@
 		"isolatedModules": true,
 		"verbatimModuleSyntax": true,
 
-		// The bridge's build is `bun build` plus a separate `tsc --emitDeclarationOnly`
-		// pass, so declarations are wanted while JS emit is not this config's job.
+		// Library packages generate declarations through Bunup; keeping declaration
+		// semantics in the shared config makes standalone TypeScript checks agree.
 		"declaration": true,
 		"emitDeclarationOnly": false
 	}

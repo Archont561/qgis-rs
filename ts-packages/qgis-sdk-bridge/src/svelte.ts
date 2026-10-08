@@ -2,9 +2,9 @@
  * Svelte stores for QGIS bridge — with complete QGIS API, built with bun
  */
 
-import { createBridge, createQgisBridge } from "./index.js";
-import type { QgisAPI } from "./qgis.js";
-import type { BridgeOptions, QgisBridge } from "./window.js";
+import { createBridge, createQgisBridge } from "@/index.js";
+import type { QgisAPI } from "@/qgis.js";
+import type { BridgeOptions, QgisBridge } from "@/window.js";
 
 // Minimal writable store implementation for when svelte/store not available
 function createWritable<T>(initial: T) {

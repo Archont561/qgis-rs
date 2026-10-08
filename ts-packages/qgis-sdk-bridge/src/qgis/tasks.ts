@@ -1,6 +1,7 @@
 /** qgis.tasks API */
 
-import type { QgisBridge } from "../window";
+import { QgisTransportAdapter } from "@/qgis/transport";
+import type { QgisBridge } from "@/window";
 
 export interface QgisTaskHandle {
 	task_id: string;
@@ -11,42 +12,49 @@ export interface QgisTaskHandle {
 	cancel(): Promise<boolean>;
 }
 
+interface TaskRunResponse {
+	task_id?: string;
+	id?: string;
+	status?: string;
+}
+
+interface TasksOperations {
+	tasks_run(name: string, params: unknown): TaskRunResponse;
+	tasks_list(): any[];
+	tasks_cancel(taskId: string): boolean;
+}
+
+const jsonCallback = { callbackResponse: "json" } as const;
+
 export class TasksAPI {
+	private readonly transport: QgisTransportAdapter<TasksOperations>;
+
 	constructor(
 		private _bridge: QgisBridge,
-		private _raw: any,
-	) {}
-
-	private async _call(method: string, ...args: any[]): Promise<any> {
-		if (this._raw && typeof this._raw[method] === "function") {
-			return new Promise((resolve, reject) => {
-				try {
-					this._raw[method](...args, (res: any) => {
-						if (typeof res === "string") {
-							try {
-								const parsed = JSON.parse(res);
-								resolve(parsed);
-								return;
-							} catch {}
-						}
-						resolve(res);
-					});
-				} catch (e) {
-					reject(e);
-				}
-			});
-		}
-		if (this._bridge && typeof (this._bridge as any)[method] === "function") {
-			return (this._bridge as any)[method](...args);
-		}
-		console.warn(`[qgis.tasks] ${method} mock`);
-		if (method === "tasks_list") return [];
-		if (method === "tasks_run") return { task_id: "mock", status: "queued" };
-		return true;
+		raw: unknown,
+	) {
+		this.transport = new QgisTransportAdapter(_bridge, raw, {
+			tasks_run: () => {
+				console.warn("[qgis.tasks] tasks_run mock");
+				return { task_id: "mock", status: "queued" };
+			},
+			tasks_list: () => {
+				console.warn("[qgis.tasks] tasks_list mock");
+				return [];
+			},
+			tasks_cancel: () => {
+				console.warn("[qgis.tasks] tasks_cancel mock");
+				return true;
+			},
+		});
 	}
 
 	async run(name: string, params?: any): Promise<QgisTaskHandle> {
-		const res = await this._call("tasks_run", name, params || {});
+		const res = await this.transport.call(
+			"tasks_run",
+			[name, params || {}],
+			jsonCallback,
+		);
 		const taskId = res.task_id || res.id || "unknown";
 
 		const handle: QgisTaskHandle = {
@@ -74,7 +82,7 @@ export class TasksAPI {
 				const handler = (e: any) => {
 					const detail = e.detail || {};
 					if (detail.task_id === taskId || detail.id === taskId) {
-						cb(detail.result || detail);
+						cb(Object.hasOwn(detail, "result") ? detail.result : detail);
 					}
 				};
 				this._bridge.addEventListener(
@@ -88,7 +96,7 @@ export class TasksAPI {
 					);
 			},
 			cancel: async () => {
-				return this._call("tasks_cancel", taskId);
+				return this.transport.call("tasks_cancel", [taskId], jsonCallback);
 			},
 		};
 
@@ -96,10 +104,10 @@ export class TasksAPI {
 	}
 
 	async list(): Promise<any[]> {
-		return this._call("tasks_list");
+		return this.transport.call("tasks_list", [], jsonCallback);
 	}
 
 	async cancel(id: string): Promise<boolean> {
-		return this._call("tasks_cancel", id);
+		return this.transport.call("tasks_cancel", [id], jsonCallback);
 	}
 }

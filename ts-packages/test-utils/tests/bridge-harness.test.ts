@@ -12,19 +12,19 @@
 import { describe, expect, it } from "bun:test";
 import fc from "fast-check";
 
-import { jsonValue, taskProgress, wireMethodName } from "../src/arbitraries.ts";
+import { jsonValue, taskProgress, wireMethodName } from "@/arbitraries.ts";
 import {
 	expectCall,
 	expectCallbackAndPromiseAgree,
 	expectCallSequence,
 	expectDistinctRequestIds,
 	expectErrorKind,
-} from "../src/assertions.ts";
+} from "@/assertions.ts";
 import {
 	BridgeHarnessError,
 	createBridgeHarness,
 	DEFAULT_DESCRIPTIONS,
-} from "../src/bridge-harness.ts";
+} from "@/bridge-harness.ts";
 
 /** The globals `installBridgeGlobals` owns. */
 const OWNED = [
