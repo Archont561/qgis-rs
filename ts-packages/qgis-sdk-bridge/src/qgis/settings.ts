@@ -1,7 +1,7 @@
 /** qgis.settings API */
 
-import type { QgisBridge } from "../window";
-import { QgisTransportAdapter } from "./transport";
+import { QgisTransportAdapter } from "@/ts-packages/qgis-sdk-bridge/src/qgis/transport";
+import type { QgisBridge } from "@/ts-packages/qgis-sdk-bridge/src/window";
 
 interface SettingsOperations {
 	settings_get(key: string, defaultValue: string): string;

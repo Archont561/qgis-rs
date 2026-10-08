@@ -14,9 +14,9 @@ import {
 	createQgisBridge,
 	onQgisMessage,
 	type QgisBridge,
-} from "./index.js";
-import type { QgisAPI } from "./qgis.js";
-import type { BridgeOptions } from "./window.js";
+} from "@/ts-packages/qgis-sdk-bridge/src/index.js";
+import type { QgisAPI } from "@/ts-packages/qgis-sdk-bridge/src/qgis.js";
+import type { BridgeOptions } from "@/ts-packages/qgis-sdk-bridge/src/window.js";
 
 export interface BridgeState<T = QgisBridge> {
 	bridge: (T & QgisBridge) | null;
@@ -133,14 +133,16 @@ export function createReactHook<T = QgisBridge>(React: any) {
 					? { objectName, ...options }
 					: objectName;
 
-			import("./index.js").then(({ createBridge }) => {
-				(createBridge as any)(opts)
-					.then((b: any) => {
-						setBridge(b);
-						setReady(true);
-					})
-					.catch((err: any) => setError(err as Error));
-			});
+			import("@/ts-packages/qgis-sdk-bridge/src/index.js").then(
+				({ createBridge }) => {
+					(createBridge as any)(opts)
+						.then((b: any) => {
+							setBridge(b);
+							setReady(true);
+						})
+						.catch((err: any) => setError(err as Error));
+				},
+			);
 		}, [
 			typeof objectName === "string" ? objectName : JSON.stringify(objectName),
 		]);
@@ -165,15 +167,17 @@ export function createQgisReactHook<T = QgisBridge>(React: any) {
 					? { objectName, ...options }
 					: objectName;
 
-			import("./index.js").then(({ createQgisBridge }) => {
-				(createQgisBridge as any)(opts)
-					.then((res: any) => {
-						setBridge(res.bridge);
-						setQgis(res.qgis);
-						setReady(true);
-					})
-					.catch((err: any) => setError(err as Error));
-			});
+			import("@/ts-packages/qgis-sdk-bridge/src/index.js").then(
+				({ createQgisBridge }) => {
+					(createQgisBridge as any)(opts)
+						.then((res: any) => {
+							setBridge(res.bridge);
+							setQgis(res.qgis);
+							setReady(true);
+						})
+						.catch((err: any) => setError(err as Error));
+				},
+			);
 		}, [
 			typeof objectName === "string" ? objectName : JSON.stringify(objectName),
 		]);

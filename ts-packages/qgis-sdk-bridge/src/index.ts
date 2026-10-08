@@ -27,7 +27,10 @@
  * ```
  */
 
-export type { BridgeDescription, MethodDescription } from "./description.js";
+export type {
+	BridgeDescription,
+	MethodDescription,
+} from "@/ts-packages/qgis-sdk-bridge/src/description.js";
 export {
 	createBridgeFromDescription,
 	descriptionToTypeScript,
@@ -35,19 +38,19 @@ export {
 	loadDescription,
 	loadQgisApiDescription,
 	loadQgisApiName,
-} from "./description.js";
+} from "@/ts-packages/qgis-sdk-bridge/src/description.js";
 export {
 	isQWebChannelAvailable,
 	loadQWebChannel,
 	QWEBCHANNEL_SOURCES,
-} from "./loader.js";
+} from "@/ts-packages/qgis-sdk-bridge/src/loader.js";
 export type {
 	QgisBridgeResult,
 	QgisLayerInfo,
 	QgisNetworkResponse,
 	QgisProjectInfo,
 	QgisTaskHandle,
-} from "./qgis.js";
+} from "@/ts-packages/qgis-sdk-bridge/src/qgis.js";
 // For backwards compat
 export {
 	createQgisBridge,
@@ -55,25 +58,28 @@ export {
 	getQgis,
 	QgisAPI,
 	qgis,
-} from "./qgis.js";
-export type { BridgeOptions } from "./window.js";
-export { createBridge, QgisBridge } from "./window.js";
+} from "@/ts-packages/qgis-sdk-bridge/src/qgis.js";
+export type { BridgeOptions } from "@/ts-packages/qgis-sdk-bridge/src/window.js";
+export {
+	createBridge,
+	QgisBridge,
+} from "@/ts-packages/qgis-sdk-bridge/src/window.js";
 
 // Default export is createQgisBridge for new API, but also provide createBridge
-import { createQgisBridge } from "./qgis.js";
-import { createBridge } from "./window.js";
+import { createQgisBridge } from "@/ts-packages/qgis-sdk-bridge/src/qgis.js";
+import { createBridge } from "@/ts-packages/qgis-sdk-bridge/src/window.js";
 
 export default createQgisBridge;
-export { IfaceAPI } from "./qgis/iface.js";
+export { IfaceAPI } from "@/ts-packages/qgis-sdk-bridge/src/qgis/iface.js";
 
 // Re-export sub-APIs for direct import
-export { LayersAPI } from "./qgis/layers.js";
-export { MessageAPI } from "./qgis/message.js";
-export { NetworkAPI } from "./qgis/network.js";
-export { ProcessingAPI } from "./qgis/processing.js";
-export { ProjectAPI } from "./qgis/project.js";
-export { SettingsAPI } from "./qgis/settings.js";
-export { TasksAPI } from "./qgis/tasks.js";
+export { LayersAPI } from "@/ts-packages/qgis-sdk-bridge/src/qgis/layers.js";
+export { MessageAPI } from "@/ts-packages/qgis-sdk-bridge/src/qgis/message.js";
+export { NetworkAPI } from "@/ts-packages/qgis-sdk-bridge/src/qgis/network.js";
+export { ProcessingAPI } from "@/ts-packages/qgis-sdk-bridge/src/qgis/processing.js";
+export { ProjectAPI } from "@/ts-packages/qgis-sdk-bridge/src/qgis/project.js";
+export { SettingsAPI } from "@/ts-packages/qgis-sdk-bridge/src/qgis/settings.js";
+export { TasksAPI } from "@/ts-packages/qgis-sdk-bridge/src/qgis/tasks.js";
 export { createBridge as createTypedBridge };
 
 // Python → JS helpers

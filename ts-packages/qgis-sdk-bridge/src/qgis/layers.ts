@@ -1,7 +1,7 @@
 /** qgis.layers API for JS */
 
-import type { QgisBridge } from "../window";
-import { QgisTransportAdapter } from "./transport";
+import { QgisTransportAdapter } from "@/ts-packages/qgis-sdk-bridge/src/qgis/transport";
+import type { QgisBridge } from "@/ts-packages/qgis-sdk-bridge/src/window";
 
 export interface QgisLayerInfo {
 	id: string;

@@ -23,8 +23,11 @@ import {
 } from "@qgis/test-utils";
 import fc from "fast-check";
 
-import { loadDescription, loadQgisApiDescription } from "../src/description.ts";
-import { QgisBridge } from "../src/window.ts";
+import {
+	loadDescription,
+	loadQgisApiDescription,
+} from "@/ts-packages/qgis-sdk-bridge/src/description.ts";
+import { QgisBridge } from "@/ts-packages/qgis-sdk-bridge/src/window.ts";
 
 const globals = createFixture(
 	installBridgeGlobals,
@@ -41,14 +44,18 @@ describe("QgisBridge - EventTarget/WebSocket-like", () => {
 	});
 
 	it("should create bridge and open", async () => {
-		const { createBridge } = await import("../src/window.ts");
+		const { createBridge } = await import(
+			"@/ts-packages/qgis-sdk-bridge/src/window.ts"
+		);
 		const bridge = await createBridge("my_bridge");
 		expect(bridge.readyState).toBe(QgisBridge.OPEN);
 		expect(bridge.objectName).toBe("my_bridge");
 	});
 
 	it("should call method via Promise", async () => {
-		const { createBridge } = await import("../src/window.ts");
+		const { createBridge } = await import(
+			"@/ts-packages/qgis-sdk-bridge/src/window.ts"
+		);
 		const bridge = await createBridge("my_bridge");
 		const layer = await (bridge as any).get_layer("test_layer");
 		expect(layer.name).toBe("test_layer");
@@ -56,7 +63,9 @@ describe("QgisBridge - EventTarget/WebSocket-like", () => {
 	});
 
 	it("should support EventTarget addEventListener", async () => {
-		const { createBridge } = await import("../src/window.ts");
+		const { createBridge } = await import(
+			"@/ts-packages/qgis-sdk-bridge/src/window.ts"
+		);
 		const bridge = await createBridge("my_bridge");
 		let called = false;
 		bridge.addEventListener("layer_changed", () => {
@@ -95,7 +104,9 @@ describe("QgisAPI - complete QGIS Web API", () => {
 	});
 
 	it("should create QgisAPI with sub-APIs", async () => {
-		const { createQgisBridge } = await import("../src/qgis.ts");
+		const { createQgisBridge } = await import(
+			"@/ts-packages/qgis-sdk-bridge/src/qgis.ts"
+		);
 		const { qgis } = await createQgisBridge("my_bridge");
 		expect(qgis).toBeDefined();
 		expect(qgis.layers).toBeDefined();
@@ -109,7 +120,9 @@ describe("QgisAPI - complete QGIS Web API", () => {
 	});
 
 	it("should list layers via qgis.layers", async () => {
-		const { createQgisBridge } = await import("../src/qgis.ts");
+		const { createQgisBridge } = await import(
+			"@/ts-packages/qgis-sdk-bridge/src/qgis.ts"
+		);
 		const { qgis } = await createQgisBridge("my_bridge");
 		const layers = await qgis.layers.list();
 		expect(Array.isArray(layers)).toBe(true);
@@ -121,7 +134,9 @@ describe("QgisAPI - complete QGIS Web API", () => {
 	});
 
 	it("should add vector layer via qgis.layers.addVector", async () => {
-		const { createQgisBridge } = await import("../src/qgis.ts");
+		const { createQgisBridge } = await import(
+			"@/ts-packages/qgis-sdk-bridge/src/qgis.ts"
+		);
 		const { qgis } = await createQgisBridge("my_bridge");
 		const layer = await qgis.layers.addVector("/data/roads.shp", "Roads");
 		expect(layer.name).toBe("Roads");
@@ -129,7 +144,9 @@ describe("QgisAPI - complete QGIS Web API", () => {
 	});
 
 	it("should run task via qgis.tasks.run", async () => {
-		const { createQgisBridge } = await import("../src/qgis.ts");
+		const { createQgisBridge } = await import(
+			"@/ts-packages/qgis-sdk-bridge/src/qgis.ts"
+		);
 		const { qgis, bridge } = await createQgisBridge("my_bridge");
 		const task = await qgis.tasks.run("buffer_task", { distance: 10 });
 		expect(task.task_id).toBe("task123");
@@ -147,21 +164,27 @@ describe("QgisAPI - complete QGIS Web API", () => {
 	});
 
 	it("should show message via qgis.message.info", async () => {
-		const { createQgisBridge } = await import("../src/qgis.ts");
+		const { createQgisBridge } = await import(
+			"@/ts-packages/qgis-sdk-bridge/src/qgis.ts"
+		);
 		const { qgis } = await createQgisBridge("my_bridge");
 		const ok = await qgis.message.info("Title", "Hello from JS", 5);
 		expect(ok).toBe(true);
 	});
 
 	it("should fetch via qgis.network.fetch (QGIS NAM, no CORS)", async () => {
-		const { createQgisBridge } = await import("../src/qgis.ts");
+		const { createQgisBridge } = await import(
+			"@/ts-packages/qgis-sdk-bridge/src/qgis.ts"
+		);
 		const { qgis } = await createQgisBridge("my_bridge");
 		const resp = await qgis.network.fetch("https://example.com/api");
 		expect(resp.ok).toBe(true);
 	});
 
 	it("should support window.qgis global", async () => {
-		const { createQgisBridge } = await import("../src/qgis.ts");
+		const { createQgisBridge } = await import(
+			"@/ts-packages/qgis-sdk-bridge/src/qgis.ts"
+		);
 		await createQgisBridge("my_bridge");
 		expect((globalThis as any).qgis).toBeDefined();
 		expect((globalThis as any).qgis.layers).toBeDefined();
@@ -175,7 +198,9 @@ describe("QgisAPI - complete QGIS Web API", () => {
 	])(
 		"forwards one %s bridge signal to qgis exactly once",
 		async (signal, detail) => {
-			const { createQgisBridge } = await import("../src/qgis.ts");
+			const { createQgisBridge } = await import(
+				"@/ts-packages/qgis-sdk-bridge/src/qgis.ts"
+			);
 			const { qgis, bridge } = await createQgisBridge("my_bridge");
 			const received: unknown[] = [];
 			qgis.addEventListener(signal, (event) => {
@@ -190,7 +215,9 @@ describe("QgisAPI - complete QGIS Web API", () => {
 	);
 
 	it("forwards one message bridge signal to qgis exactly once", async () => {
-		const { createQgisBridge } = await import("../src/qgis.ts");
+		const { createQgisBridge } = await import(
+			"@/ts-packages/qgis-sdk-bridge/src/qgis.ts"
+		);
 		const { qgis, bridge } = await createQgisBridge("my_bridge");
 		const detail = { level: "info", title: "Ready", text: "QGIS loaded" };
 		const received: unknown[] = [];
@@ -204,7 +231,9 @@ describe("QgisAPI - complete QGIS Web API", () => {
 	});
 
 	it("supports custom events dispatched directly on qgis", async () => {
-		const { createQgisBridge } = await import("../src/qgis.ts");
+		const { createQgisBridge } = await import(
+			"@/ts-packages/qgis-sdk-bridge/src/qgis.ts"
+		);
 		const { qgis } = await createQgisBridge("my_bridge");
 		let qgisCalled = false;
 		qgis.addEventListener("custom_event", () => {
@@ -223,7 +252,7 @@ describe("Description loader - no codegen", () => {
 
 	it("should create bridge from description", async () => {
 		const { createBridgeFromDescription } = await import(
-			"../src/description.ts"
+			"@/ts-packages/qgis-sdk-bridge/src/description.ts"
 		);
 		const desc = loadDescription()!;
 		const raw = {
@@ -254,7 +283,9 @@ describe("Properties - the invariants the Rust suites assert", () => {
 	// invariants should narrow it the same way. See `src/arbitraries.ts`.
 
 	it("carries any JSON answer back to the caller unchanged", async () => {
-		const { createBridge } = await import("../src/window.ts");
+		const { createBridge } = await import(
+			"@/ts-packages/qgis-sdk-bridge/src/window.ts"
+		);
 		const bridge = (await createBridge("my_bridge")) as any;
 
 		await fc.assert(
@@ -272,7 +303,9 @@ describe("Properties - the invariants the Rust suites assert", () => {
 	});
 
 	it("forwards arguments to the channel verbatim, without the callback", async () => {
-		const { createBridge } = await import("../src/window.ts");
+		const { createBridge } = await import(
+			"@/ts-packages/qgis-sdk-bridge/src/window.ts"
+		);
 		const bridge = (await createBridge("my_bridge")) as any;
 
 		await fc.assert(
@@ -290,7 +323,7 @@ describe("Properties - the invariants the Rust suites assert", () => {
 
 	it("exposes exactly the methods a description names, and no others", async () => {
 		const { createBridgeFromDescription } = await import(
-			"../src/description.ts"
+			"@/ts-packages/qgis-sdk-bridge/src/description.ts"
 		);
 
 		fc.assert(

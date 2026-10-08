@@ -1,7 +1,10 @@
 import { describe, expect, it } from "bun:test";
 import fc from "fast-check";
 
-import { createFixture, installBridgeGlobals } from "../src/index.ts";
+import {
+	createFixture,
+	installBridgeGlobals,
+} from "@/ts-packages/test-utils/src/index.ts";
 
 /** The globals `installBridgeGlobals` owns, as one object so assertions can iterate. */
 const OWNED = [

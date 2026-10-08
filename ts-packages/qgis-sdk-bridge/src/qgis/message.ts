@@ -1,7 +1,7 @@
 /** qgis.message API */
 
-import type { QgisBridge } from "../window";
-import { QgisTransportAdapter } from "./transport";
+import { QgisTransportAdapter } from "@/ts-packages/qgis-sdk-bridge/src/qgis/transport";
+import type { QgisBridge } from "@/ts-packages/qgis-sdk-bridge/src/window";
 
 interface MessageOperations {
 	message_info(title: string, message: string, duration: number): boolean;

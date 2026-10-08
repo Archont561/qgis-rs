@@ -34,16 +34,16 @@ import {
 } from "@qgis/test-utils";
 import fc from "fast-check";
 
-import { createBridgeFromDescription } from "../src/description.ts";
-import { IfaceAPI } from "../src/qgis/iface.ts";
-import { LayersAPI } from "../src/qgis/layers.ts";
-import { MessageAPI } from "../src/qgis/message.ts";
-import { NetworkAPI } from "../src/qgis/network.ts";
-import { ProcessingAPI } from "../src/qgis/processing.ts";
-import { ProjectAPI } from "../src/qgis/project.ts";
-import { SettingsAPI } from "../src/qgis/settings.ts";
-import { TasksAPI } from "../src/qgis/tasks.ts";
-import type { QgisBridge } from "../src/window.ts";
+import { createBridgeFromDescription } from "@/ts-packages/qgis-sdk-bridge/src/description.ts";
+import { IfaceAPI } from "@/ts-packages/qgis-sdk-bridge/src/qgis/iface.ts";
+import { LayersAPI } from "@/ts-packages/qgis-sdk-bridge/src/qgis/layers.ts";
+import { MessageAPI } from "@/ts-packages/qgis-sdk-bridge/src/qgis/message.ts";
+import { NetworkAPI } from "@/ts-packages/qgis-sdk-bridge/src/qgis/network.ts";
+import { ProcessingAPI } from "@/ts-packages/qgis-sdk-bridge/src/qgis/processing.ts";
+import { ProjectAPI } from "@/ts-packages/qgis-sdk-bridge/src/qgis/project.ts";
+import { SettingsAPI } from "@/ts-packages/qgis-sdk-bridge/src/qgis/settings.ts";
+import { TasksAPI } from "@/ts-packages/qgis-sdk-bridge/src/qgis/tasks.ts";
+import type { QgisBridge } from "@/ts-packages/qgis-sdk-bridge/src/window.ts";
 
 /**
  * The bridge seen from a facade: an `EventTarget` and nothing else.
@@ -841,7 +841,9 @@ describe("Properties - what the client owes the transport", () => {
 	 * equals the second.
 	 */
 	it("settles callback and promise exactly once, the callback with the raw wire answer", async () => {
-		const { createBridge } = await import("../src/window.ts");
+		const { createBridge } = await import(
+			"@/ts-packages/qgis-sdk-bridge/src/window.ts"
+		);
 		const harness = createBridgeHarness();
 		harness.installGlobals();
 		try {

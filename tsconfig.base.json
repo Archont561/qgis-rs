@@ -16,6 +16,12 @@
 		"module": "ESNext",
 		"moduleResolution": "bundler",
 
+		// One repository-root alias keeps imports stable when code crosses package
+		// boundaries (for example, bridge tests consuming @qgis/test-utils source).
+		"paths": {
+			"@/*": ["./*"]
+		},
+
 		// Strictness. The two flags below are not part of `strict`, and both earn
 		// their place: `exactOptionalPropertyTypes` separates "absent" from
 		// "explicitly undefined", and `noUncheckedIndexedAccess` stops an unchecked

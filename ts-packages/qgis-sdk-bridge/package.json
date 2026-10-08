@@ -50,8 +50,8 @@
 		"README.md"
 	],
 	"scripts": {
-		"build": "bun build src/index.ts --outdir dist --target browser --format esm && bun build src/react.ts --outdir dist --target browser --format esm && bun build src/vue.ts --outdir dist --target browser --format esm && bun build src/svelte.ts --outdir dist --target browser --format esm && bun build src/webcomponents.ts --outdir dist --target browser --format esm && bun build src/loader.ts --outdir dist --target browser --format esm && bun build src/qgis.ts --outdir dist --target browser --format esm && bun build src/window.ts --outdir dist --target browser --format esm && bun build src/description.ts --outdir dist --target browser --format esm && tsc --emitDeclarationOnly",
-		"build:types": "tsc --emitDeclarationOnly",
+		"build": "bun build src/index.ts --outdir dist --target browser --format esm && bun build src/react.ts --outdir dist --target browser --format esm && bun build src/vue.ts --outdir dist --target browser --format esm && bun build src/svelte.ts --outdir dist --target browser --format esm && bun build src/webcomponents.ts --outdir dist --target browser --format esm && bun build src/loader.ts --outdir dist --target browser --format esm && bun build src/qgis.ts --outdir dist --target browser --format esm && bun build src/window.ts --outdir dist --target browser --format esm && bun build src/description.ts --outdir dist --target browser --format esm && bun run build:types",
+		"build:types": "tsc --emitDeclarationOnly && bun run scripts/rewrite-declaration-aliases.ts",
 		"dev": "bun --watch build",
 		"test": "bun test ./tests",
 		"coverage": "bun test ./tests --coverage",

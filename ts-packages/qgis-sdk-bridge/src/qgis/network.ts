@@ -1,7 +1,7 @@
 /** qgis.network API — via QGIS NAM */
 
-import type { QgisBridge } from "../window";
-import { QgisTransportAdapter } from "./transport";
+import { QgisTransportAdapter } from "@/ts-packages/qgis-sdk-bridge/src/qgis/transport";
+import type { QgisBridge } from "@/ts-packages/qgis-sdk-bridge/src/window";
 
 export interface QgisNetworkResponse {
 	ok: boolean;
