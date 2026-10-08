@@ -1,10 +1,10 @@
 ---
 id: TASK-2
 title: Add a dedicated QGIS SDK integration test runner and CI job
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-09-30'
-updated_date: '2026-10-08 15:36'
+updated_date: '2026-10-08 17:16'
 labels:
   - qgis-sdk
   - ci
@@ -38,7 +38,7 @@ Separate fast pure-Python SDK tests from tests that require an initialized QGIS 
 ## Definition of Done
 <!-- DOD:BEGIN -->
 - [x] #1 Local and CI commands are documented in the SDK testing guide.
-- [ ] #2 A clean checkout can run the integration test from the declared Pixi environment.
+- [x] #2 A clean checkout can run the integration test from the declared Pixi environment.
 - [x] #3 Failure output includes the subprocess stdout and stderr needed to diagnose QGIS/Qt issues.
 <!-- DOD:END -->
 
@@ -59,3 +59,9 @@ AC5: with no QGIS (bare py3.11 venv) the integration test skips with requires an
 
 AC6: the committed simple_plugin fixture is asserted byte-identical after the run. Evidence by damage: a child exiting 5 fails with exit status, QGIS release and both streams; a child writing into the fixture fails with fixture was modified.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Shipped in PR #48. CI test lane now runs the pure, qt and qgis gates strictly in sequence (QGIS_REQUIRE_NATIVE=1 on each). QGIS child isolated in tests/qgis_subprocess.py: offscreen Qt, no bytecode writes, 300 s timeout, full stdout/stderr diagnostics. Integration test asserts the simple_plugin fixture is unchanged. Fixed qgis_version (was always None; now Qgis.version()). Run header names backend, QGIS release, layers and gate. Proof: pixi run gates green on the clean checkout; documented test:qgis command passes there (5 passed); PR CI green; without QGIS the test skips with a clear reason.
+<!-- SECTION:FINAL_SUMMARY:END -->
