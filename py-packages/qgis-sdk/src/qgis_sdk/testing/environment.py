@@ -128,7 +128,7 @@ def detect_qgis_environment() -> QgisTestEnvironment:
         qgis_import_error = f"{type(exc).__name__}: {exc}"
     else:
         qgis_available = True
-        qgis_version = getattr(core, "QGIS_VERSION", None)
+        qgis_version = _qgis_version(core)
         application = getattr(core, "QgsApplication", None)
         if application is not None and hasattr(application, "instance"):
             try:
@@ -153,6 +153,24 @@ def detect_qgis_environment() -> QgisTestEnvironment:
         qgis_version=qgis_version,
         qgis_import_error=qgis_import_error,
     )
+
+
+def _qgis_version(core) -> Optional[str]:
+    """The release QGIS reports, e.g. ``3.44.14-Solothurn``, or ``None``.
+
+    ``qgis.core`` does not export a ``QGIS_VERSION`` constant in the bindings
+    this suite runs against; the release is ``Qgis.version()``. Reading the
+    constant instead answered ``None`` for every runtime, which is how the
+    version went missing from test output without anything failing.
+    """
+    qgis = getattr(core, "Qgis", None)
+    if qgis is not None and hasattr(qgis, "version"):
+        try:
+            return str(qgis.version())
+        except Exception:  # pragma: no cover - depends on the QGIS bindings
+            pass
+    legacy = getattr(core, "QGIS_VERSION", None)
+    return None if legacy is None else str(legacy)
 
 
 def _webengine_installed() -> bool:

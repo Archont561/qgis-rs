@@ -99,11 +99,20 @@ def pytest_configure(config):
 
 
 def pytest_report_header(config):
-    """Say which layers exist and which gate is running, once, at the top."""
+    """Say which runtime backs this run, which layers exist, and which gate runs.
+
+    One line, printed once at the top, so a CI log answers "which QGIS was this
+    run against, and was it the QGIS path or the pure-Python fallback" without
+    anyone re-running the suite.
+    """
     environment = detect_qgis_environment()
     gate = config.stash.get(_GATE_KEY, None) if hasattr(config, "stash") else None
     layers = ", ".join(sorted(environment.layers))
-    return f"qgis-sdk layers: {layers}; gate: {gate or 'all (skips allowed)'}"
+    version = environment.qgis_version or "unavailable"
+    return (
+        f"qgis-sdk runtime: backend={environment.backend}, qgis={version}; "
+        f"layers: {layers}; gate: {gate or 'all (skips allowed)'}"
+    )
 
 
 def pytest_collection_modifyitems(config, items):

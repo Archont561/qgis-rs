@@ -84,9 +84,15 @@ skip-what-you-cannot-reach policy off.
 | **WebEngine** — optional, off the default path | `pixi run -- bun --filter=qgis-sdk-py run test:webengine` | `PyQt5.QtWebEngineWidgets` |
 | **Cross-language contract** — the shared `test-fixtures/bridge` vectors in Rust, Python and TypeScript | `pixi run xtask validate-bridge-fixtures` then `pixi run gates` | nothing |
 
-`pixi run -- bun --filter=qgis-sdk-py run test` remains the permissive
-whole-suite run and is the only one turbo fans out, so WebEngine never becomes
-a dependency of ordinary bridge tests. The selection policy is pure data in
+`pixi run -- bun --filter=qgis-sdk-py run test` is what turbo fans out and what
+CI's test lane runs. It runs the `pure`, `qt` and `qgis` gates **in sequence,
+strictly**, so the pure-Python suite and the QGIS integration suite are separate
+passes with their own header line (`qgis-sdk runtime: backend=…, qgis=<release>;
+layers: …; gate: …`), and a missing layer fails the run instead of skipping.
+`QGIS_REQUIRE_NATIVE=1` is set on every pass, so `test_native_extension_is_used_in_ci`
+asserts the Rust extension is loaded. The permissive whole-suite run that skips a
+missing layer is `coverage`. WebEngine stays off the default path, so it never
+becomes a dependency of ordinary bridge tests. The selection policy is pure data in
 `qgis_sdk.testing.gates` and tested in `tests/test_layer_gates.py`; the gates
 overlap on purpose (a test marked both `qt` and `webengine` runs in both) but
 never leave a test in no gate at all, which is why `pure` is defined by the
@@ -98,7 +104,15 @@ The SDK suite is intentionally runnable in two modes:
 
 - **Pure Python:** run `python -m pytest tests -v` from a Python environment that does not provide `qgis.core` or Qt. Tests marked `pure_python` run; tests marked `qgis` are skipped before their bodies import QGIS. Fake interfaces, network managers, task managers, dialogs, and WebEngine objects cover the host-independent API.
 - **QGIS/offscreen:** run `pixi run -e default setup` once, then
-  `pixi run -e default env QGIS_REQUIRE_NATIVE=1 python -m pytest py-packages/qgis-sdk/tests -v`.
+  `pixi run -- bun --filter=qgis-sdk-py run test:qgis` (or
+  `pixi run -e default env QGIS_TEST_LAYER=qgis QGIS_REQUIRE_NATIVE=1 python -m pytest py-packages/qgis-sdk/tests -v`).
+  The integration test runs from `tests/qgis_subprocess.py`, which is the one
+  place QGIS is started for a subprocess: it sets `QT_QPA_PLATFORM=offscreen` and
+  `PYTHONDONTWRITEBYTECODE=1` in the child, bounds it with a 300-second timeout,
+  and on failure reports the exit status (or the signal that killed it), the QGIS
+  release, and the child's full stdout and stderr. It also asserts the committed
+  `simple_plugin` fixture is byte-identical afterwards, so the fixture stays
+  read-only input.
   `QT_QPA_PLATFORM=offscreen` is set before the SDK is imported. The reusable
   `qgis_environment`, `qgis_available`, `pure_python`, and `qgis_app` fixtures
   describe the runtime. `qgis_app` resolves in three steps: adopt the host's

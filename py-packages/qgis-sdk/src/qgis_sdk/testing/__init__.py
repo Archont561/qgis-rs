@@ -165,7 +165,12 @@ from .ui import (
 # `pytest11` entry point and `pytest_plugins = ["qgis_sdk.testing"]` both name
 # *this* module, and pytest reads a plugin's fixtures out of its namespace.
 from . import plugin as _plugin
-from .plugin import MARKERS, pytest_collection_modifyitems, pytest_configure
+from .plugin import (
+    MARKERS,
+    pytest_collection_modifyitems,
+    pytest_configure,
+    pytest_report_header,
+)
 
 def _is_fixture(value: object) -> bool:
     """Whether ``value`` is a pytest fixture, in either of pytest's shapes.
@@ -287,5 +292,6 @@ __all__ = [
     # pytest plugin hooks
     "pytest_configure",
     "pytest_collection_modifyitems",
+    "pytest_report_header",
     "strategies",
 ]
