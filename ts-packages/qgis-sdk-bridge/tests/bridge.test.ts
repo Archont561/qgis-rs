@@ -167,18 +167,45 @@ describe("QgisAPI - complete QGIS Web API", () => {
 		expect((globalThis as any).qgis.layers).toBeDefined();
 	});
 
-	it("should support EventTarget for qgis", async () => {
+	it.each([
+		["layer_added", { id: "layer1", name: "Roads" }],
+		["layer_removed", { id: "layer2" }],
+		["task_progress", { task_id: "task1", progress: 50 }],
+		["task_finished", { task_id: "task1", result: { count: 3 } }],
+	])(
+		"forwards one %s bridge signal to qgis exactly once",
+		async (signal, detail) => {
+			const { createQgisBridge } = await import("../src/qgis.ts");
+			const { qgis, bridge } = await createQgisBridge("my_bridge");
+			const received: unknown[] = [];
+			qgis.addEventListener(signal, (event) => {
+				received.push((event as CustomEvent).detail);
+			});
+
+			bridge.dispatchEvent(new CustomEvent(signal, { detail }));
+
+			expect(received).toHaveLength(1);
+			expect(received[0]).toBe(detail);
+		},
+	);
+
+	it("forwards one message bridge signal to qgis exactly once", async () => {
 		const { createQgisBridge } = await import("../src/qgis.ts");
 		const { qgis, bridge } = await createQgisBridge("my_bridge");
-		let called = false;
-		qgis.addEventListener("layer_added", () => {
-			called = true;
+		const detail = { level: "info", title: "Ready", text: "QGIS loaded" };
+		const received: unknown[] = [];
+		qgis.addEventListener("message", (event) => {
+			received.push((event as CustomEvent).detail);
 		});
-		bridge.dispatchEvent(
-			new CustomEvent("layer_added", { detail: { id: "layer1" } }),
-		);
-		// QgisAPI wires bridge signals to qgis, so dispatching on bridge should trigger qgis listener
-		expect(called).toBe(true);
+
+		bridge.dispatchEvent(new CustomEvent("message", { detail }));
+
+		expect(received).toEqual([detail]);
+	});
+
+	it("supports custom events dispatched directly on qgis", async () => {
+		const { createQgisBridge } = await import("../src/qgis.ts");
+		const { qgis } = await createQgisBridge("my_bridge");
 		let qgisCalled = false;
 		qgis.addEventListener("custom_event", () => {
 			qgisCalled = true;
