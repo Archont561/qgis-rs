@@ -5,18 +5,20 @@ description: >-
   Use whenever the user asks to audit, scan, assess, or review code for maintainability,
   architecture, readability, duplication, complexity, code smells, or refactor opportunities,
   including a plain request to "audit this" in a coding context. Use the refactor and
-  clean-code-principles skills, report concrete findings, and create focused backlog refactor
-  tasks for validated behavior-preserving work. If code, tests, documentation, contracts, or
-  requirements conflict, or intended behavior is unclear, pause and seek clarification through
-  grill-me before creating a task. This skill is not a substitute for security, compliance, or
-  other domain-specific audits.
+  clean-code-principles skills, report concrete findings, and automatically create or update a
+  focused backlog task for every validated actionable follow-up. Classify behavior-preserving
+  refactors separately from bugs, missing features, and contract changes. If code, tests,
+  documentation, contracts, or requirements conflict, or intended behavior is unclear, pause and
+  seek clarification through grill-me before deciding the finding or task scope. This skill is not
+  a substitute for security, compliance, or other domain-specific audits.
 ---
 
 # Code-quality audit
 
 An audit discovers and triages maintainability problems; it does not silently change production
-code. The deliverable is a concise evidence-backed report and, when appropriate, a focused backlog
-task for a later behavior-preserving refactor.
+code. The deliverable is a concise evidence-backed report and, by default, a backlog task for every
+validated actionable follow-up. Track behavior-preserving cleanup as refactor work and track bugs,
+missing features, or approved contract changes under their correct task types.
 
 ## 1. Establish scope and constraints
 
@@ -70,7 +72,8 @@ Keep a finding only when the evidence supports it. For each candidate:
    confirmed issue from a hypothesis or optional improvement.
 
 Do not label a behavior bug, missing feature, or contract change as a refactor. Report it separately
-and ask what kind of follow-up the user wants before creating a refactor task.
+and, once its expected behavior and scope are clear, track it under the appropriate task type in §5.
+If the expected behavior or follow-up scope is unclear, clarify before creating a task.
 
 ## 4. Clarify contradictions before acting
 
@@ -85,28 +88,35 @@ skill directly, ask the same concise question in chat and pause; do not guess, b
 an assumption, or create a task whose acceptance criteria encode one side of the dispute. A clear,
 objective code smell with no behavioral ambiguity does not need a clarification round.
 
-## 5. Create focused refactor task(s)
+## 5. Automatically create focused backlog task(s)
 
-Unless the user explicitly asks for report-only output, create a backlog task for each validated,
-actionable refactor (group findings only when they form one cohesive change). Do not create a task
-for a speculative concern, a style preference, or a finding that needs clarification.
+Unless the user explicitly asks for report-only output, automatically create or update a backlog
+entry for every validated, actionable audit follow-up once its scope and expected behavior are
+clear. Do not ask for a second confirmation merely to create a task after the user requested an
+audit. Group findings only when they form one cohesive implementation; do not create tasks for
+speculation, style preferences, or findings whose scope remains unresolved.
 
-- Search the backlog first and reuse or update an existing task rather than creating a duplicate.
-- Follow [backlog](../backlog/SKILL.md) and its CLI for task creation; in this repository use
-  `pixi run backlog ...` and non-interactive read options. Never hand-edit backlog metadata. If the
-  CLI or required environment is unavailable, report the blocker and provide a ready-to-enter task
-  draft instead.
-- Make the task implementation-focused: state the finding and evidence, intended behavior to
-  preserve, bounded scope, non-goals, and verifiable acceptance criteria.
-- Read [tdd](../tdd/SKILL.md) before writing those criteria. Require the implementer to agree the
-  public seam(s) with the user before writing tests; add or extend a behavior test at the agreed
-  seam first; observe the red result when applicable; make one small refactor at a time; and run
-  focused tests and the relevant package gate. Keep structural cleanup separate from behavior
-  changes, and record exact blockers rather than claiming unrun checks passed.
-- Leave the task open for implementation. The audit itself does not implement the task or mark it
-  Done.
+- Search the backlog first. Reuse or update an existing task instead of creating a duplicate; if
+  existing tasks overlap or conflict, clarify ownership/scope before changing them.
+- Use the correct task type: behavior-preserving structural work is a refactor task; a behavior bug,
+  missing feature, or approved contract change must be tracked as the appropriate bug/enhancement,
+  never disguised as a refactor. After its expected behavior is clarified, create that task without
+  another task-creation permission prompt.
+- Follow [backlog](../backlog/SKILL.md) and its CLI. In this repository use `pixi run backlog ...`
+  and non-interactive read options. Never hand-edit backlog task metadata. If the CLI or required
+  environment is unavailable, report the exact blocker and provide a ready-to-enter task draft
+  instead; do not silently claim the task was created.
+- Make each task implementation-focused: include finding/evidence, intended behavior to preserve or
+  establish, bounded scope, non-goals, and verifiable acceptance criteria.
+- Read [tdd](../tdd/SKILL.md) before writing criteria. Require agreement with the user on public
+  test seam(s) before tests are written; add or extend a behavior test at the agreed seam first,
+  observe the red result when applicable, make one small change at a time, and run focused tests and
+  the relevant package gate. Keep structural cleanup separate from behavior changes and record
+  exact blockers rather than claiming unrun checks passed.
+- Leave created tasks open for implementation. The audit does not implement their production fixes
+  or mark them Done.
 
-If no actionable behavior-preserving refactor is confirmed, say so and create no task.
+If no actionable follow-up is confirmed, say so and create no task.
 
 ## 6. Report
 

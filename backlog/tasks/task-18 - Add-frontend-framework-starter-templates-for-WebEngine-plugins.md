@@ -4,14 +4,15 @@ title: Add frontend framework starter templates for WebEngine plugins
 status: To Do
 assignee: []
 created_date: '2026-09-30 20:49'
-updated_date: '2026-10-03 09:19'
+updated_date: '2026-10-08 18:15'
 labels:
   - qgis-sdk
   - ui
   - templates
   - web
 milestone: m-3
-dependencies: []
+dependencies:
+  - TASK-44
 documentation:
   - .knowledge/qgis-plugin-sdk.md
   - .knowledge/qgis-plugin-ui.md
@@ -33,4 +34,6 @@ Provide scaffold presets (--framework react, --framework vue, --framework svelte
 - [ ] #2 Vite config builds to web/dist/ with relative asset links (base: ./)
 - [ ] #3 TypeScript bridge bindings pre-imported and hooked into component lifecycle
 - [ ] #4 Generated templates build successfully with Bun/Vite
+- [ ] #5 Implement the framework presets in the canonical Rust command library. Python and Node entrypoints must invoke that implementation and must not fall back to Python template generation.
+- [ ] #6 Generated snapshots verify each preset file manifest and confirm that --author and --email values are applied consistently in generated plugin code and metadata.txt.
 <!-- AC:END -->
