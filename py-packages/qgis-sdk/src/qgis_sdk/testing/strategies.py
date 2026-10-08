@@ -13,6 +13,7 @@ only the SDK installed.
 
 from __future__ import annotations
 
+import keyword
 from typing import Any, Dict, List, Mapping, Optional, Sequence
 
 from hypothesis import strategies as st
@@ -40,7 +41,7 @@ def snake_case_names(min_size: int = 3, max_size: int = 24) -> st.SearchStrategy
 
 def plugin_names() -> st.SearchStrategy:
     """Plugin names that are legal Python module names and legal directories."""
-    return snake_case_names(min_size=3, max_size=30)
+    return snake_case_names(min_size=3, max_size=30).filter(lambda name: not keyword.iskeyword(name))
 
 
 def crs_auth_ids(authorities: Sequence[str] = CRS_AUTHORITIES) -> st.SearchStrategy:

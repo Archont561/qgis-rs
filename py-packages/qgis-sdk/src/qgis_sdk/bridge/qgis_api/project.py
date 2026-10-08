@@ -4,18 +4,12 @@ from __future__ import annotations
 
 from typing import Any, Dict
 
-
-def _get_project():
-    try:
-        from qgis.core import QgsProject
-        return QgsProject.instance()
-    except ImportError:
-        return None
+from ._resolver import resolve_qgis_resource
 
 
 class ProjectAPI:
     def info(self) -> Dict[str, Any]:
-        project = _get_project()
+        project = resolve_qgis_resource("project")
         if not project:
             return {"path": "", "crs": "", "title": ""}
         try:
@@ -28,7 +22,7 @@ class ProjectAPI:
             return {"path": "", "crs": "", "title": "", "error": str(e)}
 
     def write(self) -> bool:
-        project = _get_project()
+        project = resolve_qgis_resource("project")
         if not project:
             return False
         try:
@@ -37,7 +31,7 @@ class ProjectAPI:
             return False
 
     def crs(self) -> str:
-        project = _get_project()
+        project = resolve_qgis_resource("project")
         if not project:
             return ""
         try:
@@ -46,7 +40,7 @@ class ProjectAPI:
             return ""
 
     def set_crs(self, authid: str) -> bool:
-        project = _get_project()
+        project = resolve_qgis_resource("project")
         if not project:
             return False
         try:
@@ -59,7 +53,7 @@ class ProjectAPI:
             return False
 
     def path(self) -> str:
-        project = _get_project()
+        project = resolve_qgis_resource("project")
         if not project:
             return ""
         try:

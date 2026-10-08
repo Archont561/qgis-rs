@@ -4,23 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
-
-def _get_project():
-    try:
-        from qgis.core import QgsProject
-        return QgsProject.instance()
-    except ImportError:
-        return None
-
-
-def _get_iface(iface=None):
-    if iface is not None:
-        return iface
-    try:
-        from qgis.utils import iface as qgis_iface
-        return qgis_iface
-    except ImportError:
-        return None
+from ._resolver import resolve_qgis_resource
 
 
 class LayersAPI:
@@ -28,7 +12,7 @@ class LayersAPI:
         self.iface = iface
 
     def list(self) -> List[Dict[str, Any]]:
-        project = _get_project()
+        project = resolve_qgis_resource("project")
         if not project:
             return []
         layers = []
@@ -56,7 +40,7 @@ class LayersAPI:
         return layers
 
     def active(self) -> Optional[Dict[str, Any]]:
-        iface = _get_iface(self.iface)
+        iface = resolve_qgis_resource("iface", self.iface)
         if not iface:
             return None
         try:
@@ -68,7 +52,7 @@ class LayersAPI:
             return None
 
     def add_vector(self, path: str, name: str = "", provider: str = "ogr") -> Dict[str, Any]:
-        project = _get_project()
+        project = resolve_qgis_resource("project")
         if not project:
             raise RuntimeError("QGIS not available")
         from qgis.core import QgsVectorLayer
@@ -80,7 +64,7 @@ class LayersAPI:
         return {"id": layer.id(), "name": layer.name(), "type": "vector"}
 
     def add_raster(self, path: str, name: str = "", provider: str = "gdal") -> Dict[str, Any]:
-        project = _get_project()
+        project = resolve_qgis_resource("project")
         if not project:
             raise RuntimeError("QGIS not available")
         from qgis.core import QgsRasterLayer
@@ -92,7 +76,7 @@ class LayersAPI:
         return {"id": layer.id(), "name": layer.name(), "type": "raster"}
 
     def remove(self, layer_id: str) -> bool:
-        project = _get_project()
+        project = resolve_qgis_resource("project")
         if not project:
             return False
         try:
@@ -102,8 +86,8 @@ class LayersAPI:
             return False
 
     def zoom_to(self, layer_id: str) -> bool:
-        project = _get_project()
-        iface = _get_iface(self.iface)
+        project = resolve_qgis_resource("project")
+        iface = resolve_qgis_resource("iface", self.iface)
         if not project or not iface:
             return False
         try:
@@ -124,8 +108,8 @@ class LayersAPI:
             return False
 
     def set_active(self, layer_id: str) -> bool:
-        project = _get_project()
-        iface = _get_iface(self.iface)
+        project = resolve_qgis_resource("project")
+        iface = resolve_qgis_resource("iface", self.iface)
         if not project or not iface:
             return False
         try:
@@ -138,7 +122,7 @@ class LayersAPI:
         return False
 
     def get(self, layer_id: str) -> Optional[Dict[str, Any]]:
-        project = _get_project()
+        project = resolve_qgis_resource("project")
         if not project:
             return None
         try:

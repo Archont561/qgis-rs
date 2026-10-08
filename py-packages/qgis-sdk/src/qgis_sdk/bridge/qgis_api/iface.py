@@ -2,23 +2,7 @@
 
 from __future__ import annotations
 
-
-def _get_iface(iface=None):
-    if iface is not None:
-        return iface
-    try:
-        from qgis.utils import iface as qgis_iface
-        return qgis_iface
-    except ImportError:
-        return None
-
-
-def _get_project():
-    try:
-        from qgis.core import QgsProject
-        return QgsProject.instance()
-    except ImportError:
-        return None
+from ._resolver import resolve_qgis_resource
 
 
 class IfaceAPI:
@@ -26,8 +10,8 @@ class IfaceAPI:
         self.iface = iface
 
     def zoom_to_layer(self, layer_id: str) -> bool:
-        iface = _get_iface(self.iface)
-        project = _get_project()
+        iface = resolve_qgis_resource("iface", self.iface)
+        project = resolve_qgis_resource("project")
         if not iface or not project:
             return False
         try:
@@ -41,7 +25,7 @@ class IfaceAPI:
             return False
 
     def show_message(self, title: str, message: str, level: int = 0, duration: int = 5) -> bool:
-        iface = _get_iface(self.iface)
+        iface = resolve_qgis_resource("iface", self.iface)
         if not iface:
             print(f"[Iface] {title}: {message}")
             return True
@@ -59,7 +43,7 @@ class IfaceAPI:
                 return False
 
     def active_layer(self):
-        iface = _get_iface(self.iface)
+        iface = resolve_qgis_resource("iface", self.iface)
         if not iface:
             return None
         try:
