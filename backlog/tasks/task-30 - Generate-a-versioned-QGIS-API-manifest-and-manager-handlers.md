@@ -1,10 +1,10 @@
 ---
 id: TASK-30
 title: Generate a versioned QGIS API manifest and manager handlers
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-10-03 08:57'
-updated_date: '2026-10-07 20:23'
+updated_date: '2026-10-08 14:02'
 labels:
   - rfc
   - ffi
@@ -31,12 +31,18 @@ Build the version-pinned extraction and generation pipeline described in the QGI
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 The generator records every discovered public declaration as supported, supported_manual, partial, unsupported, host_only, provider_optional, or deprecated with a reason and QGIS version range.
+- [x] #1 The generator records every discovered public declaration as supported, supported_manual, partial, unsupported, host_only, provider_optional, or deprecated with a reason and QGIS version range.
 - [x] #2 The generated manifest produces compilable manager handlers/codecs and an api.describe capability report without introducing a second hand-written operation spelling table.
 - [x] #3 Ownership, invalidation, overload, enum, QVariant, binary-artifact, and paging mappings are explicit and have representative runtime tests.
 - [x] #4 Rust, Python, TypeScript, and C++ consume shared protocol fixtures for generated core operations and exact error envelopes.
 - [x] #5 A QGIS upgrade produces an API diff and fails review when declarations are silently dropped or ownership metadata changes.
 <!-- AC:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+AC#1 closed TASK-30's last open criterion: the repository now derives its reviewed API surface from the QGIS headers instead of trusting hand-written ids. `api-extract` turns a clang AST text dump into a checked-in inventory in which every discovered public declaration carries an explicit status, reason and version range, and the gate refuses both a stale inventory and a reviewed id the headers no longer declare, so a QGIS upgrade can no longer silently drop a declaration. The parser is a pure seam (`parse_dump`/`classify`/`render_inventory`) pinned by 20 tests on hand-written dumps, which makes the clang output format a tested contract rather than an assumption. The first real run corrected a stale reviewed id (`QgsMapLayer::wkbType` becomes `QgsVectorLayer::wkbType`) and put 1658 declarations under explicit review status; the depth of review (headless-manager handlers versus mere enumeration) stays visible in the inventory itself, since unreviewed declarations carry the mechanical `unsupported` reason.
+<!-- SECTION:FINAL_SUMMARY:END -->
 
 ## Implementation Notes
 
@@ -61,4 +67,6 @@ AC status after this slice — none ticked, all still have unproven parts: AC#1 
 2026-10-07 (AC#2): Added per-operation `request_codec` and `result_codec` identifiers to the version-1 API manifest, generated C++ operation table, compiled manager registry, and `api.describe.operation_metadata`; retained `codec: json_object` as the generic envelope for compatibility. The generator validates identifier syntax, the pinned baseline reports request/result codec drift, and scaffold output gives new operations placeholder values. The public `qgis_sys::native_manager_ffi::invoke` test requires non-placeholder codec identifiers for all 17 operations and distinct `render_map`/`layer_open` profiles. Verified with `pixi run xtask api-manifest --check`, `pixi run xtask check-api-operations`, xtask manifest/scaffold tests, and the full QGIS-feature qgis-sys test suite. This supersedes the 2026-10-06 status sentence above that said the codec side remained one `json_object`; AC#2 is now proven, while AC#1 and AC#4 remain open.
 
 2026-10-07: Expanded test-fixtures/layer-lifecycle.json to carry complete versioned success and invalid_object_id response envelopes. Rust protocol and native-manager integration tests, Python and Node client tests, and the C++ conversion suite now read the same cases. The live manager test compares layer_open, layer_info, layer_features, layer_close, and exact invalid-ID envelopes, substituting only the fixture path and runtime layer ID. Focused Rust, Python, Bun, C++, and QGIS-feature tests passed.
+
+2026-10-08 (AC#1): Added `pixi run xtask api-extract [--check]` and `crates/xtask/src/api_extract.rs`. It parses the `clang-check -ast-dump` text of the manifest's declared headers into `crates/qgis-sys/native_manager/generated/api_inventory.json`, recording every discovered public declaration with a status, a reason and a QGIS version range: the manifest's review for reviewed ids, the header's own `QGIS_DEPRECATED` next, and explicit `unsupported` plus "not yet reviewed against the headless manager contract" for the rest. `RepoLint::CheckApiInventory` runs `--check` in the gate, so a stale inventory or a reviewed declaration the headers no longer declare fails by name. The dump is pinned as a text contract by 20 tests in `crates/xtask/tests/api_extract.rs` on hand-written dumps: depth/branch parsing, locations carried across omitted files, access sections, overloads, nesting, macro-mediated declarations and operator names containing angle brackets. The declared header set widened to 11 (qgis.h, qgsmaplayer.h, qgsfeatureiterator.h added); the first real extraction surfaced one stale reviewed id, corrected in manifest and baseline alike: `QgsMapLayer::wkbType` becomes `QgsVectorLayer::wkbType` (the handler calls `QgsVectorLayer::wkbType()`; `QgsMapLayer` declares no `wkbType` at all). Inventory scale: 1658 declarations in 11 headers, 19 reviewed, 1639 unsupported; extraction runs in 6 s. `pixi run gates` green: workspace nextest 323 passed (+20), QGIS-feature pass 30 passed, 6 doctests, Bun/Python/C++ unchanged from the last baseline. Commit fb44065.
 <!-- SECTION:NOTES:END -->
