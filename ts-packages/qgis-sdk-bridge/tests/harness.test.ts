@@ -44,6 +44,15 @@ import { ProjectAPI } from "@/ts-packages/qgis-sdk-bridge/src/qgis/project.ts";
 import { SettingsAPI } from "@/ts-packages/qgis-sdk-bridge/src/qgis/settings.ts";
 import { TasksAPI } from "@/ts-packages/qgis-sdk-bridge/src/qgis/tasks.ts";
 import type { QgisBridge } from "@/ts-packages/qgis-sdk-bridge/src/window.ts";
+import {
+	concurrentTaskCalls,
+	distinctTaskIds,
+	nonJsonText,
+	qgisIdentifier,
+	taskCompletionResult,
+	taskParameters,
+	vectorLayerCall,
+} from "@/ts-packages/qgis-sdk-bridge/tests/strategies.ts";
 
 /**
  * The bridge seen from a facade: an `EventTarget` and nothing else.
@@ -198,24 +207,28 @@ describe("Facades over an injected transport", () => {
 		expectCall(harness, { target: "qgis", method: "layers_list", args: [] });
 	});
 
-	it("forwards a facade's arguments to the wire in the declared order", async () => {
-		const harness = createBridgeHarness();
-		harness.replyJson("qgis", "layers_add_vector", {
-			id: "l2",
-			name: "Rivers",
-		});
-		const layers = new LayersAPI(
-			asBridge(harness.events),
-			harness.target("qgis"),
+	it("forwards generated facade arguments to the wire in their declared order", async () => {
+		await fc.assert(
+			fc.asyncProperty(
+				vectorLayerCall,
+				async ({ path, name, provider, answer }) => {
+					const harness = createBridgeHarness();
+					harness.replyJson("qgis", "layers_add_vector", answer);
+					const layers = new LayersAPI(
+						asBridge(harness.events),
+						harness.target("qgis"),
+					);
+
+					expect(await layers.addVector(path, name, provider)).toEqual(answer);
+					expectCall(harness, {
+						target: "qgis",
+						method: "layers_add_vector",
+						args: [path, name, provider],
+					});
+				},
+			),
+			{ numRuns: 30 },
 		);
-
-		await layers.addVector("/data/rivers.shp", "Rivers", "ogr");
-
-		expectCall(harness, {
-			target: "qgis",
-			method: "layers_add_vector",
-			args: ["/data/rivers.shp", "Rivers", "ogr"],
-		});
 	});
 
 	it("sends every layer operation and applies vector and raster defaults", async () => {
@@ -538,30 +551,55 @@ describe("Facades over an injected transport", () => {
 		]);
 	});
 
-	it("delivers task progress and completion from emitted events, with no sleep", async () => {
-		const harness = createBridgeHarness();
-		harness.replyJson("qgis", "tasks_run", {
-			task_id: "task123",
-			status: "queued",
-		});
-		const tasks = new TasksAPI(
-			asBridge(harness.events),
-			harness.target("qgis"),
+	it("delivers generated task progress and completion only to their own handle", async () => {
+		await fc.assert(
+			fc.asyncProperty(
+				taskProgress,
+				distinctTaskIds,
+				taskCompletionResult,
+				qgisIdentifier,
+				taskParameters,
+				async (steps, [taskId, otherId], result, name, params) => {
+					const harness = createBridgeHarness();
+					harness.replyJson("qgis", "tasks_run", {
+						task_id: taskId,
+						status: "queued",
+					});
+					const tasks = new TasksAPI(
+						asBridge(harness.events),
+						harness.target("qgis"),
+					);
+
+					const task = await tasks.run(name, params);
+					const progress: number[] = [];
+					const finished: unknown[] = [];
+					task.onProgress((value) => progress.push(value));
+					task.onFinished((value) => finished.push(value));
+
+					for (const value of steps) {
+						harness.emit("task_progress", {
+							task_id: taskId,
+							progress: value,
+						});
+						harness.emit("task_progress", {
+							task_id: otherId,
+							progress: value,
+						});
+					}
+					harness.emit("task_finished", { task_id: taskId, result });
+					harness.emit("task_finished", { task_id: otherId, result: null });
+
+					expectEventPayloads(progress, steps);
+					expectEventPayloads(finished, [result]);
+					expectCall(harness, {
+						target: "qgis",
+						method: "tasks_run",
+						args: [name, params],
+					});
+				},
+			),
+			{ numRuns: 30 },
 		);
-
-		const task = await tasks.run("buffer_task", { distance: 10 });
-		const progress: number[] = [];
-		const finished: unknown[] = [];
-		task.onProgress((value) => progress.push(value));
-		task.onFinished((result) => finished.push(result));
-
-		harness.emit("task_progress", { task_id: "task123", progress: 25 });
-		harness.emit("task_progress", { task_id: "other", progress: 99 });
-		harness.emit("task_progress", { task_id: "task123", progress: 100 });
-		harness.emit("task_finished", { task_id: "task123", result: { ok: true } });
-
-		expectEventPayloads(progress, [25, 100]);
-		expectEventPayloads(finished, [{ ok: true }]);
 	});
 
 	it("unsubscribes cleanly, so a torn-down listener stops hearing events", async () => {
@@ -794,37 +832,41 @@ describe("Facade behavior without a QGIS transport", () => {
 describe("Properties - what the client owes the transport", () => {
 	it("correlates each answer with its own caller, whatever order the host replies in", async () => {
 		await fc.assert(
-			fc.asyncProperty(
-				fc.uniqueArray(fc.string({ minLength: 1, maxLength: 8 }), {
-					minLength: 2,
-					maxLength: 5,
-				}),
-				async (names) => {
-					const harness = createBridgeHarness();
-					const held = harness.hold("qgis", "tasks_run");
-					const tasks = new TasksAPI(
-						asBridge(harness.events),
-						harness.target("qgis"),
+			fc.asyncProperty(concurrentTaskCalls, async (calls) => {
+				const harness = createBridgeHarness();
+				const held = harness.hold("qgis", "tasks_run");
+				const tasks = new TasksAPI(
+					asBridge(harness.events),
+					harness.target("qgis"),
+				);
+
+				const pending = calls.map(({ name, params }) =>
+					tasks.run(name, params),
+				);
+				expect(held.length).toBe(calls.length);
+
+				// Answer in reverse. A client that matched answers to callers by
+				// arrival order would hand every caller the wrong task id.
+				for (const entry of [...held].reverse()) {
+					entry.respond(
+						JSON.stringify({ task_id: `id-${entry.call.args[0]}` }),
 					);
+				}
 
-					const pending = names.map((name) => tasks.run(name, {}));
-					expect(held.length).toBe(names.length);
-
-					// Answer in reverse. A client that matched answers to callers by
-					// arrival order would hand every caller the wrong task id.
-					for (const entry of [...held].reverse()) {
-						entry.respond(
-							JSON.stringify({ task_id: `id-${entry.call.args[0]}` }),
-						);
-					}
-
-					const handles = await Promise.all(pending);
-					expect(handles.map((handle) => handle.task_id)).toEqual(
-						names.map((name) => `id-${name}`),
-					);
-					expectDistinctRequestIds(harness);
-				},
-			),
+				const handles = await Promise.all(pending);
+				expect(handles.map((handle) => handle.task_id)).toEqual(
+					calls.map(({ name }) => `id-${name}`),
+				);
+				expectCallSequence(
+					harness,
+					calls.map(({ name, params }) => ({
+						target: "qgis",
+						method: "tasks_run",
+						args: [name, params],
+					})),
+				);
+				expectDistinctRequestIds(harness);
+			}),
 			{ numRuns: 25 },
 		);
 	});
@@ -853,16 +895,17 @@ describe("Properties - what the client owes the transport", () => {
 			>;
 
 			await fc.assert(
-				fc.asyncProperty(jsonValue, async (answer) => {
+				fc.asyncProperty(jsonValue, qgisIdentifier, async (answer, layerId) => {
 					harness.replyJson("bridge", "get_layer", answer);
 					const { callbackValue, promiseValue } =
 						await expectCallbackAndPromise<unknown>((callback) =>
 							// biome-ignore lint/style/noNonNullAssertion: the proxy exposes get_layer
-							bridge.get_layer!("roads", callback),
+							bridge.get_layer!(layerId, callback),
 						);
 
 					expect(callbackValue).toBe(JSON.stringify(answer));
 					expect(promiseValue).toEqual(answer);
+					expect(harness.calls.at(-1)?.args).toEqual([layerId]);
 				}),
 				{ numRuns: 30 },
 			);
@@ -879,17 +922,17 @@ describe("Properties - what the client owes the transport", () => {
 		);
 
 		await fc.assert(
-			fc.asyncProperty(jsonValue, async (answer) => {
+			fc.asyncProperty(jsonValue, nonJsonText, async (answer, rawText) => {
 				harness.replyJson("qgis", "layers_list", answer);
 				expect(await layers.list()).toEqual(answer as never);
+
+				// A string the host did not serialise must survive as that string, not
+				// become `undefined` because `JSON.parse` threw.
+				harness.reply("qgis", "layers_list", rawText);
+				expect(await layers.list()).toBe(rawText as never);
 			}),
 			{ numRuns: 30 },
 		);
-
-		// A string the host did not serialise must survive as that string, not
-		// become `undefined` because `JSON.parse` threw.
-		harness.reply("qgis", "layers_list", "not json at all");
-		expect(await layers.list()).toBe("not json at all" as never);
 	});
 
 	it("forwards arbitrary JSON arguments to the wire verbatim", async () => {
@@ -901,11 +944,13 @@ describe("Properties - what the client owes the transport", () => {
 		);
 
 		await fc.assert(
-			fc.asyncProperty(callArgs, async (args) => {
+			fc.asyncProperty(qgisIdentifier, callArgs, async (name, args) => {
 				harness.reset();
-				harness.on("qgis", "tasks_run", () => JSON.stringify({ task_id: "t" }));
-				await tasks.run("job", args);
-				expect(harness.calls.at(-1)?.args).toEqual(["job", args]);
+				harness.on("qgis", "tasks_run", () =>
+					JSON.stringify({ task_id: name }),
+				);
+				await tasks.run(name, args);
+				expect(harness.calls.at(-1)?.args).toEqual([name, args]);
 			}),
 			{ numRuns: 30 },
 		);
@@ -1015,20 +1060,23 @@ describe("Properties - what the client owes the transport", () => {
 		else delete scope.QWebChannel;
 	});
 
-	it("reports every progress step a host emits, for its own task only", () => {
+	it("reports every progress step a host emits, for its own generated task only", () => {
 		fc.assert(
-			fc.property(taskProgress, (steps) => {
+			fc.property(taskProgress, distinctTaskIds, (steps, [ownId, otherId]) => {
 				const harness = createBridgeHarness();
 				const seen: number[] = [];
 				const handler = (event: Event) => {
 					const detail = (event as CustomEvent).detail;
-					if (detail.task_id === "mine") seen.push(detail.progress);
+					if (detail.task_id === ownId) seen.push(detail.progress);
 				};
 				harness.events.addEventListener("task_progress", handler);
 
 				for (const progress of steps) {
-					harness.emit("task_progress", { task_id: "mine", progress });
-					harness.emit("task_progress", { task_id: "theirs", progress: 7 });
+					harness.emit("task_progress", { task_id: ownId, progress });
+					harness.emit("task_progress", {
+						task_id: otherId,
+						progress,
+					});
 				}
 
 				expect(seen).toEqual(steps);

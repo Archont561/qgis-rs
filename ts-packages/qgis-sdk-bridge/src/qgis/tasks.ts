@@ -82,7 +82,7 @@ export class TasksAPI {
 				const handler = (e: any) => {
 					const detail = e.detail || {};
 					if (detail.task_id === taskId || detail.id === taskId) {
-						cb(detail.result || detail);
+						cb(Object.hasOwn(detail, "result") ? detail.result : detail);
 					}
 				};
 				this._bridge.addEventListener(
