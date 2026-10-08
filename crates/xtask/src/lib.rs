@@ -24,6 +24,7 @@
 //! other, and a consumer is exactly what the public API is for.
 
 pub mod affected;
+pub mod api_extract;
 pub mod api_manifest;
 pub mod boundaries;
 pub mod bridge_fixtures;
@@ -60,6 +61,7 @@ use clap::{Parser, Subcommand};
                   pixi run xtask setup-qca\n  \
                   pixi run xtask ci-failure-summary <log>\n  \
                   pixi run xtask api-manifest [--check] [--diff-against PATH]\n  \
+                  pixi run xtask api-extract [--check]\n  \
                   pixi run xtask scaffold <operation> <handler>\n  \
                   pixi run xtask release <step>",
     version
@@ -153,6 +155,15 @@ pub enum Command {
         /// C++ native-manager handler identifier, e.g. `project_save`.
         handler: String,
     },
+    /// Discover the declared headers' public API and write the inventory.
+    ///
+    /// Without `--check` the checked-in inventory is regenerated; with it the
+    /// repository is verified the way the `check-api-inventory` lint does.
+    ApiExtract {
+        /// Verify the checked-in inventory instead of rewriting it.
+        #[arg(long)]
+        check: bool,
+    },
     /// The release pipeline, step by step.
     #[command(subcommand)]
     Release(release::Release),
@@ -197,6 +208,7 @@ pub fn run(command: Command) -> Result<()> {
             check,
             diff_against,
         } => api_manifest::run(check, diff_against.as_deref()),
+        Command::ApiExtract { check } => api_extract::run(check),
         Command::Scaffold { operation, handler } => {
             scaffold::repository_operation(&operation, &handler)
         }

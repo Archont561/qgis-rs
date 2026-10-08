@@ -7,10 +7,13 @@
   "source": {
     "extractor": "clang-ast-plus-qgis-binding-metadata",
     "headers": [
+      "qgis.h",
       "qgsapplication.h",
       "qgscoordinatereferencesystem.h",
       "qgsfeature.h",
+      "qgsfeatureiterator.h",
       "qgsgeometry.h",
+      "qgsmaplayer.h",
       "qgsmaprenderersequentialjob.h",
       "qgsmapsettings.h",
       "qgsproject.h",
@@ -204,7 +207,7 @@
       "handler": "layer_crs_authid"
     },
     {
-      "id": "QgsMapLayer::wkbType",
+      "id": "QgsVectorLayer::wkbType",
       "kind": "method",
       "module": "core-data",
       "status": "supported_manual",
