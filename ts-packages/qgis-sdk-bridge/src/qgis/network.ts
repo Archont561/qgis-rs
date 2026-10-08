@@ -1,6 +1,7 @@
 /** qgis.network API — via QGIS NAM */
 
 import type { QgisBridge } from "../window";
+import { QgisTransportAdapter } from "./transport";
 
 export interface QgisNetworkResponse {
 	ok: boolean;
@@ -13,57 +14,54 @@ export interface QgisNetworkResponse {
 	json(): Promise<any>;
 }
 
-export class NetworkAPI {
-	constructor(
-		private _bridge: QgisBridge,
-		private _raw: any,
-	) {}
+interface NetworkWireResponse {
+	ok: boolean;
+	status: number;
+	headers?: Record<string, string>;
+	url?: string;
+	body?: string;
+	error?: string;
+}
 
-	private async _call(method: string, ...args: any[]): Promise<any> {
-		if (this._raw && typeof this._raw[method] === "function") {
-			return new Promise((resolve, reject) => {
+interface NetworkOperations {
+	network_fetch(
+		url: string,
+		method: string,
+		headers: unknown,
+		body: string | null,
+		authCfg: string | null,
+	): NetworkWireResponse;
+}
+
+export class NetworkAPI {
+	private readonly transport: QgisTransportAdapter<NetworkOperations>;
+
+	constructor(bridge: QgisBridge, raw: unknown) {
+		this.transport = new QgisTransportAdapter(bridge, raw, {
+			network_fetch: async (url) => {
+				console.warn("[qgis.network] network_fetch fallback to browser fetch");
 				try {
-					this._raw[method](...args, (res: any) => {
-						if (typeof res === "string") {
-							try {
-								const parsed = JSON.parse(res);
-								resolve(parsed);
-								return;
-							} catch {}
-						}
-						resolve(res);
-					});
-				} catch (e) {
-					reject(e);
+					const response = await fetch(url);
+					const text = await response.text();
+					return {
+						status: response.status,
+						headers: Object.fromEntries(response.headers.entries()),
+						body: text,
+						ok: response.ok,
+						url,
+					};
+				} catch (error) {
+					return {
+						status: 0,
+						headers: {},
+						body: "",
+						ok: false,
+						error: String(error),
+						url,
+					};
 				}
-			});
-		}
-		if (this._bridge && typeof (this._bridge as any)[method] === "function") {
-			return (this._bridge as any)[method](...args);
-		}
-		// Fallback to browser fetch if not in QGIS (for testing)
-		console.warn(`[qgis.network] ${method} fallback to browser fetch`);
-		const url = args[0];
-		try {
-			const resp = await fetch(url);
-			const text = await resp.text();
-			return {
-				status: resp.status,
-				headers: Object.fromEntries(resp.headers.entries()),
-				body: text,
-				ok: resp.ok,
-				url,
-			};
-		} catch (e) {
-			return {
-				status: 0,
-				headers: {},
-				body: "",
-				ok: false,
-				error: String(e),
-				url,
-			};
-		}
+			},
+		});
 	}
 
 	async fetch(
@@ -79,13 +77,16 @@ export class NetworkAPI {
 			authCfg?: string | undefined;
 		} = {},
 	): Promise<QgisNetworkResponse> {
-		const res = await this._call(
+		const res = await this.transport.call(
 			"network_fetch",
-			url,
-			opts.method || "GET",
-			opts.headers || {},
-			opts.body || null,
-			opts.authCfg || null,
+			[
+				url,
+				opts.method || "GET",
+				opts.headers || {},
+				opts.body || null,
+				opts.authCfg || null,
+			],
+			{ callbackResponse: "json" },
 		);
 
 		return {
@@ -103,7 +104,7 @@ export class NetworkAPI {
 					return null;
 				}
 			},
-		};
+		} as QgisNetworkResponse;
 	}
 
 	async get(

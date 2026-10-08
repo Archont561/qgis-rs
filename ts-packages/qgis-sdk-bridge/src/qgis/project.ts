@@ -1,6 +1,7 @@
 /** qgis.project API */
 
 import type { QgisBridge } from "../window";
+import { QgisTransportAdapter } from "./transport";
 
 export interface QgisProjectInfo {
 	path: string;
@@ -8,58 +9,61 @@ export interface QgisProjectInfo {
 	title: string;
 }
 
-export class ProjectAPI {
-	constructor(
-		private _bridge: QgisBridge,
-		private _raw: any,
-	) {}
+interface ProjectOperations {
+	project_info(): QgisProjectInfo;
+	project_write(): boolean;
+	project_crs(): string;
+	project_set_crs(authid: string): boolean;
+	project_path(): string;
+}
 
-	private async _call(method: string, ...args: any[]): Promise<any> {
-		if (this._raw && typeof this._raw[method] === "function") {
-			return new Promise((resolve, reject) => {
-				try {
-					this._raw[method](...args, (res: any) => {
-						if (typeof res === "string") {
-							try {
-								const parsed = JSON.parse(res);
-								resolve(parsed);
-								return;
-							} catch {}
-						}
-						resolve(res);
-					});
-				} catch (e) {
-					reject(e);
-				}
-			});
-		}
-		if (this._bridge && typeof (this._bridge as any)[method] === "function") {
-			return (this._bridge as any)[method](...args);
-		}
-		console.warn(`[qgis.project] ${method} mock`);
-		if (method === "project_info") return { path: "", crs: "", title: "" };
-		if (method === "project_crs") return "";
-		if (method === "project_path") return "";
-		return true;
+const jsonCallback = { callbackResponse: "json" } as const;
+
+export class ProjectAPI {
+	private readonly transport: QgisTransportAdapter<ProjectOperations>;
+
+	constructor(bridge: QgisBridge, raw: unknown) {
+		this.transport = new QgisTransportAdapter(bridge, raw, {
+			project_info: () => {
+				console.warn("[qgis.project] project_info mock");
+				return { path: "", crs: "", title: "" };
+			},
+			project_write: () => {
+				console.warn("[qgis.project] project_write mock");
+				return true;
+			},
+			project_crs: () => {
+				console.warn("[qgis.project] project_crs mock");
+				return "";
+			},
+			project_set_crs: () => {
+				console.warn("[qgis.project] project_set_crs mock");
+				return true;
+			},
+			project_path: () => {
+				console.warn("[qgis.project] project_path mock");
+				return "";
+			},
+		});
 	}
 
 	async info(): Promise<QgisProjectInfo> {
-		return this._call("project_info");
+		return this.transport.call("project_info", [], jsonCallback);
 	}
 
 	async write(): Promise<boolean> {
-		return this._call("project_write");
+		return this.transport.call("project_write", [], jsonCallback);
 	}
 
 	async crs(): Promise<string> {
-		return this._call("project_crs");
+		return this.transport.call("project_crs", [], jsonCallback);
 	}
 
 	async setCrs(authid: string): Promise<boolean> {
-		return this._call("project_set_crs", authid);
+		return this.transport.call("project_set_crs", [authid], jsonCallback);
 	}
 
 	async path(): Promise<string> {
-		return this._call("project_path");
+		return this.transport.call("project_path", [], jsonCallback);
 	}
 }
