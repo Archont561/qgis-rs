@@ -20,8 +20,8 @@
  * puts every global back.
  */
 
-import type { ScriptedBridgeObject } from "@/ts-packages/test-utils/src/bridge-globals.ts";
-import { installBridgeGlobals } from "@/ts-packages/test-utils/src/bridge-globals.ts";
+import type { ScriptedBridgeObject } from "@/bridge-globals.ts";
+import { installBridgeGlobals } from "@/bridge-globals.ts";
 
 /** One call the transport answered, oldest first. */
 export interface HarnessCall {

@@ -4,8 +4,8 @@ export {
 	jsonValue,
 	taskProgress,
 	wireMethodName,
-} from "@/ts-packages/test-utils/src/arbitraries.ts";
-export type { ExpectedCall } from "@/ts-packages/test-utils/src/assertions.ts";
+} from "@/arbitraries.ts";
+export type { ExpectedCall } from "@/assertions.ts";
 export {
 	expectCall,
 	expectCallbackAndPromise,
@@ -15,15 +15,15 @@ export {
 	expectErrorKind,
 	expectEventPayloads,
 	expectRejectedKind,
-} from "@/ts-packages/test-utils/src/assertions.ts";
+} from "@/assertions.ts";
 export type {
 	BridgeCall,
 	BridgeGlobalsOverrides,
 	InstalledBridgeGlobals,
 	ScriptedBridgeObject,
 	ScriptedChannel,
-} from "@/ts-packages/test-utils/src/bridge-globals.ts";
-export { installBridgeGlobals } from "@/ts-packages/test-utils/src/bridge-globals.ts";
+} from "@/bridge-globals.ts";
+export { installBridgeGlobals } from "@/bridge-globals.ts";
 export type {
 	BridgeHarness,
 	BridgeHarnessOptions,
@@ -31,14 +31,14 @@ export type {
 	HarnessDescription,
 	HarnessHandler,
 	HeldCall,
-} from "@/ts-packages/test-utils/src/bridge-harness.ts";
+} from "@/bridge-harness.ts";
 export {
 	BridgeHarnessError,
 	createBridgeHarness,
 	DEFAULT_DESCRIPTIONS,
-} from "@/ts-packages/test-utils/src/bridge-harness.ts";
+} from "@/bridge-harness.ts";
 export type {
 	Fixture,
 	FixtureScope,
-} from "@/ts-packages/test-utils/src/fixture.ts";
-export { createFixture } from "@/ts-packages/test-utils/src/fixture.ts";
+} from "@/fixture.ts";
+export { createFixture } from "@/fixture.ts";

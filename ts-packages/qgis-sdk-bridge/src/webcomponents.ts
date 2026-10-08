@@ -2,15 +2,9 @@
  * Web Components for QGIS bridge — with complete QGIS API, built with bun
  */
 
-import {
-	createBridge,
-	createQgisBridge,
-} from "@/ts-packages/qgis-sdk-bridge/src/index.js";
-import type { QgisAPI } from "@/ts-packages/qgis-sdk-bridge/src/qgis.js";
-import type {
-	BridgeOptions,
-	QgisBridge,
-} from "@/ts-packages/qgis-sdk-bridge/src/window.js";
+import { createBridge, createQgisBridge } from "@/index.js";
+import type { QgisAPI } from "@/qgis.js";
+import type { BridgeOptions, QgisBridge } from "@/window.js";
 
 export class QgisBridgeElement extends HTMLElement {
 	bridge: QgisBridge | null = null;

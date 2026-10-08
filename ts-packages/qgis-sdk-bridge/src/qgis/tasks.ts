@@ -1,7 +1,7 @@
 /** qgis.tasks API */
 
-import { QgisTransportAdapter } from "@/ts-packages/qgis-sdk-bridge/src/qgis/transport";
-import type { QgisBridge } from "@/ts-packages/qgis-sdk-bridge/src/window";
+import { QgisTransportAdapter } from "@/qgis/transport";
+import type { QgisBridge } from "@/window";
 
 export interface QgisTaskHandle {
 	task_id: string;

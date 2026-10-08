@@ -8,11 +8,12 @@
 		"types": ["bun"],
 		"outDir": "dist",
 		"rootDir": "src",
-		// Bunup's declaration resolver reads path metadata from this nearest config,
-		// so restate the shared alias with the repository as its explicit base.
-		"baseUrl": "../..",
+		// Keep package-local imports short; `$` is reserved for the rare
+		// repository-wide import that intentionally crosses a package boundary.
+		"baseUrl": ".",
 		"paths": {
-			"@/*": ["*"]
+			"@/*": ["src/*"],
+			"$/*": ["../../*"]
 		}
 	},
 	"include": ["src/**/*.ts"],

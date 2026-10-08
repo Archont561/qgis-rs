@@ -1,7 +1,7 @@
 /** qgis.project API */
 
-import { QgisTransportAdapter } from "@/ts-packages/qgis-sdk-bridge/src/qgis/transport";
-import type { QgisBridge } from "@/ts-packages/qgis-sdk-bridge/src/window";
+import { QgisTransportAdapter } from "@/qgis/transport";
+import type { QgisBridge } from "@/window";
 
 export interface QgisProjectInfo {
 	path: string;

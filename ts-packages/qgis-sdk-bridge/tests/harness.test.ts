@@ -34,25 +34,16 @@ import {
 } from "@qgis/test-utils";
 import fc from "fast-check";
 
-import { createBridgeFromDescription } from "@/ts-packages/qgis-sdk-bridge/src/description.ts";
-import { IfaceAPI } from "@/ts-packages/qgis-sdk-bridge/src/qgis/iface.ts";
-import { LayersAPI } from "@/ts-packages/qgis-sdk-bridge/src/qgis/layers.ts";
-import { MessageAPI } from "@/ts-packages/qgis-sdk-bridge/src/qgis/message.ts";
-import { NetworkAPI } from "@/ts-packages/qgis-sdk-bridge/src/qgis/network.ts";
-import { ProcessingAPI } from "@/ts-packages/qgis-sdk-bridge/src/qgis/processing.ts";
-import { ProjectAPI } from "@/ts-packages/qgis-sdk-bridge/src/qgis/project.ts";
-import { SettingsAPI } from "@/ts-packages/qgis-sdk-bridge/src/qgis/settings.ts";
-import { TasksAPI } from "@/ts-packages/qgis-sdk-bridge/src/qgis/tasks.ts";
-import type { QgisBridge } from "@/ts-packages/qgis-sdk-bridge/src/window.ts";
-import {
-	concurrentTaskCalls,
-	distinctTaskIds,
-	nonJsonText,
-	qgisIdentifier,
-	taskCompletionResult,
-	taskParameters,
-	vectorLayerCall,
-} from "@/ts-packages/qgis-sdk-bridge/tests/strategies.ts";
+import { createBridgeFromDescription } from "@/description.ts";
+import { IfaceAPI } from "@/qgis/iface.ts";
+import { LayersAPI, type QgisLayerInfo } from "@/qgis/layers.ts";
+import { MessageAPI } from "@/qgis/message.ts";
+import { NetworkAPI } from "@/qgis/network.ts";
+import { ProcessingAPI } from "@/qgis/processing.ts";
+import { ProjectAPI } from "@/qgis/project.ts";
+import { SettingsAPI } from "@/qgis/settings.ts";
+import { TasksAPI } from "@/qgis/tasks.ts";
+import type { QgisBridge } from "@/window.ts";
 
 /**
  * The bridge seen from a facade: an `EventTarget` and nothing else.
@@ -65,6 +56,72 @@ import {
  */
 const asBridge = (events: EventTarget): QgisBridge =>
 	events as unknown as QgisBridge;
+
+/** A compact identifier accepted anywhere the wire expects an opaque id. */
+const qgisIdentifier: fc.Arbitrary<string> = fc.stringMatching(
+	/^[A-Za-z][A-Za-z0-9_-]{0,15}$/,
+);
+
+/** Human-readable input without constraining the bridge to fixture literals. */
+const displayName: fc.Arbitrary<string> = fc.string({
+	minLength: 1,
+	maxLength: 24,
+});
+
+/** JSON object parameters accepted by task and processing facades. */
+const taskParameters: fc.Arbitrary<Record<string, unknown>> = fc.dictionary(
+	qgisIdentifier,
+	jsonValue,
+	{ maxKeys: 4 },
+);
+
+/** Distinct concurrent task calls, including the parameters sent for each. */
+const concurrentTaskCalls = fc.uniqueArray(
+	fc.record({
+		name: qgisIdentifier,
+		params: taskParameters,
+	}),
+	{
+		minLength: 2,
+		maxLength: 5,
+		selector: ({ name }) => name,
+	},
+);
+
+/** A complete vector-layer request and the host answer paired with it. */
+const vectorLayerCall: fc.Arbitrary<{
+	path: string;
+	name: string;
+	provider: string;
+	answer: QgisLayerInfo;
+}> = fc.record({
+	path: fc
+		.tuple(qgisIdentifier, fc.constantFrom("gpkg", "shp", "geojson"))
+		.map(([base, extension]) => `/data/${base}.${extension}`),
+	name: displayName,
+	provider: qgisIdentifier,
+	answer: fc.record({
+		id: qgisIdentifier,
+		name: displayName,
+		type: fc.constant<"vector">("vector"),
+	}),
+});
+
+/** A task result, weighted toward falsy values that `||` would corrupt. */
+const taskCompletionResult: fc.Arbitrary<unknown> = fc.oneof(
+	fc.constantFrom(null, false, 0, ""),
+	jsonValue,
+);
+
+/** Two task ids guaranteed not to overlap during event-filtering properties. */
+const distinctTaskIds: fc.Arbitrary<[string, string]> = fc
+	.tuple(qgisIdentifier, qgisIdentifier)
+	.filter(([own, other]) => own !== other);
+
+/** An ordinary host string that is guaranteed not to parse as JSON. */
+const nonJsonText: fc.Arbitrary<string> = fc
+	.string({ maxLength: 32 })
+	.map((text) => `not-json:${text}`);
 
 const qgisMethods = [
 	["iface_zoom_to_layer", ["id"]],
@@ -883,9 +940,7 @@ describe("Properties - what the client owes the transport", () => {
 	 * equals the second.
 	 */
 	it("settles callback and promise exactly once, the callback with the raw wire answer", async () => {
-		const { createBridge } = await import(
-			"@/ts-packages/qgis-sdk-bridge/src/window.ts"
-		);
+		const { createBridge } = await import("@/window.ts");
 		const harness = createBridgeHarness();
 		harness.installGlobals();
 		try {

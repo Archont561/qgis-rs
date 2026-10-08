@@ -27,6 +27,7 @@
 			]
 		},
 		"typecheck": {
+			"dependsOn": ["^build"],
 			"outputs": [],
 			"inputs": [
 				"src/**",

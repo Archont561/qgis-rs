@@ -1,7 +1,7 @@
 /** qgis-sdk-bridge window.ts — QgisBridge extends EventTarget, windows-like (EventSource/WebSocket) */
 
-import type { BridgeDescription } from "@/ts-packages/qgis-sdk-bridge/src/description";
-import { loadDescription } from "@/ts-packages/qgis-sdk-bridge/src/description";
+import type { BridgeDescription } from "@/description";
+import { loadDescription } from "@/description";
 
 export interface BridgeOptions {
 	objectName?: string;
@@ -57,9 +57,7 @@ export class QgisBridge extends EventTarget {
 	}
 
 	async _connect(): Promise<void> {
-		const { loadQWebChannel } = await import(
-			"@/ts-packages/qgis-sdk-bridge/src/loader.js"
-		);
+		const { loadQWebChannel } = await import("@/loader.js");
 
 		// Try to load description from window first (injected by Python)
 		this.description = loadDescription();

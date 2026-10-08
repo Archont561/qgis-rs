@@ -2,12 +2,8 @@
  * Vue composables for QGIS bridge — with complete QGIS API, built with bun
  */
 
-import {
-	createBridge,
-	createQgisBridge,
-	onQgisMessage,
-} from "@/ts-packages/qgis-sdk-bridge/src/index.js";
-import type { BridgeOptions } from "@/ts-packages/qgis-sdk-bridge/src/window.js";
+import { createBridge, createQgisBridge, onQgisMessage } from "@/index.js";
+import type { BridgeOptions } from "@/window.js";
 
 export function useQgisBridge(
 	objectName: string | BridgeOptions = "bridge",

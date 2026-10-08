@@ -1,7 +1,7 @@
 /** qgis.processing API */
 
-import { QgisTransportAdapter } from "@/ts-packages/qgis-sdk-bridge/src/qgis/transport";
-import type { QgisBridge } from "@/ts-packages/qgis-sdk-bridge/src/window";
+import { QgisTransportAdapter } from "@/qgis/transport";
+import type { QgisBridge } from "@/window";
 
 interface ProcessingOperations {
 	processing_run(algorithmId: string, params: unknown): unknown;

@@ -11,11 +11,8 @@
 
 import { expect } from "bun:test";
 
-import type {
-	BridgeHarness,
-	HarnessCall,
-} from "@/ts-packages/test-utils/src/bridge-harness.ts";
-import { BridgeHarnessError } from "@/ts-packages/test-utils/src/bridge-harness.ts";
+import type { BridgeHarness, HarnessCall } from "@/bridge-harness.ts";
+import { BridgeHarnessError } from "@/bridge-harness.ts";
 
 /** What a test expects to see on the wire. `args` is compared when given. */
 export interface ExpectedCall {
