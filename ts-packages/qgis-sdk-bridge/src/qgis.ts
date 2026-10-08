@@ -149,26 +149,6 @@ export async function createQgisBridge<T = QgisBridge>(
 		(window as any).qgisBridge = bridge;
 	}
 
-	// Wire signals from Python to JS EventTarget via bridge
-	bridge.addEventListener("layer_added", (e: any) =>
-		qgisApi.dispatchEvent(new CustomEvent("layer_added", { detail: e.detail })),
-	);
-	bridge.addEventListener("layer_removed", (e: any) =>
-		qgisApi.dispatchEvent(
-			new CustomEvent("layer_removed", { detail: e.detail }),
-		),
-	);
-	bridge.addEventListener("task_progress", (e: any) =>
-		qgisApi.dispatchEvent(
-			new CustomEvent("task_progress", { detail: e.detail }),
-		),
-	);
-	bridge.addEventListener("task_finished", (e: any) =>
-		qgisApi.dispatchEvent(
-			new CustomEvent("task_finished", { detail: e.detail }),
-		),
-	);
-
 	return { bridge, qgis: qgisApi };
 }
 
