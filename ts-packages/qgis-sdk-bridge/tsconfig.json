@@ -7,7 +7,13 @@
 		"lib": ["ES2023", "DOM", "DOM.Iterable"],
 		"types": ["bun"],
 		"outDir": "dist",
-		"rootDir": "src"
+		"rootDir": "src",
+		// Bunup's declaration resolver reads path metadata from this nearest config,
+		// so restate the shared alias with the repository as its explicit base.
+		"baseUrl": "../..",
+		"paths": {
+			"@/*": ["*"]
+		}
 	},
 	"include": ["src/**/*.ts"],
 	// Tests are typechecked by `tsconfig.test.json` instead of being excluded silently: this

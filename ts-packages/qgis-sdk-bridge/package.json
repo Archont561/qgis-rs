@@ -50,14 +50,13 @@
 		"README.md"
 	],
 	"scripts": {
-		"build": "bun build src/index.ts --outdir dist --target browser --format esm && bun build src/react.ts --outdir dist --target browser --format esm && bun build src/vue.ts --outdir dist --target browser --format esm && bun build src/svelte.ts --outdir dist --target browser --format esm && bun build src/webcomponents.ts --outdir dist --target browser --format esm && bun build src/loader.ts --outdir dist --target browser --format esm && bun build src/qgis.ts --outdir dist --target browser --format esm && bun build src/window.ts --outdir dist --target browser --format esm && bun build src/description.ts --outdir dist --target browser --format esm && bun run build:types",
-		"build:types": "tsc --emitDeclarationOnly && bun run scripts/rewrite-declaration-aliases.ts",
-		"dev": "bun --watch build",
+		"build": "bunup",
+		"dev": "bunup --watch",
 		"test": "bun test ./tests",
 		"coverage": "bun test ./tests --coverage",
 		"test:watch": "bun test ./tests --watch",
 		"typecheck": "tsc --noEmit --project tsconfig.test.json",
-		"pack:check": "cargo run -q -p xtask --manifest-path ../../Cargo.toml -- pack-check ts-packages/qgis-sdk-bridge dist/index.js dist/index.d.ts dist/react.js dist/loader.js README.md",
+		"pack:check": "cargo run -q -p xtask --manifest-path ../../Cargo.toml -- pack-check ts-packages/qgis-sdk-bridge dist/index.js dist/index.cjs dist/index.d.ts dist/react.js dist/react.d.ts dist/vue.js dist/vue.d.ts dist/svelte.js dist/svelte.d.ts dist/webcomponents.js dist/webcomponents.d.ts dist/loader.js dist/loader.d.ts dist/qgis.js dist/qgis.d.ts dist/window.js dist/window.d.ts dist/description.js dist/description.d.ts README.md",
 		"lint": "bunx biome check .",
 		"format": "bunx biome format --write .",
 		"prepublishOnly": "bun run build"
@@ -89,6 +88,7 @@
 	"devDependencies": {
 		"@qgis/test-utils": "workspace:*",
 		"@types/bun": "latest",
+		"bunup": "^0.16.32",
 		"fast-check": "^4.10.2",
 		"typescript": "^5.4.5"
 	},

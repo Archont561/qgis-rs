@@ -6,7 +6,7 @@
 			"outputs": ["dist/**", "*.node"],
 			"inputs": [
 				"src/**",
-				"scripts/**",
+				"bunup.config.ts",
 				"package.json",
 				"tsconfig.json",
 				"tsconfig.*.json",
