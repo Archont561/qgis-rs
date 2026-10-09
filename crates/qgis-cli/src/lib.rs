@@ -16,8 +16,7 @@ use std::process::ExitCode;
 
 /// Parse arguments from the process environment and run the selected command.
 ///
-/// This is the entry point used by both the standalone `qgis-cli` binary and
-/// the `qgis_py` Python package's `qgis-cli` console script wrapper.
+/// This is the entry point used by the standalone `qgis-cli` binary.
 pub fn main_entry() -> ExitCode {
     let cli = Cli::parse();
     match run(cli.command) {
