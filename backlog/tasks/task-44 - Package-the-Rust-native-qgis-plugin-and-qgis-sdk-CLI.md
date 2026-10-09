@@ -4,7 +4,7 @@ title: Package the Rust-native qgis-plugin and qgis-sdk CLI
 status: To Do
 assignee: []
 created_date: '2026-10-03 09:35'
-updated_date: '2026-10-09 15:47'
+updated_date: '2026-10-09 21:51'
 labels:
   - qgis-sdk
   - cli
@@ -50,4 +50,6 @@ Ship one canonical Rust plugin-development CLI through Python and optional Node 
 
 <!-- SECTION:NOTES:BEGIN -->
 Superseded (2026-10). qgis-plugin is dropped and qgis-sdk is pure Python, so there is no Rust binary to package. The qgis-cli binary packaging moves to TASK-58, and the zip packaging moves to TASK-57.
+
+Decision: keep the crates/qgis-sdk crate. The qgis-sdk wheel ships the built Rust binary, and the Python qgis-sdk main forwards argv, stdout, stderr, signals and exit status to it. No Python fallback re-implements commands. qgis-sdk is the only command name; qgis-plugin is not part of this task.
 <!-- SECTION:NOTES:END -->
