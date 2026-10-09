@@ -4,6 +4,7 @@ title: Move qgis-sdk-bridge into @archont561/qgis-sdk and vendor it into the sca
 status: In Progress
 assignee: []
 created_date: '2026-10-09 15:47'
+updated_date: '2026-10-09 15:57'
 labels:
   - qgis-sdk
   - bridge
@@ -25,3 +26,9 @@ type: enhancement
 <!-- SECTION:PLAN:BEGIN -->
 1. git mv ts-packages/qgis-sdk-bridge to ts-packages/qgis-sdk and rename the package. 2. Point Python templates, codegen and tests at @archont561/qgis-sdk. 3. Update build, release and Biome config, then refresh bun.lock. 4. Update docs and READMEs. 5. Run the gates.
 <!-- SECTION:PLAN:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Done in 52cfc21: the package moved to ts-packages/qgis-sdk as @archont561/qgis-sdk, with 99 bun tests and 55 Python bridge tests passing and gates green. Still open: AC3, the scaffold copying the bridge bundle into web/ only for a WebEngine UI.
+<!-- SECTION:NOTES:END -->
