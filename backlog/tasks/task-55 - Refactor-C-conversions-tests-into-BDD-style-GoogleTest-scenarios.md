@@ -4,7 +4,7 @@ title: Refactor C++ conversions tests into BDD-style GoogleTest scenarios
 status: Done
 assignee: []
 created_date: '2026-10-09 10:06'
-updated_date: '2026-10-09 10:16'
+updated_date: '2026-10-09 11:34'
 labels:
   - testing
   - cpp
@@ -41,6 +41,8 @@ Coverage after the fix (cpp-coverage exit 0): conversions 32/33 lines (97.0%), 7
 Corrected commit list: docs 2a4489b; envelope 17ba447; handle 844dee2; response 58f52aa; red 2^53 test ce76e1b; fix 1a3a117; evidence f3840cb.
 
 pixi run gates exit 0 on f3840cb: Rust 328 + 30 runs (358), doctests 6, qgis-sdk 405+3 skipped plus 3 and 5 qt/qgis gates, qgis-rs pytest 21 (434 total), Bun 37+99+13 = 149, C++ ctest conversions passes with 18 cases.
+
+Hashes above predate a re-clone of the sandbox. The same chain was recreated and pushed as 44188f3 docs, 0088b5d test, 44aba39 fix, 869a23c chore.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
