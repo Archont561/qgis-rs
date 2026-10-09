@@ -110,3 +110,36 @@ cargo:rerun-if-env-changed=QGIS_INCLUDE_DIR
 cargo:rerun-if-env-changed=QT_INCLUDE_DIR
 cargo:rerun-if-env-changed=QGIS_LIB_DIR
 ```
+
+## Native coverage (TASK-50)
+
+Run `pixi run xtask cpp-coverage` offline in the default environment. This
+separate producer is also called by `xtask ci --stage coverage`; neither
+`test-cpp` nor `pixi run gates` instruments anything. gcovr 8.3 and GCC/gcov
+14.4.0 are packed in the developer sandbox. The LLVM packages here provide
+clang analysis tools, but no clang/clang++ drivers, so native coverage uses GCC.
+
+The producer recreates only `target/cpp-coverage/`, builds the conversions
+GoogleTest/RapidCheck suite with `--coverage -O0 -g`, then runs the 30
+qgis-sys/qgis-mcp QGIS-feature tests under nextest, serially and offscreen.
+A private Cargo target uses `CXX=g++`, `CXXFLAGS=--coverage -O0 -g -fprofile-update=atomic` and
+`RUSTFLAGS=-C link-arg=-lgcov`; ordinary build.rs and normal caches are unchanged.
+Atomic counter updates protect measurements when concurrent C ABI callers
+run inside a test. GCC records counters beside each object; process exit flushes them. gcovr
+searches only this private tree, merging both suites and all test processes.
+It includes production native-manager sources and headers, not test bodies,
+Qt/QGIS, or other external headers. No production line/branch exclusions are
+applied. Generated `operation_table.inc` executable rows are included;
+`api_manifest.h` contains only macro constants and has no executable lines.
+Uncovered manager lines are test gaps, not exclusions. Branch coverage includes
+compiler-generated exception edges and is reported, not gated.
+
+Outputs: `target/coverage/native.xml` (Cobertura, Codecov flag `native`),
+`native.json` (line/function/branch detail) and `native-summary.json`.
+The validator requires executed conversions and manager rows and enforces an
+unrounded 95% conversions line floor. The measured baseline on 2026-10-09:
+conversions 33/34 (97.1%), manager 451/566 (79.7%), generated table 17/17;
+total 501/617 lines (81.2%), 110/121 functions (90.9%), 913/2180 branches
+(41.9%). The uncovered conversions line is the allocation-failure return.
+Raising native coverage remains TASK-49. Codecov upload is nonfatal and only
+runs on main pushes or manual CI dispatch, like the existing coverage lane.
