@@ -191,7 +191,10 @@ fn build_artifacts() -> Result<()> {
     // qgis-py ships the prebuilt qgis-cli binary inside its wheel. Stage it
     // from this runner before maturin packs the wheel, so every platform's
     // wheel carries the binary built on that platform.
-    pixi("default", ["python", "py-packages/qgis-py/scripts/stage_cli.py"])?;
+    pixi(
+        "default",
+        ["python", "py-packages/qgis-py/scripts/stage_cli.py"],
+    )?;
     for distribution in PY_DISTRIBUTIONS {
         pixi(
             "default",
