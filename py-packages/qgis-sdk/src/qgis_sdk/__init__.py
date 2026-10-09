@@ -4,10 +4,8 @@ The SDK is importable without QGIS installed: only :mod:`qgis_sdk.runtime`
 touches PyQGIS, and it does so lazily. That is what makes unit-testing plugin
 logic possible on a plain developer machine.
 
-Now with Rust-native CLI and acceleration:
-- `pip install qgis-sdk` gives you `qgis-sdk` binary + Python API at native speed
-- `qgis-sdk new my_plugin --rust` scaffolds a plugin with Rust acceleration
-- `import qgis_sdk` tries to load Rust extension `_core` for native speed, falls back to Python
+Pure Python. `pip install qgis-sdk` gives the `qgis-sdk` console command and
+the Python API. There is no native extension.
 """
 
 from __future__ import annotations
@@ -76,16 +74,6 @@ try:
     __version__ = _dist_version("qgis-sdk")
 except Exception:  # source tree without installed metadata
     __version__ = "0.1.0"
-
-try:
-    from ._core import version as _rust_version  # type: ignore
-
-    HAS_RUST = True
-    RUST_VERSION = _rust_version()
-except ImportError:
-    __version__ = "0.1.0"
-    HAS_RUST = False
-    RUST_VERSION = None
 
 # CLI is available via qgis_sdk.cli
 try:
@@ -274,7 +262,6 @@ __all__ = [
     "Plugin",
     "PyQgisImportError",
     "__version__",
-    "HAS_RUST",
     "HAS_CLI",
     "HAS_UI",
     "HAS_TESTING",
@@ -283,7 +270,6 @@ __all__ = [
     "HAS_TASKS",
     "HAS_QT",
     "HAS_STYLES",
-    "RUST_VERSION",
     "StyleSheet",
     "LayerStyle",
     "StyleRenderer",

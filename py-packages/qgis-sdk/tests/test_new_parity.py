@@ -8,23 +8,10 @@ even with a native core present, `new` must write the Python scaffold tree.
 
 from __future__ import annotations
 
-import pytest
+
 
 from qgis_sdk import cli
 from qgis_sdk.scaffold import scaffold_plugin
-
-
-class _ForbiddenNativeCore:
-    """Stands in for the retired native module. Any call is a failure."""
-
-    def scaffold_plugin(self, *args, **kwargs):
-        raise AssertionError("native scaffold must not be called")
-
-
-@pytest.fixture
-def native_core_present(monkeypatch):
-    monkeypatch.setattr(cli, "HAS_RUST", True, raising=False)
-    monkeypatch.setattr(cli, "core", _ForbiddenNativeCore(), raising=False)
 
 
 def _tree(root):
@@ -35,14 +22,14 @@ def _tree(root):
     }
 
 
-def test_new_does_not_call_the_native_scaffold(native_core_present, tmp_path, capsys):
+def test_new_scaffolds_a_plugin_tree(tmp_path, capsys):
     code = cli.main(["new", "demo_plugin", "-o", str(tmp_path)])
 
     assert code == 0, capsys.readouterr().err
     assert (tmp_path / "demo_plugin" / "metadata.txt").is_file()
 
 
-def test_new_writes_the_python_scaffold_tree(native_core_present, tmp_path):
+def test_new_writes_the_python_scaffold_tree(tmp_path):
     cli_dir = tmp_path / "cli"
     direct_dir = tmp_path / "direct"
     cli_dir.mkdir()

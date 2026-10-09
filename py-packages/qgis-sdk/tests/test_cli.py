@@ -107,10 +107,3 @@ def test_cli_module_entrypoint_displays_help():
     assert result.returncode == 0
     assert "qgis-sdk" in result.stdout or "QGIS plugin SDK" in result.stdout
 
-def test_native_extension_is_used_in_ci():
-    import qgis_sdk
-
-    assert isinstance(qgis_sdk.HAS_RUST, bool)
-    if os.environ.get("QGIS_REQUIRE_NATIVE") == "1":
-        assert qgis_sdk.HAS_RUST is True
-        assert qgis_sdk.RUST_VERSION == qgis_sdk.__version__
