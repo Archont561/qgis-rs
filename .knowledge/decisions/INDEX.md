@@ -4,6 +4,7 @@ Architectural decision records for qgis-rs. Each document captures a decision, i
 
 ## Active Decisions
 
+* [D14 — qgis-sdk CLI transport: native argv forwarding; capabilities over the wire protocol](/decisions/D14-qgis-sdk-cli-transport-argv-forwarding.md) - The Python CLI forwards raw argv to one `cli_main` pyfunction and parses nothing; engine capabilities stay on the D09 wire protocol; a missing native extension is a loud error.
 * [D13 — Rust CLI, FFI, and QGIS SDK product boundaries](/decisions/D13-rust-cli-ffi-and-qgis-sdk-boundaries.md) - GIS execution, cross-language embedding, plugin tooling, and the QGIS-hosted runtime remain separate products with shared Rust protocol components.
 * [D12 — QGIS Native Manager over the C ABI](/decisions/D12-qgis-native-manager-over-c-abi.md) - QGIS state has one dedicated owner thread, `qgis-protocol` is normative, artifacts stay path-based, and crash isolation is deferred.
 * [D11 — Tests Outside `src/`](/decisions/D11-tests-outside-src.md) - One layout in every language: source in `src/`, tests in `tests/`, and anything a test needs is public.

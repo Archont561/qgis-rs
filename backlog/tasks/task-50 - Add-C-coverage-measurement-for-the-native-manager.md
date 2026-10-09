@@ -4,7 +4,7 @@ title: Add C++ coverage measurement for the native manager
 status: To Do
 assignee: []
 created_date: '2026-10-07 12:08'
-updated_date: '2026-10-07 12:08'
+updated_date: '2026-10-09 00:10'
 labels:
   - testing
   - coverage
@@ -31,14 +31,14 @@ What is unmeasured today:
 - `manager.cpp` (925 lines) — the owner thread, registry, dispatch and every handler; it runs only inside the Rust `qgis`-feature tests, and the cc build that links it into those test binaries carries no instrumentation.
 - `crates/qgis-sys/include/native_manager/generated/*` — generated fragments, which need an explicit policy instead of a silent gap.
 
-Constrained by the offline environment: the `clang`/`clang++` drivers are absent (LLVM 22.1.8 ships clang-check, clang-query, clang-tidy and clang-format only), so LLVM-instrumented C++ coverage is not available here; the GCC toolchain (14.4.0) does provide `gcov` with `--json-format`, while `gcovr` and `lcov` are absent and conda-forge is unreachable from the sandbox. Either the report is rendered by a converter this repository owns (D10: an xtask subcommand), or a new tool is added through a runner-side pixi.lock change like TASK-24's.
+Constrained by the offline environment: the `clang`/`clang++` drivers are absent (LLVM 22.1.8 ships clang-check, clang-query, clang-tidy and clang-format only), so LLVM-instrumented C++ coverage is not available here; the GCC toolchain (14.4.0) does provide `gcov` with `--json-format`, while `gcovr` and `lcov` are absent and conda-forge is unreachable from the sandbox. Either the report is rendered by a converter this repository owns (D10: an xtask subcommand), or a new tool is added through a runner-side pixi.lock change like TASK-24's. Decision (2026-10-09): the tool route — `gcovr` is declared in `[feature.cpp-test.dependencies]`, and the lock is refreshed runner-side by the relock bot during the PR (the guard detects the drift, the bot commits the refreshed `pixi.lock`).
 
 This task only adds measurement. Raising the numbers, and the repository-wide 95 percent target, stay with TASK-49.
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 A single offline command (for example `pixi run xtask cpp-coverage`) instruments the C++ translation units, runs the suites that execute them, and writes a report under `target/coverage/` beside the Rust, Python and JavaScript artifacts. No new pixi dependency and no network access are required for it to run.
+- [ ] #1 A single offline command (for example `pixi run xtask cpp-coverage`) instruments the C++ translation units, runs the suites that execute them, and writes a report under `target/coverage/` beside the Rust, Python and JavaScript artifacts. The command runs in the default pixi environment with `gcovr` available (declared in `[feature.cpp-test.dependencies]`; the lock was refreshed runner-side by the relock bot) and requires no network access.
 - [ ] #2 `conversions.cpp` coverage is enforced rather than printed: the command fails when coverage drops below the recorded threshold, and the measured numbers and the exact command that produced them are recorded in this task's notes.
 - [ ] #3 `manager.cpp` is measured from the Rust `qgis`-feature tests, the only place it executes, by instrumenting the cc build and merging the profiles from those runs; anything left uncovered is either a test gap or an explicit reviewed exclusion with a reason, never an omission.
 - [ ] #4 The report is uploaded to Codecov as its own native component, while `pixi run test-cpp`, `pixi run gates` and the default gate keep their current behaviour and cost: coverage stays a separate stage exactly as the Rust and Python coverage producers are today.
@@ -51,3 +51,9 @@ This task only adds measurement. Raising the numbers, and the repository-wide 95
 - [ ] #2 Run `pixi run test-cpp` and `pixi run gates` and confirm both still pass with the coverage build absent from the default gate.
 - [ ] #3 Confirm the native component appears in the Codecov report for the merged commit, or record in the notes why that verification belongs to the runner rather than the sandbox.
 <!-- DOD:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+2026-10-09: `gcovr >=8,<9` declared in `pixi.toml` `[feature.cpp-test.dependencies]` (next to gtest/rapidcheck, like TASK-24's cmake/ninja precedent). The sandbox cannot reach conda-forge, so `pixi.lock` is refreshed runner-side: the relock guard detects the drift on the PR and the pixi-sandbox bot commits the refreshed lock. The owned-converter route (a D10 xtask subcommand rendering gcov JSON directly) remains the fallback if the tool route is rejected in review.
+<!-- SECTION:NOTES:END -->

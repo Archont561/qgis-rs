@@ -117,6 +117,8 @@ still useful; the disposition below says whether it governs current work.
 | [D10 — xtask over Shell Scripts](../../../.knowledge/decisions/D10-xtask-over-shell-scripts.md) | **Accepted** | Repository automation is `pixi run xtask`; gate and release proof are TASK-21 and the D10 commands. |
 | [D11 — Tests Outside `src/`](../../../.knowledge/decisions/D11-tests-outside-src.md) | **Accepted** | Source/tests layout is current repository policy; property/fixture migration is TASK-23. |
 | [D12 — QGIS Native Manager over C ABI](../../../.knowledge/decisions/D12-qgis-native-manager-over-c-abi.md) | **Accepted** | Current RFC 19 gate: owner queue, normative protocol, path artifacts, deferred crash isolation. TASK-25.1–TASK-25.3 depend on it. |
+| [D13 — Rust CLI, FFI, and QGIS SDK product boundaries](../../../.knowledge/decisions/D13-rust-cli-ffi-and-qgis-sdk-boundaries.md) | **Accepted** | Product boundaries for qgis-cli / qgis-plugin / qgis_rs / qgis_sdk; CLI launcher stabilization is TASK-42; the ui preview dev loop is doc-10 / TASK-54. |
+| [D14 — qgis-sdk CLI transport](../../../.knowledge/decisions/D14-qgis-sdk-cli-transport-argv-forwarding.md) | **Accepted** | CLI transport is native argv forwarding (`cli_main` pyfunction; Python parses nothing); capabilities stay on the D09 wire protocol; a missing native extension is a loud CLI error. Implementation is TASK-26 / TASK-41 / TASK-42. |
 
 ## Existing-task reconciliation
 
