@@ -1,5 +1,17 @@
 # Bundle Update Log
 
+## 2026-10-10 (port Rust validate to Python, slice 1 of the qgis-sdk migration)
+
+* **Landed on `arena/8333daf5-qgis-rs`**: `ac719ea` (feat). `pixi run gates` exit 0. qgis-sdk pytest 436 passed, 4 skipped.
+* **Finding that set the order**: the Python stub fallback (`_fallback_cli.py`) returned no errors from `validate`, and two Rust implementations disagreed. The `qgis-sdk` crate required `[general]`, `name=` and `version=`. `qgis-sdk-core` required a metadata or `.py` file, and checked qwebchannel in web HTML. Deleting the crate first would have made `validate` a silent no-op.
+* **Decision (user)**: the port keeps the union of both rule sets.
+* **Port**: `qgis_sdk/plugin_validation.py` is now the only validator. `cli._cmd_validate` calls it and no longer uses `_core`. `tests/test_validate_parity.py` (13 tests) pins the behaviour at the `cli.main` seam.
+* **Deviation from red-first**: the red tests were run (3 failed against the union spec) but not committed on their own. They share a commit with the port.
+* **Still Rust-only**: `info`, `version`, `metadata_fields`, `render_metadata_from_dict`, `rust init`, `ui add-*`, `build`/`test`/`package`/`install`, and `new`. The crates `qgis-sdk` and `qgis-sdk-core` stay until each is ported.
+* **Next session opening prompt**:
+
+  > Read the validate-port entry in `.knowledge/log.md`. Continue the qgis-sdk migration with the next Rust-only command, `info`, then `version`, using red tests at the `cli.main` seam. Keep the crates until every command is ported, then remove them as one slice. Stop after each slice's gates for review.
+
 ## 2026-10-09 (remove built-in CLIs from qgis-py and qgis-node)
 
 * **Landed on `arena/8333daf5-qgis-rs`**: `5122a61` and `2f73d3c` (red guard tests for qgis-py and qgis-node), `47a909a` (qgis-py CLI removed), `db85d37` (qgis-sdk `qgis-cli` shim removed), `41b02b4` (qgis-node CLI removed), `92fffc9` (docs), a root `package.json` comma fix, and a format commit. `pixi run gates` exit 0 at HEAD.
