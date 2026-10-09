@@ -1,9 +1,10 @@
 ---
 id: TASK-58
 title: Ship the prebuilt qgis-cli binary through @archont561/qgis-node
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-10-09 15:47'
+updated_date: '2026-10-09 15:59'
 labels:
   - qgis-node
   - cli
@@ -18,3 +19,15 @@ type: enhancement
 - [ ] #2 The download is checked against a SHA-256 digest before it is run
 - [ ] #3 The qgis-sdk and qgis-plugin bins are removed from qgis-node
 <!-- AC:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. Rename the qgis-node npm package from qgis-rs to @archont561/qgis-node, and update the napi config, turbo tasks and the release list. 2. Remove the qgis-sdk and qgis-plugin bins from qgis-node. 3. bin/qgis-cli.js downloads the platform binary for the current OS and CPU from the release URL, verifies its SHA-256 digest, caches it, and runs it. 4. Export runCli(argv) returning { exitCode, stdout, stderr }. 5. Test the download and digest check with a local fixture server, then run the gates.
+<!-- SECTION:PLAN:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Started. The code has not changed yet; the plan above is the first step.
+<!-- SECTION:NOTES:END -->
