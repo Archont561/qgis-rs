@@ -52,3 +52,24 @@ def test_scaffold_without_web_ships_no_bridge_bundle(tmp_path, with_ui):
 
     assert not list(base.rglob(BUNDLE_NAME))
     assert not (base / "bridge_plain" / "web").exists()
+
+
+def test_vendored_bundle_publishes_the_webengine_globals():
+    bundle = (VENDOR_DIR / BUNDLE_NAME).read_text(encoding="utf-8")
+
+    assert "qgisReady" in bundle
+    assert "qgisBridge" in bundle
+
+
+@pytest.mark.parametrize("framework", ["vanilla", "react", "vue", "webcomponents"])
+def test_every_webengine_page_loads_the_vendored_bundle(tmp_path, framework):
+    from qgis_sdk.scaffold import scaffold_plugin
+
+    base = Path(
+        scaffold_plugin("page_plugin", str(tmp_path), with_ui=True, with_web=True, web_framework=framework)
+    )
+    pages = sorted((base / "page_plugin" / "web").glob("*.html"))
+
+    assert pages
+    for page in pages:
+        assert f'src="{BUNDLE_NAME}"' in page.read_text(encoding="utf-8"), page.name

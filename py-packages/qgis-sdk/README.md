@@ -405,5 +405,12 @@ cd ts-packages/qgis-sdk && bun run build
 python py-packages/qgis-sdk/scripts/vendor_bridge.py
 ```
 
+On a WebEngine page the bundle publishes the QGIS API as globals, so a plain script
+needs no bundler: `window.qgis` (layers, project, message, tasks, network, iface, settings),
+`window.qgisBridge`, and `window.qgisReady` (a promise for `window.qgis`). It also publishes
+`window.qgisChannel(transport, cb)`, which the scaffolded pages use. Open the page's
+QWebChannel through it rather than with `new QWebChannel(...)`, because a second channel on
+one transport takes over the first one's replies. Outside WebEngine nothing is published.
+
 `tests/test_bridge_vendor.py` fails if the vendored file and manifest drift apart, or if
 the manifest version differs from the TypeScript package.

@@ -51,7 +51,7 @@
 	],
 	"scripts": {
 		"build": "bunup && bun run build:bundle",
-		"build:bundle": "bun build src/index.ts --format=iife --global-name=QgisSdk --minify --target=browser --outfile=dist/bundle/qgis-sdk.js",
+		"build:bundle": "bun build src/browser.ts --format=iife --global-name=QgisSdk --minify --target=browser --outfile=dist/bundle/qgis-sdk.js",
 		"dev": "bunup --watch",
 		"test": "bun test ./tests",
 		"coverage": "bun test ./tests --coverage",

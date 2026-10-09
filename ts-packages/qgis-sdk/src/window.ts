@@ -1,5 +1,6 @@
 /** qgis-sdk window.ts — QgisBridge extends EventTarget, windows-like (EventSource/WebSocket) */
 
+import { openChannel } from "@/channel.js";
 import type { BridgeDescription } from "@/description";
 import { loadDescription } from "@/description";
 
@@ -141,7 +142,7 @@ export class QgisBridge extends EventTarget {
 					return;
 				}
 
-				new QWebChannelGlobal(transport, (channel: any) => {
+				openChannel(QWebChannelGlobal, transport, (channel: any) => {
 					clearTimeout(timeoutId);
 					this._channel = channel;
 					const raw = channel.objects[this._objectName];

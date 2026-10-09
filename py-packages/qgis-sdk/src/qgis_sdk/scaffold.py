@@ -485,6 +485,8 @@ WEB_MAP_HTML = """<!DOCTYPE html>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="qrc:///qtwebchannel/qwebchannel.js"></script>
+<script src="qgis-sdk.js"></script>
+<!-- One QWebChannel per page: open it with qgisChannel(transport, cb), which qgis-sdk.js publishes. A second `new QWebChannel` takes over the first one's replies. -->
 <style>
   html, body { height: 100%; margin: 0; padding: 0; font-family: sans-serif; }
   #map { height: 85%; }
@@ -505,7 +507,7 @@ WEB_MAP_HTML = """<!DOCTYPE html>
   var bridge = null;
   var map = L.map('map').setView([51.505, -0.09], 13);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-  new QWebChannel(qt.webChannelTransport, function(channel) {
+  qgisChannel(qt.webChannelTransport, function(channel) {
     bridge = channel.objects.bridge;
     if (bridge) {
       bridge.get_layer(function(result) {
@@ -549,6 +551,8 @@ WEB_REACT_HTML = """<!DOCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>QGIS + React</title>
 <script src="qrc:///qtwebchannel/qwebchannel.js"></script>
+<script src="qgis-sdk.js"></script>
+<!-- One QWebChannel per page: open it with qgisChannel(transport, cb), which qgis-sdk.js publishes. A second `new QWebChannel` takes over the first one's replies. -->
 <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -570,7 +574,7 @@ function useQgisBridge() {
   const [bridge, setBridge] = useState(null);
   const [ready, setReady] = useState(false);
   useEffect(() => {
-    new QWebChannel(qt.webChannelTransport, (channel) => {
+    qgisChannel(qt.webChannelTransport, (channel) => {
       setBridge(channel.objects.bridge);
       setReady(true);
     });
@@ -624,6 +628,8 @@ WEB_VUE_HTML = """<!DOCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>QGIS + Vue</title>
 <script src="qrc:///qtwebchannel/qwebchannel.js"></script>
+<script src="qgis-sdk.js"></script>
+<!-- One QWebChannel per page: open it with qgisChannel(transport, cb), which qgis-sdk.js publishes. A second `new QWebChannel` takes over the first one's replies. -->
 <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
 <style>
   html, body { margin:0; padding:0; font-family: sans-serif; height:100%; }
@@ -659,7 +665,7 @@ createApp({
       if (bridge.value && bridge.value.log) bridge.value.log(`Hello from Vue`, (reply) => { callCount.value++; });
     };
     onMounted(() => {
-      new QWebChannel(qt.webChannelTransport, (channel) => { bridge.value = channel.objects.bridge; ready.value = true; loadLayer(); });
+      qgisChannel(qt.webChannelTransport, (channel) => { bridge.value = channel.objects.bridge; ready.value = true; loadLayer(); });
       window.updateFromVue = (data) => { const info = typeof data === 'string' ? JSON.parse(data) : data; message.value = info.message || JSON.stringify(info); window.dispatchEvent(new CustomEvent('qgis-message', {detail: info})); };
       window.qgisBridge = window.qgisBridge || {};
       window.qgisBridge.onMessage = window.updateFromVue;
@@ -680,6 +686,8 @@ WEB_COMPONENTS_HTML = """<!DOCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>QGIS + Web Components</title>
 <script src="qrc:///qtwebchannel/qwebchannel.js"></script>
+<script src="qgis-sdk.js"></script>
+<!-- One QWebChannel per page: open it with qgisChannel(transport, cb), which qgis-sdk.js publishes. A second `new QWebChannel` takes over the first one's replies. -->
 <style>
   html, body { margin:0; padding:0; font-family: sans-serif; height:100%; }
   .header { padding:12px; background:#f5f5f5; border-bottom:1px solid #ddd; }
@@ -719,7 +727,7 @@ class QgisToolbar extends HTMLElement {
 }
 customElements.define('qgis-toolbar', QgisToolbar);
 let bridge=null;
-new QWebChannel(qt.webChannelTransport, (channel)=>{ bridge=channel.objects.bridge; document.getElementById('status').textContent='Bridge connected'; document.getElementById('layerCard').setBridge(bridge); document.getElementById('toolbar').setBridge(bridge); });
+qgisChannel(qt.webChannelTransport, (channel)=>{ bridge=channel.objects.bridge; document.getElementById('status').textContent='Bridge connected'; document.getElementById('layerCard').setBridge(bridge); document.getElementById('toolbar').setBridge(bridge); });
 window.updateFromWC=(data)=>{ const info=typeof data==='string'?JSON.parse(data):data; document.getElementById('layerCard').update(info); window.dispatchEvent(new CustomEvent('qgis-message', {detail: info})); };
 window.qgisBridge = window.qgisBridge || {};
 window.qgisBridge.onMessage = window.updateFromWC;
