@@ -74,10 +74,8 @@ pub const FORBIDDEN_EDGES: &[(&str, &str, &str)] = &[(
 pub const BINDING_CRATES: &[&str] = &["qgis-py", "qgis-node"];
 
 /// `(executable, the one crate allowed to declare it)` — D13 §1 and §4.
-pub const CANONICAL_BINARIES: &[(&str, &str)] = &[
-    ("qgis-cli", "qgis-cli"),
-    ("qgis-sdk", "qgis-sdk"),
-];
+pub const CANONICAL_BINARIES: &[(&str, &str)] =
+    &[("qgis-cli", "qgis-cli"), ("qgis-sdk", "qgis-sdk")];
 
 /// Repository automation executables. They are not product commands, so they
 /// need no D13 owner: `xtask` is the only one, and it is never shipped.
