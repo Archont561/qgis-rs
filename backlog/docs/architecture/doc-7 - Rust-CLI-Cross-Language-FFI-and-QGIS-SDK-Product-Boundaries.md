@@ -10,6 +10,8 @@ date: 2026-10-03
 
 # Rust CLI, Cross-Language FFI, and QGIS SDK Product Boundaries
 
+> **Superseded in part by D15.** The `qgis-sdk` command is a pure-Python typer application in `py-packages/qgis-sdk`. The Rust-native CLI direction, the earlier executable name, and the `qgis-sdk-core` crate and `qgis_sdk._core` extension are retired. `crates/qgis-sdk` and `crates/qgis-sdk-core` were removed in 2d8d69a. The FFI and product-boundary analysis for `qgis-cli`, `qgis_rs`, `qgis-node`, and the hosted `qgis_sdk` runtime still applies. Items marked (retired) below are kept only as the record of the earlier design.
+
 ## Purpose
 
 This specification records the product split discussed for qgis-rs. It prevents the standalone GIS engine, the Python/Node bindings, and the QGIS-hosted plugin SDK from accumulating overlapping command semantics or incompatible runtime assumptions.
@@ -27,7 +29,7 @@ qgis-cli
 qgis-rs Python/Node clients
   Embed the shared Rust engine through one versioned protocol.
 
-qgis-plugin / qgis-sdk CLI
+qgis-sdk CLI
   Develops, tests, packages, and publishes QGIS plugins.
 
 qgis_sdk runtime
@@ -53,12 +55,12 @@ qgis-engine ------> qgis-render
       |                    |
 qgis-cli            optional QGIS backend
 
-qgis-sdk-core -----> qgis-protocol
+qgis-sdk-core (retired) -----> qgis-protocol
       |              optional qgis-engine/qgis-render reuse
       v
-qgis-plugin / qgis-sdk binaries
+qgis-sdk binary
       v
-qgis_sdk._core (optional PyO3 tooling adapter)
+qgis_sdk._core (retired PyO3 tooling adapter)
 
 qgis_sdk Python runtime -----> qgis, qgis.core, qgis.gui, PyQt/QGIS Qt
 ```
@@ -68,7 +70,7 @@ The standalone bindings are sibling adapters:
 ```text
 qgis_rs._core      -> qgis-engine -> qgis-render/native manager
 qgis-node addon    -> qgis-engine -> qgis-render/native manager
-qgis_sdk._core     -> qgis-sdk-core
+qgis_sdk._core (retired) -> qgis-sdk-core (retired)
 qgis_sdk runtime   -> PyQGIS/PyQt inside the QGIS host
 ```
 
@@ -256,37 +258,37 @@ qgis-rs npm bin wrapper       -> canonical qgis-cli executable
 
 Launchers must preserve arguments, stdout, stderr, signals, and exit status. They must not contain alternate command semantics or silent fallbacks.
 
-## Rust-native `qgis-plugin` / `qgis-sdk` CLI
+## Plugin CLI `qgis-sdk` (Rust-native direction retired; see D15)
 
 ### Audience and runtime
 
 The plugin CLI serves plugin developers. It consumes a plugin source tree and produces a plugin project, test result, build artifact, or repository package.
 
 ```text
-qgis-plugin / qgis-sdk
+qgis-sdk
   develops, tests, packages, and publishes plugins
 ```
 
-The canonical implementation should be Rust. `qgis-plugin` is the canonical executable name; `qgis-sdk` may remain an exact compatibility alias. Both call the same command library and parser.
+Superseded by D15: the implementation is pure Python (typer, with questionary prompts for non-web UI scaffolding). `qgis-sdk` is the only executable name; the earlier name is retired and is not an alias.
 
 ### Commands
 
 The SDK CLI should own:
 
 ```text
-qgis-plugin new
-qgis-plugin info
-qgis-plugin validate
-qgis-plugin build
-qgis-plugin test
-qgis-plugin dev
-qgis-plugin install
-qgis-plugin package
-qgis-plugin publish
-qgis-plugin ui add-dialog
-qgis-plugin bridge generate
-qgis-plugin rust init
-qgis-plugin rust build
+qgis-sdk new
+qgis-sdk info
+qgis-sdk validate
+qgis-sdk build
+qgis-sdk test
+qgis-sdk dev
+qgis-sdk install
+qgis-sdk package
+qgis-sdk publish
+qgis-sdk ui add-dialog
+qgis-sdk bridge generate
+qgis-sdk rust init
+qgis-sdk rust build
 ```
 
 Rust should implement or orchestrate:
@@ -307,12 +309,12 @@ The hosted plugin runtime remains Python/PyQGIS/PyQt. Rust CLI generation and te
 
 ### SDK versus standalone CLI
 
-| Concern | `qgis-cli` | `qgis-plugin` / `qgis-sdk` |
+| Concern | `qgis-cli` | `qgis-sdk` |
 | --- | --- | --- |
 | Input | project, layer, extent, data, job manifest | plugin source tree |
 | Output | map, tiles, features, JSON, service | source tree, test report, wheel, ZIP, metadata |
 | User | operator or GIS automation | plugin developer |
-| Core | `qgis-engine` and `qgis-render` | `qgis-sdk-core` tooling domain |
+| Core | `qgis-engine` and `qgis-render` | none (`qgis-sdk-core` retired) |
 | QGIS | optional backend for GIS operations | optional runtime for integration tests/dev launch |
 | UI | no plugin UI | generates/tests plugin UI |
 | Processing | executes or delegates to QGIS | scaffolds/tests Processing plugin code |
@@ -327,7 +329,7 @@ The `qgis-sdk` Rust crate may depend directly on `qgis-protocol`, `qgis-engine`,
 The `qgis-sdk` Python package has two explicit parts:
 
 1. Hosted runtime: PyQGIS/PyQt-native plugin, UI, Processing, task, and lifecycle APIs.
-2. Optional native tooling/acceleration: a separate `qgis_sdk._core` adapter or plugin-specific Rust module.
+2. (Retired by D15) Optional native tooling: the `qgis_sdk._core` adapter was removed; `qgis-sdk` is pure Python.
 
 The standalone `qgis_rs` package remains independently installable. An optional SDK extra may use it for pure Rust acceleration only when the QGIS Python ABI and package availability are validated. The base SDK must not require it.
 
@@ -347,7 +349,7 @@ Required test layers include:
 
 ```text
 Rust unit/integration tests
-  qgis-render, qgis-protocol, qgis-engine, qgis-cli, qgis-sdk-core
+  qgis-render, qgis-protocol, qgis-engine, qgis-cli (qgis-sdk-core retired)
 
 Cross-language contract tests
   Rust, Python, TypeScript, and native manager shared fixtures
@@ -381,7 +383,7 @@ A pure Rust or FFI test must not require WebEngine. A failed real UI constructio
 1. Define and test this product and dependency contract.
 2. Stabilize pure `qgis-cli` discovery, validation, inspection, tile planning, batch planning, errors, artifacts, and backend gates.
 3. Stabilize shared protocol fixtures and Python/Node FFI clients.
-4. Build the Rust-native `qgis-sdk-core` CLI and make `qgis-plugin`/`qgis-sdk` share one implementation.
+4. (Superseded by D15) One pure-Python `qgis-sdk` typer implementation; the Rust-native `qgis-sdk-core` CLI is retired.
 5. Remove duplicated Python/JavaScript CLI semantics and silent fallbacks.
 6. Separate `qgis_sdk` hosted runtime from standalone `qgis_rs` and add optional acceleration boundaries.
 7. Integrate the native manager and QGIS-hosted UI/Processing behavior behind explicit capabilities.

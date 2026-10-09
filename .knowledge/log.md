@@ -1,5 +1,16 @@
 # Bundle Update Log
 
+## 2026-10-10 (qgis-sdk migration, slice 6: typer CLI, real commands, live text)
+
+* **Dependencies**: `typer>=0.27,<1` and `questionary>=2.1,<3` are the approved qgis-sdk dependencies. They are in `pixi.toml` (`py-runtime` feature) and in `py-packages/qgis-sdk/pyproject.toml`. `pixi.lock` is refreshed by `relock.yml`, because `pixi lock` cannot reach conda.anaconda.org from this sandbox.
+* **CLI**: `cli.py` is a typer application (`app`, `main(argv) -> int`). Option names and choices match the retired argparse tree. Usage errors return 2. Questionary asks for the dialog name only at a TTY (`ui add-dialog`).
+* **Commands that now do their work**: `package` (and `build`) writes `<name>.zip` with the plugin package folder and its `metadata.txt`. `install` copies the package into the QGIS profile. `test` runs pytest and cargo as requested. `rust build` runs cargo. `dev` and `publish` without `--dry-run` exit non-zero with "not implemented". `publish --dry-run` checks that the archive exists.
+* **Bundle**: `package --bundle` copies `bootstrap.py` into the package. `--offline-wheel` copies the wheel into `<package>/wheels/`, so it ships inside the archive. The retired code put wheels next to the package, outside the zip.
+* **Metadata**: `metadata_fields()` and `render_metadata_from_dict()` are ported. They use the same `METADATA_FIELDS` table `render_metadata` already uses (20 fields), so there is one table.
+* **Scripts**: `QGIS_REQUIRE_NATIVE=1` is removed from the qgis-sdk `package.json` test scripts. No qgis-sdk code read it. qgis-py and qgis-node keep it.
+* **Live text**: doc-1, doc-3 and doc-7 no longer name the retired executable or the retired crates. doc-7 carries a supersession banner pointing to D15. README and `.knowledge/qgis-ui.md` no longer cite `HAS_RUST` or `_core`.
+* **Blocked here**: `cargo` cannot reach crates.io (TLS EOF) and there is no vendored cache, so `cargo test -p xtask --offline` cannot run in this sandbox. The `gates` task runs the same xtask suite; CI is the proof for it.
+
 ## 2026-10-10 (qgis-sdk migration, slice 5: _core, the crates and maturin)
 
 * **Landed on `arena/8333daf5-qgis-rs`**: `1e238d9` (drop `_core`, its fallback and the Rust flags), `66923fe` (setuptools backend), `2d8d69a` (remove `crates/qgis-sdk` and `crates/qgis-sdk-core`). `pixi run gates` exit 0 at `2d8d69a`. qgis-sdk pytest 459 passed, 4 skipped. `cargo test -p xtask` and `cargo check --workspace` pass.
