@@ -267,7 +267,11 @@ export function setVersion(
 	setTomlVersion(join(root, "Cargo.toml"), "workspace.package", version);
 	setCargoInternalDependencyVersions(root, version);
 	// qgis-rs is the deprecated alias: a pure-Python hatchling project with no pixi manifest.
-	setTomlVersion(join(root, "py-packages/qgis-rs/pyproject.toml"), "project", version);
+	setTomlVersion(
+		join(root, "py-packages/qgis-rs/pyproject.toml"),
+		"project",
+		version,
+	);
 	for (const dist of ["qgis-py", "qgis-sdk"]) {
 		setTomlVersion(
 			join(root, `py-packages/${dist}/pixi.toml`),
