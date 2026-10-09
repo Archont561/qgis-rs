@@ -9,9 +9,12 @@ import sys
 from pathlib import Path
 
 def test_cli_import():
-    from qgis_sdk.cli import build_parser, main
-    parser = build_parser()
-    assert parser is not None
+    import typer
+
+    from qgis_sdk.cli import app, main
+
+    assert isinstance(app, typer.Typer)
+    assert callable(main)
 
 def test_cli_version(capsys):
     from qgis_sdk.cli import main
@@ -73,6 +76,8 @@ def test_cli_build_and_package(tmp_path, capsys):
     plugin_dir = tmp_path / "test_pkg"
     plugin_dir.mkdir()
     (plugin_dir / "metadata.txt").write_text("[general]\nname=test_pkg\nversion=0.1.0\n")
+    (plugin_dir / "test_pkg").mkdir()
+    (plugin_dir / "test_pkg" / "__init__.py").write_text("")
 
     # Need to chdir to plugin dir for build/package that uses current dir
     orig = Path.cwd()
@@ -84,7 +89,7 @@ def test_cli_build_and_package(tmp_path, capsys):
 
         rc = main(["package", "-o", "dist"])
         assert rc == 0
-        assert (plugin_dir / "dist").exists()
+        assert (plugin_dir / "dist" / "test_pkg.zip").is_file()
     finally:
         os.chdir(orig)
 
