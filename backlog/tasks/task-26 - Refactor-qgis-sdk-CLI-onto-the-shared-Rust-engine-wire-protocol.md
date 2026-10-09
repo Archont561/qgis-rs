@@ -1,10 +1,10 @@
 ---
 id: TASK-26
 title: Refactor qgis-sdk CLI onto the shared Rust engine wire protocol
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-10-03 01:51'
-updated_date: '2026-10-09 00:10'
+updated_date: '2026-10-09 12:02'
 labels:
   - qgis-sdk
   - qgis-py
@@ -85,4 +85,8 @@ Selected architecture (D14): move the clap command tree and handlers into a `qgi
 The accepted product boundary is recorded in doc-7. qgis-sdk must not depend directly on qgis-py; its Rust CLI may reuse shared protocol/engine crates, while hosted UI and Processing remain PyQGIS/PyQt-owned. Follow TASK-40, TASK-43, and TASK-44 for the decomposed work.
 
 2026-10-09: the transport decision is recorded in D14 — (a) native argv forwarding for the CLI transport (`cli_main` pyfunction; Python parses nothing), (b) the D09 wire protocol for capabilities. Edge cases are owned by the transport contract: non-UTF-8 argv via `Vec<OsString>`, exit codes as `i32` mapped by `sys.exit`, in-process stdout/stderr, clap-owned `--help`/completion. AC#1 is checked; AC#2–#6 remain implementation work.
+
+Slice 1 (892ff26): the plugin command tree moved into the pure-Rust qgis-sdk-core library behind run_cli(argv) -> i32. The qgis-plugin binary and the qgis-sdk alias are one-line mains over it; the qgis-sdk stub is gone, and --help output is identical. Gates green.
+
+Findings that block AC2-AC6 and need decisions: (1) build, test, install, dev, package and publish print messages and write nothing in both Rust and Python; the Rust dirs and chrono are hand-written stubs and the zip name is the constant 20260918. (2) bootstrap, vendor and bridge generate exist only in Python; bridge generate introspects Python classes, so it cannot be a pure-Rust port. (3) AC2 asks for a versioned JSON invoke entry point, but D14 chose argv forwarding; the AC text needs amending or D14 needs revising. TASK-26 stays In Progress.
 <!-- SECTION:NOTES:END -->
