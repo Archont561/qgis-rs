@@ -1,7 +1,7 @@
 //! `qgis-sdk-core` — the pure-Rust command tree of the plugin CLI.
 //!
-//! Plugin scaffolding, metadata, validation and the rest of `qgis-plugin` live
-//! here, in one library, so the `qgis-plugin` binary, the `qgis-sdk` alias and
+//! Plugin scaffolding, metadata, validation and the rest of `qgis-sdk` live
+//! here, in one library, so the `qgis-sdk` binary, the `qgis-sdk` alias and
 //! the Python `qgis_sdk._core` extension parse and run the same commands (D13 §1,
 //! D14). The crate has no PyO3, no QGIS and no Qt dependency: a plugin developer
 //! runs these commands without a QGIS installation.
@@ -14,7 +14,7 @@ use std::process::ExitCode;
 
 #[derive(Debug, Parser)]
 #[command(
-    name = "qgis-plugin",
+    name = "qgis-sdk",
     version,
     about = "QGIS plugin SDK — scaffold, build, test, and publish plugins at native speed (with UI + WebEngine support)"
 )]
@@ -195,10 +195,10 @@ struct UiAddWebArgs {
     path: Option<PathBuf>,
 }
 
-/// Parse `argv` as a `qgis-plugin` command line, run it, and return the exit code.
+/// Parse `argv` as a `qgis-sdk` command line, run it, and return the exit code.
 ///
 /// `argv` starts with the program name, as `std::env::args_os()` does. This is
-/// the one parser behind the `qgis-plugin` and `qgis-sdk` binaries (D13 §1: the
+/// the one parser behind the `qgis-sdk` and `qgis-sdk` binaries (D13 §1: the
 /// alias must not carry a second parser) and behind the `qgis_sdk._core`
 /// extension (D14). clap prints `--help`, `--version` and usage errors itself,
 /// on the stream and with the exit code it chooses.
@@ -219,13 +219,13 @@ where
     match run(cli.command) {
         Ok(()) => 0,
         Err(error) => {
-            eprintln!("qgis-plugin: {error:#}");
+            eprintln!("qgis-sdk: {error:#}");
             1
         }
     }
 }
 
-/// The `main` shared by the `qgis-plugin` and `qgis-sdk` binaries.
+/// The `main` shared by the `qgis-sdk` and `qgis-sdk` binaries.
 #[must_use]
 pub fn main_entry() -> ExitCode {
     ExitCode::from(u8::try_from(run_cli(std::env::args_os())).unwrap_or(1))
@@ -243,7 +243,7 @@ fn run(cmd: Command) -> Result<()> {
         Command::Validate(args) => cmd_validate(args),
         Command::Version => {
             println!(
-                "qgis-plugin {} (Rust-native, from qgis-sdk)",
+                "qgis-sdk {} (Rust-native, from qgis-sdk)",
                 env!("CARGO_PKG_VERSION")
             );
             println!("  UI: dialogs (.ui + uic.loadUiType) + WebEngine (QWebChannel, qrc:///qtwebchannel/qwebchannel.js)");
@@ -630,9 +630,9 @@ QGIS plugin built with qgis-sdk (Rust-native CLI) — with UI dialogs and WebEng
 ```bash
 pip install qgis-sdk
 python -m pytest
-qgis-plugin install
-qgis-plugin dev
-qgis-plugin package
+qgis-sdk install
+qgis-sdk dev
+qgis-sdk package
 ```
 "#
         )
@@ -647,9 +647,9 @@ QGIS plugin built with qgis-sdk (Rust-native CLI) — with UI dialogs.
 ```bash
 pip install qgis-sdk
 python -m pytest
-qgis-plugin install
-qgis-plugin dev
-qgis-plugin package
+qgis-sdk install
+qgis-sdk dev
+qgis-sdk package
 ```
 
 ## UI Pattern
@@ -670,9 +670,9 @@ QGIS plugin built with qgis-sdk (Rust-native CLI).
 ```bash
 pip install qgis-sdk
 python -m pytest
-qgis-plugin install
-qgis-plugin dev
-qgis-plugin package
+qgis-sdk install
+qgis-sdk dev
+qgis-sdk package
 ```
 "#
         )
@@ -785,7 +785,7 @@ fn _native(m: &Bound<'_, PyModule>) -> PyResult<()> {
     println!("Next:");
     println!("  cd {}", plugin_path.display());
     println!("  python -m pytest");
-    println!("  qgis-plugin validate");
+    println!("  qgis-sdk validate");
 
     Ok(())
 }
@@ -795,7 +795,7 @@ fn cmd_build(args: BuildArgs) -> Result<()> {
     if args.rust {
         println!("  Building Rust module...");
         if !Path::new("Cargo.toml").exists() {
-            anyhow::bail!("Cargo.toml not found — run `qgis-plugin rust init` first");
+            anyhow::bail!("Cargo.toml not found — run `qgis-sdk rust init` first");
         }
     }
     println!("  Build complete. Output in {}", args.output.display());

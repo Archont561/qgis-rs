@@ -86,13 +86,13 @@ web_view.page().setWebChannel(channel)
 
 ```bash
 # Generate single .d.ts file
-qgis-plugin bridge generate --bridge my_plugin.dialogs.web_dialog:Bridge --output web/bridge.d.ts
+qgis-sdk bridge generate --bridge my_plugin.dialogs.web_dialog:Bridge --output web/bridge.d.ts
 
 # Generate full package (bridge.d.ts + bridge.js + react.ts + vue.ts + webcomponents.ts)
-qgis-plugin bridge generate --bridge my_plugin.dialogs.web_dialog:Bridge --output web/ --package
+qgis-sdk bridge generate --bridge my_plugin.dialogs.web_dialog:Bridge --output web/ --package
 
 # Custom names
-qgis-plugin bridge generate --bridge my_plugin.dialogs.web_dialog:MapBridge --output web/bridge.d.ts --name MapBridge --object-name bridge --framework react
+qgis-sdk bridge generate --bridge my_plugin.dialogs.web_dialog:MapBridge --output web/bridge.d.ts --name MapBridge --object-name bridge --framework react
 ```
 
 Supports both notations:
@@ -281,7 +281,7 @@ import type { Bridge } from './bridge';
 const useQgisBridge = createReactHook<Bridge>({ useState, useEffect });
 ```
 
-Vite template (scaffolded via `qgis-plugin new my_plugin --web --framework react`):
+Vite template (scaffolded via `qgis-sdk new my_plugin --web --framework react`):
 
 ```json
 {
@@ -367,10 +367,10 @@ customElements.define('my-map', MyMap);
 
 ## Scaffold Integration
 
-`qgis-plugin new` with `--web` now always generates `web/bridge.d.ts`:
+`qgis-sdk new` with `--web` now always generates `web/bridge.d.ts`:
 
 ```bash
-qgis-plugin new my_plugin --web --framework react
+qgis-sdk new my_plugin --web --framework react
 # Creates:
 # my_plugin/web/map.html (Leaflet + @archont561/qgis-sdk comment)
 # my_plugin/web/react.html (React CDN + useQgisBridge)
@@ -379,9 +379,9 @@ qgis-plugin new my_plugin --web --framework react
 # my_plugin/frontend/package.json (with @archont561/qgis-sdk)
 # my_plugin/frontend/src/App.tsx (typed hook)
 
-qgis-plugin new my_plugin --web --framework vue
-qgis-plugin new my_plugin --web --framework webcomponents
-qgis-plugin new my_plugin --web # all 4 examples
+qgis-sdk new my_plugin --web --framework vue
+qgis-sdk new my_plugin --web --framework webcomponents
+qgis-sdk new my_plugin --web # all 4 examples
 ```
 
 Production build:

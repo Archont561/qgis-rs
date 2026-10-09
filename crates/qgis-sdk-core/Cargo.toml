@@ -1,13 +1,13 @@
 # The pure-Rust core of the plugin CLI (TASK-26, D13 §3, D14 §3).
 #
 # Holds the clap command tree and the plugin commands. `crates/qgis-sdk` depends
-# on it and builds the `qgis_sdk._core` extension and the `qgis-plugin` / `qgis-sdk`
+# on it and builds the `qgis_sdk._core` extension and the `qgis-sdk` / `qgis-sdk`
 # binaries from the same parser. It is not published: a crates.io copy of the
 # plugin CLI would be a second source of its behavior.
 
 [package]
 name = "qgis-sdk-core"
-description = "Pure-Rust command tree of the qgis-plugin CLI, shared by the qgis-sdk binaries and Python extension"
+description = "Pure-Rust command tree of the qgis-sdk CLI, shared by the qgis-sdk binaries and Python extension"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

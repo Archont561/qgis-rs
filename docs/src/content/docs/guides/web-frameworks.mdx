@@ -22,17 +22,17 @@ For QGIS plugins, **Web Components** is often best (small, offline, no CDN). Rea
 
 ```bash
 # Vanilla (Leaflet + all examples)
-qgis-plugin new my_plugin --web
+qgis-sdk new my_plugin --web
 
 # React
-qgis-plugin new my_plugin --web --framework react
+qgis-sdk new my_plugin --web --framework react
 # Creates web/react.html (CDN demo) + web/map.html + web/bridge.d.ts + frontend/ (Vite + React + @archont561/qgis-sdk)
 
 # Vue
-qgis-plugin new my_plugin --web --framework vue
+qgis-sdk new my_plugin --web --framework vue
 
 # Web Components
-qgis-plugin new my_plugin --web --framework webcomponents
+qgis-sdk new my_plugin --web --framework webcomponents
 ```
 
 Generated structure:

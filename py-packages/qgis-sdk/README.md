@@ -8,10 +8,10 @@ It is a **pixi workspace package** and **maturin Python package**: the `[package
 qgis-sdk = better PyQGIS + declarative plugin/algorithm/UI definitions + Rust CLI at native speed
 ```
 
-- **pip**: `pip install qgis-sdk` → `import qgis_sdk` + `qgis-plugin` binary on PATH (Rust)
+- **pip**: `pip install qgis-sdk` → `import qgis_sdk` + `qgis-sdk` binary on PATH (Rust)
 - **conda**: `conda install -c conda-forge qgis-sdk` → same, with QGIS backend
 - **API**: `from qgis_sdk import Plugin, Algorithm, Dialog, WebDialog` — Pythonic, type-hinted, testable without QGIS
-- **CLI**: `qgis-plugin` (Rust binary) + `qgis-plugin` Python console script — scaffold, build, test, package at native speed
+- **CLI**: `qgis-sdk` (Rust binary) + `qgis-sdk` Python console script — scaffold, build, test, package at native speed
 - **UI**: `qgis_sdk.ui` — Qt Designer `.ui` + `uic.loadUiType` + `WA_DeleteOnClose` + `QSettings` + `QWebEngineView` + `QWebChannel` bridge
 
 ## What it gives you
@@ -84,9 +84,9 @@ pip install qgis-sdk
 What you get:
 
 - `qgis_sdk` Python module (Plugin, Algorithm, metadata, plus Rust `_core` for native speed)
-- `qgis-plugin` executable (Rust binary, built by maturin)
+- `qgis-sdk` executable (Rust binary, built by maturin)
 - `qgis-sdk` executable (alias)
-- `qgis-plugin` and `qgis-sdk` console scripts (`python -m qgis_sdk.cli`)
+- `qgis-sdk` and `qgis-sdk` console scripts (`python -m qgis_sdk.cli`)
 
 Pre-built wheels for Linux x86_64 and Linux arm64. If no wheel matches, pip builds from source via maturin (requires Rust ≥1.96).
 
@@ -98,7 +98,7 @@ conda install -c conda-forge qgis-sdk
 pixi add qgis-sdk
 ```
 
-The conda-forge package depends on `qgis >=3.44.9`, so PyQGIS works out of the box, plus `qgis-plugin` binary in `$CONDA_PREFIX/bin`.
+The conda-forge package depends on `qgis >=3.44.9`, so PyQGIS works out of the box, plus `qgis-sdk` binary in `$CONDA_PREFIX/bin`.
 
 ### From source (development)
 
@@ -113,7 +113,7 @@ pip install maturin
 # Or via pixi (conda env with QGIS)
 pixi install -e default
 pixi run -e default python -m pytest py-packages/qgis-sdk/tests -v
-pixi run -e default qgis-plugin --help
+pixi run -e default qgis-sdk --help
 
 # Test without Rust (pure Python fallback)
 python -m pytest py-packages/qgis-sdk/tests -q
@@ -123,41 +123,41 @@ python -m pytest py-packages/qgis-sdk/tests -q
 
 ```bash
 # Scaffold a new plugin (Rust does file creation at native speed)
-qgis-plugin new my_plugin --type processing --rust
-qgis-plugin new my_plugin --web --author "Your Name" --email "you@example.com"
-qgis-plugin new my_plugin --web --framework react # react, vue, webcomponents, vanilla
-qgis-plugin new my_plugin --no-ui  # skip UI scaffolding
+qgis-sdk new my_plugin --type processing --rust
+qgis-sdk new my_plugin --web --author "Your Name" --email "you@example.com"
+qgis-sdk new my_plugin --web --framework react # react, vue, webcomponents, vanilla
+qgis-sdk new my_plugin --no-ui  # skip UI scaffolding
 
 # Typed bridge generation (Python -> TS)
-qgis-plugin bridge generate --bridge my_plugin.dialogs.web_dialog:Bridge --output web/bridge.d.ts
-qgis-plugin bridge generate --bridge my_plugin.dialogs.web_dialog:Bridge --output web/ --package --framework react
+qgis-sdk bridge generate --bridge my_plugin.dialogs.web_dialog:Bridge --output web/bridge.d.ts
+qgis-sdk bridge generate --bridge my_plugin.dialogs.web_dialog:Bridge --output web/ --package --framework react
 
 # Validate structure
-qgis-plugin validate
-qgis-plugin validate ./my_plugin --json
+qgis-sdk validate
+qgis-sdk validate ./my_plugin --json
 
 # Build, test, install
-qgis-plugin build
-qgis-plugin test
-qgis-plugin install
-qgis-plugin dev --rust --launch
+qgis-sdk build
+qgis-sdk test
+qgis-sdk install
+qgis-sdk dev --rust --launch
 
 # Package for QGIS Plugin Repository (includes ui/*.ui, web/*.html, web/*.d.ts, icons/*)
-qgis-plugin package -o dist/
-qgis-plugin publish --zip dist/my_plugin-0.1.0.zip --dry-run
+qgis-sdk package -o dist/
+qgis-sdk publish --zip dist/my_plugin-0.1.0.zip --dry-run
 
 # Rust acceleration
-qgis-plugin rust init
-qgis-plugin rust build --release
+qgis-sdk rust init
+qgis-sdk rust build --release
 
 # UI helpers
-qgis-plugin ui add-dialog ./my_plugin --name custom_dialog
-qgis-plugin ui add-web ./my_plugin
+qgis-sdk ui add-dialog ./my_plugin --name custom_dialog
+qgis-sdk ui add-web ./my_plugin
 
 # Info and version
-qgis-plugin info
-qgis-plugin info --json
-qgis-plugin version
+qgis-sdk info
+qgis-sdk info --json
+qgis-sdk version
 
 # Via Python module (same speed — uses Rust extension directly)
 python -m qgis_sdk.cli new my_plugin --web --framework react
@@ -251,7 +251,7 @@ JS → Python: `@pyqtSlot(result=str)` + `QWebChannel.registerObject("bridge", b
 
 ```bash
 npm install @archont561/qgis-sdk
-qgis-plugin bridge generate --bridge my_plugin.dialogs.web_dialog:Bridge --output web/bridge.d.ts
+qgis-sdk bridge generate --bridge my_plugin.dialogs.web_dialog:Bridge --output web/bridge.d.ts
 ```
 
 ```typescript

@@ -18,7 +18,7 @@ def test_cli_version(capsys):
     rc = main(["version"])
     assert rc == 0
     out = capsys.readouterr().out
-    assert "qgis-plugin" in out
+    assert "qgis-sdk" in out
 
 def test_cli_new_and_validate(tmp_path, capsys):
     from qgis_sdk.cli import main
@@ -105,7 +105,7 @@ def test_cli_module_entrypoint_displays_help():
         text=True,
     )
     assert result.returncode == 0
-    assert "qgis-plugin" in result.stdout or "QGIS plugin SDK" in result.stdout
+    assert "qgis-sdk" in result.stdout or "QGIS plugin SDK" in result.stdout
 
 def test_native_extension_is_used_in_ci():
     import qgis_sdk

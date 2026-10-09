@@ -6,7 +6,7 @@ a JSON description that JS can load at runtime via window.__QGIS_BRIDGE_DESCRIPT
 This allows:
 - No codegen step needed for dev
 - JS creates methods dynamically from description
-- Optional codegen for static typing via `qgis-plugin bridge describe --output bridge.json`
+- Optional codegen for static typing via `qgis-sdk bridge describe --output bridge.json`
 """
 
 from __future__ import annotations

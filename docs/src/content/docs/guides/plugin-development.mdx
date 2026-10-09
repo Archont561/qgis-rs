@@ -46,7 +46,7 @@ class BufferAdvanced(Algorithm):
 Scaffold with UI:
 
 ```bash
-qgis-plugin new my_plugin --web
+qgis-sdk new my_plugin --web
 ```
 
 Generated:
@@ -89,9 +89,9 @@ if dlg.exec() == Dialog.Accepted:
 ## WebEngine HTML + QWebChannel
 
 ```bash
-qgis-plugin new my_plugin --web
+qgis-sdk new my_plugin --web
 # or add to existing
-qgis-plugin ui add-web ./my_plugin
+qgis-sdk ui add-web ./my_plugin
 ```
 
 Generated:
@@ -147,27 +147,27 @@ class BufferFast(Algorithm):
 
 ```bash
 # Scaffold with UI + Web
-qgis-plugin new my-plugin --web
-qgis-plugin new my-plugin --no-ui
+qgis-sdk new my-plugin --web
+qgis-sdk new my-plugin --no-ui
 
 # UI helpers
-qgis-plugin ui add-dialog ./my_plugin --name custom_dialog
-qgis-plugin ui add-web ./my_plugin
+qgis-sdk ui add-dialog ./my_plugin --name custom_dialog
+qgis-sdk ui add-web ./my_plugin
 
 # Development mode
-qgis-plugin dev
+qgis-sdk dev
 
 # Build and package (includes ui/*.ui, web/*.html, icons/*)
-qgis-plugin build
-qgis-plugin package -o dist/
+qgis-sdk build
+qgis-sdk package -o dist/
 
 # Publish to QGIS Plugin Repository
-qgis-plugin publish
+qgis-sdk publish
 ```
 
 ## Packaging
 
-`qgis-plugin package` includes `ui/`, `web/`, `icons/`, `dialogs/` automatically:
+`qgis-sdk package` includes `ui/`, `web/`, `icons/`, `dialogs/` automatically:
 
 ```toml
 [tool.hatch.build.targets.wheel]
@@ -183,8 +183,8 @@ include = [
 Generate TypeScript types from Python bridge classes:
 
 ```bash
-qgis-plugin bridge generate --bridge my_plugin.dialogs.web_dialog:Bridge --output web/bridge.d.ts
-qgis-plugin bridge generate --bridge my_plugin.dialogs.web_dialog:Bridge --output web/ --package
+qgis-sdk bridge generate --bridge my_plugin.dialogs.web_dialog:Bridge --output web/bridge.d.ts
+qgis-sdk bridge generate --bridge my_plugin.dialogs.web_dialog:Bridge --output web/ --package
 ```
 
 Python → TS with Promise API:

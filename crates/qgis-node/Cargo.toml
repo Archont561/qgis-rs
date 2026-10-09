@@ -12,7 +12,7 @@
 # package.json, so npm users never see this directory.
 #
 # This crate deliberately has NO [[bin]] targets. It used to declare
-# `qgis-cli` and `qgis-plugin` stubs, but bin names must be unique across the
+# `qgis-cli` and `qgis-sdk` stubs, but bin names must be unique across the
 # whole workspace: every bin resolves to the same target/<profile>/<name>, so
 # the stubs silently overwrote the real binaries from crates/qgis-cli and
 # crates/qgis-sdk (whichever crate linked last won), and qgis-sdk's

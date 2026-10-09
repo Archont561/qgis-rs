@@ -76,9 +76,12 @@ pub const BINDING_CRATES: &[&str] = &["qgis-py", "qgis-node"];
 /// `(executable, the one crate allowed to declare it)` — D13 §1 and §4.
 pub const CANONICAL_BINARIES: &[(&str, &str)] = &[
     ("qgis-cli", "qgis-cli"),
-    ("qgis-plugin", "qgis-sdk"),
     ("qgis-sdk", "qgis-sdk"),
 ];
+
+/// Repository automation executables. They are not product commands, so they
+/// need no D13 owner: `xtask` is the only one, and it is never shipped.
+pub const TOOLING_BINARIES: &[&str] = &["xtask"];
 
 /// Fallback modules that exist today, each with the task that removes it.
 ///
@@ -185,6 +188,23 @@ pub fn violations(tree: &Tree) -> Vec<Violation> {
                     several.join(", ")
                 ),
             }),
+        }
+    }
+
+    for facts in &tree.crates {
+        for binary in &facts.binaries {
+            if !CANONICAL_BINARIES.iter().any(|(name, _)| name == binary)
+                && !TOOLING_BINARIES.contains(&binary.as_str())
+            {
+                found.push(Violation {
+                    rule: "canonical executables",
+                    detail: format!(
+                        "{binary} is declared by {} but is not a canonical executable; \
+                         qgis-plugin was dropped and qgis-sdk is the only plugin command (D13 §1)",
+                        facts.name
+                    ),
+                });
+            }
         }
     }
 

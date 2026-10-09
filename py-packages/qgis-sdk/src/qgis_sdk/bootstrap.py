@@ -25,9 +25,9 @@ It tries:
 5. download from PyPI via urllib
 
 For bundling:
-    qgis-plugin bootstrap --output my_plugin/bootstrap.py
-    qgis-plugin vendor --output my_plugin/vendor
-    qgis-plugin package --bundle
+    qgis-sdk bootstrap --output my_plugin/bootstrap.py
+    qgis-sdk vendor --output my_plugin/vendor
+    qgis-sdk package --bundle
 """
 
 from __future__ import annotations

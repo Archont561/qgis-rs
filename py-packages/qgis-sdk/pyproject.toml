@@ -39,7 +39,6 @@ Issues = "https://github.com/Archont561/qgis-rs/issues"
 Documentation = "https://archont561.github.io/qgis-rs/"
 
 [project.scripts]
-qgis-plugin = "qgis_sdk.cli:main"
 qgis-sdk = "qgis_sdk.cli:main"
 # Keep qgis-cli also available when qgis-sdk is installed, for convenience
 qgis-cli = "qgis_sdk.cli:qgis_cli_main"

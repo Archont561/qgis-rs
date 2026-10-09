@@ -1,15 +1,15 @@
 """
 CLI entry points for qgis-sdk Python package.
 
-This module provides `qgis-plugin` and `qgis-sdk` console scripts that run
+This module provides `qgis-sdk` and `qgis-sdk` console scripts that run
 at native Rust speed when the `_core` extension is built, otherwise fallback
 to pure Python.
 
 It also exposes `qgis-cli` for convenience when both SDK and rendering tools
 are needed.
 
-The Rust binary `qgis-plugin` (built by maturin) is installed to PATH alongside
-the Python package, so `qgis-plugin --help` works both as binary and as
+The Rust binary `qgis-sdk` (built by maturin) is installed to PATH alongside
+the Python package, so `qgis-sdk --help` works both as binary and as
 `python -m qgis_sdk.cli`.
 """
 
@@ -40,14 +40,14 @@ def _cmd_new(args: argparse.Namespace) -> int:
     if not name:
         name = input("Plugin name: ").strip()
         if not name:
-            print("qgis-plugin: plugin name must not be empty", file=sys.stderr)
+            print("qgis-sdk: plugin name must not be empty", file=sys.stderr)
             return 1
 
     output_dir = Path(args.output) if args.output else Path(".")
     plugin_path = output_dir / name
 
     if plugin_path.exists():
-        print(f"qgis-plugin: directory already exists: {plugin_path}", file=sys.stderr)
+        print(f"qgis-sdk: directory already exists: {plugin_path}", file=sys.stderr)
         return 1
 
     framework = getattr(args, "framework", "vanilla")
@@ -90,7 +90,7 @@ def _cmd_new(args: argparse.Namespace) -> int:
                     print(f"  Framework: {framework} (web/{framework}.html + frontend/ Vite)")
             return 0
         except Exception as exc:
-            print(f"qgis-plugin: {exc}", file=sys.stderr)
+            print(f"qgis-sdk: {exc}", file=sys.stderr)
             return 1
 
     try:
@@ -129,12 +129,12 @@ def _cmd_new(args: argparse.Namespace) -> int:
                 if framework != "vanilla":
                     print(f"  Framework: {framework} -> web/{framework}.html as index + frontend/ Vite template")
                     print(f"    Build: cd {name}/{name}/frontend && npm install && npm run build -> web/dist/")
-                    print(f"    Types: web/bridge.d.ts auto-generated from Python Bridge (via qgis-plugin bridge generate)")
+                    print(f"    Types: web/bridge.d.ts auto-generated from Python Bridge (via qgis-sdk bridge generate)")
         return 0
     except Exception as exc:
         import traceback
         traceback.print_exc()
-        print(f"qgis-plugin: {exc}", file=sys.stderr)
+        print(f"qgis-sdk: {exc}", file=sys.stderr)
         return 1
 
 
@@ -153,7 +153,7 @@ def _cmd_validate(args: argparse.Namespace) -> int:
                     print(f"  ❌ {err}", file=sys.stderr)
                 return 1
         except Exception as exc:
-            print(f"qgis-plugin: {exc}", file=sys.stderr)
+            print(f"qgis-sdk: {exc}", file=sys.stderr)
             return 1
 
     # Python fallback
@@ -204,7 +204,7 @@ def _cmd_version(_args: argparse.Namespace) -> int:
     if HAS_RUST and core is not None:
         try:
             v = core.version()
-            print(f"qgis-plugin {v} (Rust-native, from qgis-sdk)")
+            print(f"qgis-sdk {v} (Rust-native, from qgis-sdk)")
             print(f"  Python API: qgis_sdk {v}")
             print(f"  Rust core: {'yes' if HAS_RUST else 'no (fallback)'}")
             return 0
@@ -214,16 +214,16 @@ def _cmd_version(_args: argparse.Namespace) -> int:
     # Fallback
     try:
         from . import __version__
-        print(f"qgis-plugin {__version__} (Python fallback)")
+        print(f"qgis-sdk {__version__} (Python fallback)")
     except Exception:
-        print("qgis-plugin 0.1.0 (Python fallback)")
+        print("qgis-sdk 0.1.0 (Python fallback)")
     return 0
 
 
 def _cmd_build(args: argparse.Namespace) -> int:
     print(f"Building plugin (rust={args.rust})...")
     if args.rust and not Path("Cargo.toml").exists():
-        print("qgis-plugin: Cargo.toml not found — run `qgis-plugin rust init` first", file=sys.stderr)
+        print("qgis-sdk: Cargo.toml not found — run `qgis-sdk rust init` first", file=sys.stderr)
         return 1
     print(f"  Build complete. Output in {args.output}")
     return 0
@@ -254,7 +254,7 @@ def _cmd_bootstrap(args: argparse.Namespace) -> int:
         print(f"  Usage in __init__.py: from .bootstrap import ensure_qgis_sdk; ensure_qgis_sdk(auto_install=True)")
         return 0
     except Exception as exc:
-        print(f"qgis-plugin bootstrap: {exc}", file=sys.stderr)
+        print(f"qgis-sdk bootstrap: {exc}", file=sys.stderr)
         return 1
 
 
@@ -266,7 +266,7 @@ def _cmd_vendor(args: argparse.Namespace) -> int:
         import shutil
         src = Path(offline_wheel)
         if not src.exists():
-            print(f"qgis-plugin vendor: wheel not found: {src}", file=sys.stderr)
+            print(f"qgis-sdk vendor: wheel not found: {src}", file=sys.stderr)
             return 1
         shutil.copy(src, output / src.name)
         print(f"✅ Vendored offline wheel to {output / src.name}")
@@ -283,7 +283,7 @@ def _cmd_vendor(args: argparse.Namespace) -> int:
             print(f"✅ Downloaded wheels to {output}")
             return 0
         except Exception as exc:
-            print(f"qgis-plugin vendor: {exc}", file=sys.stderr)
+            print(f"qgis-sdk vendor: {exc}", file=sys.stderr)
             print(f"  Build wheel first: python -m build, or provide --offline-wheel path")
             return 1
     else:
@@ -404,7 +404,7 @@ def _cmd_ui_add_dialog(args: argparse.Namespace) -> int:
         print(f"  Pattern: uic.loadUiType + WA_DeleteOnClose + QSettings")
         return 0
     except Exception as exc:
-        print(f"qgis-plugin: {exc}", file=sys.stderr)
+        print(f"qgis-sdk: {exc}", file=sys.stderr)
         return 1
 
 
@@ -436,7 +436,7 @@ def _cmd_ui_add_web(args: argparse.Namespace) -> int:
         print(f"  Python: WebDialog.from_file + set_bridge + runJavaScript")
         return 0
     except Exception as exc:
-        print(f"qgis-plugin: {exc}", file=sys.stderr)
+        print(f"qgis-sdk: {exc}", file=sys.stderr)
         return 1
 
 
@@ -445,18 +445,18 @@ def _cmd_bridge_generate(args: argparse.Namespace) -> int:
     try:
         from .bridge import generate_js_wrapper, generate_package, generate_ts_bridge, load_bridge_class
     except ImportError as e:
-        print(f"qgis-plugin: bridge module not available: {e}", file=sys.stderr)
+        print(f"qgis-sdk: bridge module not available: {e}", file=sys.stderr)
         return 1
 
     if not args.bridge:
-        print("qgis-plugin bridge generate: --bridge is required (e.g. my_plugin.dialogs.web_dialog:Bridge)", file=sys.stderr)
+        print("qgis-sdk bridge generate: --bridge is required (e.g. my_plugin.dialogs.web_dialog:Bridge)", file=sys.stderr)
         return 1
 
     try:
         bridge_cls = load_bridge_class(args.bridge)
         print(f"Loaded bridge: {bridge_cls.__module__}.{bridge_cls.__name__}")
     except Exception as exc:
-        print(f"qgis-plugin: failed to load bridge '{args.bridge}': {exc}", file=sys.stderr)
+        print(f"qgis-sdk: failed to load bridge '{args.bridge}': {exc}", file=sys.stderr)
         return 1
 
     output = Path(args.output) if args.output else Path("web/bridge.d.ts")
@@ -499,7 +499,7 @@ def _cmd_bridge_generate(args: argparse.Namespace) -> int:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="qgis-plugin",
+        prog="qgis-sdk",
         description="QGIS plugin SDK — scaffold, build, test, and publish plugins (native Rust speed)",
     )
     sub = parser.add_subparsers(dest="command", required=True)
@@ -627,7 +627,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: Optional[List[str]] = None) -> int:
-    """Entry point for qgis-plugin and qgis-sdk console scripts."""
+    """Entry point for qgis-sdk and qgis-sdk console scripts."""
     parser = build_parser()
     args = parser.parse_args(argv)
 
@@ -636,7 +636,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     try:
         return args.func(args)
     except Exception as exc:
-        print(f"qgis-plugin: {exc}", file=sys.stderr)
+        print(f"qgis-sdk: {exc}", file=sys.stderr)
         return 1
 
 

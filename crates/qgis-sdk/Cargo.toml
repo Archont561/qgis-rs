@@ -1,7 +1,7 @@
 # crates/qgis-sdk — the Rust core of the `qgis-sdk` Python distribution.
 #
 # Provides the `qgis_sdk._core` PyO3 extension (plugin metadata, validation and
-# scaffolding at native speed) plus the `qgis-plugin` / `qgis-sdk` CLI binaries
+# scaffolding at native speed) plus the `qgis-sdk` / `qgis-sdk` CLI binaries
 # that the wheel installs onto PATH. The Python sources, tests, conda recipe
 # and the pixi `[package]` manifest live in ../../py-packages/qgis-sdk/.
 #
@@ -26,10 +26,6 @@ categories = ["science::geo", "development-tools"]
 name = "qgis_sdk_core"
 crate-type = ["cdylib"]
 path = "src/lib.rs"
-
-[[bin]]
-name = "qgis-plugin"
-path = "src/bin/qgis-plugin.rs"
 
 [[bin]]
 name = "qgis-sdk"

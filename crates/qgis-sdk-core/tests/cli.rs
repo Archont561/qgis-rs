@@ -1,6 +1,6 @@
 //! Behaviour of the shared plugin command line, driven through `run_cli`.
 //!
-//! These tests call the library the way the `qgis-plugin` and `qgis-sdk`
+//! These tests call the library the way the `qgis-sdk` and `qgis-sdk`
 //! binaries and the `qgis_sdk._core` extension do: argv in, exit code out, and
 //! filesystem effects checked on disk. The binaries' own process behaviour is
 //! covered in `crates/qgis-sdk/tests/plugin_cli.rs`.
@@ -42,8 +42,8 @@ fn asking_for_help_or_version_exits_zero() {
     // Given the program name and a request for help
     // When the shared parser handles it
     // Then clap prints the text and the exit code is 0
-    assert_eq!(run_cli(["qgis-plugin", "--help"]), 0);
-    assert_eq!(run_cli(["qgis-plugin", "--version"]), 0);
+    assert_eq!(run_cli(["qgis-sdk", "--help"]), 0);
+    assert_eq!(run_cli(["qgis-sdk", "--version"]), 0);
 }
 
 #[test]
@@ -51,7 +51,7 @@ fn an_unknown_command_is_a_usage_error_with_clap_exit_code_two() {
     // Given an argv naming a command that does not exist
     // When the shared parser runs it
     // Then the exit code is clap's usage-error code, 2
-    assert_eq!(run_cli(["qgis-plugin", "no-such-command"]), 2);
+    assert_eq!(run_cli(["qgis-sdk", "no-such-command"]), 2);
 }
 
 #[test]
@@ -61,7 +61,7 @@ fn scaffolding_into_a_fresh_directory_creates_the_plugin_and_exits_zero() {
     let output = scratch.path().display().to_string();
 
     // When a plugin named `demo_plugin` is scaffolded into it
-    let code = run_cli(["qgis-plugin", "new", "demo_plugin", "--output", &output]);
+    let code = run_cli(["qgis-sdk", "new", "demo_plugin", "--output", &output]);
 
     // Then the command succeeds and the plugin directory exists
     assert_eq!(code, 0);
@@ -79,7 +79,7 @@ fn scaffolding_over_an_existing_directory_fails_and_leaves_it_untouched() {
     let output = scratch.path().display().to_string();
 
     // When the same plugin is scaffolded again
-    let code = run_cli(["qgis-plugin", "new", "demo_plugin", "--output", &output]);
+    let code = run_cli(["qgis-sdk", "new", "demo_plugin", "--output", &output]);
 
     // Then the command fails and the existing file is still there, unchanged
     assert_eq!(code, 1);
@@ -96,7 +96,7 @@ fn validating_a_directory_with_no_plugin_fails_and_writes_nothing() {
     let target = scratch.path().display().to_string();
 
     // When it is validated
-    let code = run_cli(["qgis-plugin", "validate", &target]);
+    let code = run_cli(["qgis-sdk", "validate", &target]);
 
     // Then validation fails with exit code 1 and creates no files
     assert_eq!(code, 1);

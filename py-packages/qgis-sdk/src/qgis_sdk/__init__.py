@@ -5,8 +5,8 @@ touches PyQGIS, and it does so lazily. That is what makes unit-testing plugin
 logic possible on a plain developer machine.
 
 Now with Rust-native CLI and acceleration:
-- `pip install qgis-sdk` gives you `qgis-plugin` binary + Python API at native speed
-- `qgis-plugin new my_plugin --rust` scaffolds a plugin with Rust acceleration
+- `pip install qgis-sdk` gives you `qgis-sdk` binary + Python API at native speed
+- `qgis-sdk new my_plugin --rust` scaffolds a plugin with Rust acceleration
 - `import qgis_sdk` tries to load Rust extension `_core` for native speed, falls back to Python
 """
 

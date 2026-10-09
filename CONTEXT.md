@@ -101,7 +101,7 @@ qgis-rs/
 │   ├── qgis-mcp/              # Model Context Protocol server (rmcp)
 │   ├── qgis-cli/              # Command-line binary, bundles the MCP server
 │   ├── qgis-py/               # Rust core of the qgis-rs Python wheel (PyO3, no bins)
-│   ├── qgis-sdk/              # Rust core of the qgis-sdk Python wheel (PyO3 + qgis-plugin/qgis-sdk bins)
+│   ├── qgis-sdk/              # Rust core of the qgis-sdk Python wheel (PyO3 + qgis-sdk/qgis-sdk bins)
 │   └── qgis-node/             # Rust core of the qgis-rs npm package (NAPI, no bins)
 │
 ├── py-packages/

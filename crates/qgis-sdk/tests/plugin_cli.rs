@@ -1,4 +1,4 @@
-//! Integration tests for the Rust-native `qgis-plugin` executable.
+//! Integration tests for the Rust-native `qgis-sdk` executable.
 //!
 //! Plugin command behavior belongs to the Rust crate; Python tests separately
 //! smoke-test the installed package and its PyO3 boundary.
@@ -16,9 +16,9 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 use rstest::{fixture, rstest};
 
-const QGIS_PLUGIN: &str = env!("CARGO_BIN_EXE_qgis-plugin");
+const QGIS_PLUGIN: &str = env!("CARGO_BIN_EXE_qgis-sdk");
 
-/// One `qgis-plugin` invocation, already decoded.
+/// One `qgis-sdk` invocation, already decoded.
 struct Run {
     command: String,
     status: std::process::ExitStatus,
@@ -41,7 +41,7 @@ impl Run {
     fn failure(&self) -> String {
         let flatten = |text: &str| text.replace('\n', " ⏎ ");
         format!(
-            "error: `qgis-plugin {}` exited with {:?} — stderr: {} | stdout: {}",
+            "error: `qgis-sdk {}` exited with {:?} — stderr: {} | stdout: {}",
             self.command,
             self.status,
             flatten(&self.stderr),
@@ -61,7 +61,7 @@ impl PluginCli {
     /// `pid` plus a counter is not enough: the gate runs this binary twice in
     /// one container — once under `turbo run test`, once under
     /// `cargo llvm-cov` — and a runner recycles process ids freely. A leftover
-    /// directory from a run that died before `Drop` makes `qgis-plugin new`
+    /// directory from a run that died before `Drop` makes `qgis-sdk new`
     /// bail with "directory already exists", which is how this test went red
     /// in CI on a commit that changed only prose. The clock closes that
     /// window; the explicit removal closes what is left of it.
@@ -88,7 +88,7 @@ impl PluginCli {
         let output = Command::new(QGIS_PLUGIN)
             .args(args)
             .output()
-            .unwrap_or_else(|error| panic!("run `qgis-plugin {}`: {error}", args.join(" ")));
+            .unwrap_or_else(|error| panic!("run `qgis-sdk {}`: {error}", args.join(" ")));
         Run {
             command: args.join(" "),
             status: output.status,
@@ -130,7 +130,7 @@ fn version_reports_the_crate_version(plugin: PluginCli) {
     assert!(run.succeeded(), "{}", run.failure());
     assert!(run
         .stdout
-        .contains(&format!("qgis-plugin {}", env!("CARGO_PKG_VERSION"))));
+        .contains(&format!("qgis-sdk {}", env!("CARGO_PKG_VERSION"))));
 }
 
 #[rstest]

@@ -515,12 +515,12 @@ class MyServerPlugin(ServerPlugin):
 
 ---
 
-## 5. CLI: `qgis-plugin`
+## 5. CLI: `qgis-sdk`
 
 ### 5.1 Commands
 
 ```
-qgis-plugin <command> [options]
+qgis-sdk <command> [options]
 
 Commands:
   new         Scaffold a new plugin project
@@ -539,16 +539,16 @@ Commands:
 
 ```bash
 # Pure Python plugin (default)
-qgis-plugin new my-plugin
+qgis-sdk new my-plugin
 
 # Python + Rust plugin
-qgis-plugin new my-plugin --rust
+qgis-sdk new my-plugin --rust
 
 # Processing-only plugin
-qgis-plugin new my-algorithms --type processing
+qgis-sdk new my-algorithms --type processing
 
 # Interactive
-qgis-plugin new
+qgis-sdk new
 # → Plugin name: my-plugin
 # → Type: [general] processing provider server
 # → Include Rust acceleration? [y/N]
@@ -605,15 +605,15 @@ my-plugin/
 
 ```bash
 # Build Python-only plugin
-qgis-plugin build
+qgis-sdk build
 # → dist/my_plugin-0.1.0.zip
 
 # Build with Rust (current platform)
-qgis-plugin build --rust
+qgis-sdk build --rust
 # → dist/my_plugin-0.1.0-linux-x86_64.zip
 
 # Build with Rust (all platforms)
-qgis-plugin build --rust --all-targets
+qgis-sdk build --rust --all-targets
 # → dist/my_plugin-0.1.0-linux-x86_64.zip
 # → dist/my_plugin-0.1.0-windows-x86_64.zip
 # → dist/my_plugin-0.1.0-macos-arm64.zip
@@ -624,13 +624,13 @@ qgis-plugin build --rust --all-targets
 
 ```bash
 # Pure Python: watch .py files, reinstall on change
-qgis-plugin dev
+qgis-sdk dev
 
 # With Rust: watch .py and .rs files, rebuild + reinstall
-qgis-plugin dev --rust
+qgis-sdk dev --rust
 
 # Launch QGIS after install
-qgis-plugin dev --launch
+qgis-sdk dev --launch
 ```
 
 ### 5.5 `rust init` — Add Rust to existing plugin
@@ -638,7 +638,7 @@ qgis-plugin dev --launch
 ```bash
 # You have an existing Python plugin and want to add Rust acceleration
 cd my-existing-plugin/
-qgis-plugin rust init
+qgis-sdk rust init
 # → Creates Cargo.toml, src/lib.rs
 # → Adds @rust_accelerated examples to your algorithms
 # → Updates pyproject.toml with maturin build config
@@ -822,7 +822,7 @@ qgis-rs/
 │   ├── qgis-render/            # Core rendering engine (Rust)
 │   ├── qgis-plugin-sdk/        # Rust acceleration library (PyO3)
 │   ├── qgis-server/            # HTTP server
-│   └── qgis-cli/               # CLI binary (includes qgis-plugin)
+│   └── qgis-cli/               # CLI binary (includes qgis-sdk)
 │
 ├── python/
 │   ├── qgis-sdk/               # Python package (pip install qgis-sdk)
@@ -845,7 +845,7 @@ qgis-rs/
 │   │   └── pyproject.toml
 │   └── qgis-sdk-cli/           # Python CLI wrapper (thin shim over Rust CLI)
 │
-├── templates/                   # Scaffolding templates for `qgis-plugin new`
+├── templates/                   # Scaffolding templates for `qgis-sdk new`
 │   ├── python-only/
 │   ├── python-rust/
 │   ├── processing/
@@ -876,8 +876,8 @@ with current ownership represented by milestone `m-3` and its linked tasks.
 | Boilerplate | Write manually | Generates once | Eliminates (decorators) |
 | API style | C++-ish, verbose | Same as PyQGIS | Pythonic, type-hinted |
 | Testing | Must run in QGIS | No support | Unit tests without QGIS |
-| Packaging | Manual .zip | No support | `qgis-plugin package` |
-| Publishing | Manual upload | No support | `qgis-plugin publish` |
+| Packaging | Manual .zip | No support | `qgis-sdk package` |
+| Publishing | Manual upload | No support | `qgis-sdk publish` |
 | Rust support | No | No | First-class |
 | Cross-platform | Build per OS | No support | `--all-targets` |
 | Processing GUI | Manual param defs | Same | Declarative decorators |
@@ -917,8 +917,8 @@ The accepted Rust CLI, FFI, and hosted-runtime boundary is specified in [doc-7](
 | 2 Rust acceleration (`@rust_accelerated`) | — | Specification/open implementation → TASK-16 |
 | 1.1 UI dialogs (Qt Designer .ui + declarative) | `qgis_sdk.ui` — `Dialog`, `field`, `layout`, `Button`, `@dialog`, `make_dialog` | Implemented evidence; UI/template follow-up → TASK-18 |
 | 1.1 WebEngine HTML + QWebChannel | `qgis_sdk.ui` — `WebDialog`, `@web_bridge`, `make_web_view` | Implemented evidence; bridge/package follow-up → TASK-18 |
-| 5 CLI (`qgis-plugin scaffold/test/package/publish`) | `qgis_sdk.cli` + Rust binary `qgis-plugin` (native speed) | Native CLI exists; packaging/publishing → TASK-17; shared engine refactor → TASK-26 |
-| 5 UI scaffolding | `qgis-plugin new --web`, `ui/*.ui`, `web/map.html` (Leaflet + qrc:///qtwebchannel/qwebchannel.js) | Implemented evidence; docs/scaffold follow-up → TASK-3/TASK-18 |
+| 5 CLI (`qgis-sdk scaffold/test/package/publish`) | `qgis_sdk.cli` + Rust binary `qgis-sdk` (native speed) | Native CLI exists; packaging/publishing → TASK-17; shared engine refactor → TASK-26 |
+| 5 UI scaffolding | `qgis-sdk new --web`, `ui/*.ui`, `web/map.html` (Leaflet + qrc:///qtwebchannel/qwebchannel.js) | Implemented evidence; docs/scaffold follow-up → TASK-3/TASK-18 |
 | 7 Testing story | `tests/` — fake interface + fake action factory | Pure-Python evidence exists; headless/runtime/fixture proof → TASK-1/TASK-2/TASK-23 |
 
 ### Why nothing imports `qgis` at module scope

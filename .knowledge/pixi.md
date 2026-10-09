@@ -204,7 +204,7 @@ py-packages/qgis-sdk/
 ├── src/qgis_sdk/  # pure-Python layer
 └── tests/
 
-crates/qgis-sdk/   # the Rust core: PyO3 _core + the qgis-plugin / qgis-sdk CLIs
+crates/qgis-sdk/   # the Rust core: PyO3 _core + the qgis-sdk / qgis-sdk CLIs
 ```
 
 The Rust half deliberately lives in the Cargo workspace rather than inside the

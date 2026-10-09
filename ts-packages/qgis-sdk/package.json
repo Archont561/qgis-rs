@@ -64,7 +64,7 @@
 	"keywords": [
 		"qgis",
 		"qwebchannel",
-		"qgis-plugin",
+		"qgis-sdk",
 		"pyqt",
 		"webengine",
 		"typescript",

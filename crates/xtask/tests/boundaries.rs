@@ -21,7 +21,7 @@ fn lawful_tree() -> Tree {
             CrateFacts {
                 name: "qgis-sdk".into(),
                 dependencies: vec!["qgis-cli".into(), "qgis-render".into()],
-                binaries: vec!["qgis-plugin".into(), "qgis-sdk".into()],
+                binaries: vec!["qgis-sdk".into()],
             },
             CrateFacts {
                 name: "qgis-py".into(),
@@ -63,9 +63,14 @@ fn a_lawful_tree_has_nothing_to_report(lawful_tree: Tree) {
     "qgis-sdk depends on qgis-py"
 )]
 #[case::an_executable_with_two_owners_names_both(
-    |tree: &mut Tree| tree.crates[0].binaries.push("qgis-plugin".into()),
+    |tree: &mut Tree| tree.crates[0].binaries.push("qgis-sdk".into()),
     "canonical executables",
     "qgis-cli, qgis-sdk"
+)]
+#[case::a_retired_executable_that_comes_back_is_a_violation(
+    |tree: &mut Tree| tree.crates[1].binaries.push("qgis-plugin".into()),
+    "canonical executables",
+    "qgis-plugin"
 )]
 #[case::a_canonical_executable_that_disappears(
     |tree: &mut Tree| tree.crates[0].binaries.clear(),
@@ -126,10 +131,6 @@ version.workspace = true
 name = "qgis_sdk_core"
 
 [[bin]]
-name = "qgis-plugin"
-path = "src/bin/qgis-plugin.rs"
-
-[[bin]]
 name = "qgis-sdk"
 path = "src/bin/qgis-sdk.rs"
 
@@ -143,7 +144,7 @@ default = ["python"]
     );
 
     assert_eq!(facts.name, "qgis-sdk");
-    assert_eq!(facts.binaries, vec!["qgis-plugin", "qgis-sdk"]);
+    assert_eq!(facts.binaries, vec!["qgis-sdk"]);
     assert_eq!(facts.dependencies, vec!["anyhow", "qgis-cli"]);
     // `[lib] name` and `[features] default` are not dependencies or binaries.
     assert!(!facts.dependencies.contains(&"default".to_string()));

@@ -322,12 +322,12 @@ dlg.exec()
 - `@web_bridge` decorator registers Python object, handles `pyqtSlot` generation
 - `dlg.run_js("jsCode")` → Python → JS
 - `dlg.on_js("event", callback)` → JS → Python via custom signals
-- HTML can use modern frameworks (React, Vue, Leaflet, MapLibre) — bundle via `qgis-plugin build` which copies `ui/` and `web/` assets
+- HTML can use modern frameworks (React, Vue, Leaflet, MapLibre) — bundle via `qgis-sdk build` which copies `ui/` and `web/` assets
 - Security: `setHtml` loads immediately, external resources async; use `baseUrl` to resolve relative URLs (images, CSS) via `QUrl.fromLocalFile`
 
 ### 2.4 Packaging considerations
 
-- `.ui` files and HTML/CSS/JS must be included in plugin zip (hatchling `packages = ["my_plugin"]` + `ui/` folder). `qgis-plugin package` (Rust) auto-includes `ui/`, `web/`, `icons/`.
+- `.ui` files and HTML/CSS/JS must be included in plugin zip (hatchling `packages = ["my_plugin"]` + `ui/` folder). `qgis-sdk package` (Rust) auto-includes `ui/`, `web/`, `icons/`.
 - For WebEngine, Qt WebEngine requires `QtWebEngineWidgets` and `QtWebChannel` — conda-forge `qgis` package already depends on `qt-webengine`.
 - Test high-DPI with `QT_SCALE_FACTOR=2`; test WebEngine with `QT_QPA_PLATFORM=offscreen` not fully supported — need real display or `xvfb-run`.
 
@@ -346,7 +346,7 @@ dlg.exec()
 
 ## 4. Templates (updated)
 
-`qgis-plugin new` now scaffolds with UI examples:
+`qgis-sdk new` now scaffolds with UI examples:
 
 - **general** type: includes `dialogs/main_dialog.py` (QDialog via `uic.loadUiType`) + `ui/main_dialog.ui` + `web/map.html` (WebEngine example)
 - **processing** type: Processing UI auto-generated, plus optional custom dialog
@@ -419,7 +419,7 @@ live in [TASK-3](../backlog/tasks/task-3%20-%20Document%20and%20scaffold%20the%2
 | React in WebView | `scaffold.WEB_REACT_HTML` + `frontend/` Vite template | ✅ Implemented — React 18 CDN + Babel for quick demo, `useQgisBridge()` hook, `frontend/package.json` Vite + `@vitejs/plugin-react`, build to `web/dist`, `updateFromReact` + CustomEvent for Python→JS |
 | Vue 3 in WebView | `scaffold.WEB_VUE_HTML` + `frontend/` Vite template | ✅ Implemented — Vue 3 CDN global prod, Composition API `ref/onMounted`, `frontend/package.json` Vite + `@vitejs/plugin-vue`, `updateFromVue` |
 | Web Components | `scaffold.WEB_COMPONENTS_HTML` | ✅ Implemented — native `customElements.define`, Shadow DOM, `qgis-layer-card` + `qgis-toolbar`, no build step, best for offline QGIS, `updateFromWC` |
-| `qgis-plugin new --web --framework` | CLI Python + Rust (`qgis-plugin.rs` + `cli.py`) | ✅ Implemented — `--web` flag adds `web/map.html` + `react.html` + `vue.html` + `components.html` + `dialogs/web_dialog.py`, `--framework react/vue/webcomponents/vanilla` sets index + creates `frontend/` Vite template, `--no-ui` skips UI, `ui add-dialog/add-web` subcommands |
+| `qgis-sdk new --web --framework` | CLI Python + Rust (`qgis-sdk.rs` + `cli.py`) | ✅ Implemented — `--web` flag adds `web/map.html` + `react.html` + `vue.html` + `components.html` + `dialogs/web_dialog.py`, `--framework react/vue/webcomponents/vanilla` sets index + creates `frontend/` Vite template, `--no-ui` skips UI, `ui add-dialog/add-web` subcommands |
 | Packaging UI assets | `pyproject.toml` include `ui/*.ui`, `web/*.html`, `icons/*` | ✅ Implemented — hatchling include, Rust `cmd_package` notes, for React/Vue add `web/dist/*` |
 | Testing UI without QGIS | `tests/test_ui.py` 22 tests + existing fake iface pattern | ✅ Implemented — 65 tests total pass (35 original + 8 CLI + 22 UI), fallback exec returns Accepted |
 | Rust validation | `validate_plugin_structure` checks `qwebchannel.js` reference | ✅ Implemented — warns if HTML missing `qwebchannel` |
@@ -444,8 +444,8 @@ live in [TASK-3](../backlog/tasks/task-3%20-%20Document%20and%20scaffold%20the%2
 **Python → TS generation:**
 
 ```bash
-qgis-plugin bridge generate --bridge my_plugin.dialogs.web_dialog:Bridge --output web/bridge.d.ts
-qgis-plugin bridge generate --bridge my_plugin.dialogs.web_dialog:Bridge --output web/ --package
+qgis-sdk bridge generate --bridge my_plugin.dialogs.web_dialog:Bridge --output web/bridge.d.ts
+qgis-sdk bridge generate --bridge my_plugin.dialogs.web_dialog:Bridge --output web/ --package
 ```
 
 Inspects signatures + type hints → TS interface with Promise+callback overloads:
@@ -594,6 +594,6 @@ customElements.define('qgis-layer-card', QgisLayerCard);
 
 **CLI:**
 ```bash
-qgis-plugin new my_plugin --web --framework react   # or vue, webcomponents, vanilla
-qgis-plugin new my_plugin --web                     # gets all 4 examples + Leaflet
+qgis-sdk new my_plugin --web --framework react   # or vue, webcomponents, vanilla
+qgis-sdk new my_plugin --web                     # gets all 4 examples + Leaflet
 ```

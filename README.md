@@ -115,7 +115,7 @@ qgis-cli tiles map.qgs -z 10-14 -b 14,50,15,51 --dry-run
 
 # Plugin SDK (Python)
 python -c "import qgis_sdk; print(qgis_sdk.__version__, qgis_sdk.HAS_RUST)"
-qgis-plugin new my_plugin --type processing --rust
+qgis-sdk new my_plugin --type processing --rust
 
 # TypeScript
 node -e "const { TilePlan, Extent, ZoomRange } = require('@archont561/qgis-node'); console.log(new TilePlan(Extent.parse('14,50,15,51'), ZoomRange.parse('10-14')).tileCount())"
@@ -286,7 +286,7 @@ exercise ([D11](.knowledge/decisions/D11-tests-outside-src.md)).
 | `qgis-mcp` | Model Context Protocol server | ✅ Active (bundled into `qgis-cli mcp`) |
 | `qgis-cli` | Command-line tool (Rust binary + lib) | 🔨 Scaffolded (`mcp`, `info`, `tiles --dry-run` work) |
 | `qgis-styles` | Symbols, colours, labelling and layout types, serialisable to and from QGIS style JSON | ✅ Active |
-| `qgis-sdk` (Rust core) | Native helpers behind the Python SDK: `qgis_sdk._core` + the `qgis-plugin`/`qgis-sdk` CLIs (`crates/qgis-sdk`) | ✅ Active |
+| `qgis-sdk` (Rust core) | Native helpers behind the Python SDK: `qgis_sdk._core` + the `qgis-sdk`/`qgis-sdk` CLIs (`crates/qgis-sdk`) | ✅ Active |
 | `qgis-py` (Rust core) | PyO3 module `qgis_py._core` + the `qgis-cli` binary shipped by the Python wheel (`crates/qgis-py`) | ✅ Active |
 | `qgis-node` (Rust core) | NAPI addon + CLI binaries shipped by the npm package (`crates/qgis-node`) | ✅ Active |
 | `xtask` | Repository automation as a typed binary: the gate, the lints, the scaffolder, the release pipeline (`pixi run xtask …`) | ✅ Active |

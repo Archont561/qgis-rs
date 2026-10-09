@@ -2,7 +2,7 @@
 //!
 //! This crate provides:
 //! - PyO3 bindings for plugin metadata, validation, and scaffolding at native speed
-//! - Shared logic for the `qgis-plugin` / `qgis-sdk` CLI binaries
+//! - Shared logic for the `qgis-sdk` / `qgis-sdk` CLI binaries
 //! - UI scaffolding (dialogs via .ui, WebEngine HTML + QWebChannel)
 //!
 //! The Python package `qgis_sdk` imports this as `qgis_sdk._core` when built
@@ -546,9 +546,9 @@ QGIS plugin built with qgis-sdk — with UI dialogs and WebEngine map.
 ```bash
 pip install qgis-sdk
 python -m pytest
-qgis-plugin install
-qgis-plugin dev
-qgis-plugin package
+qgis-sdk install
+qgis-sdk dev
+qgis-sdk package
 ```
 "#,
         )
@@ -563,9 +563,9 @@ QGIS plugin built with qgis-sdk — with UI dialogs.
 ```bash
 pip install qgis-sdk
 python -m pytest
-qgis-plugin install
-qgis-plugin dev
-qgis-plugin package
+qgis-sdk install
+qgis-sdk dev
+qgis-sdk package
 ```
 "#,
         )
