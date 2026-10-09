@@ -222,7 +222,11 @@ fn build_artifacts() -> Result<()> {
     step("npm tarballs");
     // The addon has to be compiled before it can be packed: `files` lists
     // qgis-node.*.node, and pack:check is what proves it is there.
-    turbo_run(&["build", "--filter=@archont561/qgis-node", "--filter=@archont561/qgis-sdk"])?;
+    turbo_run(&[
+        "build",
+        "--filter=@archont561/qgis-node",
+        "--filter=@archont561/qgis-sdk",
+    ])?;
     turbo_run(&["pack:check"])?;
     for package in NPM_PACKAGES {
         run_in(

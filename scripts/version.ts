@@ -193,7 +193,9 @@ export function publishedVersions(startDir: string = process.cwd()): {
 			toml("py-packages/qgis-sdk/pyproject.toml", "project"),
 			// What npm publishes.
 			json("ts-packages/qgis-node/package.json"),
-			...["linux-x64-gnu", "linux-arm64-gnu", "linux-x64-musl"].map((t) => json(`ts-packages/qgis-node/npm/${t}/package.json`)),
+			...["linux-x64-gnu", "linux-arm64-gnu", "linux-x64-musl"].map((t) =>
+				json(`ts-packages/qgis-node/npm/${t}/package.json`),
+			),
 			json("ts-packages/qgis-sdk/package.json"),
 			// Private, and still checked.
 			json("package.json"),
@@ -284,7 +286,9 @@ export function setVersion(
 		"py-packages/qgis-py/package.json",
 		"py-packages/qgis-sdk/package.json",
 		"ts-packages/qgis-node/package.json",
-		...["linux-x64-gnu", "linux-arm64-gnu", "linux-x64-musl"].map((t) => `ts-packages/qgis-node/npm/${t}/package.json`),
+		...["linux-x64-gnu", "linux-arm64-gnu", "linux-x64-musl"].map(
+			(t) => `ts-packages/qgis-node/npm/${t}/package.json`,
+		),
 		"ts-packages/qgis-sdk/package.json",
 	]) {
 		setNpmVersion(join(root, path), version);
