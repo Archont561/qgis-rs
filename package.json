@@ -7,7 +7,7 @@
 		"ts-packages/*",
 		"docs",
 		"crates",
-		"py-packages/*",
+		"py-packages/*"
 	],
 	"scripts": {
 		"build": "bun run --filter './docs' --filter './ts-packages/*' build",
