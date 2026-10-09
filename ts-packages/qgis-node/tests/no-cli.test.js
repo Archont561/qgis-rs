@@ -24,7 +24,12 @@ test("no CLI module, bin shim, staging script or platform packages remain", () =
 test("the public module exports no CLI helpers", () => {
 	const declarations = read("src/index.d.ts");
 	const source = read("src/index.js");
-	for (const name of ["runCli", "resolveCliBinary", "CliResult", "CliOptions"]) {
+	for (const name of [
+		"runCli",
+		"resolveCliBinary",
+		"CliResult",
+		"CliOptions",
+	]) {
 		assert.equal(declarations.includes(name), false, name);
 	}
 	assert.equal(source.includes("./cli.js"), false);
