@@ -1,5 +1,20 @@
 # Bundle Update Log
 
+## 2026-10-09 (remove built-in CLIs from qgis-py and qgis-node)
+
+* **Landed on `arena/8333daf5-qgis-rs`**: `5122a61` and `2f73d3c` (red guard tests for qgis-py and qgis-node), `47a909a` (qgis-py CLI removed), `db85d37` (qgis-sdk `qgis-cli` shim removed), `41b02b4` (qgis-node CLI removed), `92fffc9` (docs), a root `package.json` comma fix, and a format commit. `pixi run gates` exit 0 at HEAD.
+* **qgis-py**: `python/qgis_py/cli.py`, `scripts/stage_cli.py`, `_bin/`, the `[project.scripts]` entries, and the CLI tests are gone. The wheel holds 163 entries, no CLI module, no console scripts, and `_core` is present. Its `build` script no longer stages a binary, and `xtask release` no longer calls `stage_cli.py`.
+* **qgis-sdk (scope extension)**: its `qgis-cli` console script delegated to `qgis_py.cli`, which no longer exists, so it was removed with `qgis_cli_main` and the recipe lines. The `qgis-sdk` command is unchanged. pytest 423 passed, 4 skipped.
+* **qgis-node**: `bin/`, `src/cli.js`, `scripts/stage-cli.js`, `npm/*`, and `tests/cli.test.js` are gone. `optionalDependencies`, `bin`, the `cli` keyword, and the `build:cli` script are removed. `runCli` and `resolveCliBinary` are no longer exported. The addon loader and its triple list stay, because they select the `.node` file. `bun.lock` lost only the three platform workspaces. `pack:check` passes. bun suite: 160 pass, 0 fail.
+* **Coverage note**: `tests/cli.test.js` covered `cliTriple` platform resolution and the `runCli` boundary. Those cases went with the CLI code they tested. No addon-loading case was lost.
+* **Auditwheel**: the `libQt5Core` repair failure noted earlier did not reproduce in the gate's wheel build. Not investigated further.
+* **Unchanged**: `crates/qgis-cli` (standalone binary, still shipped by its own release path) and the `docs/src/content/docs/cli/*` pages describing it. The xtask boundary fixture that mentions `qgis-cli` is parser test data.
+* **Backlog**: TASK-58 has AC 3 checked and a note that ACs 1-2 are superseded. It stays In Progress for an owner decision to close. TASK-61 has a note that its CLI half is superseded. Its WebEngine global is unchanged.
+* **Stop for review**: the slice is committed and gated. Nothing is pushed or opened as a PR.
+* **Next session opening prompt**:
+
+  > Confirm the pixi environments (`scripts/restore.sh`, `export PATH="$HOME/.local/bin:$PATH"`, `pixi run bun-install`, `pixi run setup`). Read the CLI-removal entry in `.knowledge/log.md`. Ask whether TASK-58 should be closed, since its CLI scope is removed. Open items: verify the WebEngine global in a real QtWebEngine page, and the CI matrix for per-platform wheels. Propose the next slice and stop before writing code.
+
 ## 2026-10-09 (wheel bytecode exclusion)
 
 * **Landed on `arena/8333daf5-qgis-rs`**: `9900014` (exclusion, with `test_packaging.py` in qgis-py and qgis-sdk), `b4ca204` (relink fix), and a format commit. `pixi run gates` exit 0.
