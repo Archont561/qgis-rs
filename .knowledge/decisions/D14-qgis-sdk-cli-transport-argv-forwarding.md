@@ -59,17 +59,22 @@ qgis-py protocol gains no namespaced CLI-invocation surface. There is also no
 separate qgis-sdk protocol/engine pair: shared components are reused, and the
 CLI behavior lives in the Rust CLI library (below).
 
-### 3. Crate layout: one parser, two frontends, no pyo3 in qgis-cli
+### 3. Crate layout: one parser, two frontends, no pyo3 in the library
 
-- `crates/qgis-cli` gains a **lib target** holding the clap command tree and
-  handlers. It stays pure Rust — no pyo3, no qgis-sys (TASK-41's pure surface is
-  preserved). `src/main.rs` becomes a thin binary over the lib.
-- `crates/qgis-sdk` — the crate that already carries the pyo3/maturin wiring —
-  depends on the `qgis-cli` lib and adds the `cli_main` pyfunction above. The
-  Python extension and the Rust binary share one parser.
-- `crates/qgis-sdk/src/bin/qgis-plugin.rs` and the sibling-delegating
-  `qgis-sdk.rs` collapse into the same lib; `qgis-sdk` remains an exact alias
-  of `qgis-plugin` (D13), not a second parser.
+- `crates/qgis-sdk-core` is a new **pure-Rust library** holding the clap command
+  tree and the plugin handlers, with `pub fn run_cli(argv) -> i32` as its entry
+  point. It has no pyo3, no qgis-sys and no QGIS. It is not published (the plugin
+  CLI is not a crates.io product), and it is a dependency only of `qgis-sdk`.
+- `crates/qgis-sdk/src/bin/qgis-plugin.rs` and `qgis-sdk.rs` are each a
+  one-line `main` over `qgis_sdk_core::main_entry()`. `qgis-sdk` is an exact
+  alias of `qgis-plugin` (D13 §1): same parser, same help, same exit codes, with
+  no sibling-process delegation and no reduced reimplementation.
+- `crates/qgis-sdk` depends on `qgis-sdk-core` and adds the `cli_main` pyfunction
+  above. The Python extension and the Rust binaries share one parser.
+- `qgis-cli` is **not** changed by this decision. It stays the GIS-execution CLI
+  (D13 §1), so plugin tooling does not enter it. An earlier draft of this record
+  put the command tree into `qgis-cli`; that conflicted with D13's rejected
+  alternative "Put every SDK command in `qgis-cli`" and was corrected here.
 
 ### 4. Type stub beside the extension
 

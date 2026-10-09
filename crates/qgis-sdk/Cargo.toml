@@ -42,7 +42,7 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
 qgis-render = { workspace = true }
-qgis-cli = { workspace = true }
+qgis-sdk-core = { workspace = true }
 
 pyo3 = { version = "0.22" }
 
