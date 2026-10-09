@@ -844,6 +844,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "qgis-rs"
+version = "0.1.0"
+dependencies = [
+ "qgis-cli",
+ "qgis-render",
+ "qgis-server",
+ "qgis-styles",
+]
+
+[[package]]
 name = "qgis-sdk"
 version = "0.1.0"
 dependencies = [
