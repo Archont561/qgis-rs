@@ -1,13 +1,8 @@
 """
-CLI entry points for qgis-sdk Python package.
+CLI entry points for the qgis-sdk Python package.
 
-This module provides `qgis-sdk` and `qgis-sdk` console scripts that run
-at native Rust speed when the `_core` extension is built, otherwise fallback
-to pure Python.
-
-The Rust binary `qgis-sdk` (built by maturin) is installed to PATH alongside
-the Python package, so `qgis-sdk --help` works both as binary and as
-`python -m qgis_sdk.cli`.
+`qgis-sdk` runs pure Python. Every command is implemented here or in the
+package modules it calls; no native extension is involved.
 """
 
 from __future__ import annotations
@@ -19,18 +14,6 @@ from pathlib import Path
 from typing import List, Optional
 
 from .plugin_validation import validate_plugin_structure
-
-# Try Rust core for native speed
-try:
-    from . import _core as core  # type: ignore
-    HAS_RUST = True
-except ImportError:
-    try:
-        from . import _fallback_cli as core  # type: ignore
-        HAS_RUST = False
-    except ImportError:
-        core = None  # type: ignore
-        HAS_RUST = False
 
 
 def _cmd_new(args: argparse.Namespace) -> int:
@@ -56,41 +39,6 @@ def _cmd_new(args: argparse.Namespace) -> int:
         declarative = True
     bundle = getattr(args, "bundle", False)
     offline_wheel = getattr(args, "offline_wheel", None)
-
-    # The Rust scaffold currently covers the vanilla layout only. Route
-    # framework-specific templates and packaging options through Python so the
-    # native extension doesn't silently ignore CLI arguments it does not yet
-    # support.
-    native_scaffold_supports_args = (
-        framework == "vanilla"
-        and not bundle
-        and offline_wheel is None
-        and not getattr(args, "author", None)
-        and not getattr(args, "email", None)
-    )
-    if (
-        HAS_RUST
-        and core is not None
-        and hasattr(core, "scaffold_plugin")
-        and not declarative
-        and native_scaffold_supports_args
-    ):
-        try:
-            try:
-                result = core.scaffold_plugin(name, str(output_dir), args.type, args.rust, args.web, not args.no_ui)
-            except TypeError:
-                result = core.scaffold_plugin(name, str(output_dir), args.type, args.rust)
-            print(f"✅ Created plugin in {result}")
-            if not args.no_ui:
-                print(f"  UI: dialogs/main_dialog.py + ui/main_dialog.ui")
-            if args.web:
-                print(f"  Web: web/map.html (Leaflet) + web/react.html (React) + web/vue.html (Vue) + web/components.html (Web Components) + dialogs/web_dialog.py")
-                if framework != "vanilla":
-                    print(f"  Framework: {framework} (web/{framework}.html + frontend/ Vite)")
-            return 0
-        except Exception as exc:
-            print(f"qgis-sdk: {exc}", file=sys.stderr)
-            return 1
 
     try:
         from .scaffold import scaffold_plugin as py_scaffold
