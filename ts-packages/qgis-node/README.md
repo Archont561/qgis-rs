@@ -9,7 +9,7 @@
 - **API**: TypeScript types, pure Rust geometry (Extent, Crs, TilePlan) via NAPI, QGIS backend optional
 - **CLI**: `qgis-cli` and `qgis-plugin` Rust binaries + Node.js wrappers, both native speed
 
-`qgis-rs` (Python) and `qgis-sdk` (Python plugin SDK) can stay — this is the TypeScript counterpart, same Rust workspace.
+`qgis-py` (Python) and `qgis-sdk` (Python plugin SDK) can stay — this is the TypeScript counterpart, same Rust workspace.
 
 ## Installation
 
@@ -155,14 +155,14 @@ qgis-rs npm package
 
 - Rust: `crates/qgis-render` (pure Rust), `crates/qgis-cli`, `crates/qgis-sdk` (plugin CLI)
 - Node: `ts-packages/qgis-node/` — package.json, `src/index.js`, `bin/` wrappers; the NAPI crate it builds is `crates/qgis-node/` (`napi build --cargo-cwd ../../crates/qgis-node .`), and that crate exposes exactly one function, `invoke(requestJson) -> responseJson` (see `.knowledge/decisions/D09-wire-protocol-over-ffi.md`)
-- Python: `py-packages/qgis-rs/` and `py-packages/qgis-sdk/` — same Rust code via PyO3
+- Python: `py-packages/qgis-py/` and `py-packages/qgis-sdk/` — same Rust code via PyO3
 
 ## Conda-forge (Node.js)
 
 For conda, install Node.js + Rust package:
 
 ```bash
-conda install -c conda-forge nodejs qgis qgis-rs
+conda install -c conda-forge nodejs qgis qgis-py
 # the binary qgis-cli is in $PREFIX/bin
 ```
 

@@ -186,17 +186,19 @@ export function publishedVersions(startDir: string = process.cwd()): {
 			// reports (clap reads CARGO_PKG_VERSION).
 			toml("Cargo.toml", "workspace.package"),
 			// What `pixi publish` stamps into the conda artefact filename and index.
-			toml("py-packages/qgis-rs/pixi.toml", "package"),
+			toml("py-packages/qgis-py/pixi.toml", "package"),
 			toml("py-packages/qgis-sdk/pixi.toml", "package"),
 			// What the wheels on PyPI are called.
-			toml("py-packages/qgis-rs/pyproject.toml", "project"),
+			toml("py-packages/qgis-py/pyproject.toml", "project"),
 			toml("py-packages/qgis-sdk/pyproject.toml", "project"),
+			toml("py-packages/qgis-rs/pyproject.toml", "project"),
 			// What npm publishes.
 			json("ts-packages/qgis-node/package.json"),
 			json("ts-packages/qgis-sdk-bridge/package.json"),
 			// Private, and still checked.
 			json("package.json"),
 			json("crates/package.json"),
+			json("py-packages/qgis-py/package.json"),
 			json("py-packages/qgis-rs/package.json"),
 			json("py-packages/qgis-sdk/package.json"),
 			json("docs/package.json"),
@@ -264,7 +266,9 @@ export function setVersion(
 	setTomlVersion(join(root, "pixi.toml"), "workspace", version);
 	setTomlVersion(join(root, "Cargo.toml"), "workspace.package", version);
 	setCargoInternalDependencyVersions(root, version);
-	for (const dist of ["qgis-rs", "qgis-sdk"]) {
+	// qgis-rs is the deprecated alias: a pure-Python hatchling project with no pixi manifest.
+	setTomlVersion(join(root, "py-packages/qgis-rs/pyproject.toml"), "project", version);
+	for (const dist of ["qgis-py", "qgis-sdk"]) {
 		setTomlVersion(
 			join(root, `py-packages/${dist}/pixi.toml`),
 			"package",
@@ -280,6 +284,7 @@ export function setVersion(
 		"package.json",
 		"crates/package.json",
 		"docs/package.json",
+		"py-packages/qgis-py/package.json",
 		"py-packages/qgis-rs/package.json",
 		"py-packages/qgis-sdk/package.json",
 		"ts-packages/qgis-node/package.json",

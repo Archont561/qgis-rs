@@ -105,7 +105,7 @@ qgis-rs/
 │   └── qgis-node/             # Rust core of the qgis-rs npm package (NAPI, no bins)
 │
 ├── py-packages/
-│   ├── qgis-rs/               # Python dist: pyproject.toml (maturin), python/qgis_rs/, tests/
+│   ├── qgis-rs/               # Python dist: pyproject.toml (maturin), python/qgis_py/, tests/
 │   └── qgis-sdk/              # Python dist: pyproject.toml, src/qgis_sdk/, tests/, pixi [package]
 │
 ├── ts-packages/

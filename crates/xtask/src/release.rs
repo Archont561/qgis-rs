@@ -38,7 +38,7 @@ pub const CRATES: &[&str] = &[
 ];
 
 /// The Python distributions maturin builds wheels for.
-const PY_DISTRIBUTIONS: &[&str] = &["py-packages/qgis-rs", "py-packages/qgis-sdk"];
+const PY_DISTRIBUTIONS: &[&str] = &["py-packages/qgis-py", "py-packages/qgis-sdk"];
 
 /// The npm packages that are packed and uploaded.
 const NPM_PACKAGES: &[&str] = &["ts-packages/qgis-node", "ts-packages/qgis-sdk-bridge"];

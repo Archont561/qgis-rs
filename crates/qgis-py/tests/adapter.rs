@@ -3,7 +3,7 @@
 //! No interpreter is involved: this crate's whole job is to hand a string to
 //! `qgis-engine` and hand the answer back, so what is worth asserting is that
 //! the answer is the engine's own. The Python side of the boundary is covered
-//! by `py-packages/qgis-rs/tests/`, against a real built `_core`.
+//! by `py-packages/qgis-py/tests/`, against a real built `_core`.
 
 #[test]
 fn the_adapter_forwards_to_the_engine_verbatim() {

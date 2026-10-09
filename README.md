@@ -19,7 +19,7 @@
   <a href="https://github.com/Archont561/qgis-rs/releases"><img src="https://img.shields.io/github/v/release/Archont561/qgis-rs?label=release&logo=github" alt="Latest release"></a>
   <a href="https://crates.io/crates/qgis-render"><img src="https://img.shields.io/crates/v/qgis-render?logo=rust&label=crates.io" alt="crates.io"></a>
   <a href="https://docs.rs/qgis-render"><img src="https://img.shields.io/docsrs/qgis-render?logo=docsdotrs&label=docs.rs" alt="docs.rs"></a>
-  <a href="https://pypi.org/project/qgis-rs/"><img src="https://img.shields.io/pypi/v/qgis-rs?logo=pypi&logoColor=white&label=PyPI" alt="PyPI"></a>
+  <a href="https://pypi.org/project/qgis-py/"><img src="https://img.shields.io/pypi/v/qgis-py?logo=pypi&logoColor=white&label=PyPI" alt="PyPI"></a>
   <a href="https://www.npmjs.com/package/qgis-rs"><img src="https://img.shields.io/npm/v/qgis-rs?logo=npm&label=npm" alt="npm"></a>
   <a href="https://prefix.dev/channels/@archont561/qgis-rs"><img src="https://img.shields.io/badge/prefix.dev-%40archont561%2Fqgis--rs-5c4ee5?logo=condaforge" alt="prefix.dev channel"></a>
 </p>
@@ -90,18 +90,18 @@ project.render_to_file(
 
 The easiest way — no Rust or QGIS needed for many operations. Three packages:
 
-- **`qgis-rs`** (Python) — rendering, tiling, server (native Rust)
+- **`qgis-py`** (Python) — a curated Python API for QGIS, a PyQGIS replacement; rendering, tiling, project inspection (native Rust)
 - **`qgis-sdk`** (Python) — plugin development SDK (Python + Rust-native CLI)
 - **`qgis-rs`** (npm) — same rendering/tiling + plugin tools for Node.js/TypeScript
 
 ```bash
 # Python — from PyPI (wheels carry the Rust binaries)
-pip install qgis-rs qgis-sdk
+pip install qgis-py qgis-sdk
 
 # Python — from conda-forge, with the QGIS backend for full rendering
-conda install -c conda-forge qgis-rs qgis-sdk
+conda install -c conda-forge qgis-py qgis-sdk
 # or
-pixi add qgis-rs qgis-sdk
+pixi add qgis-py qgis-sdk
 
 # TypeScript — from npm (NAPI addon + Rust binaries)
 npm install qgis-rs
@@ -109,7 +109,7 @@ npm install qgis-rs
 
 ```bash
 # Rendering tools (Python)
-python -c "import qgis_rs; print(qgis_rs.__version__)"
+python -c "import qgis_py; print(qgis_py.__version__)"
 qgis-cli info map.qgs --json
 qgis-cli tiles map.qgs -z 10-14 -b 14,50,15,51 --dry-run
 
@@ -125,7 +125,7 @@ npx qgis-cli --help
 Python API — rendering:
 
 ```python
-from qgis_rs import Project, Extent, TilePlan, ZoomRange
+from qgis_py import Project, Extent, TilePlan, ZoomRange
 
 project = Project.open("map.qgs")
 extent = Extent.parse("14,50,15,51")
@@ -287,11 +287,11 @@ exercise ([D11](.knowledge/decisions/D11-tests-outside-src.md)).
 | `qgis-cli` | Command-line tool (Rust binary + lib) | 🔨 Scaffolded (`mcp`, `info`, `tiles --dry-run` work) |
 | `qgis-styles` | Symbols, colours, labelling and layout types, serialisable to and from QGIS style JSON | ✅ Active |
 | `qgis-sdk` (Rust core) | Native helpers behind the Python SDK: `qgis_sdk._core` + the `qgis-plugin`/`qgis-sdk` CLIs (`crates/qgis-sdk`) | ✅ Active |
-| `qgis-py` (Rust core) | PyO3 module `qgis_rs._core` + the `qgis-cli` binary shipped by the Python wheel (`crates/qgis-py`) | ✅ Active |
+| `qgis-py` (Rust core) | PyO3 module `qgis_py._core` + the `qgis-cli` binary shipped by the Python wheel (`crates/qgis-py`) | ✅ Active |
 | `qgis-node` (Rust core) | NAPI addon + CLI binaries shipped by the npm package (`crates/qgis-node`) | ✅ Active |
 | `xtask` | Repository automation as a typed binary: the gate, the lints, the scaffolder, the release pipeline (`pixi run xtask …`) | ✅ Active |
 | `qgis-sdk` (Python) | Plugin development SDK — dist at `py-packages/qgis-sdk`, PyPI/conda | ✅ Active |
-| `qgis-rs` (Python) | Python bindings + CLI — dist at `py-packages/qgis-rs`, PyPI/conda | ✅ Active |
+| `qgis-py` (Python) | Python bindings + CLI — dist at `py-packages/qgis-py`, PyPI/conda | ✅ Active |
 | `qgis-rs` (npm) | TypeScript/Node.js bindings + CLI — dist at `ts-packages/qgis-node` | ✅ Active |
 | `@qgis-sdk/bridge` | QWebChannel bridge for plugin webviews — React/Vue/Svelte/Web-Components adapters (`ts-packages/qgis-sdk-bridge`) | ✅ Active |
 | `@qgis/test-utils` | Scripted QWebChannel, fixtures and fast-check arbitraries shared by the TypeScript suites (`ts-packages/test-utils`) | ✅ Active, private |
@@ -332,7 +332,7 @@ the job summary, so a PyPI outage cannot delete a verified release:
 | Target | Credential | Artifact |
 | --- | --- | --- |
 | [prefix.dev](https://prefix.dev/channels/@archont561/qgis-rs) | OIDC (`pixi upload`) | `dist/conda/*.conda` |
-| [PyPI](https://pypi.org/project/qgis-rs/) | OIDC Trusted Publishing | `dist/pypi/*` |
+| [PyPI](https://pypi.org/project/qgis-py/) | OIDC Trusted Publishing | `dist/pypi/*` |
 | [npmjs](https://www.npmjs.com/package/qgis-rs) | OIDC Trusted Publishing + provenance | `dist/npm/*.tgz` |
 | GitHub Packages | workflow token (throwaway npmrc) | `dist/npm/*.tgz` |
 | [crates.io](https://crates.io/crates/qgis-render) | `CRATES_IO_TOKEN` | `qgis-sys → qgis-styles → qgis-render → qgis-protocol → qgis-engine → qgis-server → qgis-mcp → qgis-cli` |
@@ -386,14 +386,14 @@ already *is* an activated environment: it exports `CONDA_PREFIX`, which maturin 
 install target, and it is the interpreter QGIS was compiled against, so a venv layered on top would
 only hide QGIS's own `site-packages`.
 
-So [`py-packages/qgis-rs/package.json`](py-packages/qgis-rs/package.json) runs `maturin develop
+So [`py-packages/qgis-py/package.json`](py-packages/qgis-py/package.json) runs `maturin develop
 --release` (installs, and drops the compiled `_core` next to the mixed-layout Python sources that
 pytest actually imports) followed by `maturin build --release --out dist` for the shippable wheel —
 one cargo compilation, reused:
 
 ```jsonc
-// py-packages/qgis-rs/package.json
-"build": "pixi run -e default bash -c 'rm -rf dist && maturin develop --release && maturin build --release --out dist && python -c \"import qgis_rs._core\"'"   // builds dist/*.whl AND installs it
+// py-packages/qgis-py/package.json
+"build": "pixi run -e default bash -c 'rm -rf dist && maturin develop --release && maturin build --release --out dist && python -c \"import qgis_py._core\"'"   // builds dist/*.whl AND installs it
 "test":  "pixi run -e default env QGIS_REQUIRE_NATIVE=1 python -m pytest tests -v"   // turbo: test dependsOn build
 ```
 

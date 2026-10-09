@@ -1,59 +1,32 @@
 [build-system]
-requires = ["maturin>=1.7,<2"]
-build-backend = "maturin"
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
 
 [project]
 name = "qgis-rs"
 version = "0.1.0"
-description = "Python bindings and CLI for qgis-rs — native-speed QGIS rendering, tiling, and server tools"
+description = "Deprecated name of qgis-py. `import qgis_rs` keeps working for one release and re-exports qgis_py."
 readme = "README.md"
-# The Python this wheel supports is the one QGIS is bundled with, not a range of
-# its own. PyO3 0.22 additionally refuses an interpreter newer than 3.13. Keep
-# this in step with `python` in the root pixi.toml and the qgis build's ABI.
+# Same interpreter range as qgis-py, which this package depends on.
 requires-python = ">=3.12,<3.13"
 license = { text = "GPL-2.0-or-later" }
-keywords = ["qgis", "gis", "rendering", "tiles", "cli", "rust"]
+keywords = ["qgis", "gis", "deprecated"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
-    "Intended Audience :: Developers",
-    "Intended Audience :: Science/Research",
+    "Development Status :: 7 - Inactive",
     "License :: OSI Approved :: GNU General Public License v2 or later (GPLv2+)",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
-    "Programming Language :: Rust",
-    "Topic :: Scientific/Engineering :: GIS",
 ]
-dependencies = []
+# The compatibility alias needs the real distribution and nothing else. The
+# pin keeps `qgis-rs` and `qgis-py` from drifting apart.
+dependencies = ["qgis-py==0.1.0"]
 
-[project.optional-dependencies]
-dev = ["pytest>=8", "pytest-cov", "hypothesis>=6.168,<7"]
+[project.scripts]
+qgis-rs = "qgis_rs.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/Archont561/qgis-rs"
 Repository = "https://github.com/Archont561/qgis-rs"
-Issues = "https://github.com/Archont561/qgis-rs/issues"
 Documentation = "https://archont561.github.io/qgis-rs/"
 
-[project.scripts]
-qgis-cli = "qgis_rs.cli:main"
-qgis-rs = "qgis_rs.cli:main"
-
-[tool.maturin]
-features = ["pyo3/extension-module", "python"]
-# The Rust core lives in the Cargo workspace, not here: maturin is pointed at
-# the crate and the paths below stay relative to this directory.
-manifest-path = "../../crates/qgis-py/Cargo.toml"
-module-name = "qgis_rs._core"
-python-source = "python"
-bindings = "pyo3"
-strip = true
-
-[tool.pytest.ini_options]
-testpaths = ["tests", "python"]
-
-[tool.ruff]
-line-length = 100
-target-version = "py39"
+[tool.hatch.build.targets.wheel]
+packages = ["python/qgis_rs"]

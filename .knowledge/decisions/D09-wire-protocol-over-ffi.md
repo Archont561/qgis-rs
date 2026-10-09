@@ -18,7 +18,7 @@ date: 2026-10-03T00:00:00Z
 ## The Question
 
 `qgis-rs` ships the same capability to three audiences: Rust callers, Python
-(`qgis_rs`, via PyO3) and Node (`qgis-rs`, via NAPI). How much of the API should
+(`qgis_py`, via PyO3) and Node (`qgis-rs`, via NAPI). How much of the API should
 cross each FFI boundary?
 
 The answer we had was **all of it**. `crates/qgis-py` defined `PyExtent`,
@@ -81,7 +81,7 @@ failure there is a failure of the thing itself, not of the harness.
 
 **Adding an operation is one arm, not three classes.** Add the variant to
 `Operation`, the payload struct, the match arm, and the two clients can reach it
-*immediately* through their escape hatch (`qgis_rs.invoke(...)`,
+*immediately* through their escape hatch (`qgis_py.invoke(...)`,
 `require("qgis-rs").invoke(...)`) — the typed sugar can follow later, or never,
 for operations only a script needs.
 
@@ -120,7 +120,7 @@ undefined behaviour into an error message.
 
 * `crates/qgis-protocol` and `crates/qgis-engine` exist and are published.
 * `crates/qgis-py` is ~65 lines, `crates/qgis-node` ~40.
-* `py-packages/qgis-rs/python/qgis_rs/{_transport,_api}.py` and
+* `py-packages/qgis-py/python/qgis_py/{_transport,_api}.py` and
   `ts-packages/qgis-node/index.js` are the ergonomic APIs, each tested as a
   boundary client against a real build.
 * `_fallback.py`, `__init__.pyi` and `fallback.js` are deleted.

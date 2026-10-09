@@ -17,7 +17,7 @@ The operation and error tables below are checked against `qgis-protocol` on
 every CI run by `pixi run xtask check-protocol-docs`. A name that exists in
 the enum but not in the table — or the other way round — fails the build, and
 the Python column is compared against the real mapping in
-`py-packages/qgis-rs/python/qgis_rs/_transport.py`.
+`py-packages/qgis-py/python/qgis_py/_transport.py`.
 :::
 
 ## Naming: `snake_case`, everywhere
@@ -31,7 +31,7 @@ camelCase envelope wrapped around snake_case contents.
 
 The **JavaScript client renames at its own edge**, in
 `ts-packages/qgis-node/src/index.js`, which it had to do anyway to look like
-idiomatic JavaScript. Python does **not** rename: `qgis_rs` uses the wire
+idiomatic JavaScript. Python does **not** rename: `qgis_py` uses the wire
 spelling as-is.
 {/* protocol-docs:naming:end */}
 
@@ -145,8 +145,8 @@ Do not assume your own build's list. `engine_info` reports what the engine on
 the other side actually serves:
 
 ```python
-import qgis_rs
-qgis_rs.invoke("engine_info")["operations"]
+import qgis_py
+qgis_py.invoke("engine_info")["operations"]
 ```
 
 The `describe_*` operations exist so that no client re-implements a rule
@@ -198,9 +198,9 @@ any remaining keys are that failure's extra fields.
 
 ### What each client does with a kind
 
-**Python** raises a subclass of `qgis_rs.EngineError`, which also inherits the
+**Python** raises a subclass of `qgis_py.EngineError`, which also inherits the
 built-in exception a caller would naturally reach for — so
-`except ValueError` and `except qgis_rs.EngineError` both catch the same
+`except ValueError` and `except qgis_py.EngineError` both catch the same
 object:
 
 | Class | Also inherits | Raised for |
@@ -230,7 +230,7 @@ client itself, without the engine having said anything:
 4. A row in the table above, or `pixi run xtask check-protocol-docs` fails.
 
 The ergonomic classes live in the host languages
-(`py-packages/qgis-rs/python/qgis_rs/_api.py`,
+(`py-packages/qgis-py/python/qgis_py/_api.py`,
 `ts-packages/qgis-node/src/index.js`), never in the binding crates, and there
 are no pure-Python or pure-JS fallbacks.
 

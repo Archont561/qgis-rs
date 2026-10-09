@@ -25,7 +25,7 @@ The full product specification is [doc-7 — Rust CLI, Cross-Language FFI, and Q
 - `qgis-cli` executes GIS work: inspection, validation, tile planning, batch planning, rendering, export, and serving.
 - `qgis-plugin` is the canonical plugin-development CLI: scaffolding, metadata, validation, build, test, development, packaging, bridge generation, installation, and publishing.
 - `qgis-sdk` may be an exact compatibility alias for `qgis-plugin`; it must not have a second parser or reduced implementation.
-- `qgis_rs` is the standalone Python client for the Rust engine.
+- `qgis_py` is the standalone Python client for the Rust engine.
 - `qgis_sdk` is the QGIS-hosted Python plugin SDK and uses PyQGIS/PyQt for live QGIS objects, UI, Processing, tasks, feedback, and lifecycle.
 - `@qgis-sdk/bridge` is the WebEngine/QWebChannel client and is separate from the Node native addon.
 
@@ -48,7 +48,7 @@ qgis-protocol <- qgis-engine <- qgis-render
 qgis-sdk-core -> qgis-protocol
 qgis-sdk-core may reuse qgis-engine/qgis-render where useful
 qgis_sdk._core -> qgis-sdk-core
-qgis_rs._core -> qgis-engine
+qgis_py._core -> qgis-engine
 ```
 
 `qgis-sdk` must not directly depend on `qgis-py`. Optional plugin acceleration may use a separately validated Rust engine adapter, but the base SDK must not require `qgis-rs` or its PyO3 extension.

@@ -28,8 +28,12 @@
         "typescript": "^5.6.3",
       },
     },
+    "py-packages/qgis-py": {
+      "name": "qgis-py-dist",
+      "version": "0.1.0",
+    },
     "py-packages/qgis-rs": {
-      "name": "qgis-rs-py",
+      "name": "qgis-rs-compat",
       "version": "0.1.0",
     },
     "py-packages/qgis-sdk": {
@@ -1144,11 +1148,13 @@
 
     "pure-rand": ["pure-rand@8.4.2", "", {}, "sha512-vvuOGgcuPJAirlHvuQw1TrOiw7ptaIXXmIbNuiNOY6lNGJJH49PQ1Kj4nd783nPdQhQdicgOjVI2yI/9BD6/Ng=="],
 
+    "qgis-py-dist": ["qgis-py-dist@workspace:py-packages/qgis-py"],
+
     "qgis-rs": ["qgis-rs@workspace:ts-packages/qgis-node"],
 
-    "qgis-rs-docs": ["qgis-rs-docs@workspace:docs"],
+    "qgis-rs-compat": ["qgis-rs-compat@workspace:py-packages/qgis-rs"],
 
-    "qgis-rs-py": ["qgis-rs-py@workspace:py-packages/qgis-rs"],
+    "qgis-rs-docs": ["qgis-rs-docs@workspace:docs"],
 
     "qgis-sdk-py": ["qgis-sdk-py@workspace:py-packages/qgis-sdk"],
 

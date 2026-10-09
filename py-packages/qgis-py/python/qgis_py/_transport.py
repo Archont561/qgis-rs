@@ -1,8 +1,8 @@
 """The one call across the PyO3 boundary, and the exceptions it raises.
 
-Everything the Python client can ask of qgis-rs goes through :func:`invoke`:
+Everything the Python client can ask of qgis-py goes through :func:`invoke`:
 one operation name, one JSON payload, one JSON answer. The compiled extension
-``qgis_rs._core`` exposes exactly one function behind this, so adding an
+``qgis_py._core`` exposes exactly one function behind this, so adding an
 operation is a change to ``crates/qgis-protocol`` and this client's vocabulary
 — never a new ``#[pyfunction]``.
 
@@ -48,7 +48,7 @@ class EngineError(Exception):
 
     The subclasses below also inherit from the built-in exception a Python
     caller would naturally try to catch, so ``except ValueError`` and
-    ``except qgis_rs.EngineError`` both work on the same object.
+    ``except qgis_py.EngineError`` both work on the same object.
     """
 
     #: Wire classification. Set by :func:`_exception`; class-level defaults
@@ -115,7 +115,7 @@ def invoke(operation: str, payload: Optional[Any] = None) -> Any:
     :raises EngineError: whenever the engine answered ``ok: false``; the
         concrete class follows the failure's ``kind``.
 
-    Public, and re-exported as ``qgis_rs.invoke``: an operation this client has
+    Public, and re-exported as ``qgis_py.invoke``: an operation this client has
     no class for is still reachable, which is what keeps a newer engine usable
     from an older wheel.
     """

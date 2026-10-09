@@ -4,18 +4,18 @@
 //! module on purpose: every operation qgis-rs has is an `Operation` in
 //! `qgis-protocol`, so adding one is a change to that enum and to
 //! `qgis-engine` — not a new `#[pyfunction]` here, a new entry in
-//! `qgis_rs/__init__.pyi`, a matching `#[napi]` export in the Node addon, and a
+//! `qgis_py/__init__.pyi`, a matching `#[napi]` export in the Node addon, and a
 //! release of both wheels to go with it.
 //!
 //! The ergonomic API — `Extent`, `Project`, `TilePlan` and friends — lives in
-//! `py-packages/qgis-rs/python/qgis_rs/`, written in Python against this
+//! `py-packages/qgis-py/python/qgis_py/`, written in Python against this
 //! function. It is a *client*, not a reimplementation: every rule it needs
 //! (parsing, validation, tile arithmetic) is asked of the engine.
 //!
 //! See `.knowledge/decisions/D09-wire-protocol-over-ffi.md`.
 //!
 //! The `qgis-cli` command the wheel puts on PATH is the [project.scripts]
-//! console script `qgis_rs.cli:main`, which drives the engine through this
+//! console script `qgis_py.cli:main`, which drives the engine through this
 //! same boundary; the standalone Rust binary lives in crates/qgis-cli. This
 //! crate ships no bin target of its own — a duplicate `qgis-cli` bin here
 //! used to clobber the real one in the shared workspace target directory.
@@ -45,7 +45,7 @@ pub const fn transport_version() -> u32 {
     qgis_engine::TRANSPORT_VERSION
 }
 
-/// The extension module the `qgis_rs` package imports as `qgis_rs._core`.
+/// The extension module the `qgis_py` package imports as `qgis_py._core`.
 #[pymodule]
 fn _core(module: &Bound<'_, PyModule>) -> PyResult<()> {
     module.add_function(wrap_pyfunction!(invoke, module)?)?;

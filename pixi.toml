@@ -92,9 +92,9 @@ pytest-cov = ">=5,<7"
 # To move Python, change all of these together or the build breaks in a place
 # that does not name the cause:
 #   1. this pin;
-#   2. requires-python in py-packages/qgis-rs/pyproject.toml and
+#   2. requires-python in py-packages/qgis-py/pyproject.toml and
 #      py-packages/qgis-sdk/pyproject.toml;
-#   3. python = "3.12.*" in py-packages/qgis-rs/pixi.toml;
+#   3. python = "3.12.*" in py-packages/qgis-py/pixi.toml;
 #   4. python-version in .github/workflows/ci.yml;
 #   5. then `pixi lock`, and expect PyO3 0.22 to block anything past 3.13.
 python = "3.12.*"
@@ -166,7 +166,7 @@ qgis = { workspace = true }
 
 [feature.py-runtime.dependencies]
 # The interpreter plus the tooling needed to develop and test the two Python
-# distributions (py-packages/qgis-rs, py-packages/qgis-sdk) inside the QGIS
+# distributions (py-packages/qgis-py, py-packages/qgis-sdk) inside the QGIS
 # environment.
 #
 # `python` is the version QGIS is bundled with (see [workspace.dependencies] for

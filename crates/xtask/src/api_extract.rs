@@ -850,7 +850,7 @@ pub fn extract(root: &Path) -> Result<(String, String, Vec<String>)> {
         .iter()
         .map(|header| format!("#include <{header}>\n"))
         .collect::<String>()
-        + "int qgis_rs_probe_tu;\n";
+        + "int qgis_py_probe_tu;\n";
     fs::write(&probe, probe_source).with_context(|| format!("write {}", probe.display()))?;
 
     let arguments = extraction_arguments(Path::new(&prefix), &gcc_include, &probe);

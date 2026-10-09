@@ -1,4 +1,4 @@
-# py-packages/qgis-rs/pixi.toml — the `qgis-rs` Python package with Rust extension.
+# py-packages/qgis-py/pixi.toml — the `qgis-py` Python package with Rust extension.
 #
 # Only the Python side lives here; the Rust crate it builds is crates/qgis-py,
 # reached through [tool.maturin].manifest-path in the sibling pyproject.toml.
@@ -8,14 +8,14 @@
 # pixi-build-python (maturin backend).
 #
 # The package provides:
-# - Python API `import qgis_rs` at native Rust speed (PyO3)
-# - Console scripts `qgis-cli` and `qgis-rs` via Python (maturin's pyo3
+# - Python API `import qgis_py` at native Rust speed (PyO3)
+# - Console scripts `qgis-cli` and `qgis-py` via Python (maturin's pyo3
 #   bindings ship no Rust bin; the standalone binary is crates/qgis-cli)
 
 [package]
-name = "qgis-rs"
+name = "qgis-py"
 version = "0.1.0"
-description = "Python bindings and CLI for qgis-rs — native-speed QGIS rendering, tiling, and server tools"
+description = "Curated Python API for QGIS — a PyQGIS replacement backed by a native Rust engine"
 license = "GPL-2.0-or-later"
 
 [package.build.backend]

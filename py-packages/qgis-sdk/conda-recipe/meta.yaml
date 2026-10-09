@@ -46,8 +46,8 @@ requirements:
   run:
     - python
     - qgis >=3.44.9,<4
-    # Optional: qgis-rs for rendering tools
-    # - qgis-rs
+    # Optional: qgis-py for rendering tools
+    # - qgis-py
 
 test:
   imports:
@@ -80,7 +80,7 @@ about:
     - `import qgis_sdk` — Python SDK with declarative Plugin, Algorithm APIs
     - `qgis-plugin` binary (Rust) — scaffold, build, test, package, publish plugins at native speed
     - `qgis-sdk` binary — alias for qgis-plugin
-    - `qgis-cli` — also included for rendering/tiling when qgis-rs is installed
+    - `qgis-cli` — also included for rendering/tiling when qgis-py is installed
     - Rust acceleration optional via `qgis-plugin rust init`
     - Pure-Python fallback when Rust extension not built — tests work without cargo
   doc_url: https://archont561.github.io/qgis-rs/

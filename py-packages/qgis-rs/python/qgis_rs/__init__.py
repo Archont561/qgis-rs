@@ -1,106 +1,22 @@
-"""qgis-rs — Python bindings and CLI for qgis-rs.
+"""Deprecated alias: the `qgis-rs` distribution is now `qgis-py`.
 
-Native-speed QGIS rendering, tiling and project inspection, implemented in Rust
-and reached through a single JSON call across the PyO3 boundary. Install from
-pip or conda-forge::
-
-    pip install qgis-rs
-    conda install -c conda-forge qgis-rs
-
-Example::
-
-    >>> from qgis_rs import Project, Extent, TilePlan, ZoomRange, Crs
-    >>> project = Project.open("map.qgs")
-    >>> print(project.path)
-    >>> print(project.info().to_dict())
-
-    >>> extent = Extent.parse("14,50,15,51")
-    >>> plan = TilePlan(extent, ZoomRange.parse("10-14"))
-    >>> print(f"Would render {plan.tile_count()} tiles")
-
-CLI::
-
-    $ qgis-cli info map.qgs --json
-    $ qgis-cli tiles map.qgs -z 10-14 -b 14,50,15,51 --dry-run
-    $ qgis-cli render map.qgs -o map.png
-
-Architecture: the classes above are a *client*. They hold values and ask the
-Rust engine every question that has an answer — parsing, validation, tile
-arithmetic — over the versioned transport in :mod:`qgis_rs._transport`. Adding
-an operation to qgis-rs therefore touches the Rust engine and this client, and
-never a function signature in between. See
-``.knowledge/decisions/D09-wire-protocol-over-ffi.md``.
+Every public name is forwarded to `qgis_py`, so `qgis_rs.Extent is qgis_py.Extent`.
+This package keeps its own submodules (`qgis_rs.cli`), so the deprecation notice
+on the `qgis-rs` console script still runs. Import `qgis_py` in new code.
 """
 
-from __future__ import annotations
+import warnings as _warnings
 
-from ._api import (
-    MAX_LATITUDE,
-    MAX_ZOOM,
-    Crs,
-    Extent,
-    LayerSummary,
-    Project,
-    ProjectInfo,
-    RenderedMap,
-    RenderSettings,
-    Tile,
-    TilePlan,
-    ZoomLevelPlan,
-    ZoomRange,
-    engine_info,
-    plan_tiles,
-    transport_version,
-    version,
-)
-from ._transport import (
-    TRANSPORT_VERSION,
-    EngineError,
-    EngineIOError,
-    InvalidInput,
-    ProjectNotFound,
-    TransportMismatch,
-    Unimplemented,
-    invoke,
-)
+import qgis_py as _impl
+from qgis_py import *  # noqa: F401,F403 - the alias re-exports the whole API
 
-__version__ = version()
+warnings_message = "the qgis-rs distribution is renamed qgis-py; import qgis_py instead of qgis_rs"
+_warnings.warn(warnings_message, DeprecationWarning, stacklevel=2)
 
-# The SDK is a separate distribution; its presence enables the hybrid
-# plugin workflow documented in py-packages/qgis-sdk/README.md.
-try:  # pragma: no cover - depends on what else is installed
-    import qgis_sdk  # type: ignore  # noqa: F401
+__all__ = list(_impl.__all__)
 
-    HAS_QGIS_SDK = True
-except ImportError:  # pragma: no cover
-    HAS_QGIS_SDK = False
 
-__all__ = [
-    "HAS_QGIS_SDK",
-    "MAX_LATITUDE",
-    "MAX_ZOOM",
-    "TRANSPORT_VERSION",
-    "Crs",
-    "EngineError",
-    "EngineIOError",
-    "Extent",
-    "InvalidInput",
-    "LayerSummary",
-    "Project",
-    "ProjectInfo",
-    "ProjectNotFound",
-    "RenderSettings",
-    "RenderedMap",
-    "Tile",
-    "TilePlan",
-    "TransportMismatch",
-    "Unimplemented",
-    "ZoomLevelPlan",
-    "ZoomRange",
-    "__version__",
-    "engine_info",
-    "invoke",
-    "plan_tiles",
-    "transport_version",
-    "version",
-]
+def __getattr__(name: str):
+    # Names that are not in __all__ (for example `_core`, `_api`, `_transport`)
+    # still resolve to the same objects in qgis_py.
+    return getattr(_impl, name)

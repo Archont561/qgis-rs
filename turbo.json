@@ -96,7 +96,7 @@
 			],
 			"dependsOn": ["build"]
 		},
-		"qgis-rs-py#build": {
+		"qgis-py-dist#build": {
 			"inputs": [
 				"pyproject.toml",
 				"python/**",
@@ -134,7 +134,7 @@
 		"@qgis/rust#format": {
 			"cache": false
 		},
-		"qgis-rs-py#test": {
+		"qgis-py-dist#test": {
 			"dependsOn": ["build"],
 			"cache": false
 		},

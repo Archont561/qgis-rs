@@ -1,4 +1,4 @@
-"""Python CLI integration tests backed by the qgis-rs Rust extension."""
+"""Python CLI integration tests backed by the qgis-py Rust extension."""
 
 import json
 import subprocess
@@ -6,12 +6,12 @@ import sys
 from pathlib import Path
 
 def test_cli_import():
-    from qgis_rs.cli import build_parser, main
+    from qgis_py.cli import build_parser, main
     parser = build_parser()
     assert parser is not None
 
 def test_cli_info(tmp_path, capsys):
-    from qgis_rs.cli import main
+    from qgis_py.cli import main
     p = tmp_path / "map.qgs"
     p.write_text("<qgis></qgis>")
 
@@ -22,7 +22,7 @@ def test_cli_info(tmp_path, capsys):
     assert "format:" in out
 
 def test_cli_info_json(tmp_path, capsys):
-    from qgis_rs.cli import main
+    from qgis_py.cli import main
     p = tmp_path / "map.qgs"
     p.write_text("<qgis></qgis>")
 
@@ -34,7 +34,7 @@ def test_cli_info_json(tmp_path, capsys):
     assert "size_bytes" in data
 
 def test_cli_tiles_dry_run(tmp_path, capsys):
-    from qgis_rs.cli import main
+    from qgis_py.cli import main
     p = tmp_path / "map.qgs"
     p.write_text("<qgis></qgis>")
 
@@ -51,16 +51,16 @@ def test_cli_tiles_dry_run(tmp_path, capsys):
     assert "z=10" in out
 
 def test_cli_version(capsys):
-    from qgis_rs.cli import main
+    from qgis_py.cli import main
     rc = main(["version"])
     assert rc == 0
     out = capsys.readouterr().out
-    assert "qgis-rs" in out
+    assert "qgis-py" in out
 
 def test_cli_module_entrypoint_displays_help():
     """The installed Python entrypoint should expose the CLI help."""
     result = subprocess.run(
-        [sys.executable, "-m", "qgis_rs.cli", "--help"],
+        [sys.executable, "-m", "qgis_py.cli", "--help"],
         capture_output=True,
         text=True,
     )

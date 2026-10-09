@@ -156,7 +156,7 @@ fn the_pyproject_parser_reads_both_spellings_of_dependencies() {
     assert_eq!(inline.dependencies, Vec::<String>::new());
 
     let multiline = parse_distribution(
-        "[project]\nname = \"qgis-rs\"\ndependencies = [\n  \"typing-extensions\",\n]\n\n[project.scripts]\nqgis-cli = \"qgis_rs.cli:main\"\n",
+        "[project]\nname = \"qgis-rs\"\ndependencies = [\n  \"typing-extensions\",\n]\n\n[project.scripts]\nqgis-cli = \"qgis_py.cli:main\"\n",
     );
     assert_eq!(multiline.name, "qgis-rs");
     assert_eq!(multiline.dependencies, vec!["typing-extensions"]);

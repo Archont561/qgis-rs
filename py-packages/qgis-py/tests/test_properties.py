@@ -1,10 +1,10 @@
-"""Property tests for the pure value seams exposed by the qgis-rs client."""
+"""Property tests for the pure value seams exposed by the qgis-py client."""
 
 from __future__ import annotations
 
 from hypothesis import given, settings, strategies as st
 
-import qgis_rs
+import qgis_py
 
 
 finite_coordinates = st.floats(
@@ -31,30 +31,30 @@ def test_extent_text_round_trip_preserves_ordered_edges(
     min_x, max_x = sorted((first_x, second_x))
     min_y, max_y = sorted((first_y, second_y))
 
-    extent = qgis_rs.Extent(min_x, min_y, max_x, max_y)
+    extent = qgis_py.Extent(min_x, min_y, max_x, max_y)
 
-    assert qgis_rs.Extent.parse(str(extent)) == extent
+    assert qgis_py.Extent.parse(str(extent)) == extent
 
 
 @settings(max_examples=40, deadline=None)
 @given(
-    minimum=st.integers(min_value=0, max_value=qgis_rs.MAX_ZOOM),
-    span=st.integers(min_value=0, max_value=qgis_rs.MAX_ZOOM),
+    minimum=st.integers(min_value=0, max_value=qgis_py.MAX_ZOOM),
+    span=st.integers(min_value=0, max_value=qgis_py.MAX_ZOOM),
 )
 def test_zoom_range_string_round_trip_preserves_inclusive_bounds(
     minimum: int,
     span: int,
 ) -> None:
-    maximum = min(qgis_rs.MAX_ZOOM, minimum + span)
-    zooms = qgis_rs.ZoomRange(minimum, maximum)
+    maximum = min(qgis_py.MAX_ZOOM, minimum + span)
+    zooms = qgis_py.ZoomRange(minimum, maximum)
 
-    assert qgis_rs.ZoomRange.parse(str(zooms)) == zooms
+    assert qgis_py.ZoomRange.parse(str(zooms)) == zooms
     assert zooms.count() == maximum - minimum + 1
 
 
 @settings(max_examples=40, deadline=None)
 @given(code=st.integers(min_value=1, max_value=999_999))
 def test_epsg_auth_ids_normalize_case_and_whitespace(code: int) -> None:
-    crs = qgis_rs.Crs.from_auth_id(f" epsg:{code} ")
+    crs = qgis_py.Crs.from_auth_id(f" epsg:{code} ")
 
     assert crs.auth_id == f"EPSG:{code}"

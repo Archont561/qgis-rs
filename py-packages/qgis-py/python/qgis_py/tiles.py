@@ -1,7 +1,7 @@
 """Tiling helpers.
 
-A convenience namespace — the types are defined once in :mod:`qgis_rs._api`
-and re-exported here so ``from qgis_rs.tiles import TilePlan`` keeps working.
+A convenience namespace — the types are defined once in :mod:`qgis_py._api`
+and re-exported here so ``from qgis_py.tiles import TilePlan`` keeps working.
 """
 
 from __future__ import annotations

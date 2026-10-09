@@ -139,7 +139,7 @@ file was first written on and the Arena sandbox of 2026-10-03.
   turbo out with `--env-mode=loose` and `CARGO_NET_OFFLINE=true` on the pixi process, so the napi
   build keeps `CARGO_HOME` and resolves from `.pixi-sandbox/vendor` instead of reaching for
   crates.io; and `patchelf` is now declared in `pixi.toml` and carried in the pack, so
-  `qgis-rs-py#build` produces a wheel here rather than dying on `Failed to execute 'patchelf'`.
+  `qgis-py-dist#build` produces a wheel here rather than dying on `Failed to execute 'patchelf'`.
   Measured 2026-10-04 on a freshly restored sandbox: 3m35s cold, 1m56s warm, every fan-out green.
   One caveat that is not a bug: the gate's format-drift step is `git diff --exit-code`, so it
   fails on **any** uncommitted change, including your own work in progress. Commit first, then

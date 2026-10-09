@@ -111,7 +111,7 @@ function runWithFallback(args) {
 	if (command === "tiles") {
 		// Parse args: -z, -b, -o, --dry-run
 		// `output` is parsed for CLI completeness but unused until the
-		// render path (`qgis_rs.render`) is wired up in crates/qgis-node.
+		// render path (`qgis_py.render`) is wired up in crates/qgis-node.
 		let zoom = null,
 			bounds = null,
 			_output = null,

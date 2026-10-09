@@ -644,11 +644,11 @@ def qgis_cli_main(argv: Optional[List[str]] = None) -> int:
     """
     Convenience entry point for qgis-cli when qgis-sdk is installed.
 
-    If qgis_rs is available, delegate to it; otherwise try to run qgis-cli binary.
+    If qgis_py is available, delegate to it; otherwise try to run qgis-cli binary.
     """
     try:
-        from qgis_rs.cli import main as qgis_rs_main  # type: ignore
-        return qgis_rs_main(argv)
+        from qgis_py.cli import main as qgis_py_main  # type: ignore
+        return qgis_py_main(argv)
     except ImportError:
         # Try binary
         import shutil
@@ -659,7 +659,7 @@ def qgis_cli_main(argv: Optional[List[str]] = None) -> int:
             result = subprocess.run([binary] + (argv or []))
             return result.returncode
         else:
-            print("qgis-cli: not found. Install qgis-rs: pip install qgis-rs", file=sys.stderr)
+            print("qgis-cli: not found. Install qgis-py: pip install qgis-py", file=sys.stderr)
             return 1
 
 

@@ -1,6 +1,6 @@
 """Rendering helpers.
 
-A convenience namespace — the types are defined once in :mod:`qgis_rs._api`
+A convenience namespace — the types are defined once in :mod:`qgis_py._api`
 and re-exported here.
 """
 

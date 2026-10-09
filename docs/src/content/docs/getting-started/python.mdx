@@ -1,44 +1,44 @@
 ---
 title: Python package
-description: Install qgis-rs from pip or conda-forge and use both the Python API and qgis-cli at native Rust speed
+description: Install qgis-py from pip or conda-forge and use both the Python API and qgis-cli at native Rust speed
 ---
 
 # Python package
 
-`qgis-rs` is available as a Python package that ships a **Rust binary** (`qgis-cli`) and a **PyO3 extension** (`qgis_rs._core`) — both run at native speed.
+`qgis-py` is available as a Python package that ships a **Rust binary** (`qgis-cli`) and a **PyO3 extension** (`qgis_py._core`) — both run at native speed.
 
-- **pip**: `pip install qgis-rs` → `import qgis_rs` + `qgis-cli` on PATH
-- **conda**: `conda install -c conda-forge qgis-rs` → same, with optional QGIS backend
+- **pip**: `pip install qgis-py` → `import qgis_py` + `qgis-cli` on PATH
+- **conda**: `conda install -c conda-forge qgis-py` → same, with optional QGIS backend
 
 ## Installation
 
 ### From PyPI (pip)
 
 ```bash
-pip install qgis-rs
+pip install qgis-py
 ```
 
 What you get:
 
-- `qgis_rs` Python module (pure-Rust geometry + optional QGIS rendering)
+- `qgis_py` Python module (pure-Rust geometry + optional QGIS rendering)
 - `qgis-cli` executable (Rust binary, built by maturin)
-- `qgis-cli` and `qgis-rs` console scripts (`python -m qgis_rs.cli`)
+- `qgis-cli` and `qgis-py` console scripts (`python -m qgis_py.cli`)
 
 Pre-built wheels for Linux x86_64, macOS arm64/x86_64, Windows x86_64. If no wheel matches, pip builds from source via `maturin` (requires Rust ≥1.96).
 
 ### From conda-forge
 
 ```bash
-conda install -c conda-forge qgis-rs
+conda install -c conda-forge qgis-py
 # or
-pixi add qgis-rs
-mamba install -c conda-forge qgis-rs
+pixi add qgis-py
+mamba install -c conda-forge qgis-py
 ```
 
 The conda-forge package can be built in two modes:
 
-- **Lightweight (default)**: No QGIS dependency. Supports `info`, `tiles --dry-run`, `version`, and the Python API for tile planning. This is what `pip install qgis-rs` gives you.
-- **Full**: Depends on `qgis >=3.44.9`. Supports `render`, `tiles` (actual rendering), `export`, `serve`. Get it via `conda install -c conda-forge qgis qgis-rs`.
+- **Lightweight (default)**: No QGIS dependency. Supports `info`, `tiles --dry-run`, `version`, and the Python API for tile planning. This is what `pip install qgis-py` gives you.
+- **Full**: Depends on `qgis >=3.44.9`. Supports `render`, `tiles` (actual rendering), `export`, `serve`. Get it via `conda install -c conda-forge qgis qgis-py`.
 
 ### From source (development)
 
@@ -48,21 +48,21 @@ cd qgis-rs
 
 # Python dev with maturin
 pip install maturin
-(cd py-packages/qgis-rs && maturin develop)
+(cd py-packages/qgis-py && maturin develop)
 
 # Or via pixi (conda env with QGIS)
 pixi install -e default
 pixi run -e default py-test
 
 # Test
-python -m pytest py-packages/qgis-rs/tests -q
+python -m pytest py-packages/qgis-py/tests -q
 qgis-cli --help
 ```
 
 ## Python API
 
 ```python
-from qgis_rs import Project, Extent, TilePlan, ZoomRange, Crs, plan_tiles
+from qgis_py import Project, Extent, TilePlan, ZoomRange, Crs, plan_tiles
 
 # Open a project (cheap — only checks path, no QGIS needed)
 project = Project.open("map.qgs")
@@ -109,8 +109,8 @@ qgis-cli tiles map.qgs -z 10-14 -b 14,50,15,51 -o ./tiles/ --dry-run
 qgis-cli render map.qgs -o map.png --width 1920
 
 # Via Python module (same speed — uses Rust extension directly)
-python -m qgis_rs.cli info map.qgs --json
-qgis-rs info map.qgs  # alias
+python -m qgis_py.cli info map.qgs --json
+qgis-py info map.qgs  # alias
 ```
 
 ### Commands
@@ -126,8 +126,8 @@ qgis-rs info map.qgs  # alias
 ## Architecture
 
 ```
-qgis-rs wheel
-├── qgis_rs/
+qgis-py wheel
+├── qgis_py/
 │   ├── __init__.py      → the public API
 │   ├── _api.py          → Extent, Crs, Tile, TilePlan, ZoomRange, Project
 │   ├── _transport.py    → invoke(): one JSON call into Rust, errors → exceptions
@@ -138,23 +138,23 @@ qgis-rs wheel
 
 There is no pure-Python fallback: every number this package returns is computed
 by Rust, and a second implementation would be a second set of answers. Without
-a built `_core`, importing `qgis_rs` raises.
+a built `_core`, importing `qgis_py` raises.
 
 - `crates/qgis-protocol` — the request/response envelope and the closed list of operations
 - `crates/qgis-engine` — `invoke(request_json) -> response_json`, one arm per operation
 - `crates/qgis-render` — pure Rust, no QGIS needed
 - `crates/qgis-cli` — CLI library + binary (reused by Python package)
-- `py-packages/qgis-rs` — the Python distribution (client, tests, maturin config)
+- `py-packages/qgis-py` — the Python distribution (client, tests, maturin config)
 - `crates/qgis-py` — the PyO3 adapter + `qgis-cli` binary it compiles
 
 ## Conda-forge
 
-See `py-packages/qgis-rs/conda-recipe/` for the recipe. It builds the Rust binary and Python extension and installs both to `$PREFIX/bin` and site-packages.
+See `py-packages/qgis-py/conda-recipe/` for the recipe. It builds the Rust binary and Python extension and installs both to `$PREFIX/bin` and site-packages.
 
 To publish to conda-forge:
 
 1. Fork https://github.com/conda-forge/staged-recipes
-2. Copy `py-packages/qgis-rs/conda-recipe/` to `recipes/qgis-rs/`
+2. Copy `py-packages/qgis-py/conda-recipe/` to `recipes/qgis-py/`
 3. Open PR
 
 ## Performance

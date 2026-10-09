@@ -91,7 +91,7 @@ workflow so IDs, dependencies, acceptance criteria, and status remain consistent
 - Everything on the wire is `snake_case`, including operation names. The
   JavaScript client renames to camelCase at its own edge; Python does not rename.
 - The ergonomic classes live in the host languages
-  (`py-packages/qgis-rs/python/qgis_rs/_api.py`, `ts-packages/qgis-node/src/index.js`),
+  (`py-packages/qgis-py/python/qgis_py/_api.py`, `ts-packages/qgis-node/src/index.js`),
   never in the binding crates. There are no pure-Python or pure-JS fallbacks.
 
 ### Repository automation

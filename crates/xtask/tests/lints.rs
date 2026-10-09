@@ -172,10 +172,10 @@ fn discovery_picks_the_same_match_whatever_order_the_tree_is_walked_in() {
 fn a_hidden_python_module_is_source_and_a_generated_declaration_is_not() {
     // The two files the ignore rule actually swallowed.
     assert!(looks_like_source(
-        "py-packages/qgis-rs/python/qgis_rs/_api.py"
+        "py-packages/qgis-py/python/qgis_py/_api.py"
     ));
     assert!(looks_like_source(
-        "py-packages/qgis-rs/python/qgis_rs/_transport.py"
+        "py-packages/qgis-py/python/qgis_py/_transport.py"
     ));
     // Generated, dot-prefixed, and ignored on purpose.
     assert!(!looks_like_source(
@@ -186,10 +186,10 @@ fn a_hidden_python_module_is_source_and_a_generated_declaration_is_not() {
         "ts-packages/qgis-node/node_modules/left-pad/index.js"
     ));
     assert!(!looks_like_source(
-        "py-packages/qgis-rs/python/qgis_rs/__pycache__/cli.pyc"
+        "py-packages/qgis-py/python/qgis_py/__pycache__/cli.pyc"
     ));
     assert!(!looks_like_source(
-        "py-packages/qgis-rs/dist/qgis_rs-0.1.0.whl"
+        "py-packages/qgis-py/dist/qgis_py-0.1.0.whl"
     ));
 }
 

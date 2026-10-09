@@ -1,11 +1,11 @@
 # crates/qgis-py — the Rust core of the `qgis-rs` Python distribution.
 #
-# Builds the PyO3 extension module, imported by Python as `qgis_rs._core`
-# (built by maturin, driven from ../../py-packages/qgis-rs/pyproject.toml).
+# Builds the PyO3 extension module, imported by Python as `qgis_py._core`
+# (built by maturin, driven from ../../py-packages/qgis-py/pyproject.toml).
 #
 # The lib target is ~40 lines: it forwards one JSON string to `qgis-engine` and
 # hands one back (D09). The ergonomic Python API, the tests, the conda recipe
-# and the pixi `[package]` manifest live in ../../py-packages/qgis-rs/.
+# and the pixi `[package]` manifest live in ../../py-packages/qgis-py/.
 #
 # This crate deliberately has NO [[bin]] targets. It used to declare a
 # `qgis-cli` wrapper bin, but bin names must be unique across the whole
@@ -14,7 +14,7 @@
 # crate linked last won), including the one crates/qgis-cli's own
 # CARGO_BIN_EXE tests execute. maturin's `pyo3` bindings never shipped the
 # bin in the wheel anyway: the wheel's `qgis-cli` on PATH is the
-# [project.scripts] console script `qgis_rs.cli:main`, which drives the same
+# [project.scripts] console script `qgis_py.cli:main`, which drives the same
 # engine in-process.
 
 [package]
@@ -27,13 +27,13 @@ keywords = ["qgis", "gis", "rendering", "tiles", "pyo3", "cli"]
 categories = ["science::geo", "api-bindings"]
 
 [lib]
-# Import name inside the wheel: `qgis_rs._core` (see [tool.maturin] in the
+# Import name inside the wheel: `qgis_py._core` (see [tool.maturin] in the
 # Python package's pyproject.toml) — the #[pymodule] fn in src/lib.rs is what
 # produces PyInit__core, so the artifact name here is free to be unique. It
 # MUST be: crates/qgis-sdk used to share `name = "_core"`, and both cdylibs
 # then resolved to the same target/debug/lib_core.so, silently overwriting
 # each other on every `maturin develop` and installing the wrong extension.
-name = "qgis_rs_core"
+name = "qgis_py_core"
 crate-type = ["cdylib"]
 path = "src/lib.rs"
 

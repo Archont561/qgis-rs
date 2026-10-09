@@ -4,7 +4,7 @@ Each class below holds what the engine told it and asks the engine everything
 else. Parsing an extent, validating a zoom range, counting the tiles in a
 pyramid, deciding whether a CRS is geographic — all of that is one rule, stated
 once in ``crates/qgis-render`` and reached over the transport in
-:mod:`qgis_rs._transport`. Nothing in this file recomputes a number the engine
+:mod:`qgis_py._transport`. Nothing in this file recomputes a number the engine
 can produce; that is the whole reason the wire is the interface.
 
 See ``.knowledge/decisions/D09-wire-protocol-over-ffi.md``.
@@ -55,7 +55,7 @@ def engine_info() -> Dict[str, Any]:
 
 
 def version() -> str:
-    """The qgis-rs release this extension was built from."""
+    """The qgis-py release this extension was built from."""
     return str(engine_info()["version"])
 
 
