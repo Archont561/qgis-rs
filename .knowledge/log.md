@@ -1,5 +1,19 @@
 # Bundle Update Log
 
+## 2026-10-09 (slice 6 and the WebEngine global, TASK-61)
+
+* **Landed on `arena/8333daf5-qgis-rs`**: `c38f1be` (slice 6, prebuilt qgis-cli in qgis-py), `2cdd15d` (WebEngine global), and two format commits. `pixi run gates` exit 0 after each. TASK-61 is **Done**.
+* **Slice 6, prebuilt qgis-cli for qgis-py**: `py-packages/qgis-py/scripts/stage_cli.py` builds `qgis-cli` and stages it in `python/qgis_py/_bin/`, which git ignores through the existing `_*` rule. `qgis-cli` (console script) now runs `binary_main`, which runs the bundled binary with the same argv and exit status. `qgis-py` still runs the Python parser. `xtask release build-artifacts` stages the binary before the maturin loop, and the package `build` script does too. Verified: the wheel holds `qgis_py/_bin/qgis-cli` at mode 0755, and `binary_main(['--help'])` returns 0.
+* **WebEngine global**: the bundle now enters through `src/browser.ts`. On a WebEngine page (`qt.webChannelTransport` or `QWebChannel` present) it publishes `window.qgis`, `window.qgisBridge`, `window.qgisReady`, and `window.qgisChannel(transport, cb)`. Outside WebEngine it publishes nothing. The four scaffolded pages load `qgis-sdk.js` after `qwebchannel.js`.
+* **Double-channel bug, found while wiring it**: Qt's `QWebChannel` constructor assigns `transport.onmessage` (checked in qwebchannel 6.2.0, from npm). A second channel on one transport takes over the first one's replies. The bundle and the page's own `new QWebChannel` would have broken each other. Fix: `src/channel.ts` caches one channel per transport. The bridge (`window.ts`) and the templates both open it through `openChannel`/`qgisChannel`. Tests: `channel.test.ts` (3), `browser.test.ts` (5).
+* **Measured**: qgis-py pytest 24 passed. `@archont561/qgis-sdk` 106 bun tests. qgis-sdk vendoring tests 10. xtask 150 passed.
+* **Not verified here**: a real QtWebEngine page. Only a fake channel ran (node smoke test: one channel for two callers). The bundle's auto-connect logs one console error on pages where Python does not register a `bridge` object. The qgis-cli binary links QGIS shared libraries (auditwheel does not repair it), so it needs QGIS at runtime, as the Node binary does. Only linux-x64 was built. The CI matrix and per-platform wheel publishing are still unbuilt, as recorded for TASK-58.
+* **Pre-existing, not changed**: `py-packages/qgis-py/python/qgis_py/__pycache__` gets into the wheel when maturin runs in a dirty tree. Clean it before release builds.
+
+* **Next session opening prompt**:
+
+  > Confirm the pixi environments (`scripts/restore.sh`, `export PATH="$HOME/.local/bin:$PATH"`, `pixi run bun-install`, `pixi run setup`). Read the slice 6 and WebEngine entry in `.knowledge/log.md`. Open items: verify the WebEngine global in a real QtWebEngine page, the CI matrix for per-platform qgis-cli wheels and npm packages (TASK-58, TASK-61), and the `__pycache__` exclusion in the wheel. Propose the slice and stop before writing code.
+
 ## 2026-10-09 (slice 5, TASK-56 bridge vendoring)
 
 * **Landed on `arena/8333daf5-qgis-rs`** in `91cd574` (feat). `pixi run gates` exit 0 on that commit. TASK-56 is **Done** (AC1–AC4 checked).
