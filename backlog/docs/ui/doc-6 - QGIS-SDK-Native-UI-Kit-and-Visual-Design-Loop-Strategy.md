@@ -299,7 +299,7 @@ heuristic or vision reviewer
 validated next DesignSpec
 ```
 
-The existing feasibility probe is in `tools/pyqt-design-loop/` and is tracked by TASK-28. It proves that one custom-painted PyQt widget can:
+A feasibility probe (TASK-28) proved that one custom-painted PyQt widget can:
 
 - run with `QT_QPA_PLATFORM=offscreen`;
 - capture itself with `QWidget.grab()`;
@@ -308,7 +308,15 @@ The existing feasibility probe is in `tools/pyqt-design-loop/` and is tracked by
 - improve a deliberately weak design;
 - accept an external reviewer command that returns a complete JSON spec.
 
-The real QGIS integration is tracked by TASK-29.
+The probe tooling was removed from the repository; the loop is now a backlog
+specification in
+[doc-9](doc-9%20-%20Agent-Driven-PyQt-QGIS-Visual-Design-Loop-Spec.md). The
+real QGIS integration is tracked by TASK-29.
+
+The human-facing preview command — `qgis-sdk ui preview`, with browser
+forwarding and live interaction — is specified in
+[doc-10](doc-10%20-%20qgis-sdk-UI-Preview-CLI-and-Dev-Loop.md) and tracked by
+TASK-54.
 
 ### Loop seams
 

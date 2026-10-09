@@ -4,7 +4,7 @@ title: Connect a vision reviewer to a real QGIS widget design loop
 status: To Do
 assignee: []
 created_date: '2026-10-03 08:50'
-updated_date: '2026-10-04 12:48'
+updated_date: '2026-10-09 00:10'
 labels:
   - qgis-sdk
   - ui
@@ -16,7 +16,12 @@ dependencies:
   - TASK-36
 documentation:
   - .knowledge/qgis-ui-agent-design-loop.md
-  - tools/pyqt-design-loop/README.md
+  - >-
+    backlog/docs/ui/doc-9 -
+    Agent-Driven-PyQt-QGIS-Visual-Design-Loop-Spec.md
+  - >-
+    backlog/docs/ui/doc-10 -
+    qgis-sdk-UI-Preview-CLI-and-Dev-Loop.md
   - >-
     backlog/docs/ui/doc-6 -
     QGIS-SDK-Native-UI-Kit-and-Visual-Design-Loop-Strategy.md
@@ -45,11 +50,13 @@ Promote the feasibility probe into an optional QGIS SDK visual-design workflow. 
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-Use the native-first UI contract and typed widget specs from TASK-36; render one real qgis_sdk.ui.Dialog or plugin widget; capture with QWidget.grab; analyze constraints; route optional vision review through validated JSON only; require human approval before template changes.
+Implement the design loop specified in backlog/docs/ui/doc-9: use the native-first UI contract and typed widget specs from TASK-36; render one real qgis_sdk.ui.Dialog or plugin widget; capture with QWidget.grab; analyze constraints; route optional vision review through validated JSON only; require human approval before template changes.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-The UI design system dependency is TASK-36. The existing feasibility implementation remains TASK-28; this task covers real QGIS/PyQt widget integration and optional vision review.
+The UI design system dependency is TASK-36. The TASK-28 feasibility probe was removed from the repository; its validated design and evidence are captured in backlog/docs/ui/doc-9 and the knowledge entry. This task builds the loop per that spec against a real QGIS/PyQt widget and adds optional vision review.
+
+2026-10-09: the human-facing preview command ships first as TASK-54 (doc-10 — `qgis-sdk ui preview` with browser forwarding and a `/events` interaction channel); this task's loop converges with it under doc-9's run contract.
 <!-- SECTION:NOTES:END -->

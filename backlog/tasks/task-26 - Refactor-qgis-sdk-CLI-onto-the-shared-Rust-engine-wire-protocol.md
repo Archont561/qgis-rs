@@ -4,7 +4,7 @@ title: Refactor qgis-sdk CLI onto the shared Rust engine wire protocol
 status: To Do
 assignee: []
 created_date: '2026-10-03 01:51'
-updated_date: '2026-10-03 09:37'
+updated_date: '2026-10-09 00:10'
 labels:
   - qgis-sdk
   - qgis-py
@@ -36,6 +36,7 @@ documentation:
   - .knowledge/qgis-plugin-sdk.md
   - .knowledge/decisions/D09-wire-protocol-over-ffi.md
   - .knowledge/decisions/D13-rust-cli-ffi-and-qgis-sdk-boundaries.md
+  - .knowledge/decisions/D14-qgis-sdk-cli-transport-argv-forwarding.md
   - >-
     backlog/docs/architecture/doc-7 -
     Rust-CLI-Cross-Language-FFI-and-QGIS-SDK-Product-Boundaries.md
@@ -57,7 +58,7 @@ First settle the architecture rather than assuming that every SDK command belong
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 An architecture decision record compares an enhanced qgis-py/qgis-engine protocol with a separate qgis-sdk protocol/engine, selects one, and defines operation namespacing, transport versioning, payload/result/error shapes, and the boundary between CLI workflows and QGIS-hosted plugin runtime.
+- [x] #1 An architecture decision record compares an enhanced qgis-py/qgis-engine protocol with a separate qgis-sdk protocol/engine, selects one, and defines operation namespacing, transport versioning, payload/result/error shapes, and the boundary between CLI workflows and QGIS-hosted plugin runtime. Recorded in D14: native argv forwarding for the CLI transport, D09 wire protocol for capabilities, shared qgis-protocol/qgis-engine components (no separate qgis-sdk protocol pair, no CLI-invocation namespace).
 - [ ] #2 The selected Rust engine owns the qgis-sdk CLI behavior and exposes a versioned JSON invoke entry point; qgis-plugin and qgis-sdk binaries reuse the same library/engine without sibling subprocess delegation, duplicated command dispatch, or a minimal behavior-only alias.
 - [ ] #3 The Python qgis-sdk CLI becomes a thin wire client and exit-code/error mapper; new and existing CLI commands are routed through Rust, and _fallback_cli.py plus the Python implementations of those commands are removed or reduced to a deliberate native-extension-unavailable error with no alternate command semantics.
 - [ ] #4 The qgis-sdk CLI path does not import or call PyQGIS/PyQt; the package's plugin runtime/UI integrations remain explicitly separated and documented as the only QGIS-hosted boundary.
@@ -75,11 +76,13 @@ First settle the architecture rather than assuming that every SDK command belong
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-Build the canonical Rust qgis-plugin command library and exact qgis-sdk alias. Keep qgis-sdk CLI tooling separate from qgis-cli GIS execution, use shared protocol/engine components only where appropriate, and keep QGIS-hosted plugin runtime outside this CLI boundary.
+Selected architecture (D14): move the clap command tree and handlers into a `qgis-cli` lib target (pure Rust, no pyo3); `crates/qgis-sdk` depends on it and exposes one `cli_main(argv) -> i32` pyfunction in `qgis_sdk._core`; the Python console scripts forward raw argv and parse nothing. Capabilities the CLI invokes cross the shared qgis-protocol/qgis-engine D09 envelope. Remove `_fallback_cli.py` and the Python command handlers; a missing native extension is a loud error. `qgis-sdk` stays an exact alias of `qgis-plugin` (D13), and QGIS-hosted plugin runtime stays outside this CLI boundary.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
 The accepted product boundary is recorded in doc-7. qgis-sdk must not depend directly on qgis-py; its Rust CLI may reuse shared protocol/engine crates, while hosted UI and Processing remain PyQGIS/PyQt-owned. Follow TASK-40, TASK-43, and TASK-44 for the decomposed work.
+
+2026-10-09: the transport decision is recorded in D14 — (a) native argv forwarding for the CLI transport (`cli_main` pyfunction; Python parses nothing), (b) the D09 wire protocol for capabilities. Edge cases are owned by the transport contract: non-UTF-8 argv via `Vec<OsString>`, exit codes as `i32` mapped by `sys.exit`, in-process stdout/stderr, clap-owned `--help`/completion. AC#1 is checked; AC#2–#6 remain implementation work.
 <!-- SECTION:NOTES:END -->

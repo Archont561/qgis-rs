@@ -12,8 +12,12 @@ generated: { by: arena-agent, at: 2026-10-03T08:52:00Z }
 ## Feasibility result
 
 A bounded agent design loop is feasible for a simple QGIS-style UI element without
-using a desktop screenshot utility or a browser. The proof of concept lives at
-`tools/pyqt-design-loop/`.
+using a desktop screenshot utility or a browser. The feasibility probe lived at
+`tools/pyqt-design-loop/` until 2026-10-08, when the tooling was removed from the
+repository so the design loop is not shipped as repo tooling now; the validated loop
+design is specified in
+`backlog/docs/ui/doc-9 - Agent-Driven-PyQt-QGIS-Visual-Design-Loop-Spec.md`, and
+TASK-29 builds it against a real QGIS widget.
 
 The probe creates one custom-painted `QWidget`, runs it with
 `QT_QPA_PLATFORM=offscreen`, captures the widget with `QWidget.grab()`, analyzes
@@ -103,9 +107,10 @@ Keep these seams separate:
 3. Add image and behavior fixtures: stable geometry/content checks for CI, PNG
    artifacts for review, and explicit golden screenshots only when rendering
    stability is proven across the supported Qt/QGIS environment.
-4. Connect a vision reviewer through the probe's JSON command seam or a future
-   in-process agent adapter. Require complete, schema-validated design output,
-   a bounded iteration count, and a human review checkpoint.
+4. Connect a vision reviewer through the JSON command seam specified in
+   `backlog/docs/ui/doc-9` (or a future in-process agent adapter). Require
+   complete, schema-validated design output, a bounded iteration count, and a
+   human review checkpoint.
 5. Promote only approved design specs/templates into scaffold output. Do not
    let a model rewrite plugin code or bypass QGIS/Qt lifecycle rules.
 
@@ -123,4 +128,8 @@ capture/analyze/review/history loop, not the browser-specific tooling.
 - [D05: Threading](decisions/D05-threading.md) — Qt/QGIS thread affinity.
 - [TASK-1](../backlog/tasks/task-1%20-%20Make%20the%20full%20QGIS%20SDK%20test%20suite%20headless%20and%20CI-green.md) — restore stable headless SDK execution.
 - [TASK-23](../backlog/tasks/task-23%20-%20Refactor-every-test-suite-onto-property-based-and-fixture-driven-testing.md) — fixture-driven testing migration.
-- [TASK-28](../backlog/tasks/task-28%20-%20Validate-an-agent-design-loop-for-a-headless-PyQt-widget.md) — feasibility spike and proof output.
+- [TASK-28](../backlog/tasks/task-28%20-%20Validate-an-agent-design-loop-for-a-headless-PyQt-widget.md) — feasibility spike and proof output; the probe was removed from the repository and its design moved to doc-9.
+- [TASK-29](../backlog/tasks/task-29%20-%20Connect-a-vision-reviewer-to-a-real-QGIS-widget-design-loop.md) — real QGIS widget integration and optional vision review.
+- [doc-9](../backlog/docs/ui/doc-9%20-%20Agent-Driven-PyQt-QGIS-Visual-Design-Loop-Spec.md) — backlog specification of the design loop (the repo carries no loop tooling now).
+- [doc-10](../backlog/docs/ui/doc-10%20-%20qgis-sdk-UI-Preview-CLI-and-Dev-Loop.md) — specification of the human-facing `qgis-sdk ui preview` command.
+- [TASK-54](../backlog/tasks/task-54%20-%20Ship-the-qgis-sdk-ui-preview-command.md) — ship the ui preview command.
