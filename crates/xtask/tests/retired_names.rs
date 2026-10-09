@@ -11,6 +11,10 @@ use xtask::lints::{is_retired_name_history, retired_names_in};
 #[case::the_retired_npm_name("npm install qgis-rs", "npm install qgis-rs")]
 #[case::the_retired_python_import("import qgis_rs", "import qgis_rs")]
 #[case::the_retired_command("run `qgis-plugin install`", "qgis-plugin")]
+#[case::the_old_cpp_namespace(
+    "using qgis_rs::native_manager::compact_json;",
+    "qgis_rs::native_manager"
+)]
 #[case::the_old_repository_path("https://github.com/Archont561/qgis-rs", "Archont561/qgis-rs")]
 fn a_retired_spelling_is_reported(#[case] text: &str, #[case] expected: &str) {
     assert_eq!(retired_names_in(text), vec![expected]);
@@ -19,9 +23,9 @@ fn a_retired_spelling_is_reported(#[case] text: &str, #[case] expected: &str) {
 #[rstest]
 #[case::the_concept_name_with_a_suffix("the qgis-plugin-sdk concept")]
 #[case::the_concept_file_name("see qgis-plugin-ui.md")]
-#[case::the_cpp_namespace("using qgis_rs::native_manager::compact_json;")]
 #[case::the_current_package("npm install @archont561/qgis-node")]
 #[case::the_current_repository("github.com/Archont561/qgis-rust")]
+#[case::the_current_cpp_namespace("using qgis_sys::native_manager::compact_json;")]
 fn a_current_spelling_is_not_reported(#[case] text: &str) {
     assert!(retired_names_in(text).is_empty(), "{text} was reported");
 }

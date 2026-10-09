@@ -6,7 +6,7 @@
 #include <cstdlib>
 #include <cstring>
 
-namespace qgis_rs::native_manager {
+namespace qgis_sys::native_manager {
 
 QJsonObject success(const QJsonObject& result) {
     return QJsonObject{{"transport_version", static_cast<int>(kTransportVersion)},
@@ -84,4 +84,4 @@ char* copy_response(const std::string& response) {
 // NOLINTNEXTLINE(cppcoreguidelines-no-malloc)
 void free_response(char* response) { std::free(response); }
 
-}  // namespace qgis_rs::native_manager
+}  // namespace qgis_sys::native_manager

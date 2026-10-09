@@ -388,8 +388,8 @@ pub fn setup_qca() -> Result<()> {
 /// TASK-56, the `qgis-rs-py` distribution before the `qgis-py` rename, the
 /// `qgis-rs` npm and pip names that TASK-58 and the Python rename retired, and
 /// the Python `qgis_rs` import shim, and the old repository path (the repository
-/// is `qgis-rust`; `qgis-rs` remains the crate API name). The C++ namespace `qgis_rs::` is not listed:
-/// it is an internal identifier, not a published name.
+/// is `qgis-rust`; `qgis-rs` remains the crate API name). The C++ namespace of the native manager was `qgis_rs::`; it is
+/// `qgis_sys::` now, and the old spelling is listed so it cannot return.
 pub const RETIRED_NAMES: &[&str] = &[
     "@qgis-sdk/bridge",
     "qgis-sdk-bridge",
@@ -400,6 +400,7 @@ pub const RETIRED_NAMES: &[&str] = &[
     "import qgis_rs",
     "from qgis_rs",
     "Archont561/qgis-rs",
+    "qgis_rs::native_manager",
 ];
 
 /// The retired `qgis-plugin` command. It is matched as a whole token, so the

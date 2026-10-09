@@ -61,13 +61,13 @@ namespace {
 // The envelope, the handle encoding and the C ABI's buffer live in
 // conversions.cpp, which has no QGIS behind it and is therefore the half of
 // this manager that tests/cpp can load and exercise on its own.
-using qgis_rs::native_manager::compact_json;
-using qgis_rs::native_manager::copy_response;
-using qgis_rs::native_manager::failure;
-using qgis_rs::native_manager::free_response;
-using qgis_rs::native_manager::json_id;
-using qgis_rs::native_manager::kTransportVersion;
-using qgis_rs::native_manager::success;
+using qgis_sys::native_manager::compact_json;
+using qgis_sys::native_manager::copy_response;
+using qgis_sys::native_manager::failure;
+using qgis_sys::native_manager::free_response;
+using qgis_sys::native_manager::json_id;
+using qgis_sys::native_manager::kTransportVersion;
+using qgis_sys::native_manager::success;
 
 struct Request {
     explicit Request(std::string value) : json(std::move(value)) {}

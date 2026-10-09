@@ -34,14 +34,14 @@
 
 namespace {
 
-using qgis_rs::native_manager::compact_json;
-using qgis_rs::native_manager::copy_response;
-using qgis_rs::native_manager::failure;
-using qgis_rs::native_manager::free_response;
-using qgis_rs::native_manager::handle_from_json;
-using qgis_rs::native_manager::json_id;
-using qgis_rs::native_manager::kTransportVersion;
-using qgis_rs::native_manager::success;
+using qgis_sys::native_manager::compact_json;
+using qgis_sys::native_manager::copy_response;
+using qgis_sys::native_manager::failure;
+using qgis_sys::native_manager::free_response;
+using qgis_sys::native_manager::handle_from_json;
+using qgis_sys::native_manager::json_id;
+using qgis_sys::native_manager::kTransportVersion;
+using qgis_sys::native_manager::success;
 
 /// The largest integer a JSON number carries without loss. QJsonValue stores
 /// every number as a double, so this is the real ceiling of a handle, not
