@@ -19,7 +19,10 @@ describe("exposeQgisGlobal", () => {
 	it("does nothing outside a WebEngine page", () => {
 		const page: Record<string, unknown> = {};
 
-		const ready = exposeQgisGlobal(page, async () => ({ bridge, qgis: api }) as any);
+		const ready = exposeQgisGlobal(
+			page,
+			async () => ({ bridge, qgis: api }) as any,
+		);
 
 		expect(ready).toBeUndefined();
 		expect(page.qgis).toBeUndefined();
@@ -29,7 +32,10 @@ describe("exposeQgisGlobal", () => {
 	it("publishes window.qgis and window.qgisBridge once the bridge is ready", async () => {
 		const page: Record<string, any> = { qt: { webChannelTransport: {} } };
 
-		const ready = exposeQgisGlobal(page, async () => ({ bridge, qgis: api }) as any);
+		const ready = exposeQgisGlobal(
+			page,
+			async () => ({ bridge, qgis: api }) as any,
+		);
 
 		expect(await ready).toBe(api);
 		expect(page.qgis).toBe(api);
@@ -40,7 +46,10 @@ describe("exposeQgisGlobal", () => {
 	it("treats a page with QWebChannel already loaded as a WebEngine page", async () => {
 		const page: Record<string, any> = { QWebChannel: function () {} };
 
-		const ready = exposeQgisGlobal(page, async () => ({ bridge, qgis: api }) as any);
+		const ready = exposeQgisGlobal(
+			page,
+			async () => ({ bridge, qgis: api }) as any,
+		);
 
 		expect(await ready).toBe(api);
 		expect(page.qgis).toBe(api);

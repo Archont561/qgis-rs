@@ -17,10 +17,13 @@ function countingChannel() {
 			queueMicrotask(() => onInit(this));
 		}
 	}
-	return { built, Ctor: FakeChannel as unknown as new (
-		transport: unknown,
-		onInit: (channel: unknown) => void,
-	) => unknown };
+	return {
+		built,
+		Ctor: FakeChannel as unknown as new (
+			transport: unknown,
+			onInit: (channel: unknown) => void,
+		) => unknown,
+	};
 }
 
 const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
