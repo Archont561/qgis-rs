@@ -15,7 +15,10 @@ fn repo() -> PathBuf {
         ("ts-packages/web/package.json", r#"{"name":"@qgis/web"}"#),
         ("py-packages/sdk/package.json", r#"{"name":"sdk-py"}"#),
         ("docs/package.json", r#"{"name":"docs"}"#),
-        ("py-packages/qgis-py/src-rust/Cargo.toml", "[package]\nname = \"qgis-py\"\n"),
+        (
+            "py-packages/qgis-py/src-rust/Cargo.toml",
+            "[package]\nname = \"qgis-py\"\n",
+        ),
     ] {
         let path = root.join(path);
         fs::create_dir_all(path.parent().unwrap()).unwrap();
