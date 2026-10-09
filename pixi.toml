@@ -126,6 +126,13 @@ gtest = ">=1.18,<2"
 # rapidcheck is RapidCheck: property-based testing in C++. It is to gtest what
 # proptest is to the Rust test harness, and what hypothesis is to pytest.
 rapidcheck = ">=2023.4,<2024"
+# gcovr renders the GCC gcov profiles (gcov --json-format) into the C++ coverage
+# report TASK-50 measures the native manager with. LLVM-instrumented coverage is
+# unavailable in this environment (clang-tools ships no clang/clang++ drivers),
+# so the GCC + gcovr route is the one. Declared like TASK-24's cmake/ninja: the
+# sandbox cannot reach conda-forge, so the lock is refreshed runner-side by the
+# relock bot (the guard detects the drift on the PR, the bot commits pixi.lock).
+gcovr = ">=8,<9"
 
 [feature.rust-tools.dependencies]
 # Rust test/lint tooling that used to be `cargo install`-ed next to pixi (CI
