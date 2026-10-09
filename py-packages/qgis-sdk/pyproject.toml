@@ -40,8 +40,6 @@ Documentation = "https://archont561.github.io/qgis-rust/"
 
 [project.scripts]
 qgis-sdk = "qgis_sdk.cli:main"
-# Keep qgis-cli also available when qgis-sdk is installed, for convenience
-qgis-cli = "qgis_sdk.cli:qgis_cli_main"
 
 [project.entry-points.pytest11]
 qgis_sdk = "qgis_sdk.testing"

@@ -16,17 +16,11 @@ build:
     - mkdir -p $PREFIX/bin
     - cp target/release/qgis-sdk $PREFIX/bin/qgis-sdk
     - chmod +x $PREFIX/bin/qgis-sdk
-    # Also include qgis-cli for convenience (canonical bin in crates/qgis-cli;
-    # py-packages/qgis-py/src-rust is the extension module only and has no bin targets)
-    - cargo build --release --manifest-path crates/qgis-cli/Cargo.toml --bin qgis-cli
-    - cp target/release/qgis-cli $PREFIX/bin/qgis-cli || true
-    - chmod +x $PREFIX/bin/qgis-cli || true
     # Build Python wheel with maturin
     - (cd py-packages/qgis-sdk && maturin build --release --strip -o ../../dist --interpreter python)
     - pip install dist/qgis_sdk-*.whl --no-deps -vv
   entry_points:
     - qgis-sdk = qgis_sdk.cli:main
-    - qgis-cli = qgis_sdk.cli:qgis_cli_main
 
 requirements:
   build:
@@ -78,7 +72,6 @@ about:
     - `import qgis_sdk` — Python SDK with declarative Plugin, Algorithm APIs
     - `qgis-sdk` binary (Rust) — scaffold, build, test, package, publish plugins at native speed
     - `qgis-sdk` binary — alias for qgis-sdk
-    - `qgis-cli` — also included for rendering/tiling when qgis-py is installed
     - Rust acceleration optional via `qgis-sdk rust init`
     - Pure-Python fallback when Rust extension not built — tests work without cargo
   doc_url: https://archont561.github.io/qgis-rust/

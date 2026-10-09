@@ -5,9 +5,6 @@ This module provides `qgis-sdk` and `qgis-sdk` console scripts that run
 at native Rust speed when the `_core` extension is built, otherwise fallback
 to pure Python.
 
-It also exposes `qgis-cli` for convenience when both SDK and rendering tools
-are needed.
-
 The Rust binary `qgis-sdk` (built by maturin) is installed to PATH alongside
 the Python package, so `qgis-sdk --help` works both as binary and as
 `python -m qgis_sdk.cli`.
@@ -638,29 +635,6 @@ def main(argv: Optional[List[str]] = None) -> int:
     except Exception as exc:
         print(f"qgis-sdk: {exc}", file=sys.stderr)
         return 1
-
-
-def qgis_cli_main(argv: Optional[List[str]] = None) -> int:
-    """
-    Convenience entry point for qgis-cli when qgis-sdk is installed.
-
-    If qgis_py is available, delegate to it; otherwise try to run qgis-cli binary.
-    """
-    try:
-        from qgis_py.cli import main as qgis_py_main  # type: ignore
-        return qgis_py_main(argv)
-    except ImportError:
-        # Try binary
-        import shutil
-        import subprocess
-
-        binary = shutil.which("qgis-cli")
-        if binary:
-            result = subprocess.run([binary] + (argv or []))
-            return result.returncode
-        else:
-            print("qgis-cli: not found. Install qgis-py: pip install qgis-py", file=sys.stderr)
-            return 1
 
 
 if __name__ == "__main__":
