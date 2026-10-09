@@ -4,7 +4,7 @@ title: Ship the prebuilt qgis-cli binary through @archont561/qgis-node
 status: In Progress
 assignee: []
 created_date: '2026-10-09 15:47'
-updated_date: '2026-10-09 16:08'
+updated_date: '2026-10-09 16:31'
 labels:
   - qgis-node
   - cli
@@ -32,4 +32,8 @@ type: enhancement
 Started. The code has not changed yet; the plan above is the first step.
 
 Decision: use the @biomejs/biome model. @archont561/qgis-node lists one platform package per OS and CPU in optionalDependencies, for example @archont561/qgis-node-linux-x64, and the bin shim resolves the matching package. Nothing is downloaded at install or run time, so no release URL or network access is needed. Biome 2.5.15 lists eight platform packages, including musl variants. The first build covers linux-x64 only; other platforms are added in CI.
+
+Landed: @archont561/qgis-node with Biome-model platform packages (linux-x64-gnu, linux-arm64-gnu, linux-x64-musl) holding bin/qgis-cli; runCli added; qgis-plugin and qgis-sdk bins removed; stage-cli script; 19 node tests pass; gates exit 0.
+
+Still open: CI matrix builds for the other platforms, publishing platform packages in release.rs NPM_PACKAGES, win32 package not yet created.
 <!-- SECTION:NOTES:END -->

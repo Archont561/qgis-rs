@@ -1,5 +1,19 @@
 # Bundle Update Log
 
+## 2026-10-09 (TASK-58, prebuilt qgis-cli through @archont561/qgis-node)
+
+* **Landed on `arena/8333daf5-qgis-rs`** (commits `fc18ca6` feat, then a format commit and a test-script commit): TASK-58 is **In Progress**, not Done. The package is `@archont561/qgis-node` and follows the Biome model. Each platform has a package in `optionalDependencies` that holds `bin/qgis-cli`, and the bin shim resolves the one for the machine. Nothing is downloaded at install or run time. Platforms: `linux-x64-gnu`, `linux-arm64-gnu`, `linux-x64-musl` (`npm/<triple>/`), plus `win32-x64-msvc` in the resolver, with no package yet.
+* **Removed**: the `qgis-plugin` and `qgis-sdk` bins. `qgis-cli` is the only command.
+* **Added**: `runCli(argv)` returns `{ exitCode, stdout, stderr }` (typed in `index.d.ts`), and `resolveCliBinary`. `scripts/stage-cli.js` builds qgis-cli for this machine and stages it.
+* **Renamed**: the napi addon is `qgis-node.<triple>.node` across turbo, biome, `pack:check`, the loader, and `scripts/version.ts`. The stale `@qgis-rs/node-<triple>` loader candidate is gone.
+* **Measured**: `pixi run gates` exit 0. `@archont561/qgis-node` test: **19 pass** (13 contract, 6 CLI, with the real binary run under `QGIS_REQUIRE_NATIVE=1`).
+* **Gotchas**: qgis-cli links QGIS, so it builds only in the **default** pixi env (`pixi run -e default node ts-packages/qgis-node/scripts/stage-cli.js`). The `bun` env has no Qt headers and fails in `qgis-sys`. `pixi run bun …` runs from the repository root, so package scripts need `cd` or an explicit path. The first `test` script ran only `contract.test.js`, and the gate missed the CLI suite until it was widened to `tests/`.
+* **Open**: CI does not build the other platforms, and `release.rs` `NPM_PACKAGES` does not publish the platform packages yet. Both are needed before a real release.
+
+* **Next session opening prompt**:
+
+  > Confirm the pixi environments (`scripts/restore.sh`, `export PATH="$HOME/.local/bin:$PATH"`, `pixi run bun-install`, `pixi run setup`). Read the 2026-10-09 TASK-58 entry in `.knowledge/log.md`. TASK-58 stays In Progress: propose the slice for the CI matrix that builds each platform package, and for publishing the platform packages in the release step. Propose the slice and stop before writing code.
+
 ## 2026-10-08 (session 13)
 
 * **Landed in PR #48** (squash-merged; the squash SHA is the PR's merge commit): TASK-2 — **Done (6/6 ACs, 2/2 DoD)**. The CI test lane used to run one permissive pytest pass over `qgis-sdk`, so the pure-Python suite and the QGIS integration suite were never separate strict passes, and no log said which QGIS backed the run. `test` in `py-packages/qgis-sdk/package.json` now runs `test:pure`, `test:qt` and `test:qgis` in sequence, each strict and each with `QGIS_REQUIRE_NATIVE=1` (without it `test_native_extension_is_used_in_ci` asserts only a bool). `coverage` stays the permissive whole-suite run.
