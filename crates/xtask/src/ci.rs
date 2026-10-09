@@ -157,7 +157,8 @@ impl Stage {
             }
             Self::Coverage => {
                 step("coverage (rust lcov + python xml + js)");
-                turbo(&["coverage", NOT_DOCS], offline)
+                turbo(&["coverage", NOT_DOCS], offline)?;
+                crate::cpp_coverage::run()
             }
         }
     }

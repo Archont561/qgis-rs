@@ -30,6 +30,7 @@ pub mod boundaries;
 pub mod bridge_fixtures;
 pub mod ci;
 pub mod cpp;
+pub mod cpp_coverage;
 pub mod lints;
 pub mod protocol_docs;
 pub mod release;
@@ -49,6 +50,7 @@ use clap::{Parser, Subcommand};
                   pixi run xtask affected [--base REF] [--dry-run] [--force]\n  \
                   pixi run xtask check-cpp [files...]\n  \
                   pixi run xtask test-cpp\n  \
+                  pixi run xtask cpp-coverage\n  \
                   pixi run xtask format-cpp\n  \
                   pixi run xtask clang-tidy\n  \
                   pixi run xtask check-sources\n  \
@@ -108,6 +110,8 @@ pub enum Command {
     FormatCpp,
     /// Build and run the native manager's GoogleTest/RapidCheck suite.
     TestCpp,
+    /// Measure GCC native coverage offline, separately from normal builds.
+    CppCoverage,
     /// clang-tidy over the native manager, discovering the include paths it needs.
     ClangTidy,
     /// Fail if a source file inside a package tree is hidden by .gitignore.
@@ -189,6 +193,7 @@ pub fn run(command: Command) -> Result<()> {
         Command::CheckCpp { files } => lints::check_cpp(&files),
         Command::FormatCpp => lints::format_cpp(),
         Command::TestCpp => cpp::test_cpp(),
+        Command::CppCoverage => cpp_coverage::run(),
         Command::ClangTidy => lints::clang_tidy(),
         Command::CheckSources => lints::check_sources(),
         Command::CheckBoundaries => boundaries::check(&util::repo_root()),
