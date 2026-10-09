@@ -50,6 +50,9 @@ module-name = "qgis_py._core"
 python-source = "python"
 bindings = "pyo3"
 strip = true
+# Bytecode caches come from running Python in the source tree (pytest, the CLI
+# shim). They are machine-specific and must never ship in a wheel.
+exclude = ["**/__pycache__/**", "**/*.pyc"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests", "python"]
