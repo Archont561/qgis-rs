@@ -195,6 +195,14 @@ fn build_artifacts() -> Result<()> {
         "default",
         ["python", "py-packages/qgis-py/scripts/stage_cli.py"],
     )?;
+    // auditwheel repairs the extension in place, and that file is hard-linked
+    // into target/. Cargo sees nothing to rebuild, so a second wheel build
+    // from the same tree fails with "could not be located". Relink both
+    // extensions so each wheel is packed from a fresh link.
+    pixi(
+        "default",
+        ["cargo", "clean", "-p", "qgis-py", "-p", "qgis-sdk", "--release"],
+    )?;
     for distribution in PY_DISTRIBUTIONS {
         pixi(
             "default",
