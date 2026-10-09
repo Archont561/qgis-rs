@@ -114,7 +114,7 @@ qgis-cli info map.qgs --json
 qgis-cli tiles map.qgs -z 10-14 -b 14,50,15,51 --dry-run
 
 # Plugin SDK (Python)
-python -c "import qgis_sdk; print(qgis_sdk.__version__, qgis_sdk.HAS_RUST)"
+python -c "import qgis_sdk; print(qgis_sdk.__version__)"
 qgis-sdk new my_plugin --type processing --rust
 
 # TypeScript

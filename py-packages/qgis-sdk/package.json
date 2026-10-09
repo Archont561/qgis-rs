@@ -6,13 +6,13 @@
 	"scripts": {
 		"build": "pixi run -e default bash -c 'rm -rf dist && python -m pip install --no-deps -e . && python -m pip wheel --no-deps -w dist . && python -c \"import qgis_sdk\"'",
 		"test": "bun run test:pure && bun run test:qt && bun run test:qgis",
-		"test:pure": "pixi run -e default env QGIS_TEST_LAYER=pure QGIS_REQUIRE_NATIVE=1 python -m pytest tests -v",
-		"test:qt": "pixi run -e default env QGIS_TEST_LAYER=qt QGIS_REQUIRE_NATIVE=1 python -m pytest tests -v",
-		"test:qgis": "pixi run -e default env QGIS_TEST_LAYER=qgis QGIS_REQUIRE_NATIVE=1 python -m pytest tests -v",
+		"test:pure": "pixi run -e default env QGIS_TEST_LAYER=pure python -m pytest tests -v",
+		"test:qt": "pixi run -e default env QGIS_TEST_LAYER=qt python -m pytest tests -v",
+		"test:qgis": "pixi run -e default env QGIS_TEST_LAYER=qgis python -m pytest tests -v",
 		"test:webengine": "pixi run -e default env QGIS_TEST_LAYER=webengine python -m pytest tests -v",
-		"coverage": "pixi run -e default env QGIS_REQUIRE_NATIVE=1 python -m pytest tests -v --cov=qgis_sdk --cov-report=term-missing --cov-report=xml:../../target/coverage/python-qgis-sdk.xml",
+		"coverage": "pixi run -e default env python -m pytest tests -v --cov=qgis_sdk --cov-report=term-missing --cov-report=xml:../../target/coverage/python-qgis-sdk.xml",
 		"lint": "bunx biome check package.json",
 		"format": "bunx biome format --write package.json",
-		"doctor": "pixi run -e default env QGIS_REQUIRE_NATIVE=1 python scripts/doctor.py"
+		"doctor": "pixi run -e default env python scripts/doctor.py"
 	}
 }

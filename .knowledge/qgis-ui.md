@@ -123,7 +123,7 @@ def settings_dialog():
     ]
 ```
 
-The decorator generates a `QDialog` subclass with `setupUi`, `QSettings` persistence, and automatic signal wiring. The Rust core validates structure at native speed (`qgis_sdk._core.validate_plugin_structure`).
+The decorator generates a `QDialog` subclass with `setupUi`, `QSettings` persistence, and automatic signal wiring. The Python validator checks structure (`qgis_sdk.plugin_validation.validate_plugin_structure`).
 
 ### 1.3 State persistence with QSettings
 
