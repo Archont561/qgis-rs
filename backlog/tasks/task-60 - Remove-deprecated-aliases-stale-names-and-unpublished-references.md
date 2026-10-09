@@ -4,7 +4,7 @@ title: 'Remove deprecated aliases, stale names and unpublished references'
 status: In Progress
 assignee: []
 created_date: '2026-10-09 15:47'
-updated_date: '2026-10-09 19:09'
+updated_date: '2026-10-09 19:26'
 labels:
   - cleanup
 dependencies: []
@@ -37,4 +37,6 @@ Slice 1 done: qgis-plugin binary, console script, conda entry and bin name dropp
 Slice 2 done: check-sources now fails on retired names in tracked text (tests/retired_names.rs pins the matcher). The four named spellings are gone. Open question: the C++ namespace qgis_rs::native_manager is internal and not in AC2; decide whether to rename it to match qgis_sys before closing.
 
 Slice 3 done: repository is Archont561/qgis-rust (gh reported 403 on the rename call, but the repo resolves under the new name with push permission; the old URL redirects). Gates exit 0 on c494d07.
+
+Slice 4 done (76287df): prefix.dev publish target is @archont561/archont561; conda recipes moved to py-packages/<pkg>/recipes/<pkg>/ with meta.yaml source paths updated; stale recipes/qgis-rs example removed. Gates exit 0. Manual, outside the repo: PyPI trusted publishing for qgis-py and qgis-sdk must name repository Archont561/qgis-rust, workflow release.yml, environment release; npm trusted publishers must match the repository URL too; the prefix.dev channel @archont561/archont561 must exist and be configured for OIDC upload.
 <!-- SECTION:NOTES:END -->
