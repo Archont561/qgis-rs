@@ -4,7 +4,7 @@ title: Rust-backed compute API for QGIS Python plugins (qgis_py.compute)
 status: Draft
 assignee: []
 created_date: '2026-10-09 21:14'
-updated_date: '2026-10-09 21:22'
+updated_date: '2026-10-09 21:34'
 labels:
   - qgis-py
   - compute
@@ -19,22 +19,37 @@ Goal: give QGIS Python plugin developers a first-class API, imported as qgis_py,
 
 Naming: the distribution is qgis-py (module qgis_py), per the rename decision. qgis-rs remains only as the deprecated alias.
 
-Architecture (revised):
-- Pure Rust compute crate in py-packages/qgis-sdk/src-rust/ (crate qgis-compute). It has no QGIS, PyO3, or qgis-engine dependency. Inputs are plain in-memory data: raster bands as typed slices with a geotransform, points and geometries as coordinate arrays, feature attributes as typed columns. Outputs are the same kinds of data. Its algorithms (focal statistics, band algebra, reclassify, spatial join index, k-NN, simplification, graph routing, ground classification) are plain Rust with rayon for parallelism.
-- Because it is pure Rust, the algorithms are testable with cargo test and need no QGIS installation. The crate contains no Python code and no PyO3 types.
-- The QGIS adapter is separate. Layer reads and writes happen through the native QGIS manager in qgis-sys, and results come back as buffers. PyO3 bindings for the public Python API live in qgis-py (qgis_py._core), not in the pure crate, so the plugin-facing extension stays the only place that touches Python.
-- Non-goals for the first cut: plugin authoring in Rust; ONNX or random-forest inference; dense 1M x 1M distance matrices (use k-nearest-neighbour queries instead).
+Crate layout:
+- crates/qgis-compute: pure Rust compute library (crate qgis-compute). No QGIS, PyO3, C ABI, or qgis-engine dependency. Inputs are plain in-memory data: raster bands as typed slices with a geotransform, coordinate arrays for points and geometries, typed attribute columns. Algorithms: focal statistics, band algebra, reclassify, spatial join index, k-NN, simplification, graph routing, ground classification. rayon for parallelism.
+- crates/qgis-compute-ffi: C ABI cdylib over qgis-compute. Only extern "C" functions, a generated C header, and buffer-in/buffer-out signatures. Every entry point wraps its body in catch_unwind so a Rust panic never unwinds into the caller. The caller owns all buffers, and the library never retains pointers after a call returns.
+- qgis_py._core (PyO3, in py-packages/qgis-py/src-rust): depends directly on qgis-compute for the runtime API. It does not go through the C ABI.
+
+Packaging and the optional extra for qgis-sdk:
+- qgis-sdk stays a pure Python package with no required Rust dependency. Its base install works without any native library.
+- qgis-sdk[accel] is an optional extra that ships the qgis-compute-ffi shared library per platform.
+- qgis-sdk loads that library at runtime with ctypes. Numeric kernels take numpy arrays through the buffer protocol. If the library is missing, or its version does not match, qgis-sdk uses the pure Python implementation and records which path it took.
+- No QGIS objects cross the C ABI. Layers, feedback, and project state stay in PyQGIS. Only numeric buffers and scalar parameters cross.
+- The ctypes route avoids tying the library to one CPython ABI. This is the coupling D13 forbids, so the choice is deliberate.
+
+Boundaries (to add to D13 and enforce in xtask check-boundaries):
+- qgis-compute depends on nothing in the workspace.
+- qgis-compute-ffi depends only on qgis-compute.
+- qgis_py._core -> qgis-compute is allowed.
+- qgis-sdk -> qgis-compute-ffi is a runtime, optional, ctypes edge. It is not a Cargo edge and must not appear in any Cargo.toml.
+- qgis-rs (meta crate) may depend on qgis-compute behind a compute feature, which needs approval.
 
 Blocking decisions (write them down before any code):
-1. Placement conflict. The repo rule is that the plugin has no runtime dependency on qgis-sdk, and qgis-sdk is dev-only and not in the plugin zip. A compute crate that runtime code depends on cannot sit inside qgis-sdk without breaking that rule. Options: (a) keep the crate at py-packages/qgis-sdk/src-rust/ and publish it as its own crate that qgis-py depends on, so qgis-sdk stays dev-only; (b) put it in a neutral location such as crates/qgis-compute. The current qgis-sdk Rust is crates/qgis-sdk, and the convention for binding Rust is <package>/src-rust/. Choose one before slice 1.
-2. Transport. The engine exposes one invoke(json) seam (D09). Options: (a) add compute operations to the closed operation list in qgis-protocol, which keeps one seam but serialises all data; (b) a second, documented in-process seam for bulk buffers. Decide in writing first.
-3. QGIS object bridging. Native QGIS objects (QgsVectorLayer, QgsRasterLayer, QgsProcessingFeedback) come from PyQGIS, a separately built extension. Passing sip-unwrapped pointers into qgis_py._core needs a check that both extensions link the same QGIS library instance. Per-QGIS-version validation is required.
-4. Boundaries. A new crate needs an update to the D13 boundary rules, which xtask check-boundaries enforces. The enforcement must cover the pure-crate rule: no QGIS, PyO3, or engine dependency.
+1. Build tooling for the C header: cbindgen, or a hand-written header checked by a test. cbindgen is a new build dependency and needs approval.
+2. Native library distribution: which platforms, how the library is staged into the qgis-sdk wheel, and how the optional extra is named and published.
+3. Relationship to the open qgis-sdk crate removal. This plan works whether or not crates/qgis-sdk is removed, but the packaging steps depend on that answer.
+4. QGIS object bridging for qgis_py._core. Passing sip-unwrapped pointers into qgis_py._core needs a check that both extensions link the same QGIS library instance. Per-QGIS-version validation is required.
+
+Parity: for every kernel, the native and pure Python paths must produce the same result on the same fixtures. A kernel without a parity test does not ship.
 
 Feedback and cancellation: QgsProcessingFeedback is Python-side. Rust must not call into it without the GIL. Rust polls an atomic cancel flag, and the Python wrapper copies feedback.isCanceled() into that flag and reports progress at intervals. Long Rust work releases the GIL (py.allow_threads), so the QGIS UI stays responsive.
 
 Priority (one slice each, each stops for review):
-- Slice 1 (PoC): focal_mean (raster) and spatial_join (vector), end to end, with feedback support.
+- Slice 1 (PoC): focal_mean (raster) and spatial_join (vector), end to end, with feedback support, pure Rust core, qgis_py binding, and the ctypes path for qgis-sdk[accel].
 - Slice 2: band_algebra and reclassify; nearest_neighbor and simplify.
 - Slice 3: network graph (build_graph, shortest_path, od_matrix, isochrone).
 - Slice 4: point cloud (classify_ground, canopy_height_model, thin).
@@ -47,16 +62,18 @@ Performance: the numbers below are hypotheses. Each slice records a baseline on 
 - shortest_path on a 2M-edge graph with 10k pairs
 - ground classification on 50M points
 
-Dependencies: rayon, SIMD helpers, and any geometry, raster, or point-cloud libraries are new dependencies. Each needs explicit approval before it is added.
+Dependencies: rayon, SIMD helpers, geometry, raster, and point-cloud libraries, and cbindgen, are new dependencies. Each needs explicit approval before it is added.
 
-Packaging risks: the qgis-py wheel already bundles repaired QGIS and Qt libraries (about 121 MB measured), so the size will grow. pip install must target the QGIS Python interpreter. Cancel and GIL behaviour must be tested with real QGIS, not only a fake feedback object.
+Packaging risks: the qgis-py wheel already bundles repaired QGIS and Qt libraries (about 121 MB measured), so the size will grow. pip install must target the QGIS Python interpreter. The optional native library adds per-platform size to qgis-sdk[accel]. Cancel and GIL behaviour must be tested with real QGIS, not only a fake feedback object.
 
 Acceptance (PoC, slice 1):
-- The pure crate builds and its tests run with cargo test, with no QGIS installed, and the crate has no QGIS, PyO3, or engine dependency.
+- qgis-compute builds and its tests run with cargo test, with no QGIS installed. It has no QGIS, PyO3, C ABI, or engine dependency.
+- qgis-compute-ffi exposes the C header, and a test calls it through ctypes and checks the result against qgis-compute.
 - focal_mean and spatial_join accept native QgsRasterLayer and QgsVectorLayer objects with no manual conversion.
+- qgis-sdk works with and without the native library, with identical results on the parity fixtures.
 - Progress and cancellation work through QgsProcessingFeedback, and a cancelled run returns promptly.
 - Speedup over the best existing Python route is measured and recorded, with the target set from that measurement.
-- Installable into the QGIS Python environment (pip install qgis-py).
+- Installable into the QGIS Python environment (pip install qgis-py), and qgis-sdk[accel] installs where a platform build exists.
 - Positive tests in the pytest suite, and gates pass.
 - The decisions in items 1-4 are written down before the first code commit.
 
