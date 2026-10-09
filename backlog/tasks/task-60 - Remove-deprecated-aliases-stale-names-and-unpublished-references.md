@@ -4,7 +4,7 @@ title: 'Remove deprecated aliases, stale names and unpublished references'
 status: In Progress
 assignee: []
 created_date: '2026-10-09 15:47'
-updated_date: '2026-10-09 18:54'
+updated_date: '2026-10-09 19:00'
 labels:
   - cleanup
 dependencies: []
@@ -31,4 +31,6 @@ Remove the compat package and its version-script and release entries, then sweep
 Done in 52cfc21: the qgis-rs compatibility package, its version and bun entries, and the qgis-sdk default style name are removed. Still open: the qgis-node npm name qgis-rs (renamed by TASK-58) and the qgis-sdk and qgis-plugin bins in qgis-node (removed by TASK-58).
 
 Slice 1 done: qgis-plugin binary, console script, conda entry and bin name dropped; qgis-sdk is the only CLI; boundary rule rejects non-canonical executables (xtask exempt). Gates green. AC2 still open for the stale-name sweep (slice 2).
+
+Slice 2 done: check-sources now fails on retired names in tracked text (tests/retired_names.rs pins the matcher). The four named spellings are gone. Open question: the C++ namespace qgis_rs::native_manager is internal and not in AC2; decide whether to rename it to match qgis_sys before closing.
 <!-- SECTION:NOTES:END -->
