@@ -191,22 +191,13 @@ def _cmd_info(args: argparse.Namespace) -> int:
 
 
 def _cmd_version(_args: argparse.Namespace) -> int:
-    if HAS_RUST and core is not None:
-        try:
-            v = core.version()
-            print(f"qgis-sdk {v} (Rust-native, from qgis-sdk)")
-            print(f"  Python API: qgis_sdk {v}")
-            print(f"  Rust core: {'yes' if HAS_RUST else 'no (fallback)'}")
-            return 0
-        except Exception:
-            pass
+    from . import __version__
 
-    # Fallback
-    try:
-        from . import __version__
-        print(f"qgis-sdk {__version__} (Python fallback)")
-    except Exception:
-        print("qgis-sdk 0.1.0 (Python fallback)")
+    print(f"qgis-sdk {__version__} (Python, from qgis-sdk)")
+    print(
+        "  UI: dialogs (.ui + uic.loadUiType) + WebEngine "
+        "(QWebChannel, qrc:///qtwebchannel/qwebchannel.js)"
+    )
     return 0
 
 

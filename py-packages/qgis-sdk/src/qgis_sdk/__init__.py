@@ -71,9 +71,15 @@ except ImportError:
 
 # Try Rust extension for native speed
 try:
-    from ._core import version as _rust_version, __version__ as _core_version  # type: ignore
+    from importlib.metadata import version as _dist_version
 
-    __version__ = _core_version
+    __version__ = _dist_version("qgis-sdk")
+except Exception:  # source tree without installed metadata
+    __version__ = "0.1.0"
+
+try:
+    from ._core import version as _rust_version  # type: ignore
+
     HAS_RUST = True
     RUST_VERSION = _rust_version()
 except ImportError:
