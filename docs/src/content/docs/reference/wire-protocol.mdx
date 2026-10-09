@@ -8,7 +8,7 @@ description: The versioned JSON envelope every qgis-rs binding speaks — reques
 Every qgis-rs language binding exposes exactly **one** function —
 `invoke(request_json) -> response_json` — and this page is what those two
 strings are. The wire is the interface
-([D09](https://github.com/Archont561/qgis-rs/blob/main/.knowledge/decisions/D09-wire-protocol-over-ffi.md)):
+([D09](https://github.com/Archont561/qgis-rust/blob/main/.knowledge/decisions/D09-wire-protocol-over-ffi.md)):
 adding a capability is a new variant in `qgis-protocol`, not a new PyO3
 function, a new NAPI export, a new `.pyi` entry and a release of two packages.
 

@@ -135,7 +135,7 @@ qgis-rs/
 
 ```bash
 # Clone repository
-git clone https://github.com/Archont561/qgis-rs.git
+git clone https://github.com/Archont561/qgis-rust.git
 cd qgis-rs
 
 # Install dependencies (Pixi)
@@ -247,9 +247,9 @@ pixi run scaffold core geometry QgsGeometry geometry
 ## Key Contacts
 
 - **Maintainer**: [Your Name](mailto:your-email@example.com)
-- **GitHub**: https://github.com/Archont561/qgis-rs
-- **Issues**: https://github.com/Archont561/qgis-rs/issues
-- **Discussions**: https://github.com/Archont561/qgis-rs/discussions
+- **GitHub**: https://github.com/Archont561/qgis-rust
+- **Issues**: https://github.com/Archont561/qgis-rust/issues
+- **Discussions**: https://github.com/Archont561/qgis-rust/discussions
 
 ## Resources
 

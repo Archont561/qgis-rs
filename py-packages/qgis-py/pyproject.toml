@@ -32,10 +32,10 @@ dependencies = []
 dev = ["pytest>=8", "pytest-cov", "hypothesis>=6.168,<7"]
 
 [project.urls]
-Homepage = "https://github.com/Archont561/qgis-rs"
-Repository = "https://github.com/Archont561/qgis-rs"
-Issues = "https://github.com/Archont561/qgis-rs/issues"
-Documentation = "https://archont561.github.io/qgis-rs/"
+Homepage = "https://github.com/Archont561/qgis-rust"
+Repository = "https://github.com/Archont561/qgis-rust"
+Issues = "https://github.com/Archont561/qgis-rust/issues"
+Documentation = "https://archont561.github.io/qgis-rust/"
 
 [project.scripts]
 qgis-cli = "qgis_py.cli:main"

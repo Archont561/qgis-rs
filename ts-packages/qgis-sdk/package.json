@@ -82,9 +82,9 @@
 	"license": "GPL-2.0-or-later",
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/Archont561/qgis-rs"
+		"url": "https://github.com/Archont561/qgis-rust"
 	},
-	"homepage": "https://archont561.github.io/qgis-rs/",
+	"homepage": "https://archont561.github.io/qgis-rust/",
 	"devDependencies": {
 		"@qgis/test-utils": "workspace:*",
 		"@types/bun": "latest",

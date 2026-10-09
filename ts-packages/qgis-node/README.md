@@ -25,7 +25,7 @@ Pre-built binaries for Linux x86_64 (gnu + musl) and Linux arm64 (gnu). There is
 ### From source (development)
 
 ```bash
-git clone https://github.com/Archont561/qgis-rs
+git clone https://github.com/Archont561/qgis-rust
 cd qgis-rs
 
 # Install the whole Bun workspace from the root lockfile.

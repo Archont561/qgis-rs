@@ -103,7 +103,7 @@ The conda-forge package depends on `qgis >=3.44.9`, so PyQGIS works out of the b
 ### From source (development)
 
 ```bash
-git clone https://github.com/Archont561/qgis-rs
+git clone https://github.com/Archont561/qgis-rust
 cd qgis-rs
 
 # Python dev with maturin (Rust-native)
@@ -274,7 +274,7 @@ import '@archont561/qgis-sdk/webcomponents';
 <qgis-bridge object-name="bridge"></qgis-bridge>
 ```
 
-See [Typed Bridge Guide](https://archont561.github.io/qgis-rs/guides/typed-bridge/) and [Web Frameworks Guide](https://archont561.github.io/qgis-rs/guides/web-frameworks/).
+See [Typed Bridge Guide](https://archont561.github.io/qgis-rust/guides/typed-bridge/) and [Web Frameworks Guide](https://archont561.github.io/qgis-rust/guides/web-frameworks/).
 
 ### Testing fixtures (no QGIS needed)
 
@@ -322,7 +322,7 @@ Fakes: `FakeIface`, `FakeAction`, `FakeDialog`, `FakeWebView`, `FakeBridge`,
 `mock_features()`, `mock_source()`, plus Hypothesis strategies in
 `qgis_sdk.testing.strategies`. Markers `qgis`, `qt`, `webengine` and
 `pure_python` skip a test whose layer is missing instead of handing it a fake.
-See [Testing Fixtures Guide](https://archont561.github.io/qgis-rs/guides/testing-fixtures/).
+See [Testing Fixtures Guide](https://archont561.github.io/qgis-rust/guides/testing-fixtures/).
 
 Skipping is the right default and a poor proof. To assert that a layer really
 works, run its gate — it narrows the suite to that layer and **fails** if the

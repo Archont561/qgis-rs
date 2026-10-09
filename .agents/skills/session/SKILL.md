@@ -125,7 +125,7 @@ file was first written on and the Arena sandbox of 2026-10-03.
 
 - **`gh` may well be installed and may well be able to write.** On the Arena sandbox it is at
   `/usr/bin/gh`, authenticated as `Archont561` via `GH_TOKEN`, and
-  `gh api repos/Archont561/qgis-rs --jq .permissions` reports `push` and `admin` — so pull
+  `gh api repos/Archont561/qgis-rust --jq .permissions` reports `push` and `admin` — so pull
   requests, issues and comments are open, not the `403 Resource not accessible by integration` an
   older codespace App token produced. One `gh auth status` plus that permissions query settles it
   in two seconds; only fall back to handing the user a title and body when the query says so.
@@ -222,7 +222,7 @@ says `Merged: PR #N …` or `Pushed straight to main at <sha>`). Do these in ord
 the report:
 
 1. **Watch the post-merge runs.** List them (`gh run list --branch main --limit 5` if `gh` exists,
-   otherwise the Actions tab, or `curl` `…/repos/Archont561/qgis-rs/actions/runs?branch=main`) and
+   otherwise the Actions tab, or `curl` `…/repos/Archont561/qgis-rust/actions/runs?branch=main`) and
    read the verdict of every workflow the merge triggered: `ci`, `docs`, and — on a push that
    touches a sandbox input — **`publish sandbox`**, which repacks the transport; also `relock` and
    `autorelease` on a release commit. A red post-merge run belongs to **this** session — fix it

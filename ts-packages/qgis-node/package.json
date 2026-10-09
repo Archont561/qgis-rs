@@ -34,12 +34,12 @@
 	"license": "GPL-2.0-or-later",
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/Archont561/qgis-rs"
+		"url": "https://github.com/Archont561/qgis-rust"
 	},
 	"bugs": {
-		"url": "https://github.com/Archont561/qgis-rs/issues"
+		"url": "https://github.com/Archont561/qgis-rust/issues"
 	},
-	"homepage": "https://archont561.github.io/qgis-rs/",
+	"homepage": "https://archont561.github.io/qgis-rust/",
 	"napi": {
 		"name": "qgis-node",
 		"triples": {

@@ -7,16 +7,16 @@
 
 <p align="center">
   <!-- pipeline -->
-  <a href="https://github.com/Archont561/qgis-rs/actions/workflows/ci.yml"><img src="https://github.com/Archont561/qgis-rs/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-  <a href="https://codecov.io/gh/Archont561/qgis-rs"><img src="https://codecov.io/gh/Archont561/qgis-rs/branch/main/graph/badge.svg" alt="Coverage"></a>
-  <a href="https://codecov.io/gh/Archont561/qgis-rs"><img src="https://img.shields.io/codecov/c/github/Archont561/qgis-rs/main?token=&label=rust%20%2B%20python%20coverage&logo=codecov" alt="Combined coverage"></a>
-  <a href="https://github.com/Archont561/qgis-rs/actions/workflows/docs.yml"><img src="https://github.com/Archont561/qgis-rs/actions/workflows/docs.yml/badge.svg" alt="Docs"></a>
-  <a href="https://github.com/Archont561/qgis-rs/actions/workflows/release.yml"><img src="https://github.com/Archont561/qgis-rs/actions/workflows/release.yml/badge.svg" alt="Release"></a>
+  <a href="https://github.com/Archont561/qgis-rust/actions/workflows/ci.yml"><img src="https://github.com/Archont561/qgis-rust/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://codecov.io/gh/Archont561/qgis-rust"><img src="https://codecov.io/gh/Archont561/qgis-rust/branch/main/graph/badge.svg" alt="Coverage"></a>
+  <a href="https://codecov.io/gh/Archont561/qgis-rust"><img src="https://img.shields.io/codecov/c/github/Archont561/qgis-rust/main?token=&label=rust%20%2B%20python%20coverage&logo=codecov" alt="Combined coverage"></a>
+  <a href="https://github.com/Archont561/qgis-rust/actions/workflows/docs.yml"><img src="https://github.com/Archont561/qgis-rust/actions/workflows/docs.yml/badge.svg" alt="Docs"></a>
+  <a href="https://github.com/Archont561/qgis-rust/actions/workflows/release.yml"><img src="https://github.com/Archont561/qgis-rust/actions/workflows/release.yml/badge.svg" alt="Release"></a>
 </p>
 
 <p align="center">
   <!-- distribution -->
-  <a href="https://github.com/Archont561/qgis-rs/releases"><img src="https://img.shields.io/github/v/release/Archont561/qgis-rs?label=release&logo=github" alt="Latest release"></a>
+  <a href="https://github.com/Archont561/qgis-rust/releases"><img src="https://img.shields.io/github/v/release/Archont561/qgis-rust?label=release&logo=github" alt="Latest release"></a>
   <a href="https://crates.io/crates/qgis-render"><img src="https://img.shields.io/crates/v/qgis-render?logo=rust&label=crates.io" alt="crates.io"></a>
   <a href="https://docs.rs/qgis-render"><img src="https://img.shields.io/docsrs/qgis-render?logo=docsdotrs&label=docs.rs" alt="docs.rs"></a>
   <a href="https://pypi.org/project/qgis-py/"><img src="https://img.shields.io/pypi/v/qgis-py?logo=pypi&logoColor=white&label=PyPI" alt="PyPI"></a>
@@ -33,11 +33,11 @@
   <a href="https://bun.sh/"><img src="https://img.shields.io/badge/Bun-1.3%2B-fbf0df?logo=bun&logoColor=black" alt="Bun 1.3+"></a>
   <img src="https://img.shields.io/badge/platform-linux--64-brightgreen?logo=linux&logoColor=white" alt="linux-64">
   <a href="https://www.conventionalcommits.org/"><img src="https://img.shields.io/badge/commits-conventional-fe5196?logo=conventionalcommits&logoColor=white" alt="Conventional Commits"></a>
-  <a href="https://github.com/Archont561/qgis-rs/pulls"><img src="https://img.shields.io/badge/PRs-welcome-brightgreen" alt="PRs welcome"></a>
+  <a href="https://github.com/Archont561/qgis-rust/pulls"><img src="https://img.shields.io/badge/PRs-welcome-brightgreen" alt="PRs welcome"></a>
 </p>
 
 <p align="center">
-  <a href="https://archont561.github.io/qgis-rs/">Documentation</a> ·
+  <a href="https://archont561.github.io/qgis-rust/">Documentation</a> ·
   <a href="https://docs.rs/qgis-render">API Reference</a> ·
   <a href="#-release-model">Release model</a> ·
   <a href="#-contributing">Contributing</a>
@@ -157,8 +157,8 @@ class MyPlugin(Plugin):
         print("Hello from plugin!")
 ```
 
-See the [Python docs](https://archont561.github.io/qgis-rs/getting-started/python/) and
-[TypeScript docs](https://archont561.github.io/qgis-rs/getting-started/typescript/) for the full API.
+See the [Python docs](https://archont561.github.io/qgis-rust/getting-started/python/) and
+[TypeScript docs](https://archont561.github.io/qgis-rust/getting-started/typescript/) for the full API.
 
 ### Rust (Cargo)
 
@@ -172,7 +172,7 @@ Prerequisites: **Rust** ≥ 1.96.0, **QGIS** ≥ 3.44.9 (`libqgis_core`) for ful
 
 > [!IMPORTANT]
 > You need QGIS development libraries for full rendering. Pure-Rust ops (tile planning, extent
-> parsing) work without QGIS. See the [Installation Guide](https://archont561.github.io/qgis-rs/getting-started/installation/).
+> parsing) work without QGIS. See the [Installation Guide](https://archont561.github.io/qgis-rust/getting-started/installation/).
 
 ## Quick Start
 
@@ -230,7 +230,7 @@ qgis-cli info map.qgs                                  # inspect a project
 qgis-cli mcp                                           # serve to an AI assistant over MCP
 ```
 
-See the [CLI documentation](https://archont561.github.io/qgis-rs/cli/) for all commands.
+See the [CLI documentation](https://archont561.github.io/qgis-rust/cli/) for all commands.
 
 ## Architecture
 
@@ -501,10 +501,10 @@ The shell that remains, and why ([`scripts/README.md`](scripts/README.md)):
 
 ## Documentation
 
-- **[Getting Started](https://archont561.github.io/qgis-rs/getting-started/introduction/)** — installation and first steps
-- **[Core Concepts](https://archont561.github.io/qgis-rs/concepts/architecture/)** — architecture and design principles
-- **[Guides](https://archont561.github.io/qgis-rs/guides/rendering-projects/)** — practical tutorials
-- **[API Reference](https://archont561.github.io/qgis-rs/reference/)** — complete API documentation
+- **[Getting Started](https://archont561.github.io/qgis-rust/getting-started/introduction/)** — installation and first steps
+- **[Core Concepts](https://archont561.github.io/qgis-rust/concepts/architecture/)** — architecture and design principles
+- **[Guides](https://archont561.github.io/qgis-rust/guides/rendering-projects/)** — practical tutorials
+- **[API Reference](https://archont561.github.io/qgis-rust/reference/)** — complete API documentation
 - **[Knowledge Base](.knowledge/)** — design documents and decision records
 
 ## Performance
@@ -566,7 +566,7 @@ bugs or feature requests, and submit changes through a pull request. Commits fol
 ### Development setup
 
 ```bash
-git clone https://github.com/Archont561/qgis-rs.git
+git clone https://github.com/Archont561/qgis-rust.git
 cd qgis-rs
 
 # Install the two environments and the Bun workspace
@@ -621,7 +621,7 @@ pixi run -e bun bun x turbo run build --filter=qgis-rs-docs
 ```
 
 The site lives in [`docs/`](docs/) and is published to
-[archont561.github.io/qgis-rs](https://archont561.github.io/qgis-rs/) by
+[archont561.github.io/qgis-rust](https://archont561.github.io/qgis-rust/) by
 [`docs.yml`](.github/workflows/docs.yml) after a green CI run on `main`. See
 [`docs/README.md`](docs/README.md) for the one-time Pages setup.
 
@@ -639,11 +639,11 @@ consistent with the workspace package manifests.
 
 ## Support
 
-- **Issues**: [GitHub Issues](https://github.com/Archont561/qgis-rs/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/Archont561/qgis-rs/discussions)
+- **Issues**: [GitHub Issues](https://github.com/Archont561/qgis-rust/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/Archont561/qgis-rust/discussions)
 
 ---
 
 <p align="center">
-  Built with ❤️ by the qgis-rs community — <a href="https://github.com/Archont561/qgis-rs">⭐ star us on GitHub</a> if you find this useful.
+  Built with ❤️ by the qgis-rust community — <a href="https://github.com/Archont561/qgis-rust">⭐ star us on GitHub</a> if you find this useful.
 </p>

@@ -4,10 +4,10 @@ import { defineConfig } from "astro/config";
 import remarkBaseLinks from "./remark-base-links.mjs";
 
 // Deployed to GitHub Pages as a project site, so the site lives under the
-// /qgis-rs subpath: https://archont561.github.io/qgis-rs/
+// /qgis-rust subpath: https://archont561.github.io/qgis-rust/
 // See .github/workflows/docs.yml for the deployment.
 const site = "https://archont561.github.io";
-const base = "/qgis-rs";
+const base = "/qgis-rust";
 
 // https://astro.build/config
 export default defineConfig({
@@ -23,17 +23,17 @@ export default defineConfig({
 	},
 	integrations: [
 		starlight({
-			title: "qgis-rs",
+			title: "qgis-rust",
 			description:
 				"Rust bindings for QGIS — render QGIS projects at native speed",
 			logo: {
 				src: "./src/assets/logo.svg",
 			},
 			social: {
-				github: "https://github.com/Archont561/qgis-rs",
+				github: "https://github.com/Archont561/qgis-rust",
 			},
 			editLink: {
-				baseUrl: "https://github.com/Archont561/qgis-rs/edit/main/docs/",
+				baseUrl: "https://github.com/Archont561/qgis-rust/edit/main/docs/",
 			},
 			sidebar: [
 				{

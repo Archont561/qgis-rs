@@ -387,7 +387,8 @@ pub fn setup_qca() -> Result<()> {
 /// Each is a spelling the project no longer ships: the bridge package before
 /// TASK-56, the `qgis-rs-py` distribution before the `qgis-py` rename, the
 /// `qgis-rs` npm and pip names that TASK-58 and the Python rename retired, and
-/// the Python `qgis_rs` import shim. The C++ namespace `qgis_rs::` is not listed:
+/// the Python `qgis_rs` import shim, and the old repository path (the repository
+/// is `qgis-rust`; `qgis-rs` remains the crate API name). The C++ namespace `qgis_rs::` is not listed:
 /// it is an internal identifier, not a published name.
 pub const RETIRED_NAMES: &[&str] = &[
     "@qgis-sdk/bridge",
@@ -398,6 +399,7 @@ pub const RETIRED_NAMES: &[&str] = &[
     "npm install qgis-rs",
     "import qgis_rs",
     "from qgis_rs",
+    "Archont561/qgis-rs",
 ];
 
 /// The retired `qgis-plugin` command. It is matched as a whole token, so the

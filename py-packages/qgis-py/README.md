@@ -49,7 +49,7 @@ The conda-forge package depends on `qgis >=3.44.9` when the `qgis` feature is en
 ### From source (development)
 
 ```bash
-git clone https://github.com/Archont561/qgis-rs
+git clone https://github.com/Archont561/qgis-rust
 cd qgis-py
 
 # Python dev with maturin — the pyproject owns the build and points at

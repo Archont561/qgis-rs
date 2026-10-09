@@ -206,7 +206,7 @@ def show_manual_instructions(parent=None):
             "or\n"
             "conda install -c conda-forge qgis-sdk\n\n"
             "Then restart QGIS.\n\n"
-            "Docs: https://archont561.github.io/qgis-rs/getting-started/python-sdk/"
+            "Docs: https://archont561.github.io/qgis-rust/getting-started/python-sdk/"
         )
     except Exception:
         print("Manual install: pip install qgis-sdk")

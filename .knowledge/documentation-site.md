@@ -151,7 +151,7 @@ Pages in these directories appear automatically in sidebar order.
 ## Deployment
 
 The site is published to **GitHub Pages** at
-<https://archont561.github.io/qgis-rs/> by `.github/workflows/docs.yml`:
+<https://archont561.github.io/qgis-rust/> by `.github/workflows/docs.yml`:
 
 ```
 pull request (docs inputs) ────────────────────────────────┐
@@ -164,7 +164,7 @@ push to main / manual dispatch ────────────────�
                                                                ▼
                               deploy job (main only)
                                 actions/deploy-pages
-                                → https://archont561.github.io/qgis-rs/
+                                → https://archont561.github.io/qgis-rust/
 ```
 
 All actions are pinned by commit SHA, alongside `ci.yml` and
