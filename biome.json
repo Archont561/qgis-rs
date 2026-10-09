@@ -24,7 +24,7 @@
 	},
 	"overrides": [
 		{
-			"includes": ["ts-packages/qgis-sdk-bridge/src/react.ts"],
+			"includes": ["ts-packages/qgis-sdk/src/react.ts"],
 			"linter": {
 				"rules": {
 					"correctness": {

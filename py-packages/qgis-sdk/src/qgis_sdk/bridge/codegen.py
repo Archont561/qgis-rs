@@ -2,7 +2,7 @@
 qgis_sdk.bridge — TypeScript bridge generation from Python bridge classes.
 
 Generates typed TS definitions from Python bridge classes decorated with @pyqtSlot
-or plain methods, for use with @qgis-sdk/bridge npm package.
+or plain methods, for use with @archont561/qgis-sdk npm package.
 
 The generated TS provides:
 - Typed interface for bridge methods (callback + Promise overloads)
@@ -22,7 +22,7 @@ Usage:
     js_code = generate_js_wrapper(Bridge, name="Bridge")
     Path("web/bridge.js").write_text(js_code)
 
-    # Generate full npm package files (for @qgis-sdk/bridge)
+    # Generate full npm package files (for @archont561/qgis-sdk)
     generate_package(Bridge, output_dir="frontend/src/qgis-bridge", name="Bridge")
 
 CLI:
@@ -228,7 +228,7 @@ def generate_js_wrapper(bridge_cls: Type, name: str = "Bridge", object_name: str
     """
     Generate JavaScript wrapper that auto-injects qwebchannel.js and provides Promise API.
 
-    This is the runtime that @qgis-sdk/bridge provides — but this function generates
+    This is the runtime that @archont561/qgis-sdk provides — but this function generates
     a standalone version for inclusion without npm.
 
     The wrapper:
@@ -349,7 +349,7 @@ export function createBridge(objectName = '{object_name}') {{
 
 // React hook (if React available)
 export function useQgisBridge(objectName = '{object_name}') {{
-  // This is a generic hook — actual React implementation is in @qgis-sdk/bridge/react
+  // This is a generic hook — actual React implementation is in @archont561/qgis-sdk/react
   // For standalone usage without React, use createBridge()
   if (typeof React === 'undefined') {{
     console.warn('React not found — use createBridge() instead of useQgisBridge()');
@@ -397,7 +397,7 @@ def generate_package(bridge_cls: Type, output_dir: str | Path, name: str = "Brid
             webcomponents.ts — Web Components helper
             README.md
 
-    This can be copied into frontend/src/ or used as basis for @qgis-sdk/bridge.
+    This can be copied into frontend/src/ or used as basis for @archont561/qgis-sdk.
     """
     out = Path(output_dir)
     out.mkdir(parents=True, exist_ok=True)
@@ -411,7 +411,7 @@ def generate_package(bridge_cls: Type, output_dir: str | Path, name: str = "Brid
     (out / "bridge.js").write_text(js_code, encoding="utf-8")
 
     # index.ts — main entry that re-exports and provides typed createBridge
-    index_ts = f"""/** @qgis-sdk/bridge — typed wrapper for QGIS QWebChannel bridge
+    index_ts = f"""/** @archont561/qgis-sdk — typed wrapper for QGIS QWebChannel bridge
  * Auto-generated from Python {bridge_cls.__module__}.{bridge_cls.__name__}
  */
 
@@ -554,7 +554,7 @@ export function defineQgisComponents() {{
     (out / "webcomponents.ts").write_text(wc_ts, encoding="utf-8")
 
     # README
-    readme = f"""# {name} Bridge — @qgis-sdk/bridge
+    readme = f"""# {name} Bridge — @archont561/qgis-sdk
 
 Auto-generated from Python `{bridge_cls.__module__}.{bridge_cls.__name__}` via `qgis_sdk.bridge`.
 
@@ -575,7 +575,7 @@ console.log(layer);
 ### React
 
 ```tsx
-import {{ useQgisBridge }} from './react.js'; // or from '@qgis-sdk/bridge/react'
+import {{ useQgisBridge }} from './react.js'; // or from '@archont561/qgis-sdk/react'
 function App() {{
   const {{ bridge, ready }} = useQgisBridge();
   useEffect(() => {{

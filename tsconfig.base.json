@@ -7,7 +7,7 @@
 	// disagree about what `strict` means.
 	//
 	// `lib` deliberately carries no DOM: the only browser-targeted package is
-	// qgis-sdk-bridge, and handing DOM to a package that does not target a browser
+	// qgis-sdk, and handing DOM to a package that does not target a browser
 	// would let it typecheck against an environment it never runs in. Same
 	// reasoning for leaving `types` unset here.
 	"compilerOptions": {

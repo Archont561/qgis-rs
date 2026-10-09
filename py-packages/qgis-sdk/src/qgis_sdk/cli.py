@@ -116,7 +116,7 @@ def _cmd_new(args: argparse.Namespace) -> int:
             print(f"  QGIS Web API: window.qgis.layers.addVector/list/zoom, project.crs, message.info, tasks.run, network.fetch")
             print(f"  Bun: cd {name} && bun install && bun run build && bun test")
             print(f"  Bridge JSON: web/bridge.json (no codegen) — loaded via BridgeDescription.from_class")
-            print(f"  JS: import {{ createQgisBridge }} from '@qgis-sdk/bridge'; const {{ qgis, bridge }} = await createQgisBridge()")
+            print(f"  JS: import {{ createQgisBridge }} from '@archont561/qgis-sdk'; const {{ qgis, bridge }} = await createQgisBridge()")
             if bundle:
                 print(f"  Bundle: wheels/ contains offline wheel, bootstrap.py handles pip install to extlibs/")
         else:
@@ -125,7 +125,7 @@ def _cmd_new(args: argparse.Namespace) -> int:
             if args.web:
                 print(f"  Web: web/map.html (Leaflet) + web/react.html (React 18 hook) + web/vue.html (Vue 3) + web/components.html (Web Components)")
                 print(f"       QWebChannel: qrc:///qtwebchannel/qwebchannel.js + runJavaScript")
-                print(f"       Bridge: npm install @qgis-sdk/bridge — typed, auto-injects qwebchannel.js")
+                print(f"       Bridge: npm install @archont561/qgis-sdk — typed, auto-injects qwebchannel.js")
                 if framework != "vanilla":
                     print(f"  Framework: {framework} -> web/{framework}.html as index + frontend/ Vite template")
                     print(f"    Build: cd {name}/{name}/frontend && npm install && npm run build -> web/dist/")
@@ -474,7 +474,7 @@ def _cmd_bridge_generate(args: argparse.Namespace) -> int:
         print(f"  - bridge.d.ts (typed interface)")
         print(f"  - bridge.js (auto-injects qrc:///qtwebchannel/qwebchannel.js + Promise wrapper)")
         print(f"  - index.ts, react.ts, vue.ts, webcomponents.ts")
-        print(f"  Usage: import {{ createBridge }} from '@qgis-sdk/bridge'; import type {{ {bridge_name} }} from './bridge.d.ts'")
+        print(f"  Usage: import {{ createBridge }} from '@archont561/qgis-sdk'; import type {{ {bridge_name} }} from './bridge.d.ts'")
         return 0
 
     # Single file mode
@@ -490,10 +490,10 @@ def _cmd_bridge_generate(args: argparse.Namespace) -> int:
     print(f"  To: {output}")
     if output.suffix != ".js":
         print(f"  Framework: {args.framework}")
-        print(f"  Use with @qgis-sdk/bridge: npm install @qgis-sdk/bridge")
-        print(f"  import {{ createBridge }} from '@qgis-sdk/bridge'; import type {{ {bridge_name} }} from './{output.name}'")
+        print(f"  Use with @archont561/qgis-sdk: npm install @archont561/qgis-sdk")
+        print(f"  import {{ createBridge }} from '@archont561/qgis-sdk'; import type {{ {bridge_name} }} from './{output.name}'")
         if args.framework != "vanilla":
-            print(f"  For {args.framework}: import {{ useQgisBridge }} from '@qgis-sdk/bridge/{args.framework}'")
+            print(f"  For {args.framework}: import {{ useQgisBridge }} from '@archont561/qgis-sdk/{args.framework}'")
     return 0
 
 

@@ -178,7 +178,7 @@ include = [
 ]
 ```
 
-## Typed Bridge with @qgis-sdk/bridge
+## Typed Bridge with @archont561/qgis-sdk
 
 Generate TypeScript types from Python bridge classes:
 
@@ -190,16 +190,16 @@ qgis-plugin bridge generate --bridge my_plugin.dialogs.web_dialog:Bridge --outpu
 Python → TS with Promise API:
 
 ```typescript
-import { createBridge } from '@qgis-sdk/bridge';
+import { createBridge } from '@archont561/qgis-sdk';
 import type { Bridge } from './web/bridge.d.ts';
 
 const bridge = await createBridge<Bridge>(); // auto-injects qrc:///qtwebchannel/qwebchannel.js
 const layer = await bridge.get_layer(); // typed!
 ```
 
-- React: `import { useQgisBridge } from '@qgis-sdk/bridge/react'`
-- Vue: `import { useQgisBridge } from '@qgis-sdk/bridge/vue'`
-- Web Components: `<qgis-bridge>` + `import '@qgis-sdk/bridge/webcomponents'`
+- React: `import { useQgisBridge } from '@archont561/qgis-sdk/react'`
+- Vue: `import { useQgisBridge } from '@archont561/qgis-sdk/vue'`
+- Web Components: `<qgis-bridge>` + `import '@archont561/qgis-sdk/webcomponents'`
 
 See [Typed Bridge Guide](/guides/typed-bridge) and [Web Frameworks Guide](/guides/web-frameworks) for full details.
 

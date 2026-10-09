@@ -1,5 +1,5 @@
 {
-	"name": "@qgis-sdk/bridge",
+	"name": "@archont561/qgis-sdk",
 	"version": "0.1.0",
 	"description": "Typed QWebChannel bridge for QGIS plugins — window-like EventTarget, complete QGIS Web API (layers, tasks, network, messageBar), React/Vue/Svelte/Web Components adapters, description loader (no codegen), built with bun",
 	"main": "dist/index.js",
@@ -56,7 +56,7 @@
 		"coverage": "bun test ./tests --coverage",
 		"test:watch": "bun test ./tests --watch",
 		"typecheck": "tsc --noEmit --project tsconfig.test.json",
-		"pack:check": "cargo run -q -p xtask --manifest-path ../../Cargo.toml -- pack-check ts-packages/qgis-sdk-bridge dist/index.js dist/index.cjs dist/index.d.ts dist/react.js dist/react.d.ts dist/vue.js dist/vue.d.ts dist/svelte.js dist/svelte.d.ts dist/webcomponents.js dist/webcomponents.d.ts dist/loader.js dist/loader.d.ts dist/qgis.js dist/qgis.d.ts dist/window.js dist/window.d.ts dist/description.js dist/description.d.ts README.md",
+		"pack:check": "cargo run -q -p xtask --manifest-path ../../Cargo.toml -- pack-check ts-packages/qgis-sdk dist/index.js dist/index.cjs dist/index.d.ts dist/react.js dist/react.d.ts dist/vue.js dist/vue.d.ts dist/svelte.js dist/svelte.d.ts dist/webcomponents.js dist/webcomponents.d.ts dist/loader.js dist/loader.d.ts dist/qgis.js dist/qgis.d.ts dist/window.js dist/window.d.ts dist/description.js dist/description.d.ts README.md",
 		"lint": "bunx biome check .",
 		"format": "bunx biome format --write .",
 		"prepublishOnly": "bun run build"

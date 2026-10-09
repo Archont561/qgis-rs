@@ -293,7 +293,7 @@ exercise ([D11](.knowledge/decisions/D11-tests-outside-src.md)).
 | `qgis-sdk` (Python) | Plugin development SDK — dist at `py-packages/qgis-sdk`, PyPI/conda | ✅ Active |
 | `qgis-py` (Python) | Python bindings + CLI — dist at `py-packages/qgis-py`, PyPI/conda | ✅ Active |
 | `qgis-rs` (npm) | TypeScript/Node.js bindings + CLI — dist at `ts-packages/qgis-node` | ✅ Active |
-| `@qgis-sdk/bridge` | QWebChannel bridge for plugin webviews — React/Vue/Svelte/Web-Components adapters (`ts-packages/qgis-sdk-bridge`) | ✅ Active |
+| `@archont561/qgis-sdk` | QWebChannel bridge for plugin webviews — React/Vue/Svelte/Web-Components adapters (`ts-packages/qgis-sdk`) | ✅ Active |
 | `@qgis/test-utils` | Scripted QWebChannel, fixtures and fast-check arbitraries shared by the TypeScript suites (`ts-packages/test-utils`) | ✅ Active, private |
 
 ## 📦 Release model
@@ -470,11 +470,11 @@ pixi run -e default python -m pytest py-packages/qgis-sdk/tests/test_bridge_cont
 pixi run -e default python -m pytest py-packages/qgis-sdk/tests -k handle -q
 
 # TypeScript — one file
-pixi run -- bun test ts-packages/qgis-sdk-bridge/tests/bridge-contract.test.ts
+pixi run -- bun test ts-packages/qgis-sdk/tests/bridge-contract.test.ts
 
 # Everything downstream of what you have already committed, and nothing else
 pixi run -- bun x turbo run test --filter='...[HEAD^1]'
-pixi run -- bun x turbo run test --filter=@qgis-sdk/bridge   # one package and its dependencies
+pixi run -- bun x turbo run test --filter=@archont561/qgis-sdk   # one package and its dependencies
 ```
 
 On a machine without crates.io (the offline sandbox, see

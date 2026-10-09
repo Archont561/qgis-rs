@@ -1,4 +1,4 @@
-/** qgis-sdk-bridge qgis.ts — high-level QGIS API for JS, built with bun */
+/** qgis-sdk qgis.ts — high-level QGIS API for JS, built with bun */
 
 import { loadQgisApiDescription } from "@/description";
 import { IfaceAPI } from "@/qgis/iface";

@@ -191,15 +191,13 @@ export function publishedVersions(startDir: string = process.cwd()): {
 			// What the wheels on PyPI are called.
 			toml("py-packages/qgis-py/pyproject.toml", "project"),
 			toml("py-packages/qgis-sdk/pyproject.toml", "project"),
-			toml("py-packages/qgis-rs/pyproject.toml", "project"),
 			// What npm publishes.
 			json("ts-packages/qgis-node/package.json"),
-			json("ts-packages/qgis-sdk-bridge/package.json"),
+			json("ts-packages/qgis-sdk/package.json"),
 			// Private, and still checked.
 			json("package.json"),
 			json("crates/package.json"),
 			json("py-packages/qgis-py/package.json"),
-			json("py-packages/qgis-rs/package.json"),
 			json("py-packages/qgis-sdk/package.json"),
 			json("docs/package.json"),
 			// The crates.io versions cargo substitutes for the path dependencies.
@@ -266,12 +264,6 @@ export function setVersion(
 	setTomlVersion(join(root, "pixi.toml"), "workspace", version);
 	setTomlVersion(join(root, "Cargo.toml"), "workspace.package", version);
 	setCargoInternalDependencyVersions(root, version);
-	// qgis-rs is the deprecated alias: a pure-Python hatchling project with no pixi manifest.
-	setTomlVersion(
-		join(root, "py-packages/qgis-rs/pyproject.toml"),
-		"project",
-		version,
-	);
 	for (const dist of ["qgis-py", "qgis-sdk"]) {
 		setTomlVersion(
 			join(root, `py-packages/${dist}/pixi.toml`),
@@ -289,10 +281,9 @@ export function setVersion(
 		"crates/package.json",
 		"docs/package.json",
 		"py-packages/qgis-py/package.json",
-		"py-packages/qgis-rs/package.json",
 		"py-packages/qgis-sdk/package.json",
 		"ts-packages/qgis-node/package.json",
-		"ts-packages/qgis-sdk-bridge/package.json",
+		"ts-packages/qgis-sdk/package.json",
 	]) {
 		setNpmVersion(join(root, path), version);
 	}

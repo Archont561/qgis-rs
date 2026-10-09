@@ -1,4 +1,4 @@
-/** qgis-sdk-bridge description loader — loads BridgeDescription JSON from Python */
+/** qgis-sdk description loader — loads BridgeDescription JSON from Python */
 
 export interface MethodDescription {
 	name: string;

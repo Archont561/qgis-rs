@@ -9,7 +9,7 @@ Python side:
     window.dispatch_event("layer_changed", {"layer_id": "test"})
     window.post_message({"action": "buffer"})
 
-JS side counterpart is QgisBridge extends EventTarget in @qgis-sdk/bridge.
+JS side counterpart is QgisBridge extends EventTarget in @archont561/qgis-sdk.
 """
 
 from __future__ import annotations

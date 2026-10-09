@@ -1,4 +1,4 @@
-/** qgis-sdk-bridge window.ts — QgisBridge extends EventTarget, windows-like (EventSource/WebSocket) */
+/** qgis-sdk window.ts — QgisBridge extends EventTarget, windows-like (EventSource/WebSocket) */
 
 import type { BridgeDescription } from "@/description";
 import { loadDescription } from "@/description";

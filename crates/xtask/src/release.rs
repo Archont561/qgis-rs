@@ -41,7 +41,7 @@ pub const CRATES: &[&str] = &[
 const PY_DISTRIBUTIONS: &[&str] = &["py-packages/qgis-py", "py-packages/qgis-sdk"];
 
 /// The npm packages that are packed and uploaded.
-const NPM_PACKAGES: &[&str] = &["ts-packages/qgis-node", "ts-packages/qgis-sdk-bridge"];
+const NPM_PACKAGES: &[&str] = &["ts-packages/qgis-node", "ts-packages/qgis-sdk"];
 
 #[derive(Debug, Subcommand)]
 pub enum Release {
@@ -222,7 +222,7 @@ fn build_artifacts() -> Result<()> {
     step("npm tarballs");
     // The addon has to be compiled before it can be packed: `files` lists
     // qgis-rs.*.node, and pack:check is what proves it is there.
-    turbo_run(&["build", "--filter=qgis-rs", "--filter=@qgis-sdk/bridge"])?;
+    turbo_run(&["build", "--filter=qgis-rs", "--filter=@archont561/qgis-sdk"])?;
     turbo_run(&["pack:check"])?;
     for package in NPM_PACKAGES {
         run_in(

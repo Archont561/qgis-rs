@@ -374,7 +374,7 @@ my_plugin/
 ## 5. Testing UI without QGIS
 
 - **Dialogs**: inject fake `QDialog` factory via `action_factory` and `dialog_factory`; test logic without Qt.
-- **WebEngine**: mock `QWebEngineView` with `setHtml` capture; test bridge methods as plain Python; bridge JS tests via `bun test` (ts-packages/qgis-sdk-bridge) and the npm package's contract tests via `bun test` (ts-packages/qgis-node/tests) — no jest/jsdom in either package, and no Node.js runtime.
+- **WebEngine**: mock `QWebEngineView` with `setHtml` capture; test bridge methods as plain Python; bridge JS tests via `bun test` (ts-packages/qgis-sdk) and the npm package's contract tests via `bun test` (ts-packages/qgis-node/tests) — no jest/jsdom in either package, and no Node.js runtime.
 
 ```python
 def test_dialog_logic():
@@ -430,16 +430,16 @@ live in [TASK-3](../backlog/tasks/task-3%20-%20Document%20and%20scaffold%20the%2
 **Scaffold output verified:**
 - `my_ui_plugin/dialogs/main_dialog.py` contains `uic.loadUiType` + `WA_DeleteOnClose` + `QSettings`
 - `my_ui_plugin/ui/main_dialog.ui` contains `MainDialog`, `QgsMapLayerComboBox`, `buttonBox`
-- `my_web_plugin/web/map.html` contains `qrc:///qtwebchannel/qwebchannel.js` + `QWebChannel` + `leaflet` + `@qgis-sdk/bridge` comment
+- `my_web_plugin/web/map.html` contains `qrc:///qtwebchannel/qwebchannel.js` + `QWebChannel` + `leaflet` + `@archont561/qgis-sdk` comment
 - `my_web_plugin/web/bridge.d.ts` auto-generated via `generate_ts_bridge` with Promise+callback overloads
 - `my_react_plugin/web/react.html` contains React + `useQgisBridge` + `qrc:///qtwebchannel/qwebchannel.js`
-- `my_react_plugin/frontend/src/App.tsx` uses `import { useQgisBridge } from '@qgis-sdk/bridge/react'` + typed `Bridge`
+- `my_react_plugin/frontend/src/App.tsx` uses `import { useQgisBridge } from '@archont561/qgis-sdk/react'` + typed `Bridge`
 - `my_vue_plugin/web/vue.html` contains Vue + `ref` + `qrc:///qtwebchannel/qwebchannel.js`
-- `my_vue_plugin/frontend/src/App.vue` uses `import { useQgisBridge } from '@qgis-sdk/bridge/vue'`
+- `my_vue_plugin/frontend/src/App.vue` uses `import { useQgisBridge } from '@archont561/qgis-sdk/vue'`
 - `my_wc_plugin/web/components.html` contains `customElements.define` + Shadow DOM
-- `ts-packages/qgis-sdk-bridge` provides `@qgis-sdk/bridge` with loader auto-injecting qrc + CDN fallbacks
+- `ts-packages/qgis-sdk` provides `@archont561/qgis-sdk` with loader auto-injecting qrc + CDN fallbacks
 
-### 7.2 Typed bridge with @qgis-sdk/bridge (new)
+### 7.2 Typed bridge with @archont561/qgis-sdk (new)
 
 **Python → TS generation:**
 
@@ -466,7 +466,7 @@ export interface Bridge {
 - CDN fallback `jsdelivr/unpkg`
 
 ```typescript
-import { createBridge, loadQWebChannel } from '@qgis-sdk/bridge';
+import { createBridge, loadQWebChannel } from '@archont561/qgis-sdk';
 import type { Bridge } from './web/bridge.d.ts';
 
 const bridge = await createBridge<Bridge>(); // auto-injects, promisifies
@@ -476,7 +476,7 @@ const layer = await bridge.get_layer(); // typed!
 **React hook:**
 
 ```tsx
-import { useQgisBridge } from '@qgis-sdk/bridge/react';
+import { useQgisBridge } from '@archont561/qgis-sdk/react';
 import type { Bridge } from './bridge.d.ts';
 function App() {
   const { bridge, ready } = useQgisBridge<Bridge>();
@@ -488,7 +488,7 @@ function App() {
 
 ```vue
 <script setup lang="ts">
-import { useQgisBridge } from '@qgis-sdk/bridge/vue';
+import { useQgisBridge } from '@archont561/qgis-sdk/vue';
 import type { Bridge } from './bridge.d.ts';
 const { bridge, ready } = useQgisBridge<Bridge>();
 </script>
@@ -499,7 +499,7 @@ const { bridge, ready } = useQgisBridge<Bridge>();
 ```html
 <qgis-bridge object-name="bridge"></qgis-bridge>
 <script type="module">
-import '@qgis-sdk/bridge/webcomponents';
+import '@archont561/qgis-sdk/webcomponents';
 el.addEventListener('qgis-bridge-ready', e => e.detail.bridge.get_layer().then(...));
 el.addEventListener('qgis-message', e => console.log(e.detail));
 </script>
@@ -507,7 +507,7 @@ el.addEventListener('qgis-message', e => console.log(e.detail));
 
 **Python → JS messages:** `web_view.page().runJavaScript("window.qgisBridge.onMessage({message: 'hi'})")` dispatches `CustomEvent('qgis-message')` for any framework.
 
-**npm package:** `ts-packages/qgis-sdk-bridge` → `@qgis-sdk/bridge` with `src/index.ts`, `loader.ts`, `window.ts`, `qgis.ts`, `description.ts`, `react.ts`, `vue.ts`, `svelte.ts`, `webcomponents.ts`, built via `bun build` to `dist/`.
+**npm package:** `ts-packages/qgis-sdk` → `@archont561/qgis-sdk` with `src/index.ts`, `loader.ts`, `window.ts`, `qgis.ts`, `description.ts`, `react.ts`, `vue.ts`, `svelte.ts`, `webcomponents.ts`, built via `bun build` to `dist/`.
 
 ### 7.3 Testing fixtures (new)
 

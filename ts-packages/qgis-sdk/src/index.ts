@@ -1,5 +1,5 @@
 /**
- * @qgis-sdk/bridge — Typed QWebChannel bridge for QGIS plugins, with complete QGIS Web API
+ * @archont561/qgis-sdk — Typed QWebChannel bridge for QGIS plugins, with complete QGIS Web API
  *
  * New architecture:
  * - Description loader: loads BridgeDescription JSON from Python (no codegen needed)
@@ -10,7 +10,7 @@
  *
  * @example Vanilla JS with complete QGIS API
  * ```typescript
- * import { createQgisBridge } from '@qgis-sdk/bridge';
+ * import { createQgisBridge } from '@archont561/qgis-sdk';
  * const { bridge, qgis } = await createQgisBridge();
  *
  * await qgis.message.info("Hello", "From JS");
@@ -21,7 +21,7 @@
  *
  * @example Custom bridge still works
  * ```typescript
- * import { createBridge } from '@qgis-sdk/bridge';
+ * import { createBridge } from '@archont561/qgis-sdk';
  * const bridge = await createBridge();
  * const data = await bridge.get_layer("my_layer");
  * ```

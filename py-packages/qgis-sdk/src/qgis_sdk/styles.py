@@ -278,7 +278,7 @@ class StyleSheet:
 
         return {
             "version": 8,
-            "name": self.name or "qgis-rs style",
+            "name": self.name or "qgis-sdk style",
             "layers": layers,
         }
 

@@ -169,22 +169,22 @@ qgis-plugin new my_plugin --web --framework react
 
 See [Plugin Development Guide](/guides/plugin-development/) and [Web Frameworks Guide](/guides/web-frameworks/).
 
-### Typed Bridge — @qgis-sdk/bridge
+### Typed Bridge — @archont561/qgis-sdk
 
 ```bash
-npm install @qgis-sdk/bridge
+npm install @archont561/qgis-sdk
 qgis-plugin bridge generate --bridge my_plugin.dialogs.web_dialog:Bridge --output web/bridge.d.ts
 ```
 
 ```typescript
-import { createBridge } from '@qgis-sdk/bridge';
+import { createBridge } from '@archont561/qgis-sdk';
 import type { Bridge } from './web/bridge.d.ts';
 const bridge = await createBridge<Bridge>(); // auto-injects qrc:///qtwebchannel/qwebchannel.js
 ```
 
-React: `import { useQgisBridge } from '@qgis-sdk/bridge/react'`  
-Vue: `import { useQgisBridge } from '@qgis-sdk/bridge/vue'`  
-Web Components: `<qgis-bridge>` + `import '@qgis-sdk/bridge/webcomponents'`
+React: `import { useQgisBridge } from '@archont561/qgis-sdk/react'`  
+Vue: `import { useQgisBridge } from '@archont561/qgis-sdk/vue'`  
+Web Components: `<qgis-bridge>` + `import '@archont561/qgis-sdk/webcomponents'`
 
 See [Typed Bridge Guide](/guides/typed-bridge/).
 

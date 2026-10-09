@@ -23,8 +23,8 @@ qgis-sdk = better PyQGIS + declarative plugin/algorithm/UI definitions + Rust CL
 | `Algorithm`, `parameter`, `output` | Declarative Processing parameters and outputs. |
 | `Dialog`, `field`, `layout`, `Button`, `@dialog` | Declarative dialogs via PyQt — testable without QGIS, with `QSettings` persistence. |
 | `WebDialog`, `@web_bridge` | QWebEngineView + HTML/CSS/JS + QWebChannel bridge (Python ↔ JS via `pyqtSlot` + `runJavaScript`). |
-| `generate_ts_bridge()`, `generate_package()` | Generate TypeScript types from Python bridge classes → `bridge.d.ts` with Promise+callback overloads, for `@qgis-sdk/bridge`. |
-| `@qgis-sdk/bridge` (npm) | Typed bridge runtime: auto-injects `qrc:///qtwebchannel/qwebchannel.js`, `createBridge<T>()` Promise API, React `useQgisBridge`, Vue composable, Web Components `<qgis-bridge>`. |
+| `generate_ts_bridge()`, `generate_package()` | Generate TypeScript types from Python bridge classes → `bridge.d.ts` with Promise+callback overloads, for `@archont561/qgis-sdk`. |
+| `@archont561/qgis-sdk` (npm) | Typed bridge runtime: auto-injects `qrc:///qtwebchannel/qwebchannel.js`, `createBridge<T>()` Promise API, React `useQgisBridge`, Vue composable, Web Components `<qgis-bridge>`. |
 | `qgis_sdk.testing` | Pytest fixtures + fakes, one module per concern: `FakeIface`, `FakeDialog`, `FakeWebView`, `BridgeHarness`, `FakeNetworkTransport`, the `PENDING/RUNNING/SUCCESS/FAILURE/CANCELED` `FakeTaskManager`, `Call`/`CallLog`, `mock_features/source/context`, and Hypothesis strategies in `qgis_sdk.testing.strategies`. Discoverable via `pytest_plugins = ["qgis_sdk.testing"]`. |
 | `qgis_core()` / `require_qgis()` | Lazy PyQGIS access with an actionable error when the bindings are missing. |
 
@@ -245,32 +245,32 @@ function updateFromPython(data) {
 ```
 
 Python → JS: `dlg.run_js("updateFromPython({center: [51.5, -0.09]})")` or `runJavaScript("window.qgisBridge.onMessage(...)")` → `CustomEvent('qgis-message')`  
-JS → Python: `@pyqtSlot(result=str)` + `QWebChannel.registerObject("bridge", bridge_obj)` → `await bridge.get_layer()` via `@qgis-sdk/bridge`
+JS → Python: `@pyqtSlot(result=str)` + `QWebChannel.registerObject("bridge", bridge_obj)` → `await bridge.get_layer()` via `@archont561/qgis-sdk`
 
-### Typed bridge with @qgis-sdk/bridge (npm)
+### Typed bridge with @archont561/qgis-sdk (npm)
 
 ```bash
-npm install @qgis-sdk/bridge
+npm install @archont561/qgis-sdk
 qgis-plugin bridge generate --bridge my_plugin.dialogs.web_dialog:Bridge --output web/bridge.d.ts
 ```
 
 ```typescript
-import { createBridge } from '@qgis-sdk/bridge';
+import { createBridge } from '@archont561/qgis-sdk';
 import type { Bridge } from './web/bridge.d.ts';
 
 const bridge = await createBridge<Bridge>(); // auto-injects qrc:///qtwebchannel/qwebchannel.js
 const layer = await bridge.get_layer(); // typed!
 
 // React
-import { useQgisBridge } from '@qgis-sdk/bridge/react';
+import { useQgisBridge } from '@archont561/qgis-sdk/react';
 const { bridge, ready } = useQgisBridge<Bridge>();
 
 // Vue
-import { useQgisBridge } from '@qgis-sdk/bridge/vue';
+import { useQgisBridge } from '@archont561/qgis-sdk/vue';
 const { bridge, ready } = useQgisBridge<Bridge>();
 
 // Web Components
-import '@qgis-sdk/bridge/webcomponents';
+import '@archont561/qgis-sdk/webcomponents';
 <qgis-bridge object-name="bridge"></qgis-bridge>
 ```
 

@@ -1,4 +1,4 @@
-/** qgis-sdk-bridge loader — auto-injects qwebchannel.js */
+/** qgis-sdk loader — auto-injects qwebchannel.js */
 
 export const QWEBCHANNEL_SOURCES = [
 	"qrc:///qtwebchannel/qwebchannel.js",

@@ -1,4 +1,4 @@
-# @qgis-sdk/bridge
+# @archont561/qgis-sdk
 
 Typed [QWebChannel](https://doc.qt.io/qt-6/qtwebchannel-javascript.html) bridge
 for QGIS plugins: the JavaScript half of a plugin whose UI runs in a
@@ -19,7 +19,7 @@ for QGIS plugins: the JavaScript half of a plugin whose UI runs in a
 ## Installation
 
 ```bash
-bun add @qgis-sdk/bridge     # npm install / pnpm add / yarn add all work
+bun add @archont561/qgis-sdk     # npm install / pnpm add / yarn add all work
 ```
 
 The Python counterpart is the `qgis-sdk` distribution in this repository; it is
@@ -28,7 +28,7 @@ what serves the description this package loads.
 ## Usage
 
 ```typescript
-import { createQgisBridge } from "@qgis-sdk/bridge";
+import { createQgisBridge } from "@archont561/qgis-sdk";
 
 const { bridge, qgis } = await createQgisBridge();
 
@@ -43,7 +43,7 @@ bridge.addEventListener("message", (event) => console.log(event.data));
 A plugin that exposes its own slots and wants nothing else:
 
 ```typescript
-import { createBridge } from "@qgis-sdk/bridge";
+import { createBridge } from "@archont561/qgis-sdk";
 
 const bridge = await createBridge();
 const features = await bridge.get_layer("my_layer");
@@ -53,15 +53,15 @@ const features = await bridge.get_layer("my_layer");
 
 | Import | What it gives you |
 | --- | --- |
-| `@qgis-sdk/bridge` | `createQgisBridge`, `createBridge`, `QgisBridge`, the sub-APIs, the description helpers |
-| `@qgis-sdk/bridge/react` | `useQgisBridge`, `useQgis`, `useQgisMessage` |
-| `@qgis-sdk/bridge/vue` | composables with the same shape |
-| `@qgis-sdk/bridge/svelte` | stores with the same shape |
-| `@qgis-sdk/bridge/webcomponents` | a custom element wrapper |
-| `@qgis-sdk/bridge/loader` | `loadQWebChannel`, `isQWebChannelAvailable` — `qwebchannel.js` discovery |
-| `@qgis-sdk/bridge/description` | `loadDescription`, `createBridgeFromDescription`, `descriptionToTypeScript` |
-| `@qgis-sdk/bridge/qgis` | the `QgisAPI` class and its result types |
-| `@qgis-sdk/bridge/window` | `QgisBridge` and `BridgeOptions` alone |
+| `@archont561/qgis-sdk` | `createQgisBridge`, `createBridge`, `QgisBridge`, the sub-APIs, the description helpers |
+| `@archont561/qgis-sdk/react` | `useQgisBridge`, `useQgis`, `useQgisMessage` |
+| `@archont561/qgis-sdk/vue` | composables with the same shape |
+| `@archont561/qgis-sdk/svelte` | stores with the same shape |
+| `@archont561/qgis-sdk/webcomponents` | a custom element wrapper |
+| `@archont561/qgis-sdk/loader` | `loadQWebChannel`, `isQWebChannelAvailable` — `qwebchannel.js` discovery |
+| `@archont561/qgis-sdk/description` | `loadDescription`, `createBridgeFromDescription`, `descriptionToTypeScript` |
+| `@archont561/qgis-sdk/qgis` | the `QgisAPI` class and its result types |
+| `@archont561/qgis-sdk/window` | `QgisBridge` and `BridgeOptions` alone |
 
 ## Development
 
@@ -69,11 +69,11 @@ From the repository root — every verb below is a package script, fanned out by
 turbo, so it behaves the same here and in CI:
 
 ```bash
-bun x turbo run build      --filter=@qgis-sdk/bridge
-bun x turbo run test       --filter=@qgis-sdk/bridge
-bun x turbo run typecheck  --filter=@qgis-sdk/bridge
-bun x turbo run lint       --filter=@qgis-sdk/bridge
-bun x turbo run pack:check --filter=@qgis-sdk/bridge   # the published tarball still has what `files` promises
+bun x turbo run build      --filter=@archont561/qgis-sdk
+bun x turbo run test       --filter=@archont561/qgis-sdk
+bun x turbo run typecheck  --filter=@archont561/qgis-sdk
+bun x turbo run lint       --filter=@archont561/qgis-sdk
+bun x turbo run pack:check --filter=@archont561/qgis-sdk   # the published tarball still has what `files` promises
 ```
 
 The full repository gate is `pixi run ci` (see the root `README.md`).

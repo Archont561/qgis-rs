@@ -27,7 +27,7 @@ The full product specification is [doc-7 — Rust CLI, Cross-Language FFI, and Q
 - `qgis-sdk` may be an exact compatibility alias for `qgis-plugin`; it must not have a second parser or reduced implementation.
 - `qgis_py` is the standalone Python client for the Rust engine.
 - `qgis_sdk` is the QGIS-hosted Python plugin SDK and uses PyQGIS/PyQt for live QGIS objects, UI, Processing, tasks, feedback, and lifecycle.
-- `@qgis-sdk/bridge` is the WebEngine/QWebChannel client and is separate from the Node native addon.
+- `@archont561/qgis-sdk` is the WebEngine/QWebChannel client and is separate from the Node native addon.
 
 ### 2. Keep the FFI thin
 

@@ -60,7 +60,7 @@ my_plugin/
 │   │   ├── bridge.d.ts (typed interface)
 │   │   └── bridge.ts (usage examples)
 │   ├── frontend/ (for react/vue)
-│   │   ├── package.json (with @qgis-sdk/bridge)
+│   │   ├── package.json (with @archont561/qgis-sdk)
 │   │   └── src/App.tsx (typed useQgisBridge<Bridge>)
 │   ├── dialogs/
 │   └── ui/
@@ -68,7 +68,7 @@ my_plugin/
 
 With `--framework react`:
 - `web/index.html` = React version
-- `frontend/` Vite template with `react`, `react-dom`, `@qgis-sdk/bridge`
+- `frontend/` Vite template with `react`, `react-dom`, `@archont561/qgis-sdk`
 
 ## bridge generate
 
@@ -98,10 +98,10 @@ export interface Bridge {
 }
 ```
 
-Usage with `@qgis-sdk/bridge`:
+Usage with `@archont561/qgis-sdk`:
 
 ```typescript
-import { createBridge } from '@qgis-sdk/bridge';
+import { createBridge } from '@archont561/qgis-sdk';
 import type { Bridge } from './web/bridge.d.ts';
 const bridge = await createBridge<Bridge>();
 ```

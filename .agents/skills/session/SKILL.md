@@ -247,7 +247,7 @@ the report:
    | Rust | **194 passing across 42 non-empty test-binary runs** (31 integration files in `crates/*/tests/*.rs`, 5 of them re-run under the `qgis` feature) | `turbo run test` |
    | Python, `qgis-sdk` | **123 passed, 2 skipped** | `turbo run test` |
    | Python, `qgis-rs` | **21 passed** | `turbo run test` — its `build` works here now that `patchelf` is packed |
-   | Bun | **44** = 17 `@qgis-sdk/bridge` + 14 `@qgis/test-utils` + 13 `qgis-rs` (`ts-packages/qgis-node`) | `turbo run test` |
+   | Bun | **44** = 17 `@archont561/qgis-sdk` + 14 `@qgis/test-utils` + 13 `qgis-rs` (`ts-packages/qgis-node`) | `turbo run test` |
    | C++ | **14 GoogleTest cases** (9 examples + 5 RapidCheck properties) in one ctest target | `xtask test-cpp`, called by `@qgis/rust`'s `test` |
 
    Every one of those came from a single green `pixi run gates`, so there is no longer a second
