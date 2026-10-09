@@ -4,7 +4,7 @@ title: 'Define Rust CLI, FFI, and QGIS SDK product boundaries'
 status: Done
 assignee: []
 created_date: '2026-10-03 09:35'
-updated_date: '2026-10-03 22:12'
+updated_date: '2026-10-09 15:47'
 labels:
   - architecture
   - cli
@@ -52,6 +52,8 @@ AC#2–#5: recorded in D13 sections 1–5, and four of those rules are now decid
 Two deviations found and written into D13 rather than quietly checked off: py-packages/qgis-sdk/src/qgis_sdk/_fallback_cli.py still exists and is imported by qgis_sdk.cli when qgis_sdk._core is missing (allowlisted, TASK-43 pays it off), and py-packages/qgis-sdk ships a qgis-cli console script that shadows the canonical binary on PATH (TASK-44 reconciles it). D13 also now states what the gate cannot decide: behaviour behind a binary, console-script shadowing, and whether host wrappers stay thin.
 
 AC#6: all five implementation tasks reference both skills — task-42 listed only the TDD skill and now lists the refactor skill too (via the backlog CLI, not a hand edit). Public behaviour is preserved: the only runtime change in this task is a new xtask subcommand; no existing command, API or output changed.
+
+Decision D15 supersedes D13 and D14 for these boundaries. Tracked by TASK-57 (pure-Python SDK), TASK-58 (binary shipping) and TASK-60 (stale names).
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary

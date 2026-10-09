@@ -4,7 +4,7 @@ title: Define the cross-language QGIS bridge test contract
 status: Done
 assignee: []
 created_date: '2026-10-03 09:16'
-updated_date: '2026-10-04 13:40'
+updated_date: '2026-10-09 15:47'
 labels:
   - testing
   - bridge
@@ -53,6 +53,8 @@ AC#3: `qgis_protocol::bridge` holds the envelope types and `validate_request`, t
 AC#5: `py-packages/qgis-sdk/tests/test_bridge_contract.py` (46 passed, 2 skipped; pure Python, no QGIS, no Qt) and `ts-packages/qgis-sdk-bridge/tests/bridge-contract.test.ts` (part of the bridge package's 68 bun tests; no QWebChannel, no globals) read the same files from `test-fixtures/bridge/`. Neither imports the other's fakes, and neither imports a fake from Rust: what is shared is the observable contract, because two sides that agree by being the same code have not agreed about anything. The Python suite asserts the host's half (what a router must honour before it calls a handler), the TypeScript suite the client's half (one callable path per manifest method, the snake_case wire under a camelCase surface, correlation by `request_id` alone, an event that is never an answer).
 
 Not implemented here, on purpose: no Python `BridgeRouter` and no TypeScript `BridgeHarness` — those are TASK-32 and TASK-33, and they now have fixtures to be built against rather than a prose spec. The engine transport is untouched; `bridge_version` and `transport_version` stay separate numbers, which is the point of §8 of the contract.
+
+Path update: the bridge contract tests move to ts-packages/qgis-sdk with the package rename in TASK-56.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary

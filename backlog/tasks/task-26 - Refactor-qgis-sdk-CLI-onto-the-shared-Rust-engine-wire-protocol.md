@@ -1,10 +1,10 @@
 ---
 id: TASK-26
 title: Refactor qgis-sdk CLI onto the shared Rust engine wire protocol
-status: In Progress
+status: To Do
 assignee: []
 created_date: '2026-10-03 01:51'
-updated_date: '2026-10-09 12:02'
+updated_date: '2026-10-09 15:47'
 labels:
   - qgis-sdk
   - qgis-py
@@ -89,4 +89,6 @@ The accepted product boundary is recorded in doc-7. qgis-sdk must not depend dir
 Slice 1 (892ff26): the plugin command tree moved into the pure-Rust qgis-sdk-core library behind run_cli(argv) -> i32. The qgis-plugin binary and the qgis-sdk alias are one-line mains over it; the qgis-sdk stub is gone, and --help output is identical. Gates green.
 
 Findings that block AC2-AC6 and need decisions: (1) build, test, install, dev, package and publish print messages and write nothing in both Rust and Python; the Rust dirs and chrono are hand-written stubs and the zip name is the constant 20260918. (2) bootstrap, vendor and bridge generate exist only in Python; bridge generate introspects Python classes, so it cannot be a pure-Rust port. (3) AC2 asks for a versioned JSON invoke entry point, but D14 chose argv forwarding; the AC text needs amending or D14 needs revising. TASK-26 stays In Progress.
+
+Superseded (2026-10). The Rust SDK path is removed: qgis-sdk is a pure-Python PyQGIS CLI, and the qgis-plugin binary is dropped. Replaced by TASK-57. AC#2 (JSON invoke), AC#3 and AC#4 no longer apply. AC#5 and AC#6 move to TASK-57.
 <!-- SECTION:NOTES:END -->

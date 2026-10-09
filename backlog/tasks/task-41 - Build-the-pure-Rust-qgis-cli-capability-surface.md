@@ -4,6 +4,7 @@ title: Build the pure-Rust qgis-cli capability surface
 status: To Do
 assignee: []
 created_date: '2026-10-03 09:35'
+updated_date: '2026-10-09 15:47'
 labels:
   - cli
   - rust
@@ -40,3 +41,9 @@ Implement the standalone GIS CLI contract from doc-7 without adding a PyQGIS/PyQ
 - [ ] #5 Filesystem policy, atomic artifacts, JSON stdout, stderr diagnostics, cancellation, and resource limits have contract tests
 - [ ] #6 Implementation follows red-green-refactor slices and preserves existing public command flags and golden values
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+The qgis-cli binary this task builds is what TASK-58 ships through @archont561/qgis-node and qgis-py.
+<!-- SECTION:NOTES:END -->

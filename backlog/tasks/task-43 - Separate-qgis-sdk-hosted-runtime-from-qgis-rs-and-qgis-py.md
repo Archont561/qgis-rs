@@ -4,7 +4,7 @@ title: Separate qgis-sdk hosted runtime from qgis-rs and qgis-py
 status: To Do
 assignee: []
 created_date: '2026-10-03 09:35'
-updated_date: '2026-10-04 12:48'
+updated_date: '2026-10-09 15:47'
 labels:
   - qgis-sdk
   - python
@@ -42,6 +42,12 @@ Make the QGIS plugin SDK dependency boundary explicit: qgis_sdk runtime uses PyQ
 - [ ] #5 No live QGIS or Qt objects cross qgis_rs._core, qgis_sdk._core, or Node NAPI boundaries
 - [ ] #6 Compatibility imports, plugin lifecycle behavior, and QGIS-hosted tests remain green under offscreen serialized execution
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Names updated for the 2026-10 rename: the Python distribution is qgis-py and the Node package is @archont561/qgis-node. The qgis-rs compatibility alias is removed by TASK-60.
+<!-- SECTION:NOTES:END -->
 
 ## Comments
 

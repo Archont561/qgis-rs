@@ -1,6 +1,0 @@
-{
-	"name": "qgis-rs-compat",
-	"private": true,
-	"version": "0.1.0",
-	"description": "Deprecated `qgis-rs` alias of the qgis-py Python distribution. No build of its own: the wheel is pure Python and depends on qgis-py."
-}

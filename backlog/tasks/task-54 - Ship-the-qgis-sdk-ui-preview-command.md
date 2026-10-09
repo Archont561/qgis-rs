@@ -4,7 +4,7 @@ title: Ship the qgis-sdk ui preview command
 status: To Do
 assignee: []
 created_date: '2026-10-09 00:10'
-updated_date: '2026-10-09 00:10'
+updated_date: '2026-10-09 15:47'
 labels:
   - qgis-sdk
   - ui
@@ -13,12 +13,8 @@ labels:
 milestone: m-3
 dependencies: []
 documentation:
-  - >-
-    backlog/docs/ui/doc-10 -
-    qgis-sdk-UI-Preview-CLI-and-Dev-Loop.md
-  - >-
-    backlog/docs/ui/doc-9 -
-    Agent-Driven-PyQt-QGIS-Visual-Design-Loop-Spec.md
+  - backlog/docs/ui/doc-10 - qgis-sdk-UI-Preview-CLI-and-Dev-Loop.md
+  - backlog/docs/ui/doc-9 - Agent-Driven-PyQt-QGIS-Visual-Design-Loop-Spec.md
   - .knowledge/qgis-ui-agent-design-loop.md
   - .knowledge/testing.md
   - .knowledge/decisions/D05-threading.md
@@ -55,4 +51,6 @@ Add `qgis_sdk/ui/preview.py` (lazy Qt imports; pure helpers importable without Q
 
 <!-- SECTION:NOTES:BEGIN -->
 doc-10 is the contract, including the "why a Qt dialog cannot be ported to the browser directly" section and the sandbox forwarding rules. Sandbox probe evidence (offscreen grab, QTest dispatch, hit-testing, `0.0.0.0` + relative-URL proxy reachability) is recorded in doc-10's feasibility section; the probe itself lives outside the repository.
+
+qgis-sdk ui preview belongs to the pure-Python qgis-sdk CLI covered by TASK-57.
 <!-- SECTION:NOTES:END -->
