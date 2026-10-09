@@ -2,7 +2,7 @@
 
 This directory contains a conda-forge style recipe that builds the `qgis-py` Python package with Rust extension and `qgis-cli` binary.
 
-The recipe lives at `py-packages/qgis-py/conda-recipe/` while the Rust it compiles
+The recipe lives at `py-packages/qgis-py/recipes/qgis-py/` while the Rust it compiles
 lives at `crates/qgis-py/`, so `source.path` points at the repository root
 (`../../..`) and the commands below all run from there.
 
@@ -10,7 +10,7 @@ lives at `crates/qgis-py/`, so `source.path` points at the repository root
 
 ```bash
 conda install -c conda-forge conda-build
-conda build conda-recipe/ -c conda-forge
+conda build recipes/qgis-py/ -c conda-forge
 ```
 
 ## Build with pixi

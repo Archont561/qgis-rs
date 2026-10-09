@@ -169,14 +169,14 @@ this wheel.
 
 - **Rust workspace**: `crates/qgis-render` (pure Rust), `crates/qgis-cli` (CLI library + binary), `crates/qgis-py` (PyO3 bindings)
 - **Python**: this directory — `python/qgis_py/` (wrappers) + `pyproject.toml`, whose `[tool.maturin].manifest-path` points at `../../crates/qgis-py/Cargo.toml`
-- **Conda**: `pixi.toml` (pixi-build) + conda-forge recipe (see `conda-recipe/`)
+- **Conda**: `pixi.toml` (pixi-build) + conda-forge recipe (see `recipes/qgis-py/`)
 - **Design**: `../../crates/qgis-py/ARCHITECTURE.md` — why the crate and the wheel are split this way
 
 ## Conda-forge recipe
 
 The conda-forge feedstock builds the same Rust code with `qgis` from conda-forge, so rendering works out of the box.
 
-See `conda-recipe/` for the recipe (meta.yaml + build.sh). It:
+See `recipes/qgis-py/` for the recipe (meta.yaml + build.sh). It:
 
 - Uses `pixi` or `conda-build` to compile Rust with `cargo`
 - Installs `qgis-cli` binary to `$PREFIX/bin`
@@ -186,7 +186,7 @@ See `conda-recipe/` for the recipe (meta.yaml + build.sh). It:
 To publish to conda-forge:
 
 1. Fork https://github.com/conda-forge/staged-recipes
-2. Copy `conda-recipe/` to `recipes/qgis-py/`
+2. Copy `recipes/qgis-py/` to `recipes/qgis-py/`
 3. Open PR — conda-forge bots will build and test
 
 ## Performance

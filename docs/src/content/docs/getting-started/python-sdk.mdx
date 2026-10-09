@@ -156,7 +156,7 @@ qgis-sdk wheel
 - Rust crate: `crates/qgis-sdk/Cargo.toml` — lib `_core` + bins `qgis-sdk`, `qgis-sdk`,
   reached from `py-packages/qgis-sdk/pyproject.toml` via `[tool.maturin].manifest-path`
 - Python: `src/qgis_sdk/` with `pyproject.toml` using maturin
-- Conda: `conda-recipe/meta.yaml` builds Rust binaries + Python wheel
+- Conda: `recipes/qgis-sdk/meta.yaml` builds Rust binaries + Python wheel
 
 ## UI, Typed Bridge, and Testing
 
@@ -217,10 +217,10 @@ See [Testing Fixtures Guide](/guides/testing-fixtures/).
 
 ## Conda-forge
 
-See `py-packages/qgis-sdk/conda-recipe/meta.yaml`. It builds Rust binaries and Python extension and installs both.
+See `py-packages/qgis-sdk/recipes/qgis-sdk/meta.yaml`. It builds Rust binaries and Python extension and installs both.
 
 To publish:
 
 1. Fork https://github.com/conda-forge/staged-recipes
-2. Copy `conda-recipe/` to `recipes/qgis-sdk/`
+2. Copy `recipes/qgis-sdk/` to `recipes/qgis-sdk/`
 3. Open PR

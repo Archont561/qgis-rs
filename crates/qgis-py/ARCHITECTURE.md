@@ -45,7 +45,7 @@ py-packages/qgis-py/          # the Python distribution
 │   ├── test_api.py         # API tests (pure Rust, no QGIS)
 │   └── test_cli.py         # CLI tests
 ├── pixi.toml               # pixi-build-python package manifest
-├── conda-recipe/
+├── recipes/qgis-py/
 │   ├── meta.yaml           # conda-forge recipe (binary + Python extension)
 │   └── README.md
 └── README.md               # User-facing docs
@@ -55,7 +55,7 @@ py-packages/qgis-py/          # the Python distribution
 
 - **pip (PyPI)**: `maturin` builds the wheel with the `_core` extension module. `pyproject.toml` declares `[project.scripts] qgis-cli = "qgis_py.cli:main"` for the Python wrapper; the Rust binary itself is installed by the conda recipe, since maturin ships only the extension module. Pre-built wheels for Linux x86_64 and arm64 — no cargo needed for end users.
 
-- **conda-forge**: `conda-recipe/meta.yaml` builds the Rust binary with `cargo build --release -p qgis-cli`, copies to `$PREFIX/bin`, then builds the Python wheel with `cd py-packages/qgis-py && maturin build` and `pip install`. Depends on `qgis >=3.44.9` optionally — lightweight variant (no QGIS) supports `info`, `tiles --dry-run`, `version`; full variant (with QGIS) supports `render`, `tiles`, `export`, `serve`.
+- **conda-forge**: `recipes/qgis-py/meta.yaml` builds the Rust binary with `cargo build --release -p qgis-cli`, copies to `$PREFIX/bin`, then builds the Python wheel with `cd py-packages/qgis-py && maturin build` and `pip install`. Depends on `qgis >=3.44.9` optionally — lightweight variant (no QGIS) supports `info`, `tiles --dry-run`, `version`; full variant (with QGIS) supports `render`, `tiles`, `export`, `serve`.
 
 - **pixi**: `pixi.toml` defines `qgis-rs` as source dependency built with `pixi-build-python` (maturin backend). Environments `py` (pure) and `py-qgis` (with QGIS) for testing.
 
@@ -102,4 +102,4 @@ artifact creation.
 ### Publishing
 
 - **CI**: `.github/workflows/ci.yml` builds the Python extensions with maturin, runs API/CLI smoke tests, and records Python coverage. Wheel publishing is not part of the current workflow set.
-- **conda-forge**: Copy `conda-recipe/` to `conda-forge/staged-recipes/recipes/qgis-rs/` and open PR.
+- **conda-forge**: Copy `recipes/qgis-py/` to `staged-recipes/recipes/qgis-py/` and open PR.

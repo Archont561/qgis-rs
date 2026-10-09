@@ -61,7 +61,7 @@ that failed to build must not produce an empty release.
 Only crates.io needs a stored secret (`CRATES_IO_TOKEN`). prefix.dev, PyPI and
 npmjs all use the job's OIDC identity, so before the first release:
 
-1. PyPI — configure Trusted Publishing for both `qgis-rs` and `qgis-sdk`:
+1. PyPI — configure Trusted Publishing for both `qgis-py` and `qgis-sdk`:
    repository `Archont561/qgis-rust`, workflow `release.yml`, environment
    `release`.
 2. npmjs — the trusted publisher must match the repository URL in the package's
