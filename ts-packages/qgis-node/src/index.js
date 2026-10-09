@@ -1,5 +1,5 @@
 /**
- * qgis-rs — Node.js / TypeScript bindings for qgis-rs.
+ * @archont561/qgis-node — Node.js / TypeScript bindings for qgis-rs.
  *
  * Native-speed QGIS rendering, tiling and project inspection. The addon this
  * package loads exposes exactly one function — `invoke(requestJson)` — and
@@ -16,7 +16,7 @@
  * See .knowledge/decisions/D09-wire-protocol-over-ffi.md.
  *
  * Usage:
- *   const { Project, Extent, TilePlan, ZoomRange } = require('qgis-rs');
+ *   const { Project, Extent, TilePlan, ZoomRange } = require('@archont561/qgis-node');
  */
 
 const { platform, arch } = process;
@@ -35,10 +35,9 @@ function candidates() {
 	// `../` because the addon is built next to package.json (that is where
 	// `napi build .` puts it and what the `files` list publishes), while this
 	// client lives in src/.
-	const ids = ["../qgis-rs.node"];
+	const ids = ["../qgis-node.node"];
 	for (const triple of triples) {
-		ids.push(`../qgis-rs.${triple}.node`);
-		ids.push(`@qgis-rs/node-${triple}`);
+		ids.push(`../qgis-node.${triple}.node`);
 	}
 	return ids;
 }
@@ -53,7 +52,7 @@ function loadBinding() {
 		}
 	}
 	throw new Error(
-		"qgis-rs: the native addon is not available, and this package is a client " +
+		"@archont561/qgis-node: the native addon is not available, and this package is a client " +
 			"of it — there is no JavaScript fallback.\n" +
 			"  bun run build   # from ts-packages/qgis-node\n" +
 			`Tried:\n  ${failures.join("\n  ")}`,
@@ -446,6 +445,9 @@ function planTiles(bounds, zooms) {
 	};
 }
 
+const cli = require("./cli.js");
+const { runCli, resolveCliBinary } = cli;
+
 module.exports = {
 	Crs,
 	EngineError,
@@ -459,6 +461,8 @@ module.exports = {
 	MAX_ZOOM: engineInfo().max_zoom,
 	TRANSPORT_VERSION,
 	engineInfo,
+	runCli,
+	resolveCliBinary,
 	invoke,
 	planTiles,
 	version,

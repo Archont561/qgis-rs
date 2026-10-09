@@ -18,7 +18,7 @@ const BOUNDS = "14,50,15,51";
 const ZOOMS = "10-14";
 
 test("loads the compiled addon — there is no fallback behind it", () => {
-	assert.equal(qgis._hasNative, true, "expected qgis-rs.node to load");
+	assert.equal(qgis._hasNative, true, "expected qgis-node.node to load");
 	assert.equal(typeof qgis.TRANSPORT_VERSION, "number");
 	assert.equal(qgis.TRANSPORT_VERSION, qgis.engineInfo().transport_version);
 });

@@ -203,7 +203,7 @@ pub fn pack_check(package_dir: &str, required: &[String]) -> Result<()> {
 /// Whether at least one file matches a `*`-pattern inside `directory`.
 ///
 /// Only the forms the packages actually use are supported — one `*` in the
-/// file-name part, optionally under a subdirectory (`qgis-rs.*.node`,
+/// file-name part, optionally under a subdirectory (`qgis-node.*.node`,
 /// `dist/*.whl`) — which is why this is twenty lines instead of a glob
 /// dependency nobody else in the workspace needs.
 pub fn glob_matches(directory: &Path, pattern: &str) -> Result<bool> {

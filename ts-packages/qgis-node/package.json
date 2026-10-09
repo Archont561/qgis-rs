@@ -1,25 +1,25 @@
 {
-	"name": "qgis-rs",
+	"name": "@archont561/qgis-node",
 	"version": "0.1.0",
-	"description": "Node.js / TypeScript bindings and CLI for qgis-rs \u2014 native-speed QGIS rendering, tiling, and plugin tools",
+	"description": "Node.js / TypeScript bindings and the qgis-cli binary for qgis-rs — native-speed QGIS rendering, tiling, and plugin tools",
 	"main": "src/index.js",
 	"types": "src/index.d.ts",
 	"bin": {
-		"qgis-cli": "./bin/qgis-cli.js",
-		"qgis-plugin": "./bin/qgis-plugin.js",
-		"qgis-sdk": "./bin/qgis-sdk.js"
+		"qgis-cli": "./bin/qgis-cli.js"
 	},
 	"scripts": {
 		"build": "napi build --platform --release --cargo-cwd ../../crates/qgis-node --js false --dts .napi-generated.d.ts .",
 		"build:debug": "napi build --platform --cargo-cwd ../../crates/qgis-node --js false --dts .napi-generated.d.ts .",
 		"test": "QGIS_REQUIRE_NATIVE=1 bun test tests/contract.test.js",
 		"coverage": "QGIS_REQUIRE_NATIVE=1 bun test --coverage tests/contract.test.js",
-		"pack:check": "cargo run -q -p xtask --manifest-path ../../Cargo.toml -- pack-check ts-packages/qgis-node src/index.js src/index.d.ts README.md bin/ 'qgis-rs.*.node'",
+		"pack:check": "cargo run -q -p xtask --manifest-path ../../Cargo.toml -- pack-check ts-packages/qgis-node src/index.js src/index.d.ts README.md bin/ 'qgis-node.*.node'",
 		"lint": "bunx biome check .",
 		"format": "bunx biome format --write .",
 		"prepublishOnly": "napi prepublish -t npm",
 		"artifacts": "napi artifacts",
-		"version": "napi version"
+		"version": "napi version",
+		"build:cli": "node scripts/stage-cli.js",
+		"test:cli": "QGIS_REQUIRE_NATIVE=1 bun test tests/cli.test.js"
 	},
 	"keywords": [
 		"qgis",
@@ -42,7 +42,7 @@
 	},
 	"homepage": "https://archont561.github.io/qgis-rs/",
 	"napi": {
-		"name": "qgis-rs",
+		"name": "qgis-node",
 		"triples": {
 			"defaults": false,
 			"additional": [
@@ -51,7 +51,7 @@
 				"x86_64-unknown-linux-musl"
 			]
 		},
-		"binaryName": "qgis-rs"
+		"binaryName": "qgis-node"
 	},
 	"devDependencies": {
 		"@napi-rs/cli": "^2.18",
@@ -65,8 +65,13 @@
 	},
 	"files": [
 		"src/",
-		"qgis-rs.*.node",
+		"qgis-node.*.node",
 		"bin/",
 		"README.md"
-	]
+	],
+	"optionalDependencies": {
+		"@archont561/qgis-node-linux-x64-gnu": "0.1.0",
+		"@archont561/qgis-node-linux-arm64-gnu": "0.1.0",
+		"@archont561/qgis-node-linux-x64-musl": "0.1.0"
+	}
 }

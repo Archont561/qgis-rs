@@ -37,12 +37,10 @@
       "version": "0.1.0",
     },
     "ts-packages/qgis-node": {
-      "name": "qgis-rs",
+      "name": "@archont561/qgis-node",
       "version": "0.1.0",
       "bin": {
         "qgis-cli": "./bin/qgis-cli.js",
-        "qgis-plugin": "./bin/qgis-plugin.js",
-        "qgis-sdk": "./bin/qgis-sdk.js",
       },
       "devDependencies": {
         "@napi-rs/cli": "^2.18",
@@ -50,6 +48,23 @@
         "fast-check": "^4.10.2",
         "typescript": "^5.0",
       },
+      "optionalDependencies": {
+        "@archont561/qgis-node-linux-arm64-gnu": "0.1.0",
+        "@archont561/qgis-node-linux-x64-gnu": "0.1.0",
+        "@archont561/qgis-node-linux-x64-musl": "0.1.0",
+      },
+    },
+    "ts-packages/qgis-node/npm/linux-arm64-gnu": {
+      "name": "@archont561/qgis-node-linux-arm64-gnu",
+      "version": "0.1.0",
+    },
+    "ts-packages/qgis-node/npm/linux-x64-gnu": {
+      "name": "@archont561/qgis-node-linux-x64-gnu",
+      "version": "0.1.0",
+    },
+    "ts-packages/qgis-node/npm/linux-x64-musl": {
+      "name": "@archont561/qgis-node-linux-x64-musl",
+      "version": "0.1.0",
     },
     "ts-packages/qgis-sdk": {
       "name": "@archont561/qgis-sdk",
@@ -90,6 +105,14 @@
     "@astrojs/sitemap": "3.6.0",
   },
   "packages": {
+    "@archont561/qgis-node": ["@archont561/qgis-node@workspace:ts-packages/qgis-node"],
+
+    "@archont561/qgis-node-linux-arm64-gnu": ["@archont561/qgis-node-linux-arm64-gnu@workspace:ts-packages/qgis-node/npm/linux-arm64-gnu"],
+
+    "@archont561/qgis-node-linux-x64-gnu": ["@archont561/qgis-node-linux-x64-gnu@workspace:ts-packages/qgis-node/npm/linux-x64-gnu"],
+
+    "@archont561/qgis-node-linux-x64-musl": ["@archont561/qgis-node-linux-x64-musl@workspace:ts-packages/qgis-node/npm/linux-x64-musl"],
+
     "@archont561/qgis-sdk": ["@archont561/qgis-sdk@workspace:ts-packages/qgis-sdk"],
 
     "@astrojs/astro2tsx": ["@astrojs/astro2tsx@0.1.0", "", { "dependencies": { "@emnapi/core": "1.11.3", "@napi-rs/wasm-runtime": "1.2.4" } }, "sha512-tgprkax8mcF+BiHJQBdoQ+REqtvvnLlYzV0yCeLMdcv3pJIutdlinWNHUzN1jMOT5VRlYTtMmDdaoPrtd3cBAQ=="],
@@ -1145,8 +1168,6 @@
     "pure-rand": ["pure-rand@8.4.2", "", {}, "sha512-vvuOGgcuPJAirlHvuQw1TrOiw7ptaIXXmIbNuiNOY6lNGJJH49PQ1Kj4nd783nPdQhQdicgOjVI2yI/9BD6/Ng=="],
 
     "qgis-py-dist": ["qgis-py-dist@workspace:py-packages/qgis-py"],
-
-    "qgis-rs": ["qgis-rs@workspace:ts-packages/qgis-node"],
 
     "qgis-rs-docs": ["qgis-rs-docs@workspace:docs"],
 

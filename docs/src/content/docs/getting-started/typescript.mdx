@@ -5,21 +5,21 @@ description: Install qgis-rs from npm with native-speed TypeScript API and Rust 
 
 # TypeScript / Node.js
 
-`qgis-rs` for Node.js ships a **NAPI-RS native addon** (`qgis-rs.<platform>.node`) at native speed, plus TypeScript types and **CLI wrappers** (`qgis-cli`, `qgis-plugin`) that run the Rust binaries from `crates/qgis-cli` / `crates/qgis-sdk` when they are installed.
+`@archont561/qgis-node` ships a **NAPI-RS native addon** (`qgis-node.<platform>.node`) at native speed, plus TypeScript types and the prebuilt **`qgis-cli`** binary. The binary lives in a per-platform package that npm installs for your machine, so nothing is compiled or downloaded at install or run time.
 
-- **npm**: `npm install qgis-rs` → `require('qgis-rs')` + `qgis-cli` on PATH
+- **npm**: `npm install @archont561/qgis-node` → `require('@archont561/qgis-node')` + `qgis-cli` on PATH
 - **API**: `Extent`, `Crs`, `TilePlan`, `Project` via NAPI, QGIS backend optional
-- **CLI**: `qgis-cli` and `qgis-plugin` wrappers that try Rust binary first, fallback to JS
+- **CLI**: `qgis-cli`, the prebuilt Rust binary, run through `runCli(argv)` or `npx qgis-cli`
 
 `qgis-py` (Python) and `qgis-sdk` (Python plugin SDK) can stay — this is the TypeScript counterpart, same Rust workspace.
 
 ## Installation
 
 ```bash
-npm install qgis-rs
+npm install @archont561/qgis-node
 # or
-yarn add qgis-rs
-pnpm add qgis-rs
+yarn add @archont561/qgis-node
+pnpm add @archont561/qgis-node
 ```
 
 Pre-built binaries for Linux x64 (gnu + musl) and Linux arm64 (gnu). Falls back to pure JS if no native binary, and you can build from source with `bun run build` (requires Rust ≥1.96).
@@ -33,14 +33,14 @@ cd qgis-rs
 # The Bun workspace at the root owns resolution; ts-packages/qgis-node is a
 # member of it, so there is nothing to install in the package directory.
 pixi run bun-install
-bun x turbo run build --filter=qgis-rs
-bun x turbo run test --filter=qgis-rs
+bun x turbo run build --filter=@archont561/qgis-node
+bun x turbo run test --filter=@archont561/qgis-node
 ```
 
 ## TypeScript API
 
 ```typescript
-import { Project, Extent, TilePlan, ZoomRange, Crs, planTiles, version } from 'qgis-rs';
+import { Project, Extent, TilePlan, ZoomRange, Crs, planTiles, version } from '@archont561/qgis-node';
 
 const project = Project.open('map.qgs');
 console.log(project.path, project.format);
@@ -75,7 +75,7 @@ try {
 CommonJS:
 
 ```javascript
-const { Project, Extent, TilePlan, ZoomRange } = require('qgis-rs');
+const { Project, Extent, TilePlan, ZoomRange } = require('@archont561/qgis-node');
 
 const extent = Extent.parse('14,50,15,51');
 const plan = new TilePlan(extent, ZoomRange.parse('10-14'));
@@ -88,17 +88,15 @@ console.log(plan.tileCount());
 npx qgis-cli --help
 npx qgis-cli info map.qgs --json
 npx qgis-cli tiles map.qgs -z 10-14 -b 14,50,15,51 -o ./tiles/ --dry-run
-npx qgis-plugin --help
-npx qgis-plugin new my_plugin --type processing --rust
 ```
 
-The wrappers (`bin/qgis-cli.js`, `bin/qgis-plugin.js`) try to find the Rust binary (`target/release/qgis-cli`, `~/.cargo/bin/qgis-cli`, or on PATH) for native speed, otherwise fallback to JS implementation using the NAPI addon (or pure JS fallback).
+`runCli(argv)` returns `{ exitCode, stdout, stderr }`, so a failing command is a value, not an exception. Supported platforms: Linux x64 and arm64 (glibc and musl), and Windows x64. The plugin SDK is not part of this package: install `qgis-sdk` from pip, pixi, or conda-forge.
 
 ## With Express
 
 ```typescript
 import express from 'express';
-import { Project } from 'qgis-rs';
+import { Project } from '@archont561/qgis-node';
 
 const app = express();
 const project = Project.open('map.qgs');
@@ -136,7 +134,7 @@ For conda, install the runtime the addon needs plus QGIS:
 
 ```bash
 conda install -c conda-forge nodejs qgis
-npm install qgis-rs
+npm install @archont561/qgis-node
 ```
 
 There is no Node.js toolchain in this repository — the addon is built, tested and

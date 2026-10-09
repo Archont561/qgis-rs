@@ -65,11 +65,10 @@
 			"cache": false,
 			"persistent": false
 		},
-		"qgis-rs#build": {
+		"@archont561/qgis-node#build": {
 			"inputs": [
 				"index.js",
 				"index.d.ts",
-				"fallback.js",
 				"bin/**",
 				"package.json",
 				"../../crates/qgis-node/**",
@@ -80,12 +79,11 @@
 				"../../Cargo.toml",
 				"../../Cargo.lock"
 			],
-			"outputs": ["qgis-rs.*.node", ".napi-generated.d.ts"]
+			"outputs": ["qgis-node.*.node", ".napi-generated.d.ts"]
 		},
-		"qgis-rs#test": {
+		"@archont561/qgis-node#test": {
 			"inputs": [
 				"index.js",
-				"fallback.js",
 				"bin/**",
 				"tests/**",
 				"package.json",

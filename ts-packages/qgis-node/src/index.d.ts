@@ -1,5 +1,5 @@
 /**
- * Type definitions for qgis-rs.
+ * Type definitions for @archont561/qgis-node.
  *
  * The addon exposes one function; everything here is the JavaScript client
  * written against it (see index.js and
@@ -224,3 +224,36 @@ export declare function engineInfo(): EngineInfo;
  * reachable, which is what keeps a newer engine usable from an older package.
  */
 export declare function invoke(operation: string, payload?: unknown): unknown;
+
+/** What running the bundled qgis-cli produced. */
+export interface CliResult {
+	/** The process exit code; 1 when it was killed by a signal. */
+	exitCode: number;
+	stdout: string;
+	stderr: string;
+}
+
+/** Options for locating and running the bundled qgis-cli. */
+export interface CliOptions {
+	/** Directory to run the command in. */
+	cwd?: string;
+}
+
+/**
+ * Absolute path of the qgis-cli binary for this machine, from the platform
+ * package that npm installed. Throws when the platform has no build.
+ */
+export declare function resolveCliBinary(options?: {
+	platform?: NodeJS.Platform;
+	arch?: string;
+	isMusl?: () => boolean;
+}): string;
+
+/**
+ * Run the bundled qgis-cli and capture its output. A failing command is
+ * reported through `exitCode`; only a binary that cannot start throws.
+ */
+export declare function runCli(
+	argv?: readonly string[],
+	options?: CliOptions,
+): CliResult;

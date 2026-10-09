@@ -19,7 +19,7 @@
 			"!**/dist",
 			"!skills-lock.json",
 			"!**/.napi-cache",
-			"!**/qgis-rs.*.node"
+			"!**/qgis-node.*.node"
 		]
 	},
 	"overrides": [

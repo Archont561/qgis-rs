@@ -20,7 +20,7 @@
   <a href="https://crates.io/crates/qgis-render"><img src="https://img.shields.io/crates/v/qgis-render?logo=rust&label=crates.io" alt="crates.io"></a>
   <a href="https://docs.rs/qgis-render"><img src="https://img.shields.io/docsrs/qgis-render?logo=docsdotrs&label=docs.rs" alt="docs.rs"></a>
   <a href="https://pypi.org/project/qgis-py/"><img src="https://img.shields.io/pypi/v/qgis-py?logo=pypi&logoColor=white&label=PyPI" alt="PyPI"></a>
-  <a href="https://www.npmjs.com/package/qgis-rs"><img src="https://img.shields.io/npm/v/qgis-rs?logo=npm&label=npm" alt="npm"></a>
+  <a href="https://www.npmjs.com/package/@archont561/qgis-node"><img src="https://img.shields.io/npm/v/qgis-rs?logo=npm&label=npm" alt="npm"></a>
   <a href="https://prefix.dev/channels/@archont561/qgis-rs"><img src="https://img.shields.io/badge/prefix.dev-%40archont561%2Fqgis--rs-5c4ee5?logo=condaforge" alt="prefix.dev channel"></a>
 </p>
 
@@ -104,7 +104,7 @@ conda install -c conda-forge qgis-py qgis-sdk
 pixi add qgis-py qgis-sdk
 
 # TypeScript — from npm (NAPI addon + Rust binaries)
-npm install qgis-rs
+npm install @archont561/qgis-node
 ```
 
 ```bash
@@ -118,7 +118,7 @@ python -c "import qgis_sdk; print(qgis_sdk.__version__, qgis_sdk.HAS_RUST)"
 qgis-plugin new my_plugin --type processing --rust
 
 # TypeScript
-node -e "const { TilePlan, Extent, ZoomRange } = require('qgis-rs'); console.log(new TilePlan(Extent.parse('14,50,15,51'), ZoomRange.parse('10-14')).tileCount())"
+node -e "const { TilePlan, Extent, ZoomRange } = require('@archont561/qgis-node'); console.log(new TilePlan(Extent.parse('14,50,15,51'), ZoomRange.parse('10-14')).tileCount())"
 npx qgis-cli --help
 ```
 
@@ -136,7 +136,7 @@ print(f"Would render {plan.tile_count()} tiles")  # 4568, pure Rust, no QGIS
 TypeScript API — same, native speed via NAPI:
 
 ```typescript
-import { Project, Extent, TilePlan, ZoomRange } from 'qgis-rs';
+import { Project, Extent, TilePlan, ZoomRange } from '@archont561/qgis-node';
 
 const plan = new TilePlan(Extent.parse('14,50,15,51'), ZoomRange.parse('10-14'));
 console.log(plan.tileCount()); // 4568
@@ -333,7 +333,7 @@ the job summary, so a PyPI outage cannot delete a verified release:
 | --- | --- | --- |
 | [prefix.dev](https://prefix.dev/channels/@archont561/qgis-rs) | OIDC (`pixi upload`) | `dist/conda/*.conda` |
 | [PyPI](https://pypi.org/project/qgis-py/) | OIDC Trusted Publishing | `dist/pypi/*` |
-| [npmjs](https://www.npmjs.com/package/qgis-rs) | OIDC Trusted Publishing + provenance | `dist/npm/*.tgz` |
+| [npmjs](https://www.npmjs.com/package/@archont561/qgis-node) | OIDC Trusted Publishing + provenance | `dist/npm/*.tgz` |
 | GitHub Packages | workflow token (throwaway npmrc) | `dist/npm/*.tgz` |
 | [crates.io](https://crates.io/crates/qgis-render) | `CRATES_IO_TOKEN` | `qgis-sys → qgis-styles → qgis-render → qgis-protocol → qgis-engine → qgis-server → qgis-mcp → qgis-cli` |
 | **GitHub Release** | workflow token | everything above **+ `SHA256SUMS`** |
