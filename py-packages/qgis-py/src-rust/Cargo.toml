@@ -24,9 +24,8 @@ categories = ["science::geo", "api-bindings"]
 # Import name inside the wheel: `qgis_py._core` (see [tool.maturin] in the
 # Python package's pyproject.toml) — the #[pymodule] fn in src/lib.rs is what
 # produces PyInit__core, so the artifact name here is free to be unique. It
-# MUST be: crates/qgis-sdk used to share `name = "_core"`, and both cdylibs
-# then resolved to the same target/debug/lib_core.so, silently overwriting
-# each other on every `maturin develop` and installing the wrong extension.
+# MUST be unique across the workspace: two cdylibs that share a name resolve to
+# the same target/debug/lib<name>.so and overwrite each other on every build.
 name = "qgis_py_core"
 crate-type = ["cdylib"]
 path = "src/lib.rs"

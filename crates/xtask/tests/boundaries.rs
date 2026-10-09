@@ -19,17 +19,17 @@ fn lawful_tree() -> Tree {
                 binaries: vec!["qgis-cli".into()],
             },
             CrateFacts {
-                name: "qgis-sdk".into(),
-                dependencies: vec!["qgis-cli".into(), "qgis-render".into()],
-                binaries: vec!["qgis-sdk".into()],
-            },
-            CrateFacts {
                 name: "qgis-py".into(),
                 dependencies: vec!["qgis-engine".into()],
                 binaries: vec![],
             },
             CrateFacts {
                 name: "qgis-node".into(),
+                dependencies: vec!["qgis-engine".into()],
+                binaries: vec![],
+            },
+            CrateFacts {
+                name: "qgis-server".into(),
                 dependencies: vec!["qgis-engine".into()],
                 binaries: vec![],
             },
@@ -57,18 +57,13 @@ fn a_lawful_tree_has_nothing_to_report(lawful_tree: Tree) {
 /// datum — a non-capturing closure coerced to `fn(&mut Tree)` — so adding a
 /// rule means adding a line, not another near-identical test.
 #[rstest]
-#[case::the_hosted_sdk_may_not_depend_on_the_standalone_binding(
-    |tree: &mut Tree| tree.crates[1].dependencies.push("qgis-py".into()),
-    "dependency direction",
-    "qgis-sdk depends on qgis-py"
-)]
 #[case::an_executable_with_two_owners_names_both(
-    |tree: &mut Tree| tree.crates[0].binaries.push("qgis-sdk".into()),
+    |tree: &mut Tree| tree.crates[3].binaries.push("qgis-cli".into()),
     "canonical executables",
-    "qgis-cli, qgis-sdk"
+    "qgis-cli, qgis-server"
 )]
 #[case::a_retired_executable_that_comes_back_is_a_violation(
-    |tree: &mut Tree| tree.crates[1].binaries.push("qgis-plugin".into()),
+    |tree: &mut Tree| tree.crates[0].binaries.push("qgis-plugin".into()),
     "canonical executables",
     "qgis-plugin"
 )]
@@ -81,11 +76,6 @@ fn a_lawful_tree_has_nothing_to_report(lawful_tree: Tree) {
     |tree: &mut Tree| tree.fallbacks.push("ts-packages/qgis-node/src/fallback.js".into()),
     "no new fallbacks",
     "untracked fallback"
-)]
-#[case::an_allowlisted_fallback_that_was_deleted_asks_for_the_entry_back(
-    |tree: &mut Tree| tree.fallbacks.clear(),
-    "no new fallbacks",
-    "allowlisted but gone"
 )]
 fn breaking_one_fact_reports_exactly_one_violation(
     mut lawful_tree: Tree,
@@ -161,6 +151,20 @@ fn the_pyproject_parser_reads_both_spellings_of_dependencies() {
     );
     assert_eq!(multiline.name, "qgis-rs");
     assert_eq!(multiline.dependencies, vec!["typing-extensions"]);
+}
+
+/// qgis-sdk is a pure-Python distribution, so its Rust crates are retired. The
+/// directories must be gone and the workspace must not name them, or cargo
+/// would keep building a CLI nothing ships.
+#[test]
+fn the_qgis_sdk_rust_crates_are_retired() {
+    let root = repo_root();
+
+    for dir in ["crates/qgis-sdk", "crates/qgis-sdk-core"] {
+        assert!(!root.join(dir).exists(), "{dir} must be removed");
+    }
+    let manifest = std::fs::read_to_string(root.join("Cargo.toml")).expect("workspace manifest");
+    assert!(!manifest.contains("crates/qgis-sdk"), "{manifest}");
 }
 
 #[test]

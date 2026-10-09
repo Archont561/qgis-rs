@@ -286,7 +286,6 @@ exercise ([D11](.knowledge/decisions/D11-tests-outside-src.md)).
 | `qgis-mcp` | Model Context Protocol server | ✅ Active (bundled into `qgis-cli mcp`) |
 | `qgis-cli` | Command-line tool (Rust binary + lib) | 🔨 Scaffolded (`mcp`, `info`, `tiles --dry-run` work) |
 | `qgis-styles` | Symbols, colours, labelling and layout types, serialisable to and from QGIS style JSON | ✅ Active |
-| `qgis-sdk` (Rust core) | Native helpers behind the Python SDK: `qgis_sdk._core` + the `qgis-sdk`/`qgis-sdk` CLIs (`crates/qgis-sdk`) | ✅ Active |
 | `qgis-py` (Rust core) | PyO3 module `qgis_py._core` (`py-packages/qgis-py/src-rust`); no CLI | ✅ Active |
 | `qgis-node` (Rust core) | NAPI addon shipped by the npm package (`ts-packages/qgis-node/src-rust`); no CLI | ✅ Active |
 | `xtask` | Repository automation as a typed binary: the gate, the lints, the scaffolder, the release pipeline (`pixi run xtask …`) | ✅ Active |

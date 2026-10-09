@@ -153,9 +153,7 @@ qgis-sdk wheel
     └── qgis-sdk          → alias binary
 ```
 
-- Rust crate: `crates/qgis-sdk/Cargo.toml` — lib `_core` + bins `qgis-sdk`, `qgis-sdk`,
-  reached from `py-packages/qgis-sdk/pyproject.toml` via `[tool.maturin].manifest-path`
-- Python: `src/qgis_sdk/` with `pyproject.toml` using maturin
+- Python: `src/qgis_sdk/` with `pyproject.toml` using the setuptools backend; no native code
 - Conda: `recipes/qgis-sdk/meta.yaml` builds Rust binaries + Python wheel
 
 ## UI, Typed Bridge, and Testing

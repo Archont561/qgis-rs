@@ -12,11 +12,9 @@
 # package.json, so npm users never see this directory.
 #
 # This crate deliberately has NO [[bin]] targets. It used to declare
-# `qgis-cli` and `qgis-sdk` stubs, but bin names must be unique across the
-# whole workspace: every bin resolves to the same target/<profile>/<name>, so
-# the stubs silently overwrote the real binaries from crates/qgis-cli and
-# crates/qgis-sdk (whichever crate linked last won), and qgis-sdk's
-# CARGO_BIN_EXE-based integration tests ran the stub in CI. The package ships
+# `qgis-cli` stub, but bin names must be unique across the whole workspace:
+# every bin resolves to the same target/<profile>/<name>, so the stub silently
+# overwrote the real binary from crates/qgis-cli (whichever crate linked last won). The package ships
 # no command-line interface.
 
 [package]

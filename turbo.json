@@ -113,7 +113,6 @@
 				"src/**",
 				"tests/**",
 				"scripts/**",
-				"../../crates/qgis-sdk/**",
 				"../../Cargo.toml",
 				"../../Cargo.lock"
 			],

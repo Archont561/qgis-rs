@@ -125,7 +125,7 @@ qgis-rs npm package
 ├── tests/                   → the contract suite, run against the real addon
 ```
 
-- Rust: `crates/qgis-render` (pure Rust), `crates/qgis-sdk` (plugin CLI)
+- Rust: `crates/qgis-render` (pure Rust)
 - Node: `ts-packages/qgis-node/` — package.json, `src/index.js`, `src/index.d.ts`; the NAPI crate it builds is `ts-packages/qgis-node/src-rust/` (`napi build --cargo-cwd ../../ts-packages/qgis-node/src-rust .`), and that crate exposes exactly one function, `invoke(requestJson) -> responseJson` (see `.knowledge/decisions/D09-wire-protocol-over-ffi.md`)
 - Python: `py-packages/qgis-py/` and `py-packages/qgis-sdk/` — same Rust code via PyO3
 

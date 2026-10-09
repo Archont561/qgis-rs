@@ -1,5 +1,5 @@
 # Every Rust crate lives under crates/ — including the language-binding crates
-# (qgis-py, qgis-sdk, qgis-node), whose *packaging* lives in py-packages/ and
+# (qgis-py, qgis-node), whose *packaging* lives in py-packages/ and
 # ts-packages/. Those directories hold no Cargo manifests: a pyproject.toml or
 # package.json points back here with manifest-path, so one `cargo check
 # --workspace` covers the whole tree and one wheel build owns the Python side.
@@ -40,9 +40,7 @@ qgis-render = { version = "0.1.0", path = "crates/qgis-render" }
 qgis-server = { version = "0.1.0", path = "crates/qgis-server" }
 qgis-mcp    = { version = "0.1.0", path = "crates/qgis-mcp", default-features = false }
 qgis-cli    = { version = "0.1.0", path = "crates/qgis-cli" }
-qgis-sdk-core = { version = "0.1.0", path = "crates/qgis-sdk-core" }
 qgis-py     = { version = "0.1.0", path = "py-packages/qgis-py/src-rust" }
-qgis-sdk    = { version = "0.1.0", path = "crates/qgis-sdk" }
 qgis-node   = { version = "0.1.0", path = "ts-packages/qgis-node/src-rust" }
 qgis-styles = { version = "0.1.0", path = "crates/qgis-styles" }
 

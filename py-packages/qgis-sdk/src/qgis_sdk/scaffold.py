@@ -1,6 +1,5 @@
 """
-Pure-Python scaffolding for QGIS plugins — fallback when Rust not available.
-Rust version in crates/qgis-sdk/src/lib.rs does same at native speed.
+Pure-Python scaffolding for QGIS plugins.
 
 Now includes UI templates:
 - dialogs/main_dialog.py + ui/main_dialog.ui (Qt Designer)

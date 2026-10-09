@@ -70,7 +70,7 @@ Every value (`Extent.parse`, `TilePlan`, `ZoomRange`, `Crs`, `plan_tiles`, `Proj
 
 ### Testing
 
-- `cargo test -p qgis-render -p qgis-py -p qgis-sdk -p qgis-node` — Rust logic and binding-adapter tests (QGIS is only needed for `qgis-sys` integration tests)
+- `cargo test -p qgis-render -p qgis-py -p qgis-node` — Rust logic and binding-adapter tests (QGIS is only needed for `qgis-sys` integration tests)
 - `cargo test -p qgis-protocol -p qgis-engine` — the wire protocol and one test per operation, at the JSON level the bindings see
 - `maturin develop && python -m pytest py-packages/qgis-py/tests -v` — the Python client against the real `_core`
 - `bun x turbo run test --filter=qgis-py-dist` — builds the extension, then runs the native Python tests
