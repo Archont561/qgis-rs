@@ -18,6 +18,8 @@ import sys
 from pathlib import Path
 from typing import List, Optional
 
+from .plugin_validation import validate_plugin_structure
+
 # Try Rust core for native speed
 try:
     from . import _core as core  # type: ignore
@@ -139,35 +141,22 @@ def _cmd_validate(args: argparse.Namespace) -> int:
     path = Path(args.path) if args.path else Path(".")
     print(f"Validating plugin in {path}...")
 
-    if HAS_RUST and core is not None and hasattr(core, "validate_plugin_structure"):
-        try:
-            errors = core.validate_plugin_structure(str(path))
-            if not errors:
-                print("✅ Plugin structure looks valid")
-                return 0
-            else:
-                for err in errors:
-                    print(f"  ❌ {err}", file=sys.stderr)
-                return 1
-        except Exception as exc:
-            print(f"qgis-sdk: {exc}", file=sys.stderr)
-            return 1
+    try:
+        errors, notes = validate_plugin_structure(str(path))
+    except ValueError as exc:
+        print(f"qgis-sdk: {exc}", file=sys.stderr)
+        return 1
 
-    # Python fallback
-    errors = []
-    if not (path / "metadata.txt").exists() and not (path / "src" / "metadata.txt").exists():
-        # Check if there's a Plugin class
-        has_py = any(p.suffix == ".py" for p in path.iterdir()) if path.is_dir() else False
-        if not has_py:
-            errors.append("missing metadata.txt")
-
-    if not errors:
-        print("✅ Plugin structure looks valid")
-        return 0
-    else:
+    if errors:
         for err in errors:
             print(f"  ❌ {err}", file=sys.stderr)
+        print(f"qgis-sdk: validation failed with {len(errors)} errors", file=sys.stderr)
         return 1
+
+    print("✅ Plugin structure looks valid")
+    for note in notes:
+        print(f"  {note}")
+    return 0
 
 
 def _cmd_info(args: argparse.Namespace) -> int:
