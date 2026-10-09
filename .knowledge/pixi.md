@@ -132,7 +132,7 @@ test — because bun cannot share an environment with QGIS (icu, see below).
 Both are task-only groupings now. They used to add the distributions as
 environment *source dependencies*, which pulls in the `pixi-build-python` backend
 and drags the solve onto python 3.14 — which PyO3 0.22 refuses outright. They are
-developed in place with `maturin develop` instead, which is what CI does.
+developed in place with `pip install -e` instead.
 
 ### Environments
 
@@ -200,25 +200,15 @@ section that pixi builds into a conda package.
 ```
 py-packages/qgis-sdk/
 ├── pixi.toml      # [package] only — no [workspace], it is inherited
-├── pyproject.toml # PEP 517 metadata; [tool.maturin].manifest-path = ../../crates/qgis-sdk
+├── pyproject.toml # PEP 517 metadata; setuptools backend
 ├── src/qgis_sdk/  # pure-Python layer
 └── tests/
 
-crates/qgis-sdk/   # the Rust core: PyO3 _core + the qgis-sdk / qgis-sdk CLIs
 ```
 
-The Rust half deliberately lives in the Cargo workspace rather than inside the
-Python directory, so `cargo check --workspace` covers it without a `[package]`
-in `py-packages/`. maturin reaches it through
-`[tool.maturin] manifest-path = "../../crates/qgis-sdk/Cargo.toml"`, and every
-path in `[tool.maturin]` stays relative to this directory — which is what keeps
-`python-source = "src"` pointing at the Python sources. A PEP 517 build that
-copies the project out of the checkout (an sdist) would not see the crate, so
-wheels are built from a clone: `pip install ./py-packages/qgis-sdk`, pixi
-(`pixi run -e default sdk-build`) and the conda recipe all build in place. Note that
-maturin's own `-m` flag accepts only a `Cargo.toml` — the pyproject -> crate hop
-is driven by the *working directory*, so the CLI form is
-`cd py-packages/qgis-sdk && maturin build`.
+qgis-sdk is pure Python with a setuptools backend (D15), so there is no Rust half to
+reach from the Python directory. Wheels are built from a clone with
+`pip install ./py-packages/qgis-sdk`, and the pixi and conda builds do the same.
 
 ```toml
 # py-packages/qgis-sdk/pixi.toml

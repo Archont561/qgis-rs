@@ -403,8 +403,8 @@ pub const RETIRED_NAMES: &[&str] = &[
     "qgis_rs::native_manager",
 ];
 
-/// The retired `qgis-plugin` command. It is matched as a whole token, so the
-/// concept names `qgis-plugin-sdk` and `qgis-plugin-ui` stay allowed.
+/// The retired `qgis-plugin` command. It is matched as a whole token, so a longer
+/// name that merely starts with it is not a hit.
 pub const RETIRED_COMMAND: &str = "qgis-plugin";
 
 /// Tracked text that may name a retired spelling on purpose: history, and the

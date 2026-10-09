@@ -62,10 +62,10 @@ fn a_lawful_tree_has_nothing_to_report(lawful_tree: Tree) {
     "canonical executables",
     "qgis-cli, qgis-server"
 )]
-#[case::a_retired_executable_that_comes_back_is_a_violation(
-    |tree: &mut Tree| tree.crates[0].binaries.push("qgis-plugin".into()),
+#[case::an_undeclared_executable_is_a_violation(
+    |tree: &mut Tree| tree.crates[0].binaries.push("qgis-sdk-legacy".into()),
     "canonical executables",
-    "qgis-plugin"
+    "qgis-sdk-legacy"
 )]
 #[case::a_canonical_executable_that_disappears(
     |tree: &mut Tree| tree.crates[0].binaries.clear(),

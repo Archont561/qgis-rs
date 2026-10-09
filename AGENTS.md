@@ -23,7 +23,7 @@ The `.knowledge/` directory contains design documents, decision records, and arc
 - **ROADMAP.md** — Development roadmap and priorities
 - **decisions/** — Architecture Decision Records (D01-D11)
 - **api-design.md** — Public API specification
-- **qgis-plugin-sdk.md** — Plugin framework design
+- **qgis-sdk.md** — Plugin framework design
 
 **Always consult the knowledge base before making architectural decisions.**
 

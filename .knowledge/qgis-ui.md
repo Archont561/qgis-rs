@@ -423,7 +423,7 @@ live in [TASK-3](../backlog/tasks/task-3%20-%20Document%20and%20scaffold%20the%2
 | Packaging UI assets | `pyproject.toml` include `ui/*.ui`, `web/*.html`, `icons/*` | ✅ Implemented — hatchling include, Rust `cmd_package` notes, for React/Vue add `web/dist/*` |
 | Testing UI without QGIS | `tests/test_ui.py` 22 tests + existing fake iface pattern | ✅ Implemented — 65 tests total pass (35 original + 8 CLI + 22 UI), fallback exec returns Accepted |
 | Rust validation | `validate_plugin_structure` checks `qwebchannel.js` reference | ✅ Implemented — warns if HTML missing `qwebchannel` |
-| Docs | `README.md`, `plugin-development.mdx`, `.knowledge/qgis-plugin-sdk.md` | ✅ Updated with React/Vue/WebComponents |
+| Docs | `README.md`, `plugin-development.mdx`, `.knowledge/qgis-sdk.md` | ✅ Updated with React/Vue/WebComponents |
 
 **Tests:** `PYTHONPATH=src python3 -m pytest tests/ -q` → 84 passed (65 original + 19 new bridge/testing).
 

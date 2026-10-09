@@ -641,7 +641,7 @@ cd my-existing-plugin/
 qgis-sdk rust init
 # → Creates Cargo.toml, src/lib.rs
 # → Adds @rust_accelerated examples to your algorithms
-# → Updates pyproject.toml with maturin build config
+# → Creates Cargo.toml and src/lib.rs for an optional Rust extension in the plugin
 ```
 
 ---
@@ -820,7 +820,7 @@ qgis-rs/
 ├── crates/
 │   ├── qgis-sys/               # CXX FFI (low-level QGIS bindings)
 │   ├── qgis-render/            # Core rendering engine (Rust)
-│   ├── qgis-plugin-sdk/        # Rust acceleration library (PyO3)
+│   ├── qgis-sdk/        # Pure-Python SDK and typer CLI
 │   ├── qgis-server/            # HTTP server
 │   └── qgis-cli/               # CLI binary (includes qgis-sdk)
 │
@@ -843,7 +843,7 @@ qgis-rs/
 │   │   │   ├── _pyqgis_features.py # PyQGIS fallback for features
 │   │   │   └── testing.py      # Test helpers (mock_context, etc.)
 │   │   └── pyproject.toml
-│   └── qgis-sdk-cli/           # Python CLI wrapper (thin shim over Rust CLI)
+│   └── qgis-sdk-cli/           # typer CLI (pure Python)
 │
 ├── templates/                   # Scaffolding templates for `qgis-sdk new`
 │   ├── python-only/
@@ -855,7 +855,7 @@ qgis-rs/
 │
 └── .knowledge/
     ├── api-design.md
-    └── qgis-plugin-sdk.md      # This document
+    └── qgis-sdk.md      # This document
 ```
 
 ---
@@ -887,9 +887,8 @@ with current ownership represented by milestone `m-3` and its linked tasks.
 
 ## 12. Implementation Evidence and Backlog Tracking
 
-The SDK lives at **`py-packages/qgis-sdk/`** as a pixi workspace package, with its
-Rust core in **`crates/qgis-sdk/`**
-(`pixi.toml` with a `[package]` section + `pyproject.toml` with hatchling).
+The SDK lives at **`py-packages/qgis-sdk/`** as a pixi workspace package, as a pure-Python
+pixi package (`pixi.toml` with a `[package]` section + `pyproject.toml` with setuptools; D15).
 See [pixi.md](/pixi.md) for how the workspace and the PyQGIS import paths are
 wired up.
 

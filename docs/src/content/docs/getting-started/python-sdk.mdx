@@ -31,8 +31,7 @@ From source:
 ```bash
 git clone https://github.com/Archont561/qgis-rust
 cd qgis-rs
-pip install maturin
-(cd py-packages/qgis-sdk && maturin develop)
+pip install -e ./py-packages/qgis-sdk
 python -m pytest py-packages/qgis-sdk/tests -v
 ```
 
@@ -60,7 +59,7 @@ class MyPlugin(Plugin):
     def open_settings(self, iface):
         ...
 
-# metadata.txt generation (Rust-accelerated when _core present)
+# metadata.txt generation
 print(MyPlugin.metadata_txt())
 MyPlugin.write_metadata("./my_plugin")
 ```
@@ -141,10 +140,8 @@ qgis-sdk version  # alias
 qgis-sdk wheel
 ├── qgis_sdk/
 │   ├── __init__.py       → Python API (Plugin, Algorithm, metadata)
-│   ├── _core.so          → Rust cdylib (PyO3) — metadata, validation, scaffolding at native speed
-│   ├── _fallback_cli.py  → pure-Python fallback when _core not built
-│   ├── scaffold.py       → pure-Python scaffolding fallback
-│   ├── cli.py            → Python CLI wrapper (uses _core directly)
+│   ├── cli.py            → typer CLI (`qgis-sdk`); questionary prompts for UI scaffolding
+│   ├── plugin_validation.py → `qgis-sdk validate` rules
 │   ├── plugin.py         → Plugin base class
 │   ├── algorithm.py      → Algorithm base class
 │   └── runtime.py        → lazy PyQGIS access

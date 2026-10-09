@@ -192,7 +192,7 @@ pub fn violations(tree: &Tree) -> Vec<Violation> {
                     rule: "canonical executables",
                     detail: format!(
                         "{binary} is declared by {} but is not a canonical executable; \
-                         qgis-plugin was dropped and qgis-sdk is the only plugin command (D13 §1)",
+                         qgis-sdk is the only plugin command (D13 §1, D15)",
                         facts.name
                     ),
                 });
