@@ -1,5 +1,14 @@
 # Bundle Update Log
 
+## 2026-10-09 (wheel bytecode exclusion)
+
+* **Landed on `arena/8333daf5-qgis-rs`**: `9900014` (exclusion, with `test_packaging.py` in qgis-py and qgis-sdk), `b4ca204` (relink fix), and a format commit. `pixi run gates` exit 0.
+* **Exclusion**: `[tool.maturin] exclude = ["**/__pycache__/**", "**/*.pyc"]` in both pyprojects. Red first: the qgis-py wheel held 4 bytecode entries. Now 0 in both wheels.
+* **Second bug, found while verifying**: a second `maturin build` from the same tree failed with `Cannot repair wheel, because required library libQt5Core-<hash>.so.5 could not be located`. Cause: auditwheel repairs the extension in place, the file is hard-linked into `target/release/deps` and `target/maturin`, and cargo sees nothing to rebuild. The first build after a clean succeeds; the second fails. The failure also left an empty 22-byte wheel behind. Fix: `cargo clean -p qgis-py -p qgis-sdk --release` in the release xtask before the wheel loop, and in both package `build` scripts before `maturin build`. Verified: two consecutive release-shaped rounds both pass, and both wheels have 0 bytecode entries.
+* **Also noticed, unchanged**: `maturin build --manifest-path <pyproject>` fails with `cargo metadata` in this maturin (1.15.0). The release fallback to running from the package directory is what works.
+* **Measured**: qgis-py wheel 121 MB (repaired QGIS and Qt libraries are bundled), qgis-sdk wheel 430 KB. The qgis-cli binary is not repaired, so it needs QGIS installed at runtime, as before.
+* **Next session opening prompt**: as in the previous entry, minus the pycache item. The open items are the real QtWebEngine check, and the CI matrix for per-platform wheels and npm packages (TASK-58, TASK-61).
+
 ## 2026-10-09 (slice 6 and the WebEngine global, TASK-61)
 
 * **Landed on `arena/8333daf5-qgis-rs`**: `c38f1be` (slice 6, prebuilt qgis-cli in qgis-py), `2cdd15d` (WebEngine global), and two format commits. `pixi run gates` exit 0 after each. TASK-61 is **Done**.
