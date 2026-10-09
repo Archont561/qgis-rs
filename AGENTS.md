@@ -160,6 +160,7 @@ bun x turbo run test --filter=qgis-sdk
 - Use `--test-threads=1` to avoid Qt threading issues
 - Tests should be idempotent and not modify shared state
 - Name a test after the behaviour it pins down, not the function it calls
+- C++ example tests use GoogleTest with behavior-oriented suite/test names and explicit Given / When / Then sections. Test observable behavior through agreed public seams. Preserve RapidCheck invariant tests. Do not introduce another BDD framework or custom syntax solely for style.
 
 ## Commit Messages
 
