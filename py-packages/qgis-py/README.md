@@ -1,21 +1,20 @@
-# qgis-py — Python package with Rust-native CLI and API
+# qgis-py — Python API over the Rust QGIS engine
 
 [![PyPI](https://img.shields.io/pypi/v/qgis-py)](https://pypi.org/project/qgis-py/)
 [![Conda](https://img.shields.io/conda/vn/conda-forge/qgis-py)](https://anaconda.org/conda-forge/qgis-py)
 [![License](https://img.shields.io/badge/license-GPL--2.0--or--later-blue)](LICENSE)
 
-**qgis-py** exposes the QGIS rendering and tiling engine as a Python package that installs from **pip** or **conda-forge** and runs at **native Rust speed** — both the Python API and the `qgis-cli` command.
+**qgis-py** exposes the QGIS rendering and tiling engine as a Python package that installs from **pip** or **conda-forge** and runs at **native Rust speed**. It is a thin FFI API: every answer comes from the Rust engine, which starts QGIS in-process when a call needs it.
 
 - **pip**: `pip install qgis-py`
 - **conda**: `conda install -c conda-forge qgis-py` (or `pixi add qgis-py`)
 - **API**: `import qgis_py` — pure Rust types (`Extent`, `Crs`, `TilePlan`, `Project`) via PyO3
-- **CLI**: `qgis-cli` binary (Rust) + `qgis-cli` Python console script (same native code)
 
-## Why a Rust binary inside a Python package?
+## Why a Rust engine behind Python?
 
-- **Native speed**: No Python overhead for geometry math, tile planning, or rendering. The `qgis-cli` binary is a statically-linked Rust executable built with `cargo`.
-- **Single install**: `pip install qgis-py` gives you both `import qgis_py` and `qgis-cli` on PATH.
-- **No QGIS needed for many operations**: Tile planning (`tiles --dry-run`), extent parsing, CRS handling, and project inspection are pure Rust and work anywhere.
+- **Native speed**: No Python overhead for geometry math, tile planning, or rendering. The Python classes are clients of the Rust engine.
+- **Single install**: `pip install qgis-py` gives you `import qgis_py`, with the engine inside it.
+- **No QGIS needed for many operations**: Tile planning, extent parsing, CRS handling, and project inspection are pure Rust and work anywhere.
 - **QGIS backend optional**: When `libqgis_core` is available (the Pixi/conda QGIS environment), rendering and feature export use the native manager; QGIS-free builds report an explicit backend error instead of silently substituting another implementation.
 
 ## Installation
@@ -29,8 +28,6 @@ pip install qgis-py
 This installs:
 
 - `qgis_py` Python module (PyO3 extension `_core` + Python wrappers)
-- `qgis-cli` executable (Rust binary built by maturin)
-- `qgis-cli` and `qgis-py` console scripts (`python -m qgis_py.cli`)
 
 Pre-built wheels are published for Linux x86_64 and Linux arm64. If no wheel matches your platform, `pip` builds from source via `maturin` (requires Rust ≥1.96).
 
@@ -44,7 +41,7 @@ pixi add qgis-py
 mamba install -c conda-forge qgis-py
 ```
 
-The conda-forge package depends on `qgis >=3.44.9` when the `qgis` feature is enabled, so you get the full rendering backend automatically. The `qgis-cli` binary is included in `$CONDA_PREFIX/bin`.
+The conda-forge package depends on `qgis >=3.44.9` when the `qgis` feature is enabled, so you get the full rendering backend automatically.
 
 ### From source (development)
 
@@ -63,9 +60,6 @@ pixi run -e default py-develop
 
 # Test
 python -m pytest py-packages/qgis-py/tests -q
-qgis-cli --help
-qgis-cli info map.qgs --json
-qgis-cli tiles map.qgs -z 10-14 -b 14,50,15,51 --dry-run
 ```
 
 ## Python API
@@ -109,42 +103,6 @@ except ValueError as e:
     print(f"QGIS rendering failed: {e}")
 ```
 
-## CLI
-
-The same Rust code powers both the standalone binary and the Python wrapper.
-
-```bash
-# Installed via pip or conda — binary on PATH
-qgis-cli --help
-qgis-cli version
-qgis-cli info map.qgs
-qgis-cli info map.qgs --json
-qgis-cli tiles map.qgs -z 10-14 -b 14,50,15,51 -o ./tiles/ --dry-run
-qgis-cli render map.qgs -o map.png --width 1920 --height 1080 --dpi 150
-
-# Via Python module (same speed — uses Rust extension directly)
-python -m qgis_py.cli info map.qgs --json
-python -m qgis_py.cli tiles map.qgs -z 10-14 -b 14,50,15,51 --dry-run
-qgis-py info map.qgs  # alias
-
-# From Python API
-from qgis_py.cli import main
-main(["info", "map.qgs", "--json"])
-```
-
-### Commands
-
-| Command | Pure Rust? | Needs QGIS? | Description |
-|---------|------------|-------------|-------------|
-| `info` | ✅ | No (basic), Yes (layers, CRS) | Describe a project |
-| `tiles --dry-run` | ✅ | No | Count tiles without rendering |
-| `tiles` | ✅ | Yes | Render tile pyramid |
-| `render` | ✅ | Yes | Render project to image |
-| `export` | ✅ | Yes | Export layer features |
-| `serve` | ✅ | Yes | HTTP server (WMS/WFS/XYZ) |
-| `mcp` | ✅ | Partial | Model Context Protocol server |
-| `version` | ✅ | No | Print version |
-
 ## Architecture
 
 ```
@@ -156,18 +114,15 @@ qgis-py Python wheel            built from py-packages/qgis-py
 │   │   ├── Project, ProjectInfo, LayerSummary
 │   │   ├── RenderSettings, RenderedMap
 │   │   └── plan_tiles, version
-│   ├── cli.py           → Python CLI wrapper (uses _core directly)
 │   ├── project.py       → Pythonic Project wrapper
 │   ├── render.py        → re-exports
 │   └── tiles.py         → re-exports
 ```
 
-The `qgis-cli` command on PATH is the `[project.scripts]` console script
-(`qgis_py.cli:main`), which drives the same Rust engine in-process. The
-standalone Rust binary is built from `crates/qgis-cli` and is not part of
-this wheel.
+This wheel ships no command-line interface. The standalone CLI is built from
+`crates/qgis-cli` and is a separate product.
 
-- **Rust workspace**: `crates/qgis-render` (pure Rust), `crates/qgis-cli` (CLI library + binary), `py-packages/qgis-py/src-rust` (PyO3 bindings)
+- **Rust workspace**: `crates/qgis-render` (pure Rust), `crates/qgis-cli` (the standalone CLI, not part of this wheel), `py-packages/qgis-py/src-rust` (PyO3 bindings)
 - **Python**: this directory — `python/qgis_py/` (wrappers) + `pyproject.toml`, whose `[tool.maturin].manifest-path` points at `src-rust/Cargo.toml`
 - **Conda**: `pixi.toml` (pixi-build) + conda-forge recipe (see `recipes/qgis-py/`)
 - **Design**: `src-rust/ARCHITECTURE.md` — why the crate and the wheel are split this way
@@ -179,7 +134,6 @@ The conda-forge feedstock builds the same Rust code with `qgis` from conda-forge
 See `recipes/qgis-py/` for the recipe (meta.yaml + build.sh). It:
 
 - Uses `pixi` or `conda-build` to compile Rust with `cargo`
-- Installs `qgis-cli` binary to `$PREFIX/bin`
 - Builds Python extension via `maturin` or `cargo` + `pyo3`
 - Depends on `qgis >=3.44.9`, `python >=3.9`, `qt`, `gdal`
 

@@ -9,8 +9,7 @@
 #
 # The package provides:
 # - Python API `import qgis_py` at native Rust speed (PyO3)
-# - Console scripts `qgis-cli` and `qgis-py` via Python (maturin's pyo3
-#   bindings ship no Rust bin; the standalone binary is crates/qgis-cli)
+# - No command-line interface: the CLI is crates/qgis-cli
 
 [package]
 name = "qgis-py"

@@ -1,6 +1,6 @@
 # conda-forge recipe for qgis-py
 
-This directory contains a conda-forge style recipe that builds the `qgis-py` Python package with Rust extension and `qgis-cli` binary.
+This directory contains a conda-forge style recipe that builds the `qgis-py` Python package with its Rust extension. The package is a thin FFI API and ships no command-line interface.
 
 The recipe lives at `py-packages/qgis-py/recipes/qgis-py/` while the Rust it compiles
 lives at `py-packages/qgis-py/src-rust/`, so `source.path` points at the repository root
@@ -30,7 +30,7 @@ pixi run cargo build -p qgis-py --release
 
 ## Two variants
 
-- **Pure-Rust (lightweight)**: No QGIS dependency. Supports `info`, `tiles --dry-run`, `version`, tile planning via Python API. This is what `pip install qgis-py` gives you.
-- **Full (with QGIS)**: Depends on `qgis >=3.44.9` from conda-forge. Supports `render`, `tiles` (actual rendering), `export`, `serve`. To get this, `conda install -c conda-forge qgis qgis-py` or enable the `qgis` dependency in meta.yaml.
+- **Pure-Rust (lightweight)**: No QGIS dependency. Supports extent, CRS and tile planning through the Python API. This is what `pip install qgis-py` gives you.
+- **Full (with QGIS)**: Depends on `qgis >=3.44.9` from conda-forge. Adds rendering and project access, which the engine starts QGIS for in-process. To get this, `conda install -c conda-forge qgis qgis-py` or enable the `qgis` dependency in meta.yaml.
 
 The recipe currently builds the lightweight variant by default, but you can uncomment the `qgis` dependency for full backend.

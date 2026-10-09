@@ -7,15 +7,9 @@
 # hands one back (D09). The ergonomic Python API, the tests, the conda recipe
 # and the pixi `[package]` manifest live in ../ (py-packages/qgis-py/).
 #
-# This crate deliberately has NO [[bin]] targets. It used to declare a
-# `qgis-cli` wrapper bin, but bin names must be unique across the whole
-# workspace — every bin resolves to the same target/<profile>/<name>, so the
-# wrapper silently overwrote the real binary from crates/qgis-cli (whichever
-# crate linked last won), including the one crates/qgis-cli's own
-# CARGO_BIN_EXE tests execute. maturin's `pyo3` bindings never shipped the
-# bin in the wheel anyway: the wheel's `qgis-cli` on PATH is the
-# [project.scripts] console script `qgis_py.cli:main`, which drives the same
-# engine in-process.
+# This crate deliberately has NO [[bin]] targets: it is a thin FFI layer over
+# the engine, and the command-line tool is crates/qgis-cli, not part of any
+# binding.
 
 [package]
 name = "qgis-py"

@@ -18,12 +18,6 @@ Example::
     >>> plan = TilePlan(extent, ZoomRange.parse("10-14"))
     >>> print(f"Would render {plan.tile_count()} tiles")
 
-CLI::
-
-    $ qgis-cli info map.qgs --json
-    $ qgis-cli tiles map.qgs -z 10-14 -b 14,50,15,51 --dry-run
-    $ qgis-cli render map.qgs -o map.png
-
 Architecture: the classes above are a *client*. They hold values and ask the
 Rust engine every question that has an answer — parsing, validation, tile
 arithmetic — over the versioned transport in :mod:`qgis_py._transport`. Adding

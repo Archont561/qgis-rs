@@ -188,13 +188,6 @@ fn build_artifacts() -> Result<()> {
     }
 
     step("Python wheels");
-    // qgis-py ships the prebuilt qgis-cli binary inside its wheel. Stage it
-    // from this runner before maturin packs the wheel, so every platform's
-    // wheel carries the binary built on that platform.
-    pixi(
-        "default",
-        ["python", "py-packages/qgis-py/scripts/stage_cli.py"],
-    )?;
     // auditwheel repairs the extension in place, and that file is hard-linked
     // into target/. Cargo sees nothing to rebuild, so a second wheel build
     // from the same tree fails with "could not be located". Relink both
