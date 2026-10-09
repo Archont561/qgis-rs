@@ -10,7 +10,7 @@
 	"scripts": {
 		"build": "napi build --platform --release --cargo-cwd ../../crates/qgis-node --js false --dts .napi-generated.d.ts .",
 		"build:debug": "napi build --platform --cargo-cwd ../../crates/qgis-node --js false --dts .napi-generated.d.ts .",
-		"test": "QGIS_REQUIRE_NATIVE=1 bun test tests/contract.test.js",
+		"test": "QGIS_REQUIRE_NATIVE=1 bun test tests/",
 		"coverage": "QGIS_REQUIRE_NATIVE=1 bun test --coverage tests/contract.test.js",
 		"pack:check": "cargo run -q -p xtask --manifest-path ../../Cargo.toml -- pack-check ts-packages/qgis-node src/index.js src/index.d.ts README.md bin/ 'qgis-node.*.node'",
 		"lint": "bunx biome check .",
@@ -18,8 +18,7 @@
 		"prepublishOnly": "napi prepublish -t npm",
 		"artifacts": "napi artifacts",
 		"version": "napi version",
-		"build:cli": "node scripts/stage-cli.js",
-		"test:cli": "QGIS_REQUIRE_NATIVE=1 bun test tests/cli.test.js"
+		"build:cli": "node scripts/stage-cli.js"
 	},
 	"keywords": [
 		"qgis",
