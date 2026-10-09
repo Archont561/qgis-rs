@@ -1,5 +1,16 @@
 # Bundle Update Log
 
+## 2026-10-10 (qgis-sdk migration, slice 4: new)
+
+* **Landed**: `fc4ee92` (`new` routes through the Python scaffold only). `pixi run gates` exit 0. qgis-sdk pytest 449 passed, 4 skipped.
+* **Decision (user answer)**: the Python scaffold is the single spec. The native Rust template was older (no network, tasks or services) and its docstring had a doubled quote. It is no longer selected even when the extension is importable.
+* **Tests**: `tests/test_new_parity.py` (2). A native stub fails the test if it is called. The tree produced by `cli.main` must equal the direct Python scaffold tree.
+* **Gate note**: a stale `_fallback_cli.cpython-311.pyc` in `__pycache__` failed the "no new fallbacks" boundary check. Clearing `__pycache__` fixed it. Generated caches are not tracked.
+* **Still on `_core`**: `__init__.py` (`HAS_RUST`, `RUST_VERSION`), `styles.py` (unused import), `_fallback_cli.py`. The `_core` extension and the crates are removed in one slice.
+* **Next session opening prompt**:
+
+  > Read the `new` entry in `.knowledge/log.md`. Remove `_core` from `__init__.py`, `styles.py` and `_fallback_cli.py`, then remove `crates/qgis-sdk` and `crates/qgis-sdk-core` as one slice. Stop after the gates for review.
+
 ## 2026-10-10 (qgis-sdk migration, slices 2 and 3: info and version)
 
 * **Landed on `arena/8333daf5-qgis-rs`**: `4ea73de` (info), `e9b77a2` (version). `pixi run gates` exit 0 at `e9b77a2`. qgis-sdk pytest 447 passed, 4 skipped.
