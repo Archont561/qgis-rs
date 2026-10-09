@@ -1,10 +1,10 @@
 ---
 id: TASK-60
 title: 'Remove deprecated aliases, stale names and unpublished references'
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-10-09 15:47'
-updated_date: '2026-10-09 19:26'
+updated_date: '2026-10-09 19:31'
 labels:
   - cleanup
 dependencies: []
@@ -14,9 +14,9 @@ type: chore
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 The qgis-rs compatibility package and its qgis_rs import shim are removed
-- [ ] #2 No code, docs or config refers to @qgis-sdk/bridge, qgis-plugin, qgis-rs-py or qgis-node bins that no longer exist
-- [ ] #3 pixi run gates is green after every removal
+- [x] #1 The qgis-rs compatibility package and its qgis_rs import shim are removed
+- [x] #2 No code, docs or config refers to @qgis-sdk/bridge, qgis-plugin, qgis-rs-py or qgis-node bins that no longer exist
+- [x] #3 pixi run gates is green after every removal
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -39,4 +39,6 @@ Slice 2 done: check-sources now fails on retired names in tracked text (tests/re
 Slice 3 done: repository is Archont561/qgis-rust (gh reported 403 on the rename call, but the repo resolves under the new name with push permission; the old URL redirects). Gates exit 0 on c494d07.
 
 Slice 4 done (76287df): prefix.dev publish target is @archont561/archont561; conda recipes moved to py-packages/<pkg>/recipes/<pkg>/ with meta.yaml source paths updated; stale recipes/qgis-rs example removed. Gates exit 0. Manual, outside the repo: PyPI trusted publishing for qgis-py and qgis-sdk must name repository Archont561/qgis-rust, workflow release.yml, environment release; npm trusted publishers must match the repository URL too; the prefix.dev channel @archont561/archont561 must exist and be configured for OIDC upload.
+
+Closed: AC1 (compat package removed), AC2 (stale names removed and enforced by check-sources, including the C++ namespace renamed to qgis_sys in 20cc1e4), AC3 (gates exit 0 on 20cc1e4). Repository renamed to qgis-rust, prefix channel @archont561/archont561, recipes under recipes/. Manual PyPI and npm trusted-publisher updates are outside the repo.
 <!-- SECTION:NOTES:END -->
