@@ -7,8 +7,9 @@ standalone `qgis-cli` binary does.
 
 The standalone Rust binary (crates/qgis-cli) is the same engine behind a clap
 parser instead of an argparse one, which is why the two agree about wording:
-the messages printed here are the engine's own. The wheel itself ships only
-these console scripts — not the Rust binary.
+the messages printed here are the engine's own. `qgis-py` runs that Python
+parser; `qgis-cli` runs the prebuilt Rust binary that the wheel ships in
+`_bin/` (see `binary_main`).
 """
 
 from __future__ import annotations
@@ -166,6 +167,34 @@ def build_parser() -> argparse.ArgumentParser:
     p_ver.set_defaults(func=_cmd_version)
 
     return parser
+
+
+# The prebuilt qgis-cli binary, staged here by scripts/stage_cli.py before the
+# wheel is built. It is never compiled on the user's machine.
+BUNDLED_BIN_DIR = Path(__file__).parent / "_bin"
+
+
+def cli_binary_path() -> Path:
+    """Path of the qgis-cli binary shipped in this package; raises if it was not staged."""
+    exe = BUNDLED_BIN_DIR / ("qgis-cli.exe" if sys.platform == "win32" else "qgis-cli")
+    if not exe.is_file():
+        raise FileNotFoundError(
+            f"qgis-cli binary not found at {exe}. Stage it with "
+            "`python py-packages/qgis-py/scripts/stage_cli.py` or reinstall qgis-py."
+        )
+    return exe
+
+
+def binary_main(argv: Optional[List[str]] = None) -> int:
+    """Entry point for the `qgis-cli` console script: run the bundled binary with the same arguments."""
+    import subprocess
+
+    try:
+        exe = cli_binary_path()
+        return subprocess.call([str(exe), *(sys.argv[1:] if argv is None else argv)])
+    except (OSError, FileNotFoundError) as exc:
+        print(f"qgis-cli: {exc}", file=sys.stderr)
+        return 1
 
 
 def main(argv: Optional[List[str]] = None) -> int:
