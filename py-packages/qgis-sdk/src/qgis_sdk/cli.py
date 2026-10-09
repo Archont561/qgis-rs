@@ -165,25 +165,29 @@ def _cmd_info(args: argparse.Namespace) -> int:
     if not metadata_path.exists():
         metadata_path = path / "src" / "metadata.txt"
 
-    if metadata_path.exists():
-        content = metadata_path.read_text(encoding="utf-8")
-        if args.json:
-            data = {}
-            for line in content.splitlines():
-                if line.startswith("[") or not line.strip():
-                    continue
-                if "=" in line:
-                    k, v = line.split("=", 1)
-                    data[k.strip()] = v.strip()
-            print(json.dumps(data, indent=2))
-        else:
-            print(f"Plugin info from {metadata_path}:")
-            print(content)
+    if not metadata_path.exists():
+        # Matches the retired Rust command: a missing file is information, not an error.
+        print(f"No metadata.txt found in {path}")
+        print("This might be a qgis-sdk Plugin class — import it to see metadata:")
+        print("  from my_plugin import MyPlugin")
+        print("  print(MyPlugin.metadata_txt())")
         return 0
+
+    content = metadata_path.read_text(encoding="utf-8")
+    if args.json:
+        data: dict = {}
+        for line in content.splitlines():
+            if line.startswith("[") or not line.strip():
+                continue
+            if "=" in line:
+                k, v = line.split("=", 1)
+                data[k.strip()] = v.strip()
+        # serde_json's default map is sorted; keep that order and raw UTF-8.
+        print(json.dumps(dict(sorted(data.items())), indent=2, ensure_ascii=False))
     else:
-        print(f"No metadata.txt found in {path}", file=sys.stderr)
-        print("Try: from my_plugin import MyPlugin; print(MyPlugin.metadata_txt())")
-        return 1
+        print(f"Plugin info from {metadata_path}:")
+        print(content)
+    return 0
 
 
 def _cmd_version(_args: argparse.Namespace) -> int:
