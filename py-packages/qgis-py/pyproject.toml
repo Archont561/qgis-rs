@@ -45,7 +45,7 @@ qgis-py = "qgis_py.cli:main"
 features = ["pyo3/extension-module", "python"]
 # The Rust core lives in the Cargo workspace, not here: maturin is pointed at
 # the crate and the paths below stay relative to this directory.
-manifest-path = "../../crates/qgis-py/Cargo.toml"
+manifest-path = "src-rust/Cargo.toml"
 module-name = "qgis_py._core"
 python-source = "python"
 bindings = "pyo3"

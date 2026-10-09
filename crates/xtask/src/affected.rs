@@ -56,7 +56,13 @@ pub fn plan(root: &Path, changed: &[PathBuf], force: bool) -> Result<Plan> {
             full_gate = true;
             break;
         }
-        if let Some((kind, directory)) = owner(&text) {
+        if let Some(directory) = crate::util::RUST_CRATE_ROOTS
+            .iter()
+            .find(|root| text.starts_with(&format!("{root}/")))
+        {
+            let name = manifest_name(&root.join(directory).join("Cargo.toml"), true)?;
+            scopes.insert(Scope::Rust(name));
+        } else if let Some((kind, directory)) = owner(&text) {
             let manifest = root.join(directory).join(if kind == "crates" {
                 "Cargo.toml"
             } else {

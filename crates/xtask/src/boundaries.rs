@@ -247,6 +247,12 @@ pub fn read_tree(root: &Path) -> Result<Tree> {
             .with_context(|| format!("cannot read {}", manifest.display()))?;
         crates.push(parse_crate(&text));
     }
+    for directory in crate::util::RUST_CRATE_ROOTS {
+        let manifest = root.join(directory).join("Cargo.toml");
+        let text = std::fs::read_to_string(&manifest)
+            .with_context(|| format!("cannot read {}", manifest.display()))?;
+        crates.push(parse_crate(&text));
+    }
     crates.sort_by(|left, right| left.name.cmp(&right.name));
 
     let mut distributions = Vec::new();

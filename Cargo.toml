@@ -5,7 +5,11 @@
 # --workspace` covers the whole tree and one wheel build owns the Python side.
 [workspace]
 resolver = "2"
-members = ["crates/*"]
+members = [
+    "crates/*",
+    "py-packages/qgis-py/src-rust",
+    "ts-packages/qgis-node/src-rust",
+]
 
 [workspace.package]
 version  = "0.1.0"
@@ -37,9 +41,9 @@ qgis-server = { version = "0.1.0", path = "crates/qgis-server" }
 qgis-mcp    = { version = "0.1.0", path = "crates/qgis-mcp", default-features = false }
 qgis-cli    = { version = "0.1.0", path = "crates/qgis-cli" }
 qgis-sdk-core = { version = "0.1.0", path = "crates/qgis-sdk-core" }
-qgis-py     = { version = "0.1.0", path = "crates/qgis-py" }
+qgis-py     = { version = "0.1.0", path = "py-packages/qgis-py/src-rust" }
 qgis-sdk    = { version = "0.1.0", path = "crates/qgis-sdk" }
-qgis-node   = { version = "0.1.0", path = "crates/qgis-node" }
+qgis-node   = { version = "0.1.0", path = "ts-packages/qgis-node/src-rust" }
 qgis-styles = { version = "0.1.0", path = "crates/qgis-styles" }
 
 # ── python / node ───────────────────────────────────────────────────────────

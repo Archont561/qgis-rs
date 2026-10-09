@@ -71,7 +71,7 @@
 				"index.d.ts",
 				"bin/**",
 				"package.json",
-				"../../crates/qgis-node/**",
+				"src-rust/**",
 				"../../crates/qgis-render/**",
 				"../../crates/qgis-server/**",
 				"../../crates/qgis-styles/**",
@@ -87,7 +87,7 @@
 				"bin/**",
 				"tests/**",
 				"package.json",
-				"../../crates/qgis-node/**",
+				"src-rust/**",
 				"../../crates/qgis-render/**",
 				"../../crates/qgis-server/**",
 				"../../crates/qgis-styles/**"
@@ -99,7 +99,7 @@
 				"pyproject.toml",
 				"python/**",
 				"tests/**",
-				"../../crates/qgis-py/**",
+				"src-rust/**",
 				"../../crates/qgis-render/**",
 				"../../Cargo.toml",
 				"../../Cargo.lock"

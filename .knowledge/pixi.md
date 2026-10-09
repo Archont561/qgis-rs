@@ -151,7 +151,7 @@ No icu satisfies both, so a single environment carrying QGIS and bun does not
 solve. The `bun` environment carries `rust` because `napi build` runs
 `cargo metadata` before anything else and fails with `cargo: Permission denied`
 without it on PATH. It is safe for the addon to live there because
-`crates/qgis-node` and the whole `qgis-render` / `qgis-server` / `qgis-cli` chain
+`ts-packages/qgis-node/src-rust` and the whole `qgis-render` / `qgis-server` / `qgis-cli` chain
 beneath it are QGIS-free.
 
 There is no `node` environment and no `nodejs` dependency anywhere in the

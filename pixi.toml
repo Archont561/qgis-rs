@@ -281,7 +281,7 @@ default = { features = [
   "py-runtime",
   "utils",
 ] }
-# QGIS-free on purpose: crates/qgis-node and everything it depends on are pure
+# QGIS-free on purpose: ts-packages/qgis-node/src-rust and everything it depends on are pure
 # Rust, so adding `qgis` here would reintroduce the icu conflict.
 bun = { features = ["bun"] }
 

@@ -8,8 +8,8 @@
 		"qgis-cli": "./bin/qgis-cli.js"
 	},
 	"scripts": {
-		"build": "napi build --platform --release --cargo-cwd ../../crates/qgis-node --js false --dts .napi-generated.d.ts .",
-		"build:debug": "napi build --platform --cargo-cwd ../../crates/qgis-node --js false --dts .napi-generated.d.ts .",
+		"build": "napi build --platform --release --cargo-cwd src-rust --js false --dts .napi-generated.d.ts .",
+		"build:debug": "napi build --platform --cargo-cwd src-rust --js false --dts .napi-generated.d.ts .",
 		"test": "QGIS_REQUIRE_NATIVE=1 bun test tests/",
 		"coverage": "QGIS_REQUIRE_NATIVE=1 bun test --coverage tests/contract.test.js",
 		"pack:check": "cargo run -q -p xtask --manifest-path ../../Cargo.toml -- pack-check ts-packages/qgis-node src/index.js src/index.d.ts README.md bin/ 'qgis-node.*.node'",

@@ -1,12 +1,12 @@
-# crates/qgis-node — the Rust core of the `qgis-rs` npm package.
+# ts-packages/qgis-node/src-rust — the Rust core of the `@archont561/qgis-node` npm package.
 #
 # Builds the NAPI addon only. The addon is ~20 lines: it forwards one JSON
 # string to `qgis-engine` and hands one back (D09). The JS side —
 # package.json, index.js, the .d.ts and the CLI wrappers — lives in
-# ../../ts-packages/qgis-node/, and drives this crate with:
+# ../, and drives this crate with:
 #
 #   napi build --platform --release \
-#     --cargo-cwd ../../crates/qgis-node .
+#     --cargo-cwd src-rust .
 #
 # The positional destination `.` puts the compiled .node file next to the
 # package.json, so npm users never see this directory.
@@ -17,7 +17,7 @@
 # the stubs silently overwrote the real binaries from crates/qgis-cli and
 # crates/qgis-sdk (whichever crate linked last won), and qgis-sdk's
 # CARGO_BIN_EXE-based integration tests ran the stub in CI. The npm wrappers
-# in ../../ts-packages/qgis-node/bin/ shell out to the real binaries found on
+# in ../bin/ shell out to the real binaries found on
 # PATH or in target/release instead.
 
 [package]

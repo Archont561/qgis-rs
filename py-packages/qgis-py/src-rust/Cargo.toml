@@ -1,11 +1,11 @@
-# crates/qgis-py — the Rust core of the `qgis-rs` Python distribution.
+# py-packages/qgis-py/src-rust — the Rust core of the `qgis-py` Python distribution.
 #
 # Builds the PyO3 extension module, imported by Python as `qgis_py._core`
-# (built by maturin, driven from ../../py-packages/qgis-py/pyproject.toml).
+# (built by maturin, driven from ../pyproject.toml).
 #
 # The lib target is ~40 lines: it forwards one JSON string to `qgis-engine` and
 # hands one back (D09). The ergonomic Python API, the tests, the conda recipe
-# and the pixi `[package]` manifest live in ../../py-packages/qgis-py/.
+# and the pixi `[package]` manifest live in ../ (py-packages/qgis-py/).
 #
 # This crate deliberately has NO [[bin]] targets. It used to declare a
 # `qgis-cli` wrapper bin, but bin names must be unique across the whole

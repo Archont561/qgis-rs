@@ -80,7 +80,7 @@ workflow so IDs, dependencies, acceptance criteria, and status remain consistent
 - Convert strings at the boundary (QString ↔ Rust String)
 - Never expose Qt types to Rust (convert to primitives)
 
-**Rust ↔ Python / Node** (`crates/qgis-py`, `crates/qgis-node` — see
+**Rust ↔ Python / Node** (`py-packages/qgis-py/src-rust`, `ts-packages/qgis-node/src-rust` — see
 [D09](.knowledge/decisions/D09-wire-protocol-over-ffi.md)):
 
 - Each binding crate exposes **one** function, `invoke(request_json) -> response_json`.

@@ -1,6 +1,6 @@
 # py-packages/qgis-py/pixi.toml — the `qgis-py` Python package with Rust extension.
 #
-# Only the Python side lives here; the Rust crate it builds is crates/qgis-py,
+# Only the Python side lives here; the Rust crate it builds is py-packages/qgis-py/src-rust,
 # reached through [tool.maturin].manifest-path in the sibling pyproject.toml.
 #
 # This manifest carries the [package] section for the pixi workspace.

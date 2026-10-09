@@ -53,9 +53,9 @@ git clone https://github.com/Archont561/qgis-rust
 cd qgis-py
 
 # Python dev with maturin — the pyproject owns the build and points at
-# crates/qgis-py for the Rust half
+# py-packages/qgis-py/src-rust for the Rust half
 pip install maturin
-(cd py-packages/qgis-py && maturin develop)   # reads ./pyproject.toml -> crates/qgis-py
+(cd py-packages/qgis-py && maturin develop)   # reads ./pyproject.toml -> py-packages/qgis-py/src-rust
 
 # Or via pixi (conda environment with QGIS)
 pixi install -e default
@@ -151,7 +151,7 @@ main(["info", "map.qgs", "--json"])
 qgis-py Python wheel            built from py-packages/qgis-py
 ├── qgis_py/                    ← python/qgis_py/
 │   ├── __init__.py      → high-level API (imports from _core)
-│   ├── _core.so         → crates/qgis-py, PyO3 cdylib — native speed
+│   ├── _core.so         → py-packages/qgis-py/src-rust, PyO3 cdylib — native speed
 │   │   ├── Extent, Crs, Tile, TilePlan, ZoomRange
 │   │   ├── Project, ProjectInfo, LayerSummary
 │   │   ├── RenderSettings, RenderedMap
@@ -167,10 +167,10 @@ The `qgis-cli` command on PATH is the `[project.scripts]` console script
 standalone Rust binary is built from `crates/qgis-cli` and is not part of
 this wheel.
 
-- **Rust workspace**: `crates/qgis-render` (pure Rust), `crates/qgis-cli` (CLI library + binary), `crates/qgis-py` (PyO3 bindings)
-- **Python**: this directory — `python/qgis_py/` (wrappers) + `pyproject.toml`, whose `[tool.maturin].manifest-path` points at `../../crates/qgis-py/Cargo.toml`
+- **Rust workspace**: `crates/qgis-render` (pure Rust), `crates/qgis-cli` (CLI library + binary), `py-packages/qgis-py/src-rust` (PyO3 bindings)
+- **Python**: this directory — `python/qgis_py/` (wrappers) + `pyproject.toml`, whose `[tool.maturin].manifest-path` points at `src-rust/Cargo.toml`
 - **Conda**: `pixi.toml` (pixi-build) + conda-forge recipe (see `recipes/qgis-py/`)
-- **Design**: `../../crates/qgis-py/ARCHITECTURE.md` — why the crate and the wheel are split this way
+- **Design**: `src-rust/ARCHITECTURE.md` — why the crate and the wheel are split this way
 
 ## Conda-forge recipe
 

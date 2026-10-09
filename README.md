@@ -287,8 +287,8 @@ exercise ([D11](.knowledge/decisions/D11-tests-outside-src.md)).
 | `qgis-cli` | Command-line tool (Rust binary + lib) | 🔨 Scaffolded (`mcp`, `info`, `tiles --dry-run` work) |
 | `qgis-styles` | Symbols, colours, labelling and layout types, serialisable to and from QGIS style JSON | ✅ Active |
 | `qgis-sdk` (Rust core) | Native helpers behind the Python SDK: `qgis_sdk._core` + the `qgis-sdk`/`qgis-sdk` CLIs (`crates/qgis-sdk`) | ✅ Active |
-| `qgis-py` (Rust core) | PyO3 module `qgis_py._core` + the `qgis-cli` binary shipped by the Python wheel (`crates/qgis-py`) | ✅ Active |
-| `qgis-node` (Rust core) | NAPI addon + CLI binaries shipped by the npm package (`crates/qgis-node`) | ✅ Active |
+| `qgis-py` (Rust core) | PyO3 module `qgis_py._core` + the `qgis-cli` binary shipped by the Python wheel (`py-packages/qgis-py/src-rust`) | ✅ Active |
+| `qgis-node` (Rust core) | NAPI addon + CLI binaries shipped by the npm package (`ts-packages/qgis-node/src-rust`) | ✅ Active |
 | `xtask` | Repository automation as a typed binary: the gate, the lints, the scaffolder, the release pipeline (`pixi run xtask …`) | ✅ Active |
 | `qgis-sdk` (Python) | Plugin development SDK — dist at `py-packages/qgis-sdk`, PyPI/conda | ✅ Active |
 | `qgis-py` (Python) | Python bindings + CLI — dist at `py-packages/qgis-py`, PyPI/conda | ✅ Active |

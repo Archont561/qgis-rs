@@ -1,4 +1,4 @@
-# crates/qgis-node/pixi.toml — the Rust core of the `qgis-rs` npm package.
+# ts-packages/qgis-node/src-rust/pixi.toml — the Rust core of the `@archont561/qgis-node` npm package.
 #
 # The JS half (package.json, index.js, bin/ wrappers) is ts-packages/qgis-node/.
 

@@ -11,7 +11,7 @@ source:
 build:
   number: 0
   script:
-    # Build Rust binary (canonical bin lives in crates/qgis-cli; crates/qgis-py
+    # Build Rust binary (canonical bin lives in crates/qgis-cli; py-packages/qgis-py/src-rust
     # is the extension module only) and Python extension via maturin
     - cargo build --release --manifest-path crates/qgis-cli/Cargo.toml --bin qgis-cli
     - mkdir -p $PREFIX/bin

@@ -1,6 +1,6 @@
 # qgis-rs Python package — Architecture
 
-Crate: `crates/qgis-py` · Distribution: `py-packages/qgis-py`
+Crate: `py-packages/qgis-py/src-rust` · Distribution: `py-packages/qgis-py`
 
 ## Goal
 
@@ -22,7 +22,7 @@ The crate and the distribution live in separate trees: this directory is Rust,
 the Python-facing half sits in `py-packages/qgis-py/`.
 
 ```
-crates/qgis-py/               # this crate — pure Rust, no Python files
+py-packages/qgis-py/src-rust/               # this crate — pure Rust, no Python files
 ├── Cargo.toml                # cdylib _core only (no bin targets)
 ├── src/
 │   └── lib.rs                # the one #[pyfunction]: invoke(request_json)
@@ -31,7 +31,7 @@ crates/qgis-py/               # this crate — pure Rust, no Python files
 
 py-packages/qgis-py/          # the Python distribution
 ├── pyproject.toml            # maturin build, console scripts qgis-cli / qgis-rs
-│                             # [tool.maturin].manifest-path = ../../crates/qgis-py/Cargo.toml
+│                             # [tool.maturin].manifest-path = src-rust/Cargo.toml
 ├── python/qgis_py/
 │   ├── __init__.py         # Public API surface (re-exports from _api)
 │   ├── _transport.py       # invoke(): JSON in, JSON out, errors -> exceptions

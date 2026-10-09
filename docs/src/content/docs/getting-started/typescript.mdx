@@ -125,8 +125,8 @@ There is no JavaScript fallback: every value this package returns is computed
 by Rust, so a platform without a matching addon builds one rather than quietly
 getting different answers.
 
-- Rust: `crates/qgis-protocol` (the wire format), `crates/qgis-engine` (the dispatcher), `crates/qgis-render` (pure Rust), `crates/qgis-cli`, `crates/qgis-node` (NAPI addon), `crates/qgis-sdk`
-- JS: `ts-packages/qgis-node/` — npm package (the typed client); the addon is built from `crates/qgis-node/`
+- Rust: `crates/qgis-protocol` (the wire format), `crates/qgis-engine` (the dispatcher), `crates/qgis-render` (pure Rust), `crates/qgis-cli`, `ts-packages/qgis-node/src-rust` (NAPI addon), `crates/qgis-sdk`
+- JS: `ts-packages/qgis-node/` — npm package (the typed client); the addon is built from `ts-packages/qgis-node/src-rust/`
 
 ## Conda-forge
 
