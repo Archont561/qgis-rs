@@ -202,6 +202,13 @@ pytest-cov = { workspace = true }
 # distribution — it ships with the environment, not in the wheel.
 hypothesis = ">=6.168,<7"
 
+# The qgis-sdk CLI runtime (D15): typer builds the command tree and questionary
+# asks for the names of UI scaffolds. Both are pypi packages, so they resolve
+# from pypi and do not widen the conda solve. The wheel declares the same two.
+[feature.py-runtime.pypi-dependencies]
+typer = ">=0.27,<1"
+questionary = ">=2.1,<3"
+
 [feature.py-runtime.activation.env]
 # The conda-forge `qgis` package already exports these through
 # etc/conda/activate.d/qgis-activate.sh, which pixi runs for `pixi run` and
