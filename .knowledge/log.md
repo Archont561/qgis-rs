@@ -1,5 +1,16 @@
 # Bundle Update Log
 
+## 2026-10-10 (qgis-sdk migration, slices 2 and 3: info and version)
+
+* **Landed on `arena/8333daf5-qgis-rs`**: `4ea73de` (info), `e9b77a2` (version). `pixi run gates` exit 0 at `e9b77a2`. qgis-sdk pytest 447 passed, 4 skipped.
+* **info**: the Rust command is the spec, since there was one Rust implementation. A missing metadata file is reported on stdout with exit 0. `--json` keeps sorted keys and unescaped UTF-8, as serde_json did. `tests/test_info_parity.py` (8).
+* **version**: reads the version from package metadata, with a source-tree fallback. Drops the "Rust-native" label, which is no longer true. Output is otherwise unchanged. `tests/test_version_parity.py` (3).
+* **Test corrected**: `tests/test_ui.py::test_validate_web_missing_qwebchannel` accepted a pass when no Rust core was present. It now asserts the single rule set, so it fails if the old stub behaviour returns.
+* **Still on `_core`**: `new` (vanilla layout), which is the 360-line Rust `cmd_new`, and `styles.py`'s unused import. Both belong to later slices.
+* **Next session opening prompt**:
+
+  > Read the info and version entries in `.knowledge/log.md`. Port the next Rust-only command, `rust init`, then `rust build`, with red tests at the `cli.main` seam. Keep `_core` only for `new` until its slice. Stop after each slice's gates for review.
+
 ## 2026-10-10 (port Rust validate to Python, slice 1 of the qgis-sdk migration)
 
 * **Landed on `arena/8333daf5-qgis-rs`**: `ac719ea` (feat). `pixi run gates` exit 0. qgis-sdk pytest 436 passed, 4 skipped.
