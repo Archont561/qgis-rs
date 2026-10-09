@@ -201,7 +201,15 @@ fn build_artifacts() -> Result<()> {
     // extensions so each wheel is packed from a fresh link.
     pixi(
         "default",
-        ["cargo", "clean", "-p", "qgis-py", "-p", "qgis-sdk", "--release"],
+        [
+            "cargo",
+            "clean",
+            "-p",
+            "qgis-py",
+            "-p",
+            "qgis-sdk",
+            "--release",
+        ],
     )?;
     for distribution in PY_DISTRIBUTIONS {
         pixi(
