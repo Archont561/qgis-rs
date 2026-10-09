@@ -4,7 +4,7 @@ title: Ship the prebuilt qgis-cli binary through @archont561/qgis-node
 status: In Progress
 assignee: []
 created_date: '2026-10-09 15:47'
-updated_date: '2026-10-09 18:54'
+updated_date: '2026-10-09 21:02'
 labels:
   - qgis-node
   - cli
@@ -17,7 +17,7 @@ type: enhancement
 <!-- AC:BEGIN -->
 - [ ] #1 @archont561/qgis-node exposes an explicit qgis-cli bin that downloads the matching platform binary
 - [ ] #2 The download is checked against a SHA-256 digest before it is run
-- [ ] #3 The qgis-sdk and qgis-plugin bins are removed from qgis-node
+- [x] #3 The qgis-sdk and qgis-plugin bins are removed from qgis-node
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -38,4 +38,6 @@ Landed: @archont561/qgis-node with Biome-model platform packages (linux-x64-gnu,
 Still open: CI matrix builds for the other platforms, publishing platform packages in release.rs NPM_PACKAGES, win32 package not yet created.
 
 Gap: qgis-cli is gitignored, so a fresh checkout has no staged binary and the qgis-node CLI tests fail under QGIS_REQUIRE_NATIVE=1 until scripts/stage-cli.js runs in the default env. Needs a CI or gates step that stages it.
+
+Superseded: built-in qgis-cli removed from qgis-node in 41b02b4. ACs 1-2 no longer apply; AC 3 met. Left In Progress for owner decision to close.
 <!-- SECTION:NOTES:END -->

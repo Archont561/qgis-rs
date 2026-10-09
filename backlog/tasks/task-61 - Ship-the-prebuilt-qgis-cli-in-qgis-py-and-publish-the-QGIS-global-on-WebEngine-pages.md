@@ -6,7 +6,7 @@ title: >-
 status: Done
 assignee: []
 created_date: '2026-10-09 20:28'
-updated_date: '2026-10-09 20:28'
+updated_date: '2026-10-09 21:02'
 labels:
   - enhancement
   - qgis-py
@@ -32,4 +32,6 @@ Slice 6 of the restructure, plus the WebEngine global from the bridge vendoring.
 
 <!-- SECTION:NOTES:BEGIN -->
 c38f1be ships qgis-cli in the qgis-py wheel; 2cdd15d publishes window.qgis on WebEngine pages
+
+Superseded in part: built-in qgis-cli removed from qgis-py in 47a909a. WebEngine QGIS global from slice 6 unchanged. Gates pass at HEAD.
 <!-- SECTION:NOTES:END -->
