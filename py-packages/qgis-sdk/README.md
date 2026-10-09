@@ -391,3 +391,19 @@ The declarative layers (`Plugin`, decorators, `metadata.txt`, `Algorithm`
 parameters) are implemented and unit-tested. The QGIS bridges —
 `qgis_sdk.qt.make_action` and `qgis_sdk.processing_bridge.build_algorithm` —
 are written against PyQGIS but need a QGIS environment to exercise.
+
+## Vendored bridge bundle
+
+WebEngine scaffolds (`--web`) copy a pinned browser bundle of `@archont561/qgis-sdk`
+into `web/qgis-sdk.js`. Plain scaffolds do not include it.
+
+The bundle lives in `src/qgis_sdk/assets/bridge/` together with `manifest.json`, which
+pins the package version and the bundle's sha256. To refresh it:
+
+```sh
+cd ts-packages/qgis-sdk && bun run build
+python py-packages/qgis-sdk/scripts/vendor_bridge.py
+```
+
+`tests/test_bridge_vendor.py` fails if the vendored file and manifest drift apart, or if
+the manifest version differs from the TypeScript package.

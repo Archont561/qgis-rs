@@ -813,6 +813,17 @@ export interface Bridge {
         )
 
 
+_VENDORED_BRIDGE_DIR = Path(__file__).parent / "assets" / "bridge"
+_VENDORED_BRIDGE_FILE = "qgis-sdk.js"
+
+
+def _link_vendored_bridge(web_dir: Path) -> None:
+    """Copy the pinned @archont561/qgis-sdk browser bundle into web/. Only WebEngine UIs call this."""
+    import shutil
+
+    shutil.copyfile(_VENDORED_BRIDGE_DIR / _VENDORED_BRIDGE_FILE, web_dir / _VENDORED_BRIDGE_FILE)
+
+
 def scaffold_plugin(
     name: str,
     path: str,
@@ -1022,6 +1033,7 @@ def classFactory(iface):
         (web_dir / "__init__.py").write_text("", encoding="utf-8")
 
         _generate_bridge_dts(web_dir, name)
+        _link_vendored_bridge(web_dir)
 
         if web_framework in ("react", "vue"):
             frontend_dir = base / name / "frontend"
