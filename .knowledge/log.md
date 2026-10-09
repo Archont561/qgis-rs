@@ -1,5 +1,20 @@
 # Bundle Update Log
 
+## 2026-10-09 (slice 5, TASK-56 bridge vendoring)
+
+* **Landed on `arena/8333daf5-qgis-rs`** in `91cd574` (feat). `pixi run gates` exit 0 on that commit. TASK-56 is **Done** (AC1–AC4 checked).
+* **Bundle**: `ts-packages/qgis-sdk` gained `build:bundle`, an IIFE from `bun build` (`QgisSdk` global, browser target). `build` runs it after bunup.
+* **Vendored**: `py-packages/qgis-sdk/src/qgis_sdk/assets/bridge/` holds `qgis-sdk.js` (18 KB) and `manifest.json`, which pins package, version, and sha256. `py-packages/qgis-sdk/scripts/vendor_bridge.py` refreshes both from `dist/bundle/`.
+* **Linked only for WebEngine UIs**: `_link_vendored_bridge` runs inside the `with_web` block of `scaffold_plugin`, so it copies `web/qgis-sdk.js`. Plain scaffolds ship no bundle. The `bun` declarative template uses the npm package and is unchanged.
+* **Tests**: `tests/test_bridge_vendor.py` (5). Three were red before the change. Manifest-to-file sha, manifest-to-package version, and scaffold copy are all checked.
+* **Measured**: qgis-sdk Python 417 passed / 4 skipped. `@archont561/qgis-sdk` 99 bun tests, typecheck clean, lint exit 0 with 126 warnings (not counted against this slice).
+* **Not done**: the HTML templates do not yet load `web/qgis-sdk.js` with a `<script>` tag. The bundle is copied but not referenced. Next step: pick the global name and wire it into the WebEngine templates.
+* **Pushed**: slices 3 and 4 (`985d333`, `7f5cc79`, `15bce63`) were pushed with this slice.
+
+* **Next session opening prompt**:
+
+  > Confirm the pixi environments (`scripts/restore.sh`, `export PATH="$HOME/.local/bin:$PATH"`, `pixi run bun-install`, `pixi run setup`). Read the slice 5 entry in `.knowledge/log.md`. Slice 6 (prebuilt `qgis-cli` for qgis-py) is next. Inventory before editing, and propose the slice and stop for review before writing code.
+
 ## 2026-10-09 (TASK-58, prebuilt qgis-cli through @archont561/qgis-node)
 
 * **Landed on `arena/8333daf5-qgis-rs`** (commits `fc18ca6` feat, then a format commit and a test-script commit): TASK-58 is **In Progress**, not Done. The package is `@archont561/qgis-node` and follows the Biome model. Each platform has a package in `optionalDependencies` that holds `bin/qgis-cli`, and the bin shim resolves the one for the machine. Nothing is downloaded at install or run time. Platforms: `linux-x64-gnu`, `linux-arm64-gnu`, `linux-x64-musl` (`npm/<triple>/`), plus `win32-x64-msvc` in the resolver, with no package yet.
