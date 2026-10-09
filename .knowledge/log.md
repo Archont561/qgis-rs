@@ -1,5 +1,19 @@
 # Bundle Update Log
 
+## 2026-10-10 (qgis-sdk migration, slice 5: _core, the crates and maturin)
+
+* **Landed on `arena/8333daf5-qgis-rs`**: `1e238d9` (drop `_core`, its fallback and the Rust flags), `66923fe` (setuptools backend), `2d8d69a` (remove `crates/qgis-sdk` and `crates/qgis-sdk-core`). `pixi run gates` exit 0 at `2d8d69a`. qgis-sdk pytest 459 passed, 4 skipped. `cargo test -p xtask` and `cargo check --workspace` pass.
+* **User answers**: remove both crates, not only `qgis-sdk`. Switch to setuptools in the same slice, since the backend built the extension from the crate. Remove the qgis-sdk xtask rules and keep the qgis-cli ones.
+* **Removed**: `HAS_RUST`/`RUST_VERSION`, the `_core` import blocks, `_fallback_cli.py`, the compiled `.so`. The retired import block had also reset `__version__` to a literal when `_core` was missing. `tests/test_pure_python.py` pins the surface.
+* **Packaging**: `pyproject.toml` uses `setuptools.build_meta`, with `assets/bridge/*` as explicit package data. The package `pixi.toml`, the conda recipe and `package.json` build follow. `pip wheel` builds a wheel with the assets, the entry point and no bytecode caches.
+* **xtask**: `FORBIDDEN_EDGES`, `CANONICAL_BINARIES` (qgis-sdk entry) and `TRACKED_FALLBACKS` are emptied. The "allowlisted but gone" case has no live entry to test, so it is removed. The rule code stays. `the_qgis_sdk_rust_crates_are_retired` pins the removal.
+* **Gate note**: `TRACKED_FALLBACKS` pointed at `_fallback_cli.py`. Deleting that file made the contract self-check fail, so the allowlist had to be emptied in the same commit as the file's deletion.
+* **Live text corrected**: README, docs mdx pages, the qgis-node README, `ARCHITECTURE.md`, the Cargo comments and `turbo.json`. `.knowledge/` pages, D13/D14 and the qgis-plugin material are still open.
+* **Still open**: D13/D14 supersession, the `qgis-plugin` cleanup in live files, the typer/questionary CLI (TASK-57), the stale TASK-44 note, and `rust init`/`rust build`/`ui add-*`/`metadata_fields`/`render_metadata_from_dict` on the Python side.
+* **Next session opening prompt**:
+
+  > Read the slice 5 entry in `.knowledge/log.md`. Supersede D14 with a new decision record, and update D13 and the live `.knowledge/` pages that name `crates/qgis-sdk`, maturin or `_core`. Leave historical log entries and completed task notes unchanged. Stop after the gates for review.
+
 ## 2026-10-10 (qgis-sdk migration, slice 4: new)
 
 * **Landed**: `fc4ee92` (`new` routes through the Python scaffold only). `pixi run gates` exit 0. qgis-sdk pytest 449 passed, 4 skipped.
