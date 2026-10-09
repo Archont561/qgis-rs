@@ -39,32 +39,12 @@
     "ts-packages/qgis-node": {
       "name": "@archont561/qgis-node",
       "version": "0.1.0",
-      "bin": {
-        "qgis-cli": "./bin/qgis-cli.js",
-      },
       "devDependencies": {
         "@napi-rs/cli": "^2.18",
         "@types/bun": "latest",
         "fast-check": "^4.10.2",
         "typescript": "^5.0",
       },
-      "optionalDependencies": {
-        "@archont561/qgis-node-linux-arm64-gnu": "0.1.0",
-        "@archont561/qgis-node-linux-x64-gnu": "0.1.0",
-        "@archont561/qgis-node-linux-x64-musl": "0.1.0",
-      },
-    },
-    "ts-packages/qgis-node/npm/linux-arm64-gnu": {
-      "name": "@archont561/qgis-node-linux-arm64-gnu",
-      "version": "0.1.0",
-    },
-    "ts-packages/qgis-node/npm/linux-x64-gnu": {
-      "name": "@archont561/qgis-node-linux-x64-gnu",
-      "version": "0.1.0",
-    },
-    "ts-packages/qgis-node/npm/linux-x64-musl": {
-      "name": "@archont561/qgis-node-linux-x64-musl",
-      "version": "0.1.0",
     },
     "ts-packages/qgis-sdk": {
       "name": "@archont561/qgis-sdk",
@@ -106,12 +86,6 @@
   },
   "packages": {
     "@archont561/qgis-node": ["@archont561/qgis-node@workspace:ts-packages/qgis-node"],
-
-    "@archont561/qgis-node-linux-arm64-gnu": ["@archont561/qgis-node-linux-arm64-gnu@workspace:ts-packages/qgis-node/npm/linux-arm64-gnu"],
-
-    "@archont561/qgis-node-linux-x64-gnu": ["@archont561/qgis-node-linux-x64-gnu@workspace:ts-packages/qgis-node/npm/linux-x64-gnu"],
-
-    "@archont561/qgis-node-linux-x64-musl": ["@archont561/qgis-node-linux-x64-musl@workspace:ts-packages/qgis-node/npm/linux-x64-musl"],
 
     "@archont561/qgis-sdk": ["@archont561/qgis-sdk@workspace:ts-packages/qgis-sdk"],
 

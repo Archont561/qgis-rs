@@ -1,15 +1,14 @@
 ---
 title: TypeScript / Node.js
-description: Install qgis-rs from npm with native-speed TypeScript API and Rust CLI
+description: Install qgis-rs from npm for a native-speed TypeScript API over the Rust core
 ---
 
 # TypeScript / Node.js
 
-`@archont561/qgis-node` ships a **NAPI-RS native addon** (`qgis-node.<platform>.node`) at native speed, plus TypeScript types and the prebuilt **`qgis-cli`** binary. The binary lives in a per-platform package that npm installs for your machine, so nothing is compiled or downloaded at install or run time.
+`@archont561/qgis-node` ships a **NAPI-RS native addon** (`qgis-node.<platform>.node`) at native speed, plus TypeScript types. It is a thin API over the Rust core, which runs or starts QGIS programmatically; the package has no command-line interface.
 
-- **npm**: `npm install @archont561/qgis-node` → `require('@archont561/qgis-node')` + `qgis-cli` on PATH
+- **npm**: `npm install @archont561/qgis-node` → `require('@archont561/qgis-node')`
 - **API**: `Extent`, `Crs`, `TilePlan`, `Project` via NAPI, QGIS backend optional
-- **CLI**: `qgis-cli`, the prebuilt Rust binary, run through `runCli(argv)` or `npx qgis-cli`
 
 `qgis-py` (Python) and `qgis-sdk` (Python plugin SDK) can stay — this is the TypeScript counterpart, same Rust workspace.
 
@@ -82,16 +81,6 @@ const plan = new TilePlan(extent, ZoomRange.parse('10-14'));
 console.log(plan.tileCount());
 ```
 
-## CLI
-
-```bash
-npx qgis-cli --help
-npx qgis-cli info map.qgs --json
-npx qgis-cli tiles map.qgs -z 10-14 -b 14,50,15,51 -o ./tiles/ --dry-run
-```
-
-`runCli(argv)` returns `{ exitCode, stdout, stderr }`, so a failing command is a value, not an exception. Supported platforms: Linux x64 and arm64 (glibc and musl), and Windows x64. The plugin SDK is not part of this package: install `qgis-sdk` from pip, pixi, or conda-forge.
-
 ## With Express
 
 ```typescript
@@ -116,16 +105,13 @@ qgis-rs npm package
 ├── src/
 │   ├── index.js             → JS wrapper (Extent, Crs, TilePlan, Project…) over that call
 │   └── index.d.ts           → TypeScript types
-└── bin/
-    ├── qgis-cli.js          → Node wrapper around the Rust binary
-    └── qgis-sdk.js       → same for plugin SDK
 ```
 
 There is no JavaScript fallback: every value this package returns is computed
 by Rust, so a platform without a matching addon builds one rather than quietly
 getting different answers.
 
-- Rust: `crates/qgis-protocol` (the wire format), `crates/qgis-engine` (the dispatcher), `crates/qgis-render` (pure Rust), `crates/qgis-cli`, `ts-packages/qgis-node/src-rust` (NAPI addon), `crates/qgis-sdk`
+- Rust: `crates/qgis-protocol` (the wire format), `crates/qgis-engine` (the dispatcher), `crates/qgis-render` (pure Rust), `ts-packages/qgis-node/src-rust` (NAPI addon), `crates/qgis-sdk`
 - JS: `ts-packages/qgis-node/` — npm package (the typed client); the addon is built from `ts-packages/qgis-node/src-rust/`
 
 ## Conda-forge
@@ -140,8 +126,6 @@ npm install @archont561/qgis-node
 There is no Node.js toolchain in this repository — the addon is built, tested and
 packed with bun, and the build only needs cargo. The `nodejs` above is for
 *consuming* the published package, not for building it.
-
-`qgis-cli` binary from conda-forge `qgis-rs` Python package is also on `$PREFIX/bin`.
 
 ## Performance
 

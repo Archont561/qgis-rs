@@ -79,7 +79,6 @@ node_modules/
 ts-packages/*/dist/
 # the compiled addon napi build drops next to the package.json
 ts-packages/qgis-node/*.node
-ts-packages/qgis-node/npm/*/bin/
 
 # python — wheels and editable installs built from py-packages/<name>
 py-packages/*/*.egg-info/

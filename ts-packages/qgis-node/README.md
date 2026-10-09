@@ -1,13 +1,13 @@
-# qgis-rs — Node.js / TypeScript bindings with Rust-native CLI
+# qgis-rs — Node.js / TypeScript bindings
 
 [![npm](https://img.shields.io/npm/v/@archont561%2Fqgis-node)](https://www.npmjs.com/package/@archont561/qgis-node)
 [![License](https://img.shields.io/badge/license-GPL--2.0--or--later-blue)](LICENSE)
 
 **qgis-rs** for Node.js — native-speed QGIS rendering, tiling, and plugin tools via NAPI-RS.
 
-- **npm**: `npm install @archont561/qgis-node` → `require('@archont561/qgis-node')` + `qgis-cli` binary on PATH
+- **npm**: `npm install @archont561/qgis-node` → `require('@archont561/qgis-node')`
 - **API**: TypeScript types, pure Rust geometry (Extent, Crs, TilePlan) via NAPI, QGIS backend optional
-- **CLI**: the prebuilt `qgis-cli` Rust binary, run through `bin/qgis-cli.js` (one platform package per OS and CPU, no build on install)
+- **No CLI**: this package is a thin API over the Rust core; the Rust core runs or starts QGIS programmatically
 
 `qgis-py` (Python) and `qgis-sdk` (Python plugin SDK) can stay — this is the TypeScript counterpart, same Rust workspace.
 
@@ -39,8 +39,6 @@ bun x turbo run build --filter=@archont561/qgis-node
 # Smoke-test the compiled NAPI API
 bun x turbo run test --filter=@archont561/qgis-node
 
-# Inspect the CLI wrapper
-pixi run -e bun bunx qgis-cli --help
 ```
 
 There is no Node.js toolchain in this repository: the addon is built, tested and
@@ -116,22 +114,6 @@ app.get('/tiles/:z/:x/:y.png', async (req, res) => {
 app.listen(3000);
 ```
 
-## CLI
-
-Same Rust code as Python packages, but via Node.js wrappers.
-
-```bash
-# Binary on PATH (installed via npm)
-npx qgis-cli --help
-npx qgis-cli --version
-npx qgis-cli info map.qgs --json
-npx qgis-cli tiles map.qgs -z 10-14 -b 14,50,15,51 -o ./tiles/ --dry-run
-
-# From Node.js
-const { runCli } = require('@archont561/qgis-node');
-const { exitCode, stdout } = runCli(['info', 'map.qgs', '--json']);
-```
-
 ## Architecture
 
 ```
@@ -141,14 +123,10 @@ qgis-rs npm package
 │   ├── index.js             → JS wrapper (Extent, Crs, TilePlan, etc.) over one `invoke(json)` call
 │   └── index.d.ts           → TypeScript types
 ├── tests/                   → the contract suite, run against the real addon
-├── bin/
-│   └── qgis-cli.js          → shim that runs the qgis-cli binary of this machine's platform package
-├── npm/<triple>/            → one platform package per triple (optionalDependencies); holds bin/qgis-cli
-└── scripts/stage-cli.js     → cargo-builds qgis-cli and stages it for this machine
 ```
 
-- Rust: `crates/qgis-render` (pure Rust), `crates/qgis-cli`, `crates/qgis-sdk` (plugin CLI)
-- Node: `ts-packages/qgis-node/` — package.json, `src/index.js`, `src/cli.js`, `bin/qgis-cli.js`; the NAPI crate it builds is `ts-packages/qgis-node/src-rust/` (`napi build --cargo-cwd ../../ts-packages/qgis-node/src-rust .`), and that crate exposes exactly one function, `invoke(requestJson) -> responseJson` (see `.knowledge/decisions/D09-wire-protocol-over-ffi.md`)
+- Rust: `crates/qgis-render` (pure Rust), `crates/qgis-sdk` (plugin CLI)
+- Node: `ts-packages/qgis-node/` — package.json, `src/index.js`, `src/index.d.ts`; the NAPI crate it builds is `ts-packages/qgis-node/src-rust/` (`napi build --cargo-cwd ../../ts-packages/qgis-node/src-rust .`), and that crate exposes exactly one function, `invoke(requestJson) -> responseJson` (see `.knowledge/decisions/D09-wire-protocol-over-ffi.md`)
 - Python: `py-packages/qgis-py/` and `py-packages/qgis-sdk/` — same Rust code via PyO3
 
 ## Conda-forge (Node.js)
@@ -157,7 +135,6 @@ For conda, install Node.js + Rust package:
 
 ```bash
 conda install -c conda-forge nodejs qgis qgis-py
-# the binary qgis-cli is in $PREFIX/bin
 ```
 
 `nodejs` here is only the runtime needed to *consume* the published addon — the

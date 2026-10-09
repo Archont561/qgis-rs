@@ -445,9 +445,6 @@ function planTiles(bounds, zooms) {
 	};
 }
 
-const cli = require("./cli.js");
-const { runCli, resolveCliBinary } = cli;
-
 module.exports = {
 	Crs,
 	EngineError,
@@ -461,8 +458,6 @@ module.exports = {
 	MAX_ZOOM: engineInfo().max_zoom,
 	TRANSPORT_VERSION,
 	engineInfo,
-	runCli,
-	resolveCliBinary,
 	invoke,
 	planTiles,
 	version,

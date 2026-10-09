@@ -16,9 +16,8 @@
 # whole workspace: every bin resolves to the same target/<profile>/<name>, so
 # the stubs silently overwrote the real binaries from crates/qgis-cli and
 # crates/qgis-sdk (whichever crate linked last won), and qgis-sdk's
-# CARGO_BIN_EXE-based integration tests ran the stub in CI. The npm wrappers
-# in ../bin/ shell out to the real binaries found on
-# PATH or in target/release instead.
+# CARGO_BIN_EXE-based integration tests ran the stub in CI. The package ships
+# no command-line interface.
 
 [package]
 name = "qgis-node"

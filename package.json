@@ -8,7 +8,6 @@
 		"docs",
 		"crates",
 		"py-packages/*",
-		"ts-packages/qgis-node/npm/*"
 	],
 	"scripts": {
 		"build": "bun run --filter './docs' --filter './ts-packages/*' build",

@@ -1,24 +1,20 @@
 {
 	"name": "@archont561/qgis-node",
 	"version": "0.1.0",
-	"description": "Node.js / TypeScript bindings and the qgis-cli binary for qgis-rs — native-speed QGIS rendering, tiling, and plugin tools",
+	"description": "Node.js / TypeScript bindings for qgis-rs — a thin API over the Rust core that runs QGIS natively",
 	"main": "src/index.js",
 	"types": "src/index.d.ts",
-	"bin": {
-		"qgis-cli": "./bin/qgis-cli.js"
-	},
 	"scripts": {
 		"build": "napi build --platform --release --cargo-cwd src-rust --js false --dts .napi-generated.d.ts .",
 		"build:debug": "napi build --platform --cargo-cwd src-rust --js false --dts .napi-generated.d.ts .",
 		"test": "QGIS_REQUIRE_NATIVE=1 bun test tests/",
 		"coverage": "QGIS_REQUIRE_NATIVE=1 bun test --coverage tests/contract.test.js",
-		"pack:check": "cargo run -q -p xtask --manifest-path ../../Cargo.toml -- pack-check ts-packages/qgis-node src/index.js src/index.d.ts README.md bin/ 'qgis-node.*.node'",
+		"pack:check": "cargo run -q -p xtask --manifest-path ../../Cargo.toml -- pack-check ts-packages/qgis-node src/index.js src/index.d.ts README.md 'qgis-node.*.node'",
 		"lint": "bunx biome check .",
 		"format": "bunx biome format --write .",
 		"prepublishOnly": "napi prepublish -t npm",
 		"artifacts": "napi artifacts",
-		"version": "napi version",
-		"build:cli": "node scripts/stage-cli.js"
+		"version": "napi version"
 	},
 	"keywords": [
 		"qgis",
@@ -27,7 +23,6 @@
 		"tiles",
 		"rust",
 		"napi",
-		"cli",
 		"typescript"
 	],
 	"author": "qgis-rs contributors",
@@ -65,12 +60,6 @@
 	"files": [
 		"src/",
 		"qgis-node.*.node",
-		"bin/",
 		"README.md"
-	],
-	"optionalDependencies": {
-		"@archont561/qgis-node-linux-x64-gnu": "0.1.0",
-		"@archont561/qgis-node-linux-arm64-gnu": "0.1.0",
-		"@archont561/qgis-node-linux-x64-musl": "0.1.0"
-	}
+	]
 }
