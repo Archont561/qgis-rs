@@ -79,8 +79,19 @@ class EngineError extends Error {
 	}
 }
 
-/** Run one engine operation and return its `result`. */
+/** Run one engine operation through the loaded native addon. */
 function invoke(operation, payload = null) {
+	return invokeWith(binding, operation, payload);
+}
+
+/**
+ * Run one engine operation through a supplied JSON binding.
+ *
+ * Public so the contract tests can supply incompatible response envelopes
+ * without mutating the loaded addon. Normal invoke delegates here; loading
+ * this package still requires the native addon, with no JavaScript fallback.
+ */
+function invokeWith(binding, operation, payload = null) {
 	const request = JSON.stringify({
 		transport_version: TRANSPORT_VERSION,
 		operation,
@@ -92,6 +103,10 @@ function invoke(operation, payload = null) {
 		throw new EngineError(
 			"unsupported_transport",
 			`engine speaks transport version ${response.transport_version}, this client speaks ${TRANSPORT_VERSION}`,
+			{
+				supported: TRANSPORT_VERSION,
+				received: response.transport_version ?? null,
+			},
 		);
 	}
 	if (response.ok) return response.result;
@@ -459,6 +474,7 @@ module.exports = {
 	TRANSPORT_VERSION,
 	engineInfo,
 	invoke,
+	invokeWith,
 	planTiles,
 	version,
 	// Kept for the contract suite and for consumers that probed it: the addon

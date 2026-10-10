@@ -1,10 +1,10 @@
 ---
 id: TASK-42
 title: Stabilize Python and Node FFI client contracts
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-10-03 09:35'
-updated_date: '2026-10-10 17:01'
+updated_date: '2026-10-10 21:45'
 labels:
   - ffi
   - python
@@ -55,7 +55,7 @@ TASK-43 owns the hosted SDK dependency/ownership boundary; TASK-63 owns the reve
 <!-- AC:BEGIN -->
 - [ ] #1 Each native addon retains invoke(request_json) plus transport-version introspection as its stable native callable surface, preserving existing host-language naming and metadata exports. No per-QGIS-class native API or CLI argv dispatcher is introduced.
 - [ ] #2 Python and TypeScript clients consume shared protocol fixtures for capabilities, structured errors, transport mismatch, pages/cursors and artifact metadata, including cancellation outcomes where defined. Existing coverage and missing cases are audited against the protocol; no independent per-binding wire vocabulary or unsupported capability is invented.
-- [ ] #3 Host-language wrappers map structured error kinds without matching English error text, preserve contextual details, expose documented raw invoke escape hatches, and report unsupported operations or unavailable backends explicitly without alternate Python/JavaScript semantics.
+- [x] #3 Host-language wrappers map structured error kinds without matching English error text, preserve contextual details, expose documented raw invoke escape hatches, and report unsupported operations or unavailable backends explicitly without alternate Python/JavaScript semantics.
 - [ ] #4 Large-result client paths use bounded pages/cursors or artifact metadata as defined by the shared protocol. No raw QGIS/Qt pointer, live object or QVariant crosses the binding boundary; copied values and opaque manager IDs retain their documented ownership and lifetime rules.
 - [ ] #5 FFI packages and native addons own no command parsing, argv dispatch or launcher implementation. Tests preserve removal of the built-in Python/Node CLI paths and do not recreate them; any separately distributed qgis-cli binary remains a packaging concern outside this task.
 - [ ] #6 Focused Python, Node and cross-language fixture tests pass through the applicable existing pure/native Qt/QGIS gates, with no WebEngine requirement for pure operations. Tests remain under tests/, behavior changes follow agreed public seams and red-green slices, and exact evidence or environmental blockers accompany acceptance checks.
@@ -83,4 +83,8 @@ AC5 — strongly proven. A grep for argv, sys.argv, process.argv, argparse, clic
 AC6 — tests are under tests/ in both packages and run in the existing gates (16 qgis-node tests, 18 qgis-py-dist tests at the 2026-10-10 baseline), with no WebEngine requirement for pure operations.
 
 Two items need a decision before they can be implemented rather than audited: whether the shared fixture should grow to cover every ErrorKind and the artifact-metadata operations, and whether cancellation is in scope at all.
+
+Approved reconstruction on arena/0e2fdd42-qgis-rust: test public qgis_py.invoke at the extension JSON boundary; export invokeWith(binding, operation, payload) in Node with a test-purpose doc comment and delegate normal invoke to it. Pin old/new/missing response versions before success or failure results and preserve supported/received details. TASK-42 AC2 fixture breadth and the owner-approved cancellation non-scope remain a separate slice; no push or merge authorized.
+
+Transport reconstruction evidence: Python test_transport.py characterizes the existing guard with 6 passing cases; Node transport.test.js first failed 6/6 with the absent invokeWith export, then passed after extracting the shared client path and adding supported/received mismatch detail. Old, newer and missing versions are rejected before both ok outcomes; requests are encoded intact, and assertions use public exception types, kind and detail rather than English matching. Focused real-addon Node suite: 22 passed (was 16); Python FFI suite: 24 passed (was 18). Raw invoke escape hatches and the Node injection seam are documented in both package READMEs and Node declarations. AC3 checked; overall task stays In Progress, AC2 breadth remains open. No native exports, launchers or engine wire shapes changed.
 <!-- SECTION:NOTES:END -->

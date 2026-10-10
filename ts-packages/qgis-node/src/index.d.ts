@@ -224,3 +224,20 @@ export declare function engineInfo(): EngineInfo;
  * reachable, which is what keeps a newer engine usable from an older package.
  */
 export declare function invoke(operation: string, payload?: unknown): unknown;
+
+/** The JSON callable boundary; public so contract tests can supply responses. */
+export interface InvokeBinding {
+	invoke(requestJson: string): string;
+}
+
+/**
+ * Run an operation through a supplied JSON binding.
+ *
+ * Public for contract tests that inject incompatible response envelopes.
+ * Normal invoke delegates here; importing the package still needs its addon.
+ */
+export declare function invokeWith(
+	binding: InvokeBinding,
+	operation: string,
+	payload?: unknown,
+): unknown;
