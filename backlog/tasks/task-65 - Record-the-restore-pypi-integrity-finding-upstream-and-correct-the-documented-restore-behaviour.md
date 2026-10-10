@@ -3,11 +3,11 @@ id: TASK-65
 title: >-
   Record the restore pypi integrity finding upstream and correct the documented
   restore behaviour
-status: In Progress
+status: Done
 assignee:
   - '@me'
 created_date: '2026-10-10 09:21'
-updated_date: '2026-10-10 09:54'
+updated_date: '2026-10-10 09:58'
 labels:
   - environment
   - sandbox
@@ -42,11 +42,11 @@ Sanctioned by the owner this session: file the upstream issue and record the kno
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 The root cause is recorded in .knowledge/env-provisioning.md with the evidence: the nine wheel names, the uv_cache.json timestamp mechanism, the RECORD embedding, and the 9 of 62 dist-info count
-- [ ] #2 An issue is filed on Archont561/pixi-sandbox carrying a reproduction and the root cause, and its number is recorded in this task and in env-provisioning.md
-- [ ] #3 The documented restore sequence in .agents/skills/session/SKILL.md no longer claims zero integrity failures, and states that a non-zero restore skips the pixi symlink so PATH must be set from .pixi/tools/linux-64
-- [ ] #4 The known limit states plainly that the fix is upstream and that the environments are usable despite the non-zero exit, so a future session does not re-diagnose it
-- [ ] #5 No generated file is hand-edited and pixi run gates still passes
+- [x] #1 The root cause is recorded in .knowledge/env-provisioning.md with the evidence: the nine wheel names, the uv_cache.json timestamp mechanism, the RECORD embedding, and the 9 of 62 dist-info count
+- [x] #2 An issue is filed on Archont561/pixi-sandbox carrying a reproduction and the root cause, and its number is recorded in this task and in env-provisioning.md
+- [x] #3 The documented restore sequence in .agents/skills/session/SKILL.md no longer claims zero integrity failures, and states that a non-zero restore skips the pixi symlink so PATH must be set from .pixi/tools/linux-64
+- [x] #4 The known limit states plainly that the fix is upstream and that the environments are usable despite the non-zero exit, so a future session does not re-diagnose it
+- [x] #5 No generated file is hand-edited and pixi run gates still passes
 <!-- AC:END -->
 
 ## Implementation Notes
@@ -70,3 +70,21 @@ Separate pre-existing finding, not caused by this task and not fixed here. pixi-
 
 A first invocation of init --check without the explicit paths produced three findings including a missing launcher at the repository root. That was my error, not drift: env-provisioning.md already warns that the default launcher path is restore.sh at the root while this repository keeps it under scripts/. Only the canonical invocation above should be quoted.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+The 18 integrity failures are root-caused, filed upstream and documented, and the two documents that described a restore which no longer happens are corrected.
+
+The cause is proven rather than inferred. The kept work dir holds exactly nine wheels under .pixi/.restore-work/pack-default/pypi and those are exactly the nine failing packages, so the correspondence is 1:1. pixi-pack transports pypi packages as wheels, pixi-unpack re-installs them with uv at restore time, and uv rewrites dist-info/uv_cache.json with a fresh wall-clock timestamp - the value found decodes to 2026-10-10T08:57:18Z, a moment during this restore - while dist-info/RECORD carries a sha256 line for that same file and so must change too. Two files times nine packages is the 18. The 53 conda-installed dist-infos verify clean and the pypi-free bun env reported 76366 entries with 0 failures, which is what isolates the cause to the uv install path.
+
+Filed as Archont561/pixi-sandbox issue 128 with the reproduction, versions, root cause, the registration impact, three suggested fixes ranked by size, and the consumer workarounds considered and rejected. The fix cannot be made here: the check is crates/pixi-sandbox-core/src/verify.rs, restore exposes no exclusion flag, and the launcher is generated, so it cannot carry a local patch while init --check fails the gate on drift.
+
+.knowledge/env-provisioning.md gained a Known limit subsection with that evidence, and its Using Tools After Restore block was independently wrong - it showed cargo and clang-format working directly, but neither is on a bare PATH here, only pixi run -- cargo is. The session skill claimed 0 failures and a pixi symlink that a non-zero exit never reaches; it now carries measured numbers, an explicit symlink step and a bullet in Known limits. That skill is repo-owned, since skills-lock.json does not list it, so a skills sync cannot revert the correction.
+
+No generated file was hand-edited: git status is empty for scripts/ and .github/workflows/.
+
+Reported and deliberately not fixed: pixi-sandbox init --check, run with the canonical arguments from env-provisioning.md, says .github/workflows/relock.yml no longer matches a fresh render. That file is untouched this session, last changed by the merge commit 7d8abb4, and carries the same 0.5.2 stamp as the binary rendering it, so the drift predates this work. It fails nothing today because init --check is in no pixi task, not in gates and not in ci.yml; only the scheduled upgrade job would catch it, and that job is the sanctioned route.
+
+Evidence: pixi run gates exits 0 with 8 of 8 tasks, and the environments are usable - cargo 1.96.1, bun 1.3.11, typer 0.27.3 and questionary all answer, bun-install restored 1086 packages offline in 2.25 s, and turbo run test exits 0 with 12 of 12 tasks.
+<!-- SECTION:FINAL_SUMMARY:END -->

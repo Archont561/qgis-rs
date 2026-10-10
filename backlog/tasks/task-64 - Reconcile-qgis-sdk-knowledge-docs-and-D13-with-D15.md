@@ -1,11 +1,11 @@
 ---
 id: TASK-64
 title: Reconcile qgis-sdk knowledge docs and D13 with D15
-status: In Progress
+status: Done
 assignee:
   - '@me'
 created_date: '2026-10-10 09:21'
-updated_date: '2026-10-10 09:36'
+updated_date: '2026-10-10 09:57'
 labels:
   - qgis-sdk
   - docs
@@ -37,13 +37,13 @@ Out of scope, deliberately: README.md, docs getting-started/python.mdx, .knowled
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 .knowledge/qgis-sdk.md describes only what the package exports: no rust_accelerated, no HAS_RUST, no qgis_sdk render/features/geometry/crs modules, no rust init or rust build subcommand, no rust flag, no Cargo or PyO3 scaffolding; frontmatter title, description and tags match
-- [ ] #2 The qgis-sdk.md CLI section lists the shipped typer commands and states the D15 section 2 prompt rule: questionary only at a TTY, every question answered by a flag, exit code 2 on a missing plugin name when non-interactive
-- [ ] #3 The qgis-sdk.md evidence table names no Rust CLI and no archived task as an owner, and its test count claim matches a measured run
-- [ ] #4 D13 Context, section 3 dependency graph, section 4, Consequences, Rejected alternatives and Implementation gates agree with D15 section 1 and section 3 as amended; no live text claims a Rust engine owns the qgis-sdk CLI
-- [ ] #5 The published docs site no longer documents removed API in plugin-development.mdx and python-sdk.mdx, including the HAS_RUST snippet that raises AttributeError
-- [ ] #6 Historical records stay unchanged (log.md entries, D14, completed task notes, and doc-7 which already carries a supersession banner), and a grep shows every removed identifier surviving only in a historical record, a test that pins its absence, or an explicit retirement note - never presented as available API
-- [ ] #7 pixi run gates passes and the docs site still builds
+- [x] #1 .knowledge/qgis-sdk.md describes only what the package exports: no rust_accelerated, no HAS_RUST, no qgis_sdk render/features/geometry/crs modules, no rust init or rust build subcommand, no rust flag, no Cargo or PyO3 scaffolding; frontmatter title, description and tags match
+- [x] #2 The qgis-sdk.md CLI section lists the shipped typer commands and states the D15 section 2 prompt rule: questionary only at a TTY, every question answered by a flag, exit code 2 on a missing plugin name when non-interactive
+- [x] #3 The qgis-sdk.md evidence table names no Rust CLI and no archived task as an owner, and its test count claim matches a measured run
+- [x] #4 D13 Context, section 3 dependency graph, section 4, Consequences, Rejected alternatives and Implementation gates agree with D15 section 1 and section 3 as amended; no live text claims a Rust engine owns the qgis-sdk CLI
+- [x] #5 The published docs site no longer documents removed API in plugin-development.mdx and python-sdk.mdx, including the HAS_RUST snippet that raises AttributeError
+- [x] #6 Historical records stay unchanged (log.md entries, D14, completed task notes, and doc-7 which already carries a supersession banner), and a grep shows every removed identifier surviving only in a historical record, a test that pins its absence, or an explicit retirement note - never presented as available API
+- [x] #7 pixi run gates passes and the docs site still builds
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -82,3 +82,21 @@ Not changed, recorded instead:
 
 The gate caught a regression this task introduced. The first draft of section 5.1 named the retired command literally, and pixi run xtask check-sources failed with retired name: .knowledge/qgis-sdk.md. It is reworded to describe the alias without spelling it. The check allowlists backlog/, .knowledge/decisions/, .knowledge/log.md and CHANGELOG.md as history, which is why D13 and the archived task notes may still name it.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+The knowledge base and the published docs now describe the SDK that ships.
+
+.knowledge/qgis-sdk.md retired sections 2, 3, 7.3 and 8 in place rather than deleting them, because doc-1 cites the document by section number and so does its own evidence table; each keeps its number and names the decision that removed it. Rust mentions fell from 72 to 29, and every remaining one is a retirement note. The CLI section is rewritten against the shipped typer help, section 6 gained a banner saying plugin.toml is a TASK-3 proposal that nothing reads, and section 12 lost the Rust binary, the archived owners and two pixi tasks that do not exist.
+
+D13 had a banner and a corrected enforcement table but seven places behind them still described the Rust CLI; all seven now agree with D15 sections 1 and 3 as amended, including the dependency graph, which no longer draws edges from crates deleted in 2d8d69a, and the rejected alternative that D15 reversed, which is marked as reversed rather than silently dropped.
+
+The published pages were worse than a narrow grep suggested: python-sdk.mdx carried eight separate Rust claims including a bin/ tree listing qgis-sdk twice as a binary and an alias, and told users to print qgis_sdk.HAS_RUST, which raises AttributeError against the shipped package. plugin-development.mdx carried a whole Rust Acceleration section. Both are corrected, and the docs site builds 50 pages through astro check and astro build.
+
+AGENTS.md documented turbo run test --filter=qgis-sdk, which resolves to nothing; the package is qgis-sdk-py.
+
+Historical records were left alone on purpose: log.md, D14, doc-7 (already bannered and marked retired) and completed task notes. Three things are reported rather than changed, because none was sanctioned here and all three are contract or architecture decisions: TASK-43 AC5 still names qgis_sdk._core, which no longer exists; D07 is a draft scope decision about Rust plugins that D15 only answers in passing; and plugin-development.mdx still shows qgis-sdk publish as though it uploads.
+
+Evidence: pixi run xtask check-sources passes, which is the gate that caught a retired name this task itself introduced in a first draft of section 5.1; turbo run build --filter=qgis-rs-docs exits 0 with 50 pages; pixi run gates exits 0 with 8 of 8 tasks. Suite unchanged and green at 12 of 12 turbo test tasks: Rust 323 plus 30, qgis-sdk-py 490 passed with 3 skipped and 8 deselected, qt 3, qgis 5, qgis-py-dist 18, bun 160, ctest 1 target at 100 percent.
+<!-- SECTION:FINAL_SUMMARY:END -->
