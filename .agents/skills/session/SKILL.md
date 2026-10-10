@@ -25,20 +25,37 @@ Arena sandbox starts without them *and without a `pixi` binary at all*. Check be
 ls -d .pixi/envs/default .pixi/envs/bun
 # both missing (an airlocked machine, a fresh clone, an Arena sandbox):
 bash scripts/restore.sh   # generated; reads branch/bundle/platform out of pixi-sandbox.toml
-export PATH="$HOME/.local/bin:$PATH"   # restore registers pixi there; your shell predates it
+# Exits 1 on the pypi integrity bug (pixi-sandbox#128) — the envs are fine, continue.
+# That non-zero exit also skips registration, so link pixi yourself:
+mkdir -p ~/.local/bin && ln -sf "$PWD/.pixi/tools/linux-64/pixi" ~/.local/bin/pixi
+export PATH="$HOME/.local/bin:$PATH"   # your shell predates the link either way
 pixi run bun-install                   # node_modules is NOT part of the pack — see below
 ```
 
-**Verified again 2026-10-04, from a sandbox with no pixi at all:** `scripts/restore.sh` finishes
-in about four minutes and needs only github.com. It fetches `sandbox/developer-linux-64` (8708
-blobs, 1705.4 MiB, every declared byte verified), wants ~8.1 GiB of scratch, and leaves behind
+**Verified again 2026-10-10, from a sandbox with no pixi at all:** `scripts/restore.sh` finishes
+in about three minutes and needs only github.com. It fetches `sandbox/developer-linux-64` (8719
+blobs, 1707.4 MiB, every declared byte verified), wants ~8.1 GiB of scratch, and leaves behind
 `pixi 0.81.0` + `pixi-sandbox 0.5.2` + `pixi-unpack 0.7.11` under `.pixi/tools/linux-64/`,
-`.pixi/envs/bun` (1683.7 MiB), `.pixi/envs/default` (4725.1 MiB), and a vendored crate graph of 162
+`.pixi/envs/bun` (1683.7 MiB), `.pixi/envs/default` (4733.2 MiB), and a vendored crate graph of 162
 crates at `.pixi-sandbox/vendor` wired in through `CARGO_HOME=.pixi-sandbox/cargo-home` (a pixi
-activation hook sets it; the project's `.cargo/` is left alone). It then re-verifies the tree
-against the manifest — 75732 entries, 0 failures — and symlinks `pixi` into `~/.local/bin`, which
-an already-running shell will not see. Everything it writes is git-ignored (`.gitignore` ignores
-`.*`, plus an explicit `.pixi-sandbox/`), so `git status` stays clean after a restore.
+activation hook sets it; the project's `.cargo/` is left alone). Everything it writes is git-ignored
+(`.gitignore` ignores `.*`, plus an explicit `.pixi-sandbox/`), so `git status` stays clean after a
+restore.
+
+It then re-verifies the tree against the manifest, and **that check now fails — read this before you
+diagnose it**. The `bun` env verifies clean (76366 entries, 0 failures) but `default` reports 18
+`integrity` mismatches and restore exits 1, because the packed environment gained pypi packages when
+the qgis-sdk CLI moved to typer and questionary. It is an upstream bug in pixi-sandbox, filed as
+[pixi-sandbox#128](https://github.com/Archont561/pixi-sandbox/issues/128) and root-caused in
+[env-provisioning.md](/.knowledge/env-provisioning.md): pixi-pack carries pypi packages as wheels,
+pixi-unpack re-installs them with uv, and uv rewrites `dist-info/uv_cache.json` with a fresh
+wall-clock timestamp plus the `RECORD` that hashes it. **The environments are complete and usable** —
+`cargo 1.96.1`, `bun 1.3.11` and `typer 0.27.3` all answer — so note the exit code and continue.
+
+One operational consequence, because it costs ten minutes: exiting non-zero means restore never
+reaches user-tool registration, so `pixi` is **not** symlinked into `~/.local/bin` and the
+`export PATH` below finds nothing. Symlink `.pixi/tools/linux-64/pixi` into `~/.local/bin` yourself,
+or call it by path.
 
 After the restore `pixi install --frozen --offline` is a no-op, `pixi run -- cargo --version`
 answers 1.96.1 and `pixi run -- bun --version` answers 1.3.11. **`node_modules` is not in the
@@ -123,6 +140,13 @@ there is no `git checkout pixi.toml` step (that was fixed upstream).
 Check these rather than inheriting them; the list changed completely between the codespace this
 file was first written on and the Arena sandbox of 2026-10-03.
 
+- **`scripts/restore.sh` exits 1 and that is not your problem.** Since the qgis-sdk CLI gained pypi
+  dependencies, the final tree check reports 18 `integrity` failures in `default` and restore exits
+  non-zero. Upstream bug, root-caused and filed as
+  [pixi-sandbox#128](https://github.com/Archont561/pixi-sandbox/issues/128); the environments are
+  complete and usable, so continue. The exit also skips the `pixi` symlink into `~/.local/bin`, so
+  link `.pixi/tools/linux-64/pixi` yourself before the `export PATH` below. Details in §1 and in
+  [env-provisioning.md](/.knowledge/env-provisioning.md).
 - **`gh` may well be installed and may well be able to write.** On the Arena sandbox it is at
   `/usr/bin/gh`, authenticated as `Archont561` via `GH_TOKEN`, and
   `gh api repos/Archont561/qgis-rust --jq .permissions` reports `push` and `admin` — so pull

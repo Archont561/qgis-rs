@@ -141,8 +141,9 @@ what this snapshot actually packs:
 Deliberately **not** included, unlike the old hand edit: `package.json` / `bun.lock`,
 `ts-packages/**` and `py-packages/**` (the transport is conda environments, pinned
 tools and `cargo vendor` — it carries no `node_modules`, so a JS dependency bump
-cannot change a packed byte, and the Python distributions are developed in place with
-`maturin develop` rather than packed), plus `crates/*/build.rs` (`cargo vendor`
+cannot change a packed byte, and the Python distributions are developed in place rather
+than packed — `qgis-py` with `maturin develop`, `qgis-sdk` with its setuptools backend,
+which D15 §4 switched it to), plus `crates/*/build.rs` (`cargo vendor`
 resolves the dependency graph, not what a build script compiles). The old list also
 named `ts-packages/qgis-node/Cargo.toml`, `ts-packages/qgis-node/build.rs` and
 `ts-packages/qgis-node/package-scripts/**` — paths that stopped existing when
@@ -249,12 +250,69 @@ Blobs are verified against the manifest's SHA-256 digests before anything is wri
 
 ```sh
 git fetch origin sandbox/developer-linux-64
-scripts/restore.sh
-cargo build -p qgis-sys          # works — cargo on PATH (offline)
-clang-format --version            # works — clang-tools on PATH
-pixi --version                   # works — bundled pixi
-QT_QPA_PLATFORM=offscreen cargo test -p qgis-sys --test application_info -- --test-threads=1
+bash scripts/restore.sh
+export PATH="$HOME/.local/bin:$PATH"   # restore registers pixi there; a shell that predates it will not see it
+pixi --version                         # 0.81.0, the bundled pixi
+pixi run -- cargo build -p qgis-sys    # cargo is NOT on a bare PATH — go through pixi
+pixi run -- clang-format --version     # same for clang-tools
+pixi run bun-install                   # node_modules is not part of the pack
+QT_QPA_PLATFORM=offscreen pixi run -- cargo test -p qgis-sys --test application_info -- --test-threads=1
 ```
+
+The toolchain lives in `.pixi/envs/default/bin`, which only a `pixi run`
+activation puts on `PATH`. Measured 2026-10-10 on a freshly restored Arena
+sandbox: a bare `cargo` or `clang-format` answers `command not found`, while
+`pixi run -- cargo --version` answers 1.96.1 and `pixi run -- bun --version`
+answers 1.3.11. The block above used to show `cargo build` and `clang-format`
+working directly, which they do not.
+
+### Known limit: the restored-tree check fails on pypi packages
+
+`scripts/restore.sh` exits **1** on its final verification with 18 `integrity`
+failures in the `default` environment, and this is an upstream bug rather than a
+damaged restore. Filed as
+[pixi-sandbox#128](https://github.com/Archont561/pixi-sandbox/issues/128).
+
+**The environments are complete and usable.** Treat the non-zero exit as the
+verification defect it is and continue working; do not re-run the restore, and do
+not conclude that the tree is corrupt.
+
+Root cause, measured to a 1:1 correspondence:
+
+- pixi-pack transports pypi packages **as wheels**. The kept work dir holds
+  exactly nine of them under `.pixi/.restore-work/pack-default/pypi/` —
+  `annotated_doc`, `markdown_it_py`, `mdurl`, `prompt_toolkit`, `questionary`,
+  `rich`, `shellingham`, `typer`, `wcwidth` — and those are exactly the nine
+  failing packages.
+- `pixi-unpack` therefore re-installs them with uv at restore time, and uv writes
+  install metadata that cannot be reproduced. `dist-info/uv_cache.json` embeds a
+  wall-clock timestamp: the value found after the 2026-10-10 restore decodes to
+  `2026-10-10T08:57:18Z`, i.e. during the restore, and files installed in the
+  same batch share it — which is why several packages report an identical `got`
+  digest.
+- `dist-info/RECORD` contains a `sha256=` line **for `uv_cache.json`**, so when
+  that file changes `RECORD` must change too. Two files per package × nine
+  packages = the 18 failures.
+- Only 9 of the 62 `dist-info` directories in `default` carry a `uv_cache.json`;
+  the 53 conda-installed ones verify clean. The `bun` environment has no pypi
+  packages at all and reports 76366 entries, 0 failures.
+
+So the pack-time manifest records digests for bytes the restore path is designed
+to regenerate, and no consumer action can make them match.
+
+Two consequences worth knowing before they cost time:
+
+- Because restore exits non-zero **after** unpacking correctly, it never reaches
+  user-tool registration, so `pixi` is not symlinked into `~/.local/bin`. The
+  documented `export PATH="$HOME/.local/bin:$PATH"` then finds nothing and the
+  next command dies with `pixi: command not found`. Remedy: symlink
+  `.pixi/tools/linux-64/pixi` into `~/.local/bin` yourself, or call it by path.
+- The fix is not available in this repository. `restore` exposes no exclusion
+  flag, and the launcher is generated: `pixi sandbox init` refuses to overwrite a
+  locally modified generated file, and `init --check` fails the gate on drift, so
+  `scripts/restore.sh` cannot carry a local patch. Moving the pypi dependencies
+  to conda-forge would avoid uv entirely but needs a relock, which an airlocked
+  machine cannot perform.
 
 ## Relationship to pixi.toml
 
