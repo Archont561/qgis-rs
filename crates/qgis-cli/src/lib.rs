@@ -8,6 +8,7 @@
 pub mod cli;
 pub mod commands;
 mod discovery;
+mod inspection;
 mod validation;
 
 pub use cli::{Cli, Command};
@@ -25,7 +26,9 @@ pub fn main_entry() -> ExitCode {
         Ok(()) => ExitCode::SUCCESS,
         Err(error) => {
             eprintln!("qgis-cli: {error:#}");
-            if error.is::<validation::InvalidInput>() {
+            if let Some(failure) = error.downcast_ref::<inspection::Failure>() {
+                ExitCode::from(failure.exit_code())
+            } else if error.is::<validation::InvalidInput>() {
                 ExitCode::from(10)
             } else {
                 ExitCode::FAILURE

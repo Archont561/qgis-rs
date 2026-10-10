@@ -4,7 +4,7 @@ title: Build the pure-Rust qgis-cli capability surface
 status: In Progress
 assignee: []
 created_date: '2026-10-03 09:35'
-updated_date: '2026-10-10 13:28'
+updated_date: '2026-10-10 15:07'
 labels:
   - cli
   - rust
@@ -56,4 +56,12 @@ Final discovery-slice evidence: pixi run gates exit 0 (8/8); CARGO_NET_OFFLINE=t
 Approved validation slice implemented at the binary and checked-tile domain seams: validate extent/crs/zoom/tile, normalized deterministic JSON, syntax-only CRS, exits 0/10/2; legacy execution errors keep exit 1. Tile::checked_bounds guards invalid indices before arithmetic without changing existing bounds behavior. Each new kind and the domain guard had an observed red test before implementation. AC2 remains open because inspect/tiles plan/batch plan are not implemented; AC3-AC6 remain open for the overall task. Final gate evidence follows.
 
 Validation slice verified: focused pure CLI/render suites 86 integration tests plus 1 doc test; native-feature validation subprocess suite 11/11; clippy -D warnings passed. pixi run gates exit 0 (8/8); offline loose-environment turbo test exit 0 (12/12), Rust 340 + 30 (was 327 + 30), SDK 490 passed/3 skipped/8 deselected, qt 3, qgis 5, qgis-py-dist 18, Bun 160, CTest 1 target. Existing 4568-tile golden values and legacy error behavior remain covered. No new external dependencies; no push or PR. AC1 remains the only checked criterion; remaining validation types and inspect/planning/artifact/resource/cancellation contracts are still pending.
+
+Owner approved metadata-only inspect slice: qgis-cli inspect <project> [--json], file_metadata scope with qgis_validation not_performed, no XML/ZIP parsing. Public seams: CLI argv/streams/status, legacy info and discovery, observable filesystem side effects. Exits 0/2/10/11/14 are scoped to inspect; regular files and symlinks to regular files accepted. Red-green slices first; task remains In Progress with AC1 only checked. No push or merge authorized.
+
+Metadata-only inspect implemented at the approved subprocess seams. Reports supplied path, extension-derived format and byte size with inspection=file_metadata and qgis_validation=not_performed. No contents/backend/network/artifact work. Symlinks follow regular targets; directories/special files, unsupported extensions and non-UTF-8 paths are invalid input. JSON failures carry code/message on stdout plus stderr diagnostics; exits 0/2/10/11/14 are scoped to inspect. Legacy info JSON/text and exit 1 are pinned; discovery still derives commands from clap, with no new engine operation or dependency.
+
+Observed red-to-green for the missing command, missing-input classification, invalid/non-file classification, filesystem errors, human report and non-UTF-8 serialization panic. Pure CLI/render: 107 integration tests + 1 doc test passed. Native-feature CLI: 49 tests passed (20 inspection, 15 legacy CLI, 3 discovery, 11 validation). Pure clippy -D warnings, source/boundary checks, pure dependency tree and ldd checks passed. Docs build passed (50 pages). Full offline/loose turbo suite passed 12/12 (4 cached): Rust 361 + 30, SDK 490 passed/3 skipped/8 deselected, qt 3, qgis 5, qgis-py-dist 18, Bun 160, CTest 1 target. Repository gate result follows. AC1 remains the only checked criterion; this does not complete inspect manifests or AC2-AC6.
+
+Repository gate passed after the focused local commit: pixi run gates exit 0, 8/8 (4 cached), with formatting, workspace Clippy and conventional-message hooks passing. Final help/docs clarify that inspect never initializes QGIS, but a native-enabled binary still needs its shared libraries; pure use is --no-default-features. No further runtime behavior change. Full task remains In Progress with AC1 only checked; no push or merge.
 <!-- SECTION:NOTES:END -->

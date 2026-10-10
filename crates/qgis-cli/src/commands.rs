@@ -27,6 +27,7 @@ pub fn run(command: Command) -> Result<()> {
         Command::Render(args) => render(args),
         Command::Tiles(args) => tiles(args),
         Command::Batch(args) => batch(args),
+        Command::Inspect(args) => crate::inspection::run(args),
         Command::Info(args) => info(args),
         Command::Serve(args) => serve(args),
         Command::Export(args) => export(args),

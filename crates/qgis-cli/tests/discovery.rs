@@ -39,12 +39,16 @@ fn capabilities_are_deterministic_and_separate_commands_from_engine_operations()
     let commands = report["commands"].as_array().unwrap();
     assert!(commands.contains(&serde_json::json!("info")));
     assert!(commands.contains(&serde_json::json!("validate")));
-    assert!(!commands.contains(&serde_json::json!("inspect")));
+    assert!(commands.contains(&serde_json::json!("inspect")));
     assert!(report["command_note"]
         .as_str()
         .unwrap()
         .contains("not availability"));
+    let help = run(&["--help"]);
+    assert!(help.status.success());
+    assert!(String::from_utf8_lossy(&help.stdout).contains("inspect"));
     let ops = report["engine"]["operations"].as_array().unwrap();
+    assert!(!ops.iter().any(|op| op["name"] == "inspect"));
     assert!(ops
         .iter()
         .any(|op| op["name"] == "plan_tiles" && op["available"] == true));
