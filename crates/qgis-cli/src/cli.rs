@@ -5,7 +5,7 @@
 
 use std::path::PathBuf;
 
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
 
 /// Render, tile, inspect and serve QGIS projects.
 #[derive(Debug, Parser)]
@@ -19,6 +19,14 @@ pub struct Cli {
 /// Every `qgis-cli` subcommand.
 #[derive(Debug, Subcommand)]
 pub enum Command {
+    /// Validate pure GIS domain input without loading QGIS
+    Validate(ValidateArgs),
+    /// Report CLI, engine, transport and backend versions
+    Version(DiscoveryArgs),
+    /// Describe engine capabilities and the parsed command surface
+    Capabilities(DiscoveryArgs),
+    /// Diagnose engine readiness and optional native backend availability
+    Doctor(DiscoveryArgs),
     /// Render a project to an image
     Render(RenderArgs),
     /// Build an XYZ tile pyramid
@@ -201,4 +209,38 @@ pub struct McpArgs {
     /// Print the tools the server offers, then exit
     #[arg(long)]
     pub list_tools: bool,
+}
+
+/// Output options for read-only discovery commands.
+#[derive(Debug, Parser)]
+pub struct DiscoveryArgs {
+    /// Write a deterministic JSON report to stdout
+    #[arg(long)]
+    pub json: bool,
+}
+
+/// Pure input types supported by `validate`.
+#[derive(Debug, Clone, Copy, ValueEnum)]
+pub enum ValidateKind {
+    /// Finite, ordered coordinates: minx,miny,maxx,maxy
+    Extent,
+    /// Authority-code syntax only, not CRS database recognition
+    Crs,
+    /// Inclusive zoom level or range within the supported domain
+    Zoom,
+    /// XYZ tile coordinates written as z/x/y
+    Tile,
+}
+
+/// `qgis-cli validate <kind> <value>`.
+#[derive(Debug, Parser)]
+pub struct ValidateArgs {
+    /// Domain type to validate
+    #[arg(value_enum)]
+    pub kind: ValidateKind,
+    /// Input text; precede a leading minus with `--`
+    pub value: String,
+    /// Write a structured report to stdout
+    #[arg(long)]
+    pub json: bool,
 }

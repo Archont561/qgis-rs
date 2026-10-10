@@ -11,6 +11,10 @@ The `qgis-cli` binary provides command-line access to qgis-rs rendering and serv
 
 | Command | Description |
 |---------|-------------|
+| `version` | Report CLI, engine, transport, target and backend versions |
+| `capabilities` | Discover operation availability and domain limits |
+| `doctor` | Diagnose pure-engine readiness and optional QGIS support |
+| `validate` | Validate extents, CRS syntax, zoom ranges and XYZ tiles |
 | [`render`](/cli/render) | Render a QGIS project to an image |
 | [`tiles`](/cli/tiles) | Generate tile pyramids |
 | [`batch`](/cli/batch) | Batch render multiple extents |
@@ -27,6 +31,89 @@ The `qgis-cli` binary provides command-line access to qgis-rs rendering and serv
 [`features`](/reference/features), and `serve` onto
 [`server`](/reference/server).
 :::
+
+## Discovery
+
+```bash
+qgis-cli version --json
+qgis-cli capabilities --json
+qgis-cli doctor --json
+```
+
+These read-only commands share a report containing `cli` (name and version),
+`target` (OS and architecture), `engine` (version, transport version, backend,
+limits and operation availability), `commands`, `command_note`, `status` and
+`diagnosis`. Omit `--json` for human-readable output. The existing `--version`
+flag still prints only the CLI name and version.
+
+`commands` describes the parser surface, **not execution availability**.
+`engine.operations` lists the protocol vocabulary with an `available` boolean
+and a `reason` for unavailable routes. Native manager support alone does not
+make an unimplemented engine route or CLI command available. In particular,
+these discovery commands do not change the existing render/export/serve gates.
+
+The backend report distinguishes `compiled` from live `available`, includes
+`qgis_version` when available, and retains the backend `error` on failure.
+Native builds probe through the manager's owner thread; pure builds do not load
+QGIS. Reported limits are the enforced zoom and latitude domain limits, not
+promises of worker, memory or cancellation controls.
+
+For a pure Rust build, with no QGIS, Qt, Python, Node or WebEngine dependency:
+
+```bash
+cargo build -p qgis-cli --no-default-features
+```
+
+Successful reports exit **0**, including `doctor` when the optional backend is
+absent and the pure engine is healthy. Argument errors exit **2** with diagnostics
+on stderr. JSON stdout contains only the report; native-library diagnostics may
+appear on stderr. Reports are deterministic for the same build and runtime
+state and perform no implicit downloads or artifact writes.
+
+`doctor` explains build/runtime requirements; it does not install dependencies,
+scan profiles, or guarantee that a particular project/provider will work.
+Project-manifest inspection, new planning commands, additional validation types
+and resource policies remain later TASK-41 slices.
+
+## Validation
+
+```bash
+qgis-cli validate extent "14,50,15,51" --json
+qgis-cli validate crs "epsg:4326" --json
+qgis-cli validate zoom "10-14" --json
+qgis-cli validate tile "10/551/340" --json
+# Use -- before values beginning with a minus; put flags before --:
+qgis-cli validate --json extent -- "-180,-90,180,90"
+```
+
+Validation uses only pure Rust domain types, even in a native-enabled build.
+It does not load a backend, write artifacts/configuration, or access the network.
+
+- **extent**: four finite, ordered coordinates. Zero-width and zero-height
+  extents remain valid, matching the existing domain type. These are generic
+  coordinates, not necessarily longitude/latitude.
+- **crs**: authority-code syntax and case normalization only. The normalized
+  value includes `validation: "syntax_only"`; success does **not** establish
+  that the identifier exists in a CRS database or supports transformations.
+- **zoom**: a single level or inclusive ordered range within 0–22.
+- **tile**: unsigned `z/x/y` coordinates, with a supported zoom and indices
+  strictly below the number of tiles per side. Invalid indices are rejected,
+  never clamped. The normalized value includes the tile and EPSG:4326 bounds.
+
+All JSON reports contain `kind`, `valid`, `value`, and `error`. Valid inputs
+exit **0**, with a normalized value and `error: null`. Invalid domain inputs
+exit **10**, with `value: null` and an error containing `code: "invalid_input"`
+and `message`. The diagnostic is also written to stderr, never mixed into JSON
+stdout. Reports are deterministic for the same input/build.
+
+Missing arguments, unknown kinds, and invalid options exit **2**, produce no
+JSON report, and write usage diagnostics to stderr. Omit `--json` for a readable
+success report; human-mode domain failures write only to stderr. This new exit
+mapping applies only to `validate`; legacy commands keep their existing exits.
+
+Render settings, output-format validation, batch manifests, and operation
+requests are not part of this slice. Use `validate --help` for the supported
+kinds rather than interpreting discovery's engine operation list as validators.
 
 ## Installation
 

@@ -2,14 +2,29 @@
 type: Decision
 id: D07
 title: "Project Scope — Rust QGIS Plugins via PyO3"
-description: "Pivot to Rust computation engines behind QGIS Processing plugins via PyO3, bypassing CXX entirely."
-status: draft
+description: "Retired, unadopted scope proposal to replace QGIS native bindings with Rust computation engines behind Processing plugins. Preserved only as history."
+status: rejected
 tags: [scope, pyo3, plugins, architecture, pivot]
 date: 2026-09-17T00:00:00Z
 generated: { by: arena-agent/qgis-rs-kb-init, at: 2026-09-17T20:00:00Z }
 ---
 
 # D07: Rust QGIS Plugins via PyO3
+
+> **Retired on 2026-10-10 by owner decision: rejected draft, never adopted.**
+> The proposal below is historical, not an implementation requirement or a
+> current roadmap. Its proposed deprecation of `qgis-sys`, replacement of the
+> native-binding architecture, and supersession of D01–D06 did **not** take effect.
+>
+> Current ownership is defined by [D12](D12-qgis-native-manager-over-c-abi.md),
+> [D13](D13-rust-cli-ffi-and-qgis-sdk-boundaries.md), and
+> [D15](D15-qgis-sdk-cli-pure-python-typer.md): native QGIS bindings and the Rust
+> `qgis-cli` remain; `qgis-sdk` is pure Python on PyQGIS/PyQt, with no SDK-owned
+> Rust extension or acceleration adapter. A plugin author may manage a separate
+> Rust library themselves, but that is not this repository's SDK contract.
+>
+> The original rationale, examples and estimates are retained below for history;
+> their presence does not constitute verified benchmark or distribution evidence.
 
 ## The Existential Question
 
