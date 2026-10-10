@@ -150,8 +150,8 @@ bun x turbo run test
 # application_info first (no QGIS data), then the full lifecycle/vector tests
 bun x turbo run test --filter=@qgis/rust
 
-# Python plugin SDK alone (runs without QGIS)
-bun x turbo run test --filter=qgis-sdk
+# Python plugin SDK alone (runs without QGIS) — the package name is qgis-sdk-py
+bun x turbo run test --filter=qgis-sdk-py
 ```
 
 ### Test Requirements

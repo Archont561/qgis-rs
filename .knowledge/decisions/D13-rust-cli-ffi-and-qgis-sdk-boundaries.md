@@ -12,7 +12,7 @@ date: 2026-10-03
 
 ## Context
 
-The repository contains a standalone GIS engine and CLI, Python and Node bindings, a Rust-backed plugin tooling CLI, and a Python/PyQt SDK that runs inside QGIS. They share Rust code, but they do not have the same runtime owner, input/output contract, or dependency requirements.
+The repository contains a standalone GIS engine and CLI, Python and Node bindings, and a Python/PyQt SDK that runs inside QGIS. The plugin tooling CLI belongs to that SDK and is pure Python; the Rust-backed implementation this record originally described was retired by [D15](D15-qgis-sdk-cli-pure-python-typer.md). They share Rust code, but they do not have the same runtime owner, input/output contract, or dependency requirements.
 
 The standalone `qgis-rs` package must remain usable without importing PyQGIS. The QGIS plugin SDK must run with the Python and Qt ABI supplied by the host QGIS installation. A direct dependency from `qgis-sdk` to `qgis-py` would couple two different extensions and make plugin installation depend on a separate standalone-engine wheel.
 
@@ -47,19 +47,26 @@ qgis-protocol <- qgis-engine <- qgis-render
                        |
                     qgis-cli
 
-qgis-sdk-core -> qgis-protocol
-qgis-sdk-core may reuse qgis-engine/qgis-render where useful
-qgis_sdk._core -> qgis-sdk-core
 qgis_py._core -> qgis-engine
 ```
 
-`qgis-sdk` must not directly depend on `qgis-py`. Optional plugin acceleration may use a separately validated Rust engine adapter, but the base SDK must not require `qgis-rs` or its PyO3 extension.
+`qgis-sdk` is absent from that graph because it has no Rust at all. D15 §3 as
+amended by TASK-57 removes every Rust path from it: `crates/qgis-sdk` and
+`crates/qgis-sdk-core` were deleted in `2d8d69a`, there is no `qgis_sdk._core`
+extension, and the CLI is a typer application at
+`py-packages/qgis-sdk/src/qgis_sdk/cli.py`. The edges this record used to draw
+from `qgis-sdk-core` to `qgis-protocol` describe crates that do not exist.
+
+`qgis-sdk` must not directly depend on `qgis-py`, and now cannot: there is no
+native module on either side to couple. The optional-acceleration adapter this
+section allowed is ruled out too — a plugin that wants a Rust hot path builds and
+ships its own extension, outside the SDK.
 
 ### 4. Keep CLI and FFI contracts separate
 
-The canonical Rust CLI owns argument parsing, terminal output, process signals, exit codes, progress presentation, and subprocess orchestration. FFI owns structured requests, structured responses, typed host wrappers, and host-language exceptions.
+This separation is about `qgis-cli`, the GIS-execution CLI, which stays Rust (D15 §1). It owns argument parsing, terminal output, process signals, exit codes, progress presentation, and subprocess orchestration. FFI owns structured requests, structured responses, typed host wrappers, and host-language exceptions.
 
-Python and npm distributions may ship thin launchers for the canonical Rust binaries. Launchers preserve arguments, stdout, stderr, signals, and exit codes; they do not implement fallback command semantics.
+The plugin CLI is not a launcher and is not covered by this section. `qgis-sdk` parses its own arguments in Python with typer, and `qgis-plugin` is retired rather than forwarded (D15 §1). The thin launchers this record permitted were built for it and have since been removed from both `qgis-py` (`47a909a`) and `qgis-node` (`41b02b4`), so no Python or npm distribution ships a launcher for a Rust binary today. What survives is the rule behind them: a launcher preserves arguments, stdout, stderr, signals and exit codes, and never implements fallback command semantics.
 
 ### 5. Keep QGIS ownership explicit
 
@@ -71,14 +78,14 @@ Pure Rust CLI operations require no QGIS, Python, Qt, or WebEngine. Native QGIS 
 
 - A portable pure-Rust CLI can run in CI and server environments without QGIS.
 - Python and Node clients share one protocol and one error vocabulary.
-- Plugin developers receive a Rust-native CLI without changing the Python runtime model of QGIS plugins.
+- Plugin developers receive a CLI that matches the Python runtime model of QGIS plugins, with no Rust toolchain, no native extension and no second implementation to drift (D15).
 - The QGIS SDK can use native QGIS widgets and Processing without leaking GUI objects into the standalone engine.
 - Package and ABI failures are visible as capability or installation errors rather than silent alternate implementations.
 
 ### Costs
 
 - There are several named products and package entry points to document.
-- Some plugin commands orchestrate Python, QGIS, Cargo, maturin, or frontend tools instead of implementing those ecosystems internally.
+- Some plugin commands orchestrate Python, QGIS, pytest or frontend tools instead of implementing those ecosystems internally. `cargo` and `maturin` are no longer among them: D15 §3 as amended removed the cargo passthrough, so the plugin CLI drives no Rust build.
 - Optional acceleration needs explicit ABI and capability checks.
 - Shared protocol and cross-language fixtures become release obligations.
 
@@ -89,7 +96,7 @@ Pure Rust CLI operations require no QGIS, Python, Qt, or WebEngine. Native QGIS 
 | Make `qgis-sdk` depend on `qgis-py` | Couples unrelated Python extensions and QGIS's embedded Python ABI to the standalone engine package. |
 | Put every SDK command in `qgis-cli` | Mixes GIS execution with plugin source/build/package workflows and creates unclear runtime requirements. |
 | Expose `run_cli(argv)` as the FFI API | Mixes process semantics with library semantics and duplicates stdout, stderr, signal, and exit-code handling. |
-| Let Python or JavaScript keep fallback command implementations | Creates a second set of answers and allows silent behavior drift from Rust. |
+| Let Python or JavaScript keep fallback command implementations | Creates a second set of answers and allows silent behavior drift from Rust. **Reversed by D15** — with no Rust implementation left to drift from, Python is the single answer for the plugin CLI rather than a fallback. The rule that survives is the reason this row existed: one implementation, never two. |
 | Expose QGIS/Qt pointers through Python or Node native addons | Violates ownership, thread-affinity, serialization, and host-lifecycle rules. |
 
 ## What a gate enforces, and what it cannot
@@ -119,7 +126,7 @@ shadow a canonical binary on `PATH` (`py-packages/qgis-sdk` ships only the `qgis
 - [TASK-41](../../backlog/tasks/task-41%20-%20Build-the-pure-Rust-qgis-cli-capability-surface.md) builds the standalone CLI capabilities.
 - [TASK-42](../../backlog/tasks/task-42%20-%20Stabilize-Python-and-Node-FFI-clients-and-CLI-launchers.md) stabilizes FFI clients and launchers.
 - [TASK-43](../../backlog/tasks/task-43%20-%20Separate-qgis-sdk-hosted-runtime-from-qgis-rs-and-qgis-py.md) enforces the hosted-runtime dependency boundary.
-- [TASK-44](../../backlog/tasks/task-44%20-%20Package-the-Rust-native-qgis-plugin-and-qgis-sdk-CLI.md) packaged the plugin CLI. Its Rust-native framing is superseded by D15.
-- [TASK-26](../../backlog/tasks/task-26%20-%20Refactor-qgis-sdk-CLI-onto-the-shared-Rust-engine-wire-protocol.md) implements the shared Rust/wire CLI refactor.
+- [TASK-44](../../backlog/tasks/task-44%20-%20Package-the-Rust-native-qgis-plugin-and-qgis-sdk-CLI.md) packaged the plugin CLI. Its Rust-native framing is superseded by D15, and its dependency on TASK-26 was dropped when that task was archived.
+- TASK-26, the shared Rust/wire CLI refactor, is **archived**: D15 §1 and §3 as amended reverse what it was written to do, and the crates it names were deleted in `2d8d69a`. Its one surviving outcome — the CLI path does not import PyQGIS or PyQt — was delivered by TASK-57 and is pinned by `tests/test_cli_task57.py`.
 
 All feature and bug-fix implementation follows the repository refactor and TDD skills. Tests establish public seams before structural changes, implementation proceeds in small red-green-refactor slices, and QGIS/Qt/WebEngine gates remain separate from pure tests.

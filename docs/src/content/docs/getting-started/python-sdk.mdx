@@ -1,16 +1,16 @@
 ---
 title: Plugin SDK (qgis-sdk)
-description: Build QGIS plugins with Python + Rust-native CLI, installable from pip or conda-forge
+description: Build QGIS plugins with a pure-Python SDK and a typer CLI, installable from pip or conda-forge
 ---
 
 # Plugin SDK — qgis-sdk
 
-`qgis-sdk` is a Python framework for building QGIS plugins — now with a **Rust-native CLI** (`qgis-sdk`) and optional Rust acceleration, all installable from pip or conda-forge at native speed.
+`qgis-sdk` is a **pure-Python** framework for building QGIS plugins on top of PyQGIS, with a `qgis-sdk` CLI built on [typer](https://typer.tiangolo.com). It ships no native code and needs no Rust toolchain; install it from pip or conda-forge.
 
-- **pip**: `pip install qgis-sdk` → `import qgis_sdk` + `qgis-sdk` binary on PATH
+- **pip**: `pip install qgis-sdk` → `import qgis_sdk` + the `qgis-sdk` console script on PATH
 - **conda**: `conda install -c conda-forge qgis-sdk` → same, with QGIS backend
 
-`qgis-rs` (rendering/tiling) can stay alongside — both packages share the same Rust workspace and both ship Rust binaries.
+`qgis-rs` (rendering/tiling) is a separate distribution and can be installed alongside. The two are independent: `qgis-rs` is the Rust engine client and `qgis-sdk` is pure Python, and the SDK does not import `qgis_py`.
 
 ## Installation
 
@@ -21,7 +21,7 @@ conda install -c conda-forge qgis-sdk
 pixi add qgis-sdk
 
 # Test
-python -c "import qgis_sdk; print(qgis_sdk.__version__, qgis_sdk.HAS_RUST)"
+python -c "import qgis_sdk; print(qgis_sdk.__version__)"
 qgis-sdk --help
 qgis-sdk version
 ```
@@ -139,13 +139,16 @@ qgis-sdk wheel
 │   ├── plugin.py         → Plugin base class
 │   ├── algorithm.py      → Algorithm base class
 │   └── runtime.py        → lazy PyQGIS access
-└── bin/
-    ├── qgis-sdk       → Rust binary (native speed)
-    └── qgis-sdk          → alias binary
+└── qgis_sdk-*.dist-info/entry_points.txt
+                          → `qgis-sdk` console script → `qgis_sdk.cli:main`
 ```
 
+There is no `bin/` directory and no binary: the wheel is pure Python, and
+`qgis-sdk` reaches `PATH` as a console script declared under
+`[project.scripts]` in `pyproject.toml`.
+
 - Python: `src/qgis_sdk/` with `pyproject.toml` using the setuptools backend; no native code
-- Conda: `recipes/qgis-sdk/meta.yaml` builds Rust binaries + Python wheel
+- Conda: `recipes/qgis-sdk/meta.yaml` pip-installs the same pure-Python package and declares the same `qgis-sdk = qgis_sdk.cli:main` entry point
 
 ## UI, Typed Bridge, and Testing
 
@@ -206,7 +209,7 @@ See [Testing Fixtures Guide](/guides/testing-fixtures/).
 
 ## Conda-forge
 
-See `py-packages/qgis-sdk/recipes/qgis-sdk/meta.yaml`. It builds Rust binaries and Python extension and installs both.
+See `py-packages/qgis-sdk/recipes/qgis-sdk/meta.yaml`. It builds no native code: the recipe pip-installs the pure-Python distribution with `--no-deps` and declares the `qgis-sdk` console script as its entry point.
 
 To publish:
 
