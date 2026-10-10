@@ -13,6 +13,7 @@ use serde_json::json;
 pub(crate) fn run(args: PlanArgs) -> Result<()> {
     match args.command {
         PlanCommand::Tiles(args) => tiles(args),
+        PlanCommand::Batch(args) => crate::batch_plan::run(args),
     }
 }
 

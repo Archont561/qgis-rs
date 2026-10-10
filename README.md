@@ -229,6 +229,7 @@ qgis-cli doctor                                      # optional backend diagnost
 qgis-cli validate extent "14,50,15,51" --json         # pure input validation
 qgis-cli inspect map.qgs --json                        # file metadata only, not validation
 qgis-cli plan tiles -b 14,50,15,51 -z 10-14            # count a pyramid, no project needed
+qgis-cli plan batch --extents extents.csv -z 10-14 --json # ordered CSV plans, no rendering
 qgis-cli render map.qgs -o output.png                  # render a project
 qgis-cli tiles map.qgs -z 10-14 -b 14,50,15,51 -o ./tiles/
 qgis-cli serve map.qgs --port 8080                     # WMS/WFS server

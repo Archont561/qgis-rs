@@ -74,8 +74,9 @@ state and perform no implicit downloads or artifact writes.
 
 `doctor` explains build/runtime requirements; it does not install dependencies,
 scan profiles, or guarantee that a particular project/provider will work.
-Project-manifest inspection, batch planning, additional validation types
-and resource policies remain later TASK-41 slices.
+Project-manifest inspection, additional validation types and resource policies
+remain later TASK-41 slices. Pure tile and CSV batch planning are available
+under `plan`; they do not make the legacy rendering commands available.
 
 ## Validation
 
@@ -219,8 +220,27 @@ diagnostic also goes to stderr. Omit `--json` for one row per zoom level plus
 the total.
 
 Planning does not decide whether the tiles can be *rendered*: output formats,
-storage backends, batch manifests, native execution gates, cancellation and
-resource limits are not part of this command.
+storage backends, native execution gates, cancellation and resource limits
+are not part of this command.
+
+## Deterministic CSV batch planning
+
+```bash
+qgis-cli plan batch --extents extents.csv --zoom 10-14 --json
+```
+
+[`plan batch`](/cli/batch) reads the existing `name,minx,miny,maxx,maxy` CSV
+vocabulary and embeds the same `TilePlanReport` for every row. It takes no
+project or output argument, initializes no backend and writes nothing. The
+report contains `extent_count`, summed `tile_count`, and ordered `extents`
+entries with `name` and `plan`. Duplicate/overlapping rows are counted
+separately, and empty input produces a zero-work plan.
+
+Exits are **0** success, **2** usage, **10** invalid input, **11** missing CSV
+and **14** filesystem failure. JSON failures contain one `error` object and
+no partial plans; diagnostics also go to stderr. The CSV is not quoted-field
+RFC CSV or GeoJSON. No engine operation or FFI wire shape is added, and the
+legacy `batch <project>` command keeps its flags and rendering gate.
 
 ## Installation
 
