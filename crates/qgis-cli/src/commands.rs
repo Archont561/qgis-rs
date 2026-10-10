@@ -20,6 +20,7 @@ use crate::cli::{BatchArgs, Command, ExportArgs, InfoArgs, RenderArgs, ServeArgs
 /// Returns whatever the subcommand failed with.
 pub fn run(command: Command) -> Result<()> {
     match command {
+        Command::Validate(args) => crate::validation::run(args),
         Command::Version(args) | Command::Capabilities(args) | Command::Doctor(args) => {
             crate::discovery::report(args)
         }

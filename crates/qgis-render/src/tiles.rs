@@ -54,6 +54,21 @@ impl Tile {
         }
     }
 
+    /// Return EPSG:4326 bounds only for an XYZ tile in the supported zoom domain.
+    ///
+    /// Returns `None` for zooms above [`MAX_ZOOM`] or indices outside the level.
+    /// Unlike [`Self::bounds`], this is safe for untrusted coordinates and never
+    /// clamps an invalid tile into the pyramid.
+    #[must_use]
+    pub fn checked_bounds(&self) -> Option<Extent> {
+        ZoomRange::new(self.z, self.z).ok()?;
+        let side = 1u32 << self.z;
+        if self.x >= side || self.y >= side {
+            return None;
+        }
+        Some(self.bounds())
+    }
+
     /// The tile's extent in EPSG:4326.
     #[must_use]
     pub fn bounds(&self) -> Extent {

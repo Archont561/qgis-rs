@@ -226,6 +226,7 @@ for feature in vector.features().take(10) {
 qgis-cli version --json                               # versions and target
 qgis-cli capabilities --json                          # actual engine availability
 qgis-cli doctor                                      # optional backend diagnostics
+qgis-cli validate extent "14,50,15,51" --json         # pure input validation
 qgis-cli render map.qgs -o output.png                  # render a project
 qgis-cli tiles map.qgs -z 10-14 -b 14,50,15,51 -o ./tiles/
 qgis-cli serve map.qgs --port 8080                     # WMS/WFS server

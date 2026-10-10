@@ -38,7 +38,8 @@ fn capabilities_are_deterministic_and_separate_commands_from_engine_operations()
     let report: Value = serde_json::from_slice(&output.stdout).unwrap();
     let commands = report["commands"].as_array().unwrap();
     assert!(commands.contains(&serde_json::json!("info")));
-    assert!(!commands.contains(&serde_json::json!("validate")));
+    assert!(commands.contains(&serde_json::json!("validate")));
+    assert!(!commands.contains(&serde_json::json!("inspect")));
     assert!(report["command_note"]
         .as_str()
         .unwrap()
