@@ -4,7 +4,7 @@ title: Enforce pure-Python qgis-sdk dependency and hosted-runtime boundaries
 status: To Do
 assignee: []
 created_date: '2026-10-03 09:35'
-updated_date: '2026-10-10 17:01'
+updated_date: '2026-10-10 22:05'
 labels:
   - qgis-sdk
   - python
@@ -79,6 +79,8 @@ AC2 — needs a decision, not more evidence. The gate design above satisfies the
 AC5 — delegated by its own text to TASK-42, which owns the FFI contract tests; the evidence to link is recorded in TASK-42's notes.
 
 One defect found while auditing AC4, with no other owner: two comments still claim a Rust fast-path that D15 retired and that test_pure_python.py actively forbids — src/qgis_sdk/__init__.py:36 ("Styles IR — pure Python fallback, Rust when available") and src/qgis_sdk/styles.py:3 ("uses Rust when available"). styles.py contains no Rust reference at all. Documentation only, but it asserts a code path the tests prohibit.
+
+Documentation-only reconstruction: corrected the package styles comment and styles module docstring to describe pure-Python serialization/MapLibre conversion and PyQGIS layer application, with no runtime, import, public flag or packaging changes. Existing retirement/CLI characterization passed 25 tests before and after the edit (post-edit strict pure layer). The historical audit claim that styles.py contains no Rust reference is not literal: it retains an optional qgis_render compatibility probe and HAS_QGIS_STYLES, but the style IR implementation does not dispatch through that probe; neither was removed in this scope. Owner decision is settled: QGIS-absent behavior is pure-layer test-harness simulation, not supported hosted substitution. Writing that distinction at the seven fallback sites remains outside this reconstruction; AC2 and task status are unchanged. D15 governs; no Rust SDK surface is restored.
 <!-- SECTION:NOTES:END -->
 
 ## Comments

@@ -1,7 +1,7 @@
-"""qgis_sdk.styles — Python wrapper for qgis-styles IR.
+"""qgis_sdk.styles — pure-Python style IR and PyQGIS adapters.
 
-Provides Pythonic API for StyleSheet/LayerStyle that uses Rust when available,
-falls back to pure Python.
+Provides a pure-Python API for StyleSheet/LayerStyle serialization and MapLibre
+conversion. Applying a style to a live layer uses PyQGIS.
 
 Example:
     from qgis_sdk.styles import StyleSheet, LayerStyle, Renderer, Symbol, Rgba

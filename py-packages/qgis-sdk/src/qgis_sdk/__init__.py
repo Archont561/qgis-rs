@@ -33,7 +33,7 @@ try:
 except ImportError:
     HAS_QT = False
 
-# Styles IR — pure Python fallback, Rust when available
+# Styles IR — pure Python
 try:
     from . import styles as _styles_module  # noqa: F401
     from .styles import StyleSheet, LayerStyle, Renderer as StyleRenderer, Symbol as StyleSymbol, Rgba
