@@ -1,31 +1,31 @@
 ---
 type: concept
-title: "QGIS Plugin SDK — Python-First with Optional Rust"
-description: "Python framework for building QGIS plugins with a clean API that wraps PyQGIS or Rust bindings. Users write Python, optionally accelerate with Rust. CLI handles scaffolding, testing, packaging, and deployment."
-tags: [plugin, sdk, python, rust, pyo3, qgis, cli, tooling]
+title: "QGIS Plugin SDK — Pure Python over PyQGIS"
+description: "Python framework for building QGIS plugins with a clean API over PyQGIS. Users write Python; a typer CLI handles scaffolding, validation, testing, packaging and installation. D15 removed every Rust path from the SDK."
+tags: [plugin, sdk, python, pyqgis, qgis, cli, typer, tooling]
 generated: "2026-09-17T17:30:00Z"
 status: draft
 ---
 
 # QGIS Plugin SDK
 
-A Python framework for building QGIS plugins — in Python, Rust, or both.
+A Python framework for building QGIS plugins — in Python, over PyQGIS.
 
 ## Philosophy
 
 ```
-qgis-sdk = better PyQGIS + optional Rust + CLI tooling
+qgis-sdk = better PyQGIS + CLI tooling
 
    PyQGIS (raw)          qgis-sdk
    ─────────────         ─────────────────
    verbose               decorators + builders
    C++-ish API           Pythonic API
-   no packaging          CLI: scaffold → test → package → publish
-   Python-only           Python + optional Rust hotspots
+   no packaging          CLI: scaffold → validate → test → package → install
+   bare metadata.txt     metadata from one 20-field table
    no testing story      unit tests without QGIS
 ```
 
-Users write Python. The SDK provides cleaner wrappers around PyQGIS, eliminates boilerplate, and lets them drop into Rust when Python isn't fast enough.
+Users write Python. The SDK provides cleaner wrappers around PyQGIS and eliminates boilerplate. Rust is not part of it: [D15](decisions/D15-qgis-sdk-cli-pure-python-typer.md) §3 as amended by TASK-57 removes every Rust path from qgis-sdk, so there is no accelerated hot path to opt into and nothing in the CLI drives `cargo`. A plugin that wants one builds and ships its own extension outside the SDK.
 
 ---
 
@@ -224,176 +224,45 @@ geom.to_geojson()   # → dict
 
 ---
 
-## 2. Rust Acceleration — Drop-In
+## 2. Rust Acceleration — Retired
 
-When Python is too slow, drop into Rust for the hot path. The SDK makes this seamless.
+Rust acceleration is not part of the SDK, and it never shipped. This section
+specified a `@rust_accelerated` decorator that loaded a compiled Rust module and
+fell back to Python when the module was absent. Measured against the package
+today there are **zero** occurrences of `rust_accelerated` and zero of `HAS_RUST`
+anywhere under `py-packages/` or `crates/`.
 
-### 2.1 Mark a method as Rust-accelerated
+[D15](decisions/D15-qgis-sdk-cli-pure-python-typer.md) §3, as amended by TASK-57,
+rules the feature out rather than deferring it: qgis-sdk contains no Rust, so
+there is no native module to load and no native/fallback parity to test. TASK-16,
+which owned the implementation, is archived on that basis.
 
-```python
-from qgis_sdk import Algorithm, parameter, output, rust_accelerated
+A plugin that wants a Rust hot path runs `cargo` itself and ships the resulting
+extension in its own `extlibs/`. That is the plugin's build, not an SDK feature:
+`qgis-sdk new` writes a Python-only tree, and no subcommand invokes `cargo`.
 
-class BufferFast(Algorithm):
-    """Fast buffer — uses Rust when available, falls back to PyQGIS."""
-
-    id = "my_plugin:buffer_fast"
-    name = "Fast Buffer"
-
-    input_layer = parameter.source("Input layer")
-    distance = parameter.distance("Buffer distance", default=10.0)
-    output_layer = output.sink("Buffered")
-
-    # Try to use Rust implementation, fall back to Python
-    @rust_accelerated(fallback="process_python")
-    def process(self, context):
-        """Rust implementation (defined in src/lib.rs)."""
-        pass  # This body is replaced by the Rust module
-
-    def process_python(self, context):
-        """Pure Python fallback."""
-        source = context.get(self.input_layer)
-        dist = context.get(self.distance)
-        sink = context.create_sink(self.output_layer, ...)
-
-        for feature in source.features():
-            buffered = feature.geometry.buffer(dist)
-            out = feature.clone()
-            out.geometry = buffered
-            sink.add_feature(out)
-
-        return {self.output_layer: sink}
-```
-
-### 2.2 The Rust module (optional)
-
-```rust
-// src/lib.rs
-use qgis_plugin_sdk::prelude::*;
-use pyo3::prelude::*;
-
-/// Rust-accelerated buffer processing.
-/// Called automatically when available, falls back to Python.
-#[pyfunction]
-fn buffer_features(
-    input_path: &str,
-    distance: f64,
-    output_path: &str,
-    progress_callback: &PyAny,
-) -> PyResult<()> {
-    let input = open_source(input_path)?;
-    let mut output = create_sink(output_path, &input)?;
-
-    let total = input.feature_count();
-    let features: Vec<_> = input.features()
-        .par_bridge()  // rayon parallel
-        .map(|f| {
-            let geom = f.geometry();
-            let buffered = geom.buffer(distance)?;
-            let mut out = Feature::from(&f);
-            out.set_geometry(buffered);
-            Ok(out)
-        })
-        .collect::<Result<Vec<_>>>()?;
-
-    for (i, f) in features.iter().enumerate() {
-        output.add_feature(f)?;
-        if i % 100 == 0 {
-            progress_callback.call1((i as f64 / total as f64,))?;
-        }
-    }
-
-    Ok(())
-}
-
-#[pymodule]
-fn _native(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    m.add_function(wrap_pyfunction!(buffer_features, m)?)?;
-    Ok(())
-}
-```
-
-### 2.3 Import the Rust module in Python
-
-```python
-# The SDK handles loading the Rust module
-try:
-    from my_plugin._native import buffer_features
-    HAS_RUST = True
-except ImportError:
-    HAS_RUST = False
-
-class BufferFast(Algorithm):
-    def process(self, context):
-        if HAS_RUST:
-            # Use Rust implementation (10-100x faster)
-            buffer_features(
-                context.source_path(self.input_layer),
-                context.get(self.distance),
-                context.sink_path(self.output_layer),
-                context.set_progress,
-            )
-        else:
-            # Fall back to PyQGIS
-            self.process_python(context)
-```
-
-The `@rust_accelerated` decorator automates this pattern.
+The section number is kept so the section map in
+[doc-1](../backlog/docs/knowledge-backlog-map/doc-1%20-%20Knowledge-to-backlog-migration-map.md)
+and the evidence table in §12 stay valid.
 
 ---
 
-## 3. Unified API — PyQGIS or Rust, Same Interface
+## 3. Unified API — Retired
 
-The SDK provides a unified API that can delegate to either PyQGIS or Rust bindings, depending on what's available:
+This section specified `qgis_sdk.render`, `qgis_sdk.features`,
+`qgis_sdk.geometry` and `qgis_sdk.crs`, each delegating to a Rust backend when
+one was importable and to PyQGIS otherwise. None of the four modules exists:
+there is no `render.py`, `features.py`, `geometry.py` or `crs.py` in the package,
+and none of the 145 names in `qgis_sdk.__all__` is one of them. The
+`qgis_render` fast path it fell back from is a crate of the standalone engine,
+not something the SDK imports.
 
-```python
-from qgis_sdk import render, features, geometry, crs
+What the SDK actually offers over PyQGIS is §1 — decorators and builders for
+plugins, algorithms, dialogs, bridges, network, tasks and styles.
 
-# Rendering — uses Rust qgis-render if available, else QGIS C++
-image = render.project("map.qgs", width=1024, height=768)
-image.save("map.png")
-
-# Feature access — uses Rust bindings if available, else PyQGIS
-layer = features.open("buildings.gpkg")
-for f in layer.features(bbox=(14, 50, 15, 51)):
-    print(f["name"], f.geometry.area)
-
-# Geometry ops — uses Rust (GEOS) if available, else PyQGIS (also GEOS)
-geom = geometry.from_wkt("POLYGON((...))")
-buffered = geom.buffer(10.0)
-
-# CRS transforms — uses Rust (proj) if available, else PyQGIS (also PROJ)
-wgs84 = crs.from_epsg(4326)
-mercator = crs.web_mercator
-x, y = crs.transform(14.0, 50.0, from_crs=wgs84, to_crs=mercator)
-```
-
-**How it works under the hood:**
-
-```python
-# qgis_sdk/render.py (simplified)
-
-def project(path, width=1024, height=768, **kwargs):
-    """Render a QGIS project to an image."""
-    try:
-        # Fast path: Rust qgis-render
-        from qgis_render import Project, RenderSettings
-        proj = Project.open(path)
-        return proj.render(RenderSettings(width, height, **kwargs))
-    except ImportError:
-        # Slow path: PyQGIS
-        from qgis.core import QgsProject, QgsMapSettings, QgsMapRendererSequentialJob
-        proj = QgsProject.instance()
-        proj.read(path)
-        settings = QgsMapSettings()
-        settings.setOutputSize(QSize(width, height))
-        # ... configure from kwargs ...
-        job = QgsMapRendererSequentialJob(settings)
-        job.start()
-        job.waitForFinished()
-        return Image(job.renderedImage())
-```
-
-Users call `render.project()` and get the best available backend automatically.
+The ergonomic wrappers this section assumed are still open work, and they are
+specified against PyQGIS with no Rust behind them: `iface`, layers and CRS under
+TASK-13, the expression engine under TASK-14, geometry under TASK-15.
 
 ---
 
@@ -519,134 +388,140 @@ class MyServerPlugin(ServerPlugin):
 
 ### 5.1 Commands
 
+`qgis-sdk` is one pure-Python [typer](https://typer.tiangolo.com) application: a
+console script calling `qgis_sdk.cli:main` (D15 §1). There is no Rust binary, no
+native extension and no second name for it: the earlier alias was retired by D15
+and nothing in the repository forwards to it. This is the shipped `--help`, not a
+specification:
+
 ```
-qgis-sdk <command> [options]
+qgis-sdk [OPTIONS] COMMAND [ARGS]...
 
 Commands:
-  new         Scaffold a new plugin project
-  build       Build and package the plugin
-  test        Run tests (Python + optional Rust)
-  install     Install into local QGIS
-  dev         Watch mode: rebuild on file change
-  package     Create .zip for QGIS Plugin Repository
-  publish     Upload to QGIS Plugin Repository
-  validate    Check plugin structure and metadata
-  rust init   Add Rust acceleration to an existing plugin
-  rust build  Build the Rust module
+  new        Scaffold a new plugin.
+  validate   Check a plugin's structure and metadata.
+  info       Show plugin information.
+  version    Print the qgis-sdk version.
+  build      Build and package the plugin.
+  package    Zip the plugin package into an archive QGIS can install.
+  test       Run the plugin's Python tests with pytest.
+  install    Copy the plugin into a QGIS profile.
+  dev        Watch mode: rebuild on file change (not implemented).
+  publish    Upload an archive to the QGIS plugin repository (not implemented;
+             use --dry-run).
+  bootstrap  Write the bootstrap.py helper.
+  vendor     Vendor wheels for offline installs.
+  ui         Add UI scaffolding to a plugin.        (add-dialog, add-web)
+  bridge     Generate bridge typings for web UIs.   (generate)
 ```
+
+Two rules from D15 §3 govern every command above. A command either does its work
+or exits non-zero — printing "Built" without writing the artifact is a defect,
+which is why `dev` and `publish` advertise themselves as not implemented in
+their own help text instead of pretending. And there is no `rust` group: `rust
+init`, `rust build`, every `--rust` flag and the `cargo` passthrough were removed
+by TASK-57.
 
 ### 5.2 `new`
 
 ```bash
-# Pure Python plugin (default)
-qgis-sdk new my-plugin
-
-# Python + Rust plugin
-qgis-sdk new my-plugin --rust
-
-# Processing-only plugin
-qgis-sdk new my-algorithms --type processing
-
-# Interactive
-qgis-sdk new
-# → Plugin name: my-plugin
-# → Type: [general] processing provider server
-# → Include Rust acceleration? [y/N]
-# → Author: Your Name
-# → Email: you@example.com
+qgis-sdk new my_plugin                      # name as a positional argument
+qgis-sdk new my_plugin --type processing    # general | processing | provider | server
+qgis-sdk new my_plugin --no-ui              # skip the dialog scaffolding
+qgis-sdk new my_plugin --author "Ada" --email ada@example.com
+qgis-sdk new my_plugin -o /tmp/out          # directory to create it in
+qgis-sdk new my_plugin --web --framework react   # vanilla|react|vue|webcomponents|bun
+qgis-sdk new my_plugin --bun                # Bun web UI, implies --declarative
 ```
 
-**Generated structure (Python-only):**
+**Prompts (D15 §2).** `questionary` asks for the plugin name, `--type`,
+`--ui/--no-ui`, `--author` and `--email` — but only at a terminal, when stdin
+*and* stdout are both TTYs, and only for questions whose flag was not given. Web
+choices (`--web`, `--framework`) are flags only and never prompt. A
+non-interactive run never blocks: with no name and no TTY, `new` exits `2` and
+writes nothing. That is what makes the command safe in CI, and every prompt has a
+flag that answers it.
+
+**Generated structure** — Python only; there is no Rust variant, no `Cargo.toml`
+and no `src/lib.rs`:
 
 ```
-my-plugin/
+my_plugin/
 ├── pyproject.toml              # Python packaging
-├── plugin.toml                 # Plugin config (generates metadata.txt)
 ├── README.md
+├── metadata.txt                # written from the METADATA_FIELDS table
 ├── my_plugin/
-│   ├── __init__.py             # Auto-generated from plugin class
-│   ├── plugin.py               # Your plugin class
-│   ├── algorithms/             # Processing algorithms (if type=processing)
-│   │   └── buffer.py
-│   ├── dialogs/                # Qt dialogs (if type=general)
+│   ├── __init__.py             # class_factory entry point
+│   ├── plugin.py               # your plugin class
+│   ├── algorithms/             # if --type processing
+│   ├── dialogs/                # if --ui
 │   └── icons/
-│       └── icon.svg
 ├── tests/
-│   ├── test_algorithms.py      # Unit tests (no QGIS needed)
-│   └── test_integration.py     # Integration tests (QGIS needed)
-└── .github/
-    └── workflows/ci.yml
+│   ├── test_algorithms.py      # unit tests, no QGIS needed
+│   └── test_integration.py     # integration tests, QGIS needed
+└── .github/workflows/ci.yml
 ```
 
-**Generated structure (Python + Rust):**
-
-```
-my-plugin/
-├── pyproject.toml
-├── plugin.toml
-├── Cargo.toml                  # Rust project
-├── README.md
-├── my_plugin/
-│   ├── __init__.py
-│   ├── plugin.py
-│   └── algorithms/
-│       └── buffer.py
-├── src/                        # Rust source
-│   └── lib.rs                  # PyO3 module
-├── tests/
-│   ├── test_algorithms.py
-│   ├── test_rust.py            # Rust unit tests
-│   └── test_integration.py
-└── .github/
-    └── workflows/ci.yml
-```
-
-### 5.3 `build`
+### 5.3 `build` and `package`
 
 ```bash
-# Build Python-only plugin
-qgis-sdk build
-# → dist/my_plugin-0.1.0.zip
-
-# Build with Rust (current platform)
-qgis-sdk build --rust
-# → dist/my_plugin-0.1.0-linux-x86_64.zip
-
-# Build with Rust (all platforms)
-qgis-sdk build --rust --all-targets
-# → dist/my_plugin-0.1.0-linux-x86_64.zip
-# → dist/my_plugin-0.1.0-windows-x86_64.zip
-# → dist/my_plugin-0.1.0-macos-arm64.zip
-# → dist/my_plugin-0.1.0-macos-x86_64.zip
+qgis-sdk build                      # → dist/<name>.zip
+qgis-sdk build -o out               # choose the output directory
+qgis-sdk package                    # same archive, explicit verb
+qgis-sdk package --bundle           # also copy bootstrap.py into the package
+qgis-sdk package --offline-wheel dist/qgis_sdk-*.whl   # vendor the wheel inside
 ```
 
-### 5.4 `dev` — Watch mode
+There is no `--rust` and no `--all-targets`: the archive is a zip of Python
+sources, so there is nothing per-platform to cross-build. `package` picks the
+plugin package directory by name rather than taking the first child folder with
+an `__init__.py`, which is what once made it zip `tests/` instead of the plugin
+(TASK-57). By default the archive carries no `qgis_sdk` code; `--bundle` and
+`--offline-wheel` are explicit opt-ins that do, for plugins that must
+self-install offline.
+
+### 5.4 `dev`, `install` and `publish`
 
 ```bash
-# Pure Python: watch .py files, reinstall on change
-qgis-sdk dev
-
-# With Rust: watch .py and .rs files, rebuild + reinstall
-qgis-sdk dev --rust
-
-# Launch QGIS after install
-qgis-sdk dev --launch
+qgis-sdk install --profile <path>   # copy the plugin into a QGIS profile
+qgis-sdk dev --launch               # watch mode — NOT IMPLEMENTED, exits non-zero
+qgis-sdk publish --zip dist/x.zip --dry-run   # checks the archive exists
+qgis-sdk publish --zip dist/x.zip             # NOT IMPLEMENTED, exits non-zero
+qgis-sdk test                       # run the plugin's pytest suite
 ```
 
-### 5.5 `rust init` — Add Rust to existing plugin
+`dev` and `publish` say so in their own help text and fail rather than pretend —
+D15 §3 makes a command that reports work it did not do a defect. `publish
+--dry-run` is the usable half: it verifies the archive without uploading. There
+is no `--rust` on any of them, and no watch loop over `.rs` files.
+
+### 5.5 `ui` and `bridge` — the subcommand groups
+
+The two subcommand groups the CLI really has. `rust init` is gone: adding Rust
+to an existing plugin is not an SDK operation any more (§2).
 
 ```bash
-# You have an existing Python plugin and want to add Rust acceleration
-cd my-existing-plugin/
-qgis-sdk rust init
-# → Creates Cargo.toml, src/lib.rs
-# → Adds @rust_accelerated examples to your algorithms
-# → Creates Cargo.toml and src/lib.rs for an optional Rust extension in the plugin
+qgis-sdk ui add-dialog [path] --name my_dialog   # scaffolds a dialog
+qgis-sdk ui add-web [path]                       # scaffolds a WebEngine page
+qgis-sdk bridge generate ...                     # TypeScript typings for a bridge
 ```
+
+`ui add-dialog` asks for the dialog name with `questionary` when `--name` is
+omitted **and** the run is at a terminal; otherwise the missing name is an error.
+That is the same TTY rule as `new` (D15 §2), and it is the only prompt outside
+scaffolding.
 
 ---
 
 ## 6. Configuration: `plugin.toml`
+
+> **Specified, not implemented.** `qgis-sdk new` writes `metadata.txt` directly
+> (`scaffold.py`), and nothing in the package reads a `plugin.toml`. The format
+> below is a design proposal owned by TASK-3, not a description of shipped
+> behaviour. What is real today is `qgis_sdk.metadata`: the 20-entry
+> `METADATA_FIELDS` table maps plugin attributes to `metadata.txt` keys in the
+> order QGIS expects, and `render_metadata` / `render_metadata_from_dict` /
+> `write_metadata` / `validate_metadata` drive it.
 
 Replaces `metadata.txt`. More structured, generates metadata.txt at build time.
 
@@ -670,10 +545,6 @@ experimental = false
 has_provider = true
 provider_id = "my_plugin"
 provider_name = "My Algorithms"
-
-[plugin.rust]
-enabled = false              # Set to true to enable Rust acceleration
-module_name = "_native"      # Name of the Rust PyO3 module
 
 [plugin.dependencies]
 # Python packages (installed via qpip)
@@ -754,109 +625,88 @@ def test_buffer_in_qgis(qgis_app):
     assert result["output_layer"].featureCount() == 100
 ```
 
-### 7.3 Rust Tests (no QGIS needed)
+### 7.3 Rust Tests — Retired
 
-```rust
-// tests/test_buffer.rs
-#[cfg(test)]
-mod tests {
-    use super::*;
+There are no Rust tests in a scaffolded plugin. The `tests/test_buffer.rs` file
+this section showed came from a Cargo/PyO3 template that TASK-57 removed along
+with the `rust` subcommand group (D15 §3 as amended). A plugin that adds its own
+Rust extension tests it with `cargo test`, outside the SDK and outside this
+document.
 
-    #[test]
-    fn test_buffer_rust() {
-        let features = mock_point_features(10);
-        let result = buffer_features_inner(&features, 5.0);
-        assert_eq!(result.len(), 10);
-        assert!(result.iter().all(|f| f.geometry().area() > 0.0));
-    }
-}
-```
+The two tiers that remain are §7.1, unit tests that need no QGIS, and §7.2,
+integration tests that do.
 
 ---
 
-## 8. The Unified API — How It Decides
+## 8. Backend Selection — Retired
 
-```python
-# qgis_sdk/_backend.py
+There is no backend selector. This section and §3 both specified
+`qgis_sdk/_backend.py` choosing between a Rust module and a PyQGIS fallback at
+import time. That file does not exist, and D15 §3 as amended removes the Rust
+half of the choice, so there is nothing left to select between.
 
-import importlib
+What the package does have is a **lazy-import** seam, which is easy to mistake
+for a backend switch and is not one. Every PyQGIS access goes through
+`qgis_sdk.runtime` — `qgis_core()`, `qgis_gui()`, `require_qgis()` — called from
+inside functions rather than at module scope, so importing `qgis_sdk` never
+imports `qgis` and the test suite runs on a machine with no QGIS at all. There
+is exactly one backend: PyQGIS.
 
-def _try_import(rust_module: str, pyqgis_fallback: str):
-    """Try Rust first, fall back to PyQGIS."""
-    try:
-        return importlib.import_module(rust_module)
-    except ImportError:
-        return importlib.import_module(pyqgis_fallback)
-
-# Rendering backend
-render = _try_import("qgis_render", "qgis_sdk._pyqgis_render")
-
-# Feature access backend
-features = _try_import("qgis_render.features", "qgis_sdk._pyqgis_features")
-
-# Geometry backend
-geometry = _try_import("qgis_render.geometry", "qgis_sdk._pyqgis_geometry")
-
-# CRS backend
-crs = _try_import("qgis_render.crs", "qgis_sdk._pyqgis_crs")
-```
-
-Users import from `qgis_sdk` and get the best available backend:
-
-```python
-from qgis_sdk import render, features, geometry, crs
-
-# If qgis-render (Rust) is installed → uses Rust
-# If only PyQGIS is available → uses PyQGIS wrapper
-# Same API either way
-```
+The capability flags exported in `qgis_sdk.__all__` — `HAS_CLI`, `HAS_UI`,
+`HAS_TESTING`, `HAS_BRIDGE`, `HAS_NETWORK`, `HAS_TASKS`, `HAS_QT`, `HAS_STYLES` —
+report whether an optional Qt or PyQGIS dependency imported. There is no
+`HAS_RUST` among them, and no `RUST_VERSION`.
 
 ---
 
 ## 9. Product Structure
 
 ```
-qgis-rs/
-├── crates/
-│   ├── qgis-sys/               # CXX FFI (low-level QGIS bindings)
-│   ├── qgis-render/            # Core rendering engine (Rust)
-│   ├── qgis-sdk/        # Pure-Python SDK and typer CLI
-│   ├── qgis-server/            # HTTP server
-│   └── qgis-cli/               # CLI binary (includes qgis-sdk)
+qgis-rust/
+├── crates/                        # Rust — the standalone engine, not the SDK
+│   ├── qgis-sys/                  #   native manager over the QGIS C ABI (D12)
+│   ├── qgis-protocol/             #   versioned wire protocol (D09)
+│   ├── qgis-engine/               #   capability handlers
+│   ├── qgis-render/               #   headless rendering
+│   ├── qgis-cli/                  #   the GIS-execution CLI (D13 §1)
+│   ├── qgis-server/
+│   ├── qgis-rs/, qgis-mcp/, qgis-styles/
+│   └── xtask/                     #   repository automation (D10)
 │
-├── python/
-│   ├── qgis-sdk/               # Python package (pip install qgis-sdk)
-│   │   ├── qgis_sdk/
-│   │   │   ├── __init__.py
-│   │   │   ├── plugin.py       # Plugin base class
-│   │   │   ├── algorithm.py    # Algorithm base class
-│   │   │   ├── parameter.py    # Parameter types
-│   │   │   ├── provider.py     # DataProvider base class
-│   │   │   ├── wrappers/       # PyQGIS wrappers (cleaner API)
-│   │   │   │   ├── layer.py
-│   │   │   │   ├── feature.py
-│   │   │   │   ├── geometry.py
-│   │   │   │   ├── crs.py
-│   │   │   │   └── iface.py
-│   │   │   ├── _backend.py     # Rust/PyQGIS backend selector
-│   │   │   ├── _pyqgis_render.py   # PyQGIS fallback for rendering
-│   │   │   ├── _pyqgis_features.py # PyQGIS fallback for features
-│   │   │   └── testing.py      # Test helpers (mock_context, etc.)
-│   │   └── pyproject.toml
-│   └── qgis-sdk-cli/           # typer CLI (pure Python)
+├── py-packages/
+│   ├── qgis-sdk/                  # the SDK: pure Python, setuptools (D15 §4)
+│   │   ├── src/qgis_sdk/
+│   │   │   ├── plugin/            #   Plugin base, @action, @toolbar, @menu
+│   │   │   ├── algorithm.py       #   Algorithm, parameter.*, output.*
+│   │   │   ├── processing_bridge.py
+│   │   │   ├── ui.py              #   Dialog, WebDialog, field, layout
+│   │   │   ├── bridge/            #   QWebChannel bridge generation
+│   │   │   ├── network.py         #   requests-like client
+│   │   │   ├── tasks.py           #   celery-like task client
+│   │   │   ├── styles.py          #   StyleSheet, LayerStyle, StyleRenderer
+│   │   │   ├── metadata.py        #   METADATA_FIELDS → metadata.txt
+│   │   │   ├── runtime.py         #   lazy qgis_core()/qgis_gui()/require_qgis()
+│   │   │   ├── scaffold.py        #   the trees `qgis-sdk new` writes
+│   │   │   ├── cli.py             #   the typer application (D15)
+│   │   │   ├── installer.py, bootstrap.py
+│   │   │   └── testing/           #   FakeIface, mock_context, fake factories
+│   │   └── pyproject.toml         #   setuptools; typer + questionary
+│   └── qgis-py/                   # standalone engine client — keeps maturin
 │
-├── templates/                   # Scaffolding templates for `qgis-sdk new`
-│   ├── python-only/
-│   ├── python-rust/
-│   ├── processing/
-│   ├── general/
-│   ├── provider/
-│   └── server/
-│
+├── ts-packages/                   # qgis-node addon; @archont561/qgis-sdk web client
+├── docs/                          # the published docs site
 └── .knowledge/
     ├── api-design.md
-    └── qgis-sdk.md      # This document
+    └── qgis-sdk.md                # this document
 ```
+
+Three corrections to the tree this section used to carry. `crates/qgis-sdk` and
+`crates/qgis-sdk-core` do not exist — they were removed in `2d8d69a` — and
+`qgis-cli` is the GIS-execution CLI only; plugin tooling does not enter it
+(D15 §1). There is no top-level `python/` or `templates/` directory: the Python
+distributions live under `py-packages/`, and `qgis-sdk new` renders its trees
+from `scaffold.py` rather than copying templates. `qgis-py` keeps `maturin` for
+its own PyO3 extension; `qgis-sdk` does not (D15 §4).
 
 ---
 
@@ -878,8 +728,8 @@ with current ownership represented by milestone `m-3` and its linked tasks.
 | Testing | Must run in QGIS | No support | Unit tests without QGIS |
 | Packaging | Manual .zip | No support | `qgis-sdk package` |
 | Publishing | Manual upload | No support | `qgis-sdk publish` |
-| Rust support | No | No | First-class |
-| Cross-platform | Build per OS | No support | `--all-targets` |
+| Rust support | No | No | No — removed by D15 §3 |
+| Cross-platform | Build per OS | No support | One pure-Python zip |
 | Processing GUI | Manual param defs | Same | Declarative decorators |
 | Learning curve | Steep | Medium | Low |
 
@@ -899,9 +749,9 @@ acceptance criteria, and next actions live in [TASK-1](../backlog/tasks/task-1%2
 [TASK-4](../backlog/tasks/task-4%20-%20Cover%20real%20QGIS%20network%20and%20task-manager%20integration.md),
 [TASK-13](../backlog/tasks/task-13%20-%20Implement-ergonomic-PyQGIS-wrappers-for-iface-layers-and-CRS.md)
 through [TASK-18](../backlog/tasks/task-18%20-%20Add-frontend-framework-starter-templates-for-WebEngine-plugins.md),
-and [TASK-26](../backlog/tasks/task-26%20-%20Refactor-qgis-sdk-CLI-onto-the-shared-Rust-engine-wire-protocol.md).
+and [TASK-57](../backlog/tasks/task-57%20-%20Make-qgis-sdk-a-pure-Python-PyQGIS-plugin-CLI-with-typer-and-questionary.md).
 
-The accepted Rust CLI, FFI, and hosted-runtime boundary is specified in [doc-7](../backlog/docs/architecture/doc-7%20-%20Rust-CLI-Cross-Language-FFI-and-QGIS-SDK-Product-Boundaries.md). Its implementation is decomposed into [TASK-40](../backlog/tasks/task-40%20-%20Define-Rust-CLI-FFI-and-QGIS-SDK-product-boundaries.md) through [TASK-44](../backlog/tasks/task-44%20-%20Package-the-Rust-native-qgis-plugin-and-qgis-sdk-CLI.md): contract, standalone CLI, cross-language FFI, hosted-runtime separation, and CLI packaging.
+The product boundary is specified in [doc-7](../backlog/docs/architecture/doc-7%20-%20Rust-CLI-Cross-Language-FFI-and-QGIS-SDK-Product-Boundaries.md) and decided by [D13](decisions/D13-rust-cli-ffi-and-qgis-sdk-boundaries.md) as amended by [D15](decisions/D15-qgis-sdk-cli-pure-python-typer.md). [TASK-40](../backlog/tasks/task-40%20-%20Define-Rust-CLI-FFI-and-QGIS-SDK-product-boundaries.md) records and tests the contract; TASK-41 through TASK-43 still carry the standalone CLI, the cross-language FFI clients and the hosted-runtime separation. Two owners named here before are gone: TASK-26 is archived, because the shared Rust/wire CLI refactor it described is what D15 reversed, and TASK-44's Rust-native packaging framing is superseded by the same record.
 
 | Spec section | Module | Evidence / backlog owner |
 |--------------|--------|--------|
@@ -913,10 +763,10 @@ The accepted Rust CLI, FFI, and hosted-runtime boundary is specified in [doc-7](
 | 1.3 Cleaner PyQGIS wrappers (`iface`, `layers`, `crs`, …) | — | Specification/open implementation → TASK-13 |
 | 1.4 Expression engine wrappers | — | Specification/open implementation → TASK-14 |
 | 1.5 Geometry wrappers | — | Specification/open implementation → TASK-15 |
-| 2 Rust acceleration (`@rust_accelerated`) | — | Specification/open implementation → TASK-16 |
+| 2 Rust acceleration | — | Retired by D15 §3 as amended; TASK-16 archived |
 | 1.1 UI dialogs (Qt Designer .ui + declarative) | `qgis_sdk.ui` — `Dialog`, `field`, `layout`, `Button`, `@dialog`, `make_dialog` | Implemented evidence; UI/template follow-up → TASK-18 |
 | 1.1 WebEngine HTML + QWebChannel | `qgis_sdk.ui` — `WebDialog`, `@web_bridge`, `make_web_view` | Implemented evidence; bridge/package follow-up → TASK-18 |
-| 5 CLI (`qgis-sdk scaffold/test/package/publish`) | `qgis_sdk.cli` + Rust binary `qgis-sdk` (native speed) | Native CLI exists; packaging/publishing → TASK-17; shared engine refactor → TASK-26 |
+| 5 CLI (`qgis-sdk new/validate/build/package/test/install`) | `qgis_sdk.cli` — pure-Python typer app (D15) | Implemented and unit-tested → TASK-57; `dev` and `publish` still unimplemented → TASK-17 |
 | 5 UI scaffolding | `qgis-sdk new --web`, `ui/*.ui`, `web/map.html` (Leaflet + qrc:///qtwebchannel/qwebchannel.js) | Implemented evidence; docs/scaffold follow-up → TASK-3/TASK-18 |
 | 7 Testing story | `tests/` — fake interface + fake action factory | Pure-Python evidence exists; headless/runtime/fixture proof → TASK-1/TASK-2/TASK-23 |
 
@@ -929,6 +779,11 @@ injects a fake interface and an `action_factory`, so plugin and algorithm logic
 is exercised on a machine with no QGIS at all:
 
 ```bash
-pixi run -e default sdk-test      # 35 tests, no QGIS required
-pixi run -e default sdk-doctor    # proves import qgis.core resolves in the env
+# the SDK suite, no QGIS required — 490 passed, 3 skipped, 8 deselected
+pixi run -- bun x turbo run test --filter=qgis-sdk-py
 ```
+
+The turbo package is `qgis-sdk-py`, not `qgis-sdk`. The `sdk-test` and
+`sdk-doctor` pixi tasks this document used to name do not exist; the qt and qgis
+tiers of the same suite are deselected by default and run under their own pixi
+tasks, which need a display and a QGIS install.

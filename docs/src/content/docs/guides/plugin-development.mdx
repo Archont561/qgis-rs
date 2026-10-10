@@ -1,11 +1,11 @@
 ---
 title: Plugin Development
-description: Build QGIS plugins with Python, UI dialogs, WebEngine HTML, and optional Rust acceleration
+description: Build QGIS plugins with Python, UI dialogs, and WebEngine HTML
 ---
 
 # Plugin Development
 
-The qgis-sdk provides a Python framework for building QGIS plugins with UI dialogs, WebEngine HTML/CSS/JS, and optional Rust acceleration.
+The qgis-sdk provides a pure-Python framework for building QGIS plugins with UI dialogs and WebEngine HTML/CSS/JS.
 
 ## Installation
 
@@ -127,21 +127,6 @@ new QWebChannel(qt.webChannelTransport, function(channel) {
 - Python → JS: `web_view.page().runJavaScript("updateFromPython({message: 'hello'})")`
 
 **Important:** `from qgis.PyQt.QtWebEngineWidgets import QWebEngineView` must be imported **before** `QApplication` (QGIS issue #49512).
-
-## Rust Acceleration
-
-```python
-from qgis_sdk import rust_accelerated
-
-class BufferFast(Algorithm):
-    @rust_accelerated(fallback="process_python")
-    def process(self, context):
-        pass  # Replaced by Rust at runtime
-
-    def process_python(self, context):
-        # Pure Python fallback
-        ...
-```
 
 ## CLI
 
