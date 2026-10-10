@@ -7,6 +7,7 @@
 
 pub mod cli;
 pub mod commands;
+mod discovery;
 
 pub use cli::{Cli, Command};
 pub use commands::run;

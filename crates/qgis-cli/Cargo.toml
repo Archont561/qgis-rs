@@ -15,6 +15,7 @@ path = "src/main.rs"
 
 [dependencies]
 qgis-render = { workspace = true }
+qgis-engine = { workspace = true }
 qgis-server = { workspace = true }
 anyhow      = { workspace = true }
 clap        = { workspace = true }
@@ -27,7 +28,7 @@ tokio    = { workspace = true, optional = true }
 [features]
 default = ["mcp", "qgis"]
 mcp     = ["dep:qgis-mcp", "dep:tokio"]
-qgis    = ["dep:qgis-mcp", "qgis-mcp/qgis"]
+qgis    = ["dep:qgis-mcp", "qgis-mcp/qgis", "qgis-engine/qgis"]
 
 [dev-dependencies]
 rstest = { workspace = true }

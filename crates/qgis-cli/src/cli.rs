@@ -19,6 +19,12 @@ pub struct Cli {
 /// Every `qgis-cli` subcommand.
 #[derive(Debug, Subcommand)]
 pub enum Command {
+    /// Report CLI, engine, transport and backend versions
+    Version(DiscoveryArgs),
+    /// Describe engine capabilities and the parsed command surface
+    Capabilities(DiscoveryArgs),
+    /// Diagnose engine readiness and optional native backend availability
+    Doctor(DiscoveryArgs),
     /// Render a project to an image
     Render(RenderArgs),
     /// Build an XYZ tile pyramid
@@ -201,4 +207,12 @@ pub struct McpArgs {
     /// Print the tools the server offers, then exit
     #[arg(long)]
     pub list_tools: bool,
+}
+
+/// Output options for read-only discovery commands.
+#[derive(Debug, Parser)]
+pub struct DiscoveryArgs {
+    /// Write a deterministic JSON report to stdout
+    #[arg(long)]
+    pub json: bool,
 }

@@ -13,7 +13,10 @@
 //! assert!(response.contains("\"ok\":true"));
 //! ```
 
+mod discovery;
 mod payload;
+
+pub use discovery::discovery;
 
 // Re-exported, not merely imported: a binding, a test or the CLI can name the
 // transport it was built against without adding a second dependency edge.
