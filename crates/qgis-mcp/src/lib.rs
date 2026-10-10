@@ -119,34 +119,12 @@ pub struct CrsReport {
 }
 
 /// One zoom level of a tile plan.
-#[derive(Debug, Clone, PartialEq, serde::Serialize)]
-pub struct ZoomLevelReport {
-    /// The zoom level.
-    pub zoom: u32,
-    /// First column.
-    pub x_min: u32,
-    /// Last column.
-    pub x_max: u32,
-    /// First row.
-    pub y_min: u32,
-    /// Last row.
-    pub y_max: u32,
-    /// Tiles at this level.
-    pub tiles: u64,
-}
-
-/// What `plan_tiles` returns.
-#[derive(Debug, Clone, PartialEq, serde::Serialize)]
-pub struct TilePlanReport {
-    /// The requested bounds, echoed back.
-    pub bounds: String,
-    /// The requested zoom range, echoed back.
-    pub zoom: String,
-    /// Tiles across every zoom level.
-    pub total_tiles: u64,
-    /// One entry per zoom level.
-    pub levels: Vec<ZoomLevelReport>,
-}
+///
+/// Re-exported rather than redefined: this is the same shape the engine wire
+/// protocol and `qgis-cli plan tiles` emit, defined once in `qgis-render`. The
+/// local copy had drifted — its `tiles` field was a count, while the engine's
+/// top-level `tiles` is the enumerated array.
+pub use qgis_render::{TilePlanReport, ZoomLevelReport};
 
 /// What `project_info` returns.
 #[derive(Debug, Clone, PartialEq, serde::Serialize)]
@@ -289,6 +267,9 @@ impl QgisMcpServer {
 
     /// Count the tiles that cover an area.
     ///
+    /// Returns the shared [`TilePlanReport`], so this tool, the engine's
+    /// `plan_tiles` operation and `qgis-cli plan tiles` cannot drift apart.
+    ///
     /// # Errors
     ///
     /// Returns an MCP `invalid params` error for malformed bounds or zooms.
@@ -296,23 +277,7 @@ impl QgisMcpServer {
         let extent = Extent::parse(bounds).map_err(invalid_params)?;
         let zooms = ZoomRange::parse(zoom).map_err(invalid_params)?;
         let plan = TilePlan::new(extent, zooms).map_err(invalid_params)?;
-        Ok(TilePlanReport {
-            levels: plan
-                .levels()
-                .into_iter()
-                .map(|level| ZoomLevelReport {
-                    zoom: level.zoom,
-                    x_min: level.x_min,
-                    x_max: level.x_max,
-                    y_min: level.y_min,
-                    y_max: level.y_max,
-                    tiles: level.tile_count(),
-                })
-                .collect(),
-            total_tiles: plan.tile_count(),
-            bounds: extent.to_string(),
-            zoom: zoom.trim().to_string(),
-        })
+        Ok(plan.report())
     }
 
     /// Describe a project file, without needing QGIS.

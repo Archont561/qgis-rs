@@ -31,4 +31,7 @@ mcp     = ["dep:qgis-mcp", "dep:tokio"]
 qgis    = ["dep:qgis-mcp", "qgis-mcp/qgis", "qgis-engine/qgis"]
 
 [dev-dependencies]
-rstest = { workspace = true }
+# The `plan tiles` report is asserted to be byte-identical to what the MCP tool
+# answers, which is what stops a second spelling of the same plan appearing.
+qgis-mcp = { workspace = true, default-features = false }
+rstest   = { workspace = true }

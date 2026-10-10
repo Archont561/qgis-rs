@@ -16,6 +16,7 @@ The `qgis-cli` binary provides command-line access to qgis-rs rendering and serv
 | `doctor` | Diagnose pure-engine readiness and optional QGIS support |
 | `validate` | Validate extents, CRS syntax, zoom ranges and XYZ tiles |
 | `inspect` | Inspect project file metadata only, without parsing or validation |
+| [`plan`](/cli/tiles#planning-without-a-project) | Count deterministic work from input alone, without a project or QGIS |
 | [`render`](/cli/render) | Render a QGIS project to an image |
 | [`tiles`](/cli/tiles) | Generate tile pyramids |
 | [`batch`](/cli/batch) | Batch render multiple extents |
@@ -73,7 +74,7 @@ state and perform no implicit downloads or artifact writes.
 
 `doctor` explains build/runtime requirements; it does not install dependencies,
 scan profiles, or guarantee that a particular project/provider will work.
-Project-manifest inspection, new planning commands, additional validation types
+Project-manifest inspection, batch planning, additional validation types
 and resource policies remain later TASK-41 slices.
 
 ## Validation
@@ -173,8 +174,53 @@ failures write only to stderr.
 
 Legacy `info` remains separate, with its existing report, flags and exits.
 No engine operation or FFI contract changes are implied by the new CLI command.
-XML/container manifests, declared project metadata, native validation, planning,
+XML/container manifests, declared project metadata, native validation,
 atomic artifacts, cancellation and resource limits remain later TASK-41 slices.
+
+## Deterministic tile planning
+
+```bash
+qgis-cli plan tiles --bounds 14,50,15,51 --zoom 10-14
+qgis-cli plan tiles -b 14,50,15,51 -z 10-14 --json
+```
+
+`plan tiles` counts an XYZ pyramid over an EPSG:4326 extent. It is pure
+geometry: it takes no project argument, opens no file, initializes no backend,
+and writes nothing. That is what separates it from `tiles <project> --dry-run`,
+which counts the same numbers but opens a `.qgs`/`.qgz` first.
+
+The report is the same shape the engine's `plan_tiles` operation and the MCP
+`plan_tiles` tool return — `bounds`, `zooms`, `tile_count` and one `levels`
+entry per zoom level, each carrying its own `tile_count`. One definition in
+`qgis-render`, three surfaces, so they cannot disagree:
+
+```json
+{
+  "bounds": { "min_x": 14.0, "min_y": 50.0, "max_x": 15.0, "max_y": 51.0 },
+  "zooms": { "min": 10, "max": 14 },
+  "tile_count": 4568,
+  "levels": [
+    { "zoom": 10, "x_min": 551, "x_max": 554, "y_min": 342, "y_max": 347, "tile_count": 24 }
+  ]
+}
+```
+
+| Exit | Meaning |
+|------|---------|
+| 0 | Planning succeeded |
+| 2 | Missing/extra arguments or invalid options; usage on stderr |
+| 10 | Unreadable `--bounds` or `--zoom`, or an unordered extent/zoom range |
+
+Exit **10** is the same category `validate` uses, so malformed input means the
+same thing whichever pure command refused it. Legacy commands keep their
+existing exits. With `--json`, a failure still leaves one parseable document on
+stdout — an `error` object with `code: "invalid_input"` and `message` — and the
+diagnostic also goes to stderr. Omit `--json` for one row per zoom level plus
+the total.
+
+Planning does not decide whether the tiles can be *rendered*: output formats,
+storage backends, batch manifests, native execution gates, cancellation and
+resource limits are not part of this command.
 
 ## Installation
 

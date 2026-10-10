@@ -139,6 +139,40 @@ fn a_dry_run_counts_tiles_without_rendering(cli: Cli) {
     assert!(run.stdout.contains("24 tiles"), "{}", run.stdout);
 }
 
+/// The legacy dry-run report, pinned whole rather than by substring.
+///
+/// `plan tiles` prints the same per-level rows, so a format change here would
+/// quietly change two commands' output. Pinning the exact text says which
+/// command owns the wording, and that this one still says "Would render".
+#[rstest]
+fn the_legacy_dry_run_report_is_unchanged(cli: Cli) {
+    let project = cli.project("map.qgs");
+
+    let run = cli.run(&[
+        "tiles",
+        &utf8(&project),
+        "-z",
+        "10-14",
+        "-b",
+        "14,50,15,51",
+        "-o",
+        &cli.path("tiles"),
+        "--dry-run",
+    ]);
+
+    assert_eq!(
+        run.stdout,
+        "z=10  x 551..554  y 342..347  24 tiles\n\
+         z=11  x 1103..1109  y 685..694  70 tiles\n\
+         z=12  x 2207..2218  y 1371..1389  228 tiles\n\
+         z=13  x 4414..4437  y 2742..2778  888 tiles\n\
+         z=14  x 8829..8874  y 5484..5556  3358 tiles\n\
+         Would render 4568 tiles across zoom levels 10-14\n",
+        "{}",
+        run.stderr
+    );
+}
+
 #[rstest]
 fn info_prints_json_without_needing_qgis(cli: Cli) {
     let project = cli.project("map.qgz");

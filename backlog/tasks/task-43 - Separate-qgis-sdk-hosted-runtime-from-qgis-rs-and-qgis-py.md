@@ -4,7 +4,7 @@ title: Enforce pure-Python qgis-sdk dependency and hosted-runtime boundaries
 status: To Do
 assignee: []
 created_date: '2026-10-03 09:35'
-updated_date: '2026-10-10 13:52'
+updated_date: '2026-10-10 17:01'
 labels:
   - qgis-sdk
   - python
@@ -63,6 +63,22 @@ TASK-63 separately owns the reverse-direction qgis_py import of qgis_sdk and the
 Names updated for the 2026-10 rename: the Python distribution is qgis-py and the Node package is @archont561/qgis-node. The qgis-rs compatibility alias is removed by TASK-60.
 
 2026-10-10 owner-approved rewrite under D15. Former AC1 assumed a Rust SDK graph; AC3 used retired standalone naming; AC4 required an SDK-owned optional Rust acceleration adapter; AC5 named the deleted SDK extension and old Python alias. Those obligations are superseded by the six replacement criteria above, not completed by this edit. Earlier notes/comments are retained as historical context and are not the current contract. Status and dependencies remain unchanged; no AC is checked. TASK-63 retains its separate public-attribute decision.
+
+Evidence audit (2026-10-10, read-only; no source changed).
+
+AC1 — proven. py-packages/qgis-sdk/pyproject.toml declares dependencies = ["typer>=0.27,<1", "questionary>=2.1,<3"] and no qgis-py. The only mention of qgis_py anywhere in the package is py-packages/qgis-sdk/tests/test_cli_task57.py:73, which blocks it. That test spawns a fresh subprocess setting qgis, qgis.core, qgis.gui, qgis.PyQt, qgis_py and qgis_sdk._core to None in sys.modules and still runs `new` and `package` to exit 0 (test_cli_task57.py:69-91), so both the manifest probe and the fresh-process import probe this criterion asks for already exist.
+
+AC3 — proven in the direction this task owns: py-packages/qgis-py/pyproject.toml declares no qgis-sdk dependency. The reverse-direction probe and the HAS_QGIS_SDK policy are correctly left to TASK-63 and are deliberately not checked here.
+
+AC4 — proven. Build backend is setuptools.build_meta with requires = ["setuptools>=77", "wheel"]; no maturin, no pyo3, no ext_modules. test_build_configuration_has_no_rust_toolchain asserts setuptools present and maturin/pyo3 absent; test_pure_python.py pins that qgis_sdk._core and qgis_sdk._fallback_cli are not importable and that HAS_RUST/RUST_VERSION are exposed nowhere including qgis_sdk.styles; test_cli_task57.py:55-56 asserts the typer app has no `rust` subcommand.
+
+AC6 — gates measured at the 2026-10-10 baseline: pure 490 passed / 3 skipped / 8 deselected, qt 3 passed / 498 deselected, qgis 5 passed / 496 deselected. The four-layer selection policy lives in qgis_sdk.testing.gates and is itself covered by tests/test_layer_gates.py, which explicitly refuses to call an unreachable layer a pass.
+
+AC2 — needs a decision, not more evidence. The gate design above satisfies the "never fake a green" half. The other half, "does not substitute a fallback when QGIS is required", collides with fallbacks documented as always available: src/qgis_sdk/__init__.py:117 (network manager, "always available (fallback without QGIS)") and :125 (task manager, same), plus bridge/qgis_api/network.py:29 ("Fallback urllib"), bridge/qgis_api/processing.py:45 ("Fallback: try direct processing"), bridge/qgis_api/layers.py:103, bridge/qgis_api/message.py:31 and bridge/qgis_api/settings.py:15. These read as test-harness simulation for the pure layer rather than production substitution, but nothing in the tree says so, and this criterion cannot be checked until that distinction is written down. Resolve it as a clarification before implementing AC2; do not encode either reading into an acceptance criterion.
+
+AC5 — delegated by its own text to TASK-42, which owns the FFI contract tests; the evidence to link is recorded in TASK-42's notes.
+
+One defect found while auditing AC4, with no other owner: two comments still claim a Rust fast-path that D15 retired and that test_pure_python.py actively forbids — src/qgis_sdk/__init__.py:36 ("Styles IR — pure Python fallback, Rust when available") and src/qgis_sdk/styles.py:3 ("uses Rust when available"). styles.py contains no Rust reference at all. Documentation only, but it asserts a code path the tests prohibit.
 <!-- SECTION:NOTES:END -->
 
 ## Comments
