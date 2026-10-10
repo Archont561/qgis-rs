@@ -101,16 +101,16 @@ qgis-rs/
 │   ├── qgis-mcp/              # Model Context Protocol server (rmcp)
 │   ├── qgis-cli/              # Command-line binary, bundles the MCP server
 │   ├── qgis-py/               # Rust core of the qgis-rs Python wheel (PyO3, no bins)
-│   ├── qgis-sdk/              # Rust core of the qgis-sdk Python wheel (PyO3 + qgis-plugin/qgis-sdk bins)
+│   ├── qgis-sdk/              # Rust core of the qgis-sdk Python wheel (PyO3 + qgis-sdk/qgis-sdk bins)
 │   └── qgis-node/             # Rust core of the qgis-rs npm package (NAPI, no bins)
 │
 ├── py-packages/
-│   ├── qgis-rs/               # Python dist: pyproject.toml (maturin), python/qgis_rs/, tests/
+│   ├── qgis-rs/               # Python dist: pyproject.toml (maturin), python/qgis_py/, tests/
 │   └── qgis-sdk/              # Python dist: pyproject.toml, src/qgis_sdk/, tests/, pixi [package]
 │
 ├── ts-packages/
-│   ├── qgis-node/             # npm dist: package.json, src/, tests/, bin/ wrappers
-│   └── qgis-sdk-bridge/       # @qgis-sdk/bridge — Bun workspace, TypeScript sources + bun:test
+│   ├── qgis-node/             # npm dist: package.json, src/, tests/
+│   └── qgis-sdk/       # @archont561/qgis-sdk — Bun workspace, TypeScript sources + bun:test
 │
 ├── docs/                      # Documentation site (Astro Starlight)
 │
@@ -135,7 +135,7 @@ qgis-rs/
 
 ```bash
 # Clone repository
-git clone https://github.com/Archont561/qgis-rs.git
+git clone https://github.com/Archont561/qgis-rust.git
 cd qgis-rs
 
 # Install dependencies (Pixi)
@@ -175,9 +175,9 @@ pixi run bun x turbo run test       # Rust suites, Python packages, napi FFI, br
 pixi run bun x turbo run coverage   # Rust lcov + Python XML + JS coverage
 
 # Scoped runs for day-to-day iteration:
-pixi run bun x turbo run build --filter=qgis-rs      # napi addon, cached
+pixi run bun x turbo run build --filter=@archont561/qgis-node      # napi addon, cached
 pixi run bun x turbo run test --filter=@qgis/rust    # Rust unit + full QGIS suites
-pixi run bun x turbo run test --filter=qgis-rs --filter=@qgis-sdk/bridge
+pixi run bun x turbo run test --filter=@archont561/qgis-node --filter=@archont561/qgis-sdk
 ```
 
 Workspace façades: `crates/package.json` (`@qgis/rust`, the whole Cargo
@@ -247,9 +247,9 @@ pixi run scaffold core geometry QgsGeometry geometry
 ## Key Contacts
 
 - **Maintainer**: [Your Name](mailto:your-email@example.com)
-- **GitHub**: https://github.com/Archont561/qgis-rs
-- **Issues**: https://github.com/Archont561/qgis-rs/issues
-- **Discussions**: https://github.com/Archont561/qgis-rs/discussions
+- **GitHub**: https://github.com/Archont561/qgis-rust
+- **Issues**: https://github.com/Archont561/qgis-rust/issues
+- **Discussions**: https://github.com/Archont561/qgis-rust/discussions
 
 ## Resources
 

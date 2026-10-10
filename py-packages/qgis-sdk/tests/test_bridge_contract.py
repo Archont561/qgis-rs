@@ -8,7 +8,7 @@ snake_case wire names, and handles that are opaque and session-scoped.
 
 The files come from `test-fixtures/bridge/`, the same ones the Rust suite
 (`crates/qgis-protocol/tests/bridge_contract.rs`) and the TypeScript suite
-(`ts-packages/qgis-sdk-bridge/tests/bridge-contract.test.ts`) read. What the
+(`ts-packages/qgis-sdk/tests/bridge-contract.test.ts`) read. What the
 three share is the observable contract and nothing else: no fake implementation
 class crosses a language boundary here, because two sides that agree by being
 the same code have not agreed about anything.

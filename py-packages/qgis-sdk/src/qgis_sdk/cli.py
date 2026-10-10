@@ -1,53 +1,41 @@
 """
-CLI entry points for qgis-sdk Python package.
+CLI entry points for the qgis-sdk Python package.
 
-This module provides `qgis-plugin` and `qgis-sdk` console scripts that run
-at native Rust speed when the `_core` extension is built, otherwise fallback
-to pure Python.
-
-It also exposes `qgis-cli` for convenience when both SDK and rendering tools
-are needed.
-
-The Rust binary `qgis-plugin` (built by maturin) is installed to PATH alongside
-the Python package, so `qgis-plugin --help` works both as binary and as
-`python -m qgis_sdk.cli`.
+`qgis-sdk` runs pure Python. Every command is implemented here or in the
+package modules it calls; no native extension is involved.
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import shutil
+import subprocess
 import sys
+import zipfile
+from enum import Enum
 from pathlib import Path
 from typing import List, Optional
 
-# Try Rust core for native speed
-try:
-    from . import _core as core  # type: ignore
-    HAS_RUST = True
-except ImportError:
-    try:
-        from . import _fallback_cli as core  # type: ignore
-        HAS_RUST = False
-    except ImportError:
-        core = None  # type: ignore
-        HAS_RUST = False
+import typer
+
+from .plugin_validation import validate_plugin_structure
 
 
 def _cmd_new(args: argparse.Namespace) -> int:
     """Scaffold a new plugin."""
     name = args.name
     if not name:
-        name = input("Plugin name: ").strip()
+        name = typer.prompt("Plugin name").strip()
         if not name:
-            print("qgis-plugin: plugin name must not be empty", file=sys.stderr)
+            print("qgis-sdk: plugin name must not be empty", file=sys.stderr)
             return 1
 
     output_dir = Path(args.output) if args.output else Path(".")
     plugin_path = output_dir / name
 
     if plugin_path.exists():
-        print(f"qgis-plugin: directory already exists: {plugin_path}", file=sys.stderr)
+        print(f"qgis-sdk: directory already exists: {plugin_path}", file=sys.stderr)
         return 1
 
     framework = getattr(args, "framework", "vanilla")
@@ -57,41 +45,6 @@ def _cmd_new(args: argparse.Namespace) -> int:
         declarative = True
     bundle = getattr(args, "bundle", False)
     offline_wheel = getattr(args, "offline_wheel", None)
-
-    # The Rust scaffold currently covers the vanilla layout only. Route
-    # framework-specific templates and packaging options through Python so the
-    # native extension doesn't silently ignore CLI arguments it does not yet
-    # support.
-    native_scaffold_supports_args = (
-        framework == "vanilla"
-        and not bundle
-        and offline_wheel is None
-        and not getattr(args, "author", None)
-        and not getattr(args, "email", None)
-    )
-    if (
-        HAS_RUST
-        and core is not None
-        and hasattr(core, "scaffold_plugin")
-        and not declarative
-        and native_scaffold_supports_args
-    ):
-        try:
-            try:
-                result = core.scaffold_plugin(name, str(output_dir), args.type, args.rust, args.web, not args.no_ui)
-            except TypeError:
-                result = core.scaffold_plugin(name, str(output_dir), args.type, args.rust)
-            print(f"✅ Created plugin in {result}")
-            if not args.no_ui:
-                print(f"  UI: dialogs/main_dialog.py + ui/main_dialog.ui")
-            if args.web:
-                print(f"  Web: web/map.html (Leaflet) + web/react.html (React) + web/vue.html (Vue) + web/components.html (Web Components) + dialogs/web_dialog.py")
-                if framework != "vanilla":
-                    print(f"  Framework: {framework} (web/{framework}.html + frontend/ Vite)")
-            return 0
-        except Exception as exc:
-            print(f"qgis-plugin: {exc}", file=sys.stderr)
-            return 1
 
     try:
         from .scaffold import scaffold_plugin as py_scaffold
@@ -116,7 +69,7 @@ def _cmd_new(args: argparse.Namespace) -> int:
             print(f"  QGIS Web API: window.qgis.layers.addVector/list/zoom, project.crs, message.info, tasks.run, network.fetch")
             print(f"  Bun: cd {name} && bun install && bun run build && bun test")
             print(f"  Bridge JSON: web/bridge.json (no codegen) — loaded via BridgeDescription.from_class")
-            print(f"  JS: import {{ createQgisBridge }} from '@qgis-sdk/bridge'; const {{ qgis, bridge }} = await createQgisBridge()")
+            print(f"  JS: import {{ createQgisBridge }} from '@archont561/qgis-sdk'; const {{ qgis, bridge }} = await createQgisBridge()")
             if bundle:
                 print(f"  Bundle: wheels/ contains offline wheel, bootstrap.py handles pip install to extlibs/")
         else:
@@ -125,16 +78,16 @@ def _cmd_new(args: argparse.Namespace) -> int:
             if args.web:
                 print(f"  Web: web/map.html (Leaflet) + web/react.html (React 18 hook) + web/vue.html (Vue 3) + web/components.html (Web Components)")
                 print(f"       QWebChannel: qrc:///qtwebchannel/qwebchannel.js + runJavaScript")
-                print(f"       Bridge: npm install @qgis-sdk/bridge — typed, auto-injects qwebchannel.js")
+                print(f"       Bridge: npm install @archont561/qgis-sdk — typed, auto-injects qwebchannel.js")
                 if framework != "vanilla":
                     print(f"  Framework: {framework} -> web/{framework}.html as index + frontend/ Vite template")
                     print(f"    Build: cd {name}/{name}/frontend && npm install && npm run build -> web/dist/")
-                    print(f"    Types: web/bridge.d.ts auto-generated from Python Bridge (via qgis-plugin bridge generate)")
+                    print(f"    Types: web/bridge.d.ts auto-generated from Python Bridge (via qgis-sdk bridge generate)")
         return 0
     except Exception as exc:
         import traceback
         traceback.print_exc()
-        print(f"qgis-plugin: {exc}", file=sys.stderr)
+        print(f"qgis-sdk: {exc}", file=sys.stderr)
         return 1
 
 
@@ -142,35 +95,22 @@ def _cmd_validate(args: argparse.Namespace) -> int:
     path = Path(args.path) if args.path else Path(".")
     print(f"Validating plugin in {path}...")
 
-    if HAS_RUST and core is not None and hasattr(core, "validate_plugin_structure"):
-        try:
-            errors = core.validate_plugin_structure(str(path))
-            if not errors:
-                print("✅ Plugin structure looks valid")
-                return 0
-            else:
-                for err in errors:
-                    print(f"  ❌ {err}", file=sys.stderr)
-                return 1
-        except Exception as exc:
-            print(f"qgis-plugin: {exc}", file=sys.stderr)
-            return 1
+    try:
+        errors, notes = validate_plugin_structure(str(path))
+    except ValueError as exc:
+        print(f"qgis-sdk: {exc}", file=sys.stderr)
+        return 1
 
-    # Python fallback
-    errors = []
-    if not (path / "metadata.txt").exists() and not (path / "src" / "metadata.txt").exists():
-        # Check if there's a Plugin class
-        has_py = any(p.suffix == ".py" for p in path.iterdir()) if path.is_dir() else False
-        if not has_py:
-            errors.append("missing metadata.txt")
-
-    if not errors:
-        print("✅ Plugin structure looks valid")
-        return 0
-    else:
+    if errors:
         for err in errors:
             print(f"  ❌ {err}", file=sys.stderr)
+        print(f"qgis-sdk: validation failed with {len(errors)} errors", file=sys.stderr)
         return 1
+
+    print("✅ Plugin structure looks valid")
+    for note in notes:
+        print(f"  {note}")
+    return 0
 
 
 def _cmd_info(args: argparse.Namespace) -> int:
@@ -179,67 +119,116 @@ def _cmd_info(args: argparse.Namespace) -> int:
     if not metadata_path.exists():
         metadata_path = path / "src" / "metadata.txt"
 
-    if metadata_path.exists():
-        content = metadata_path.read_text(encoding="utf-8")
-        if args.json:
-            data = {}
-            for line in content.splitlines():
-                if line.startswith("[") or not line.strip():
-                    continue
-                if "=" in line:
-                    k, v = line.split("=", 1)
-                    data[k.strip()] = v.strip()
-            print(json.dumps(data, indent=2))
-        else:
-            print(f"Plugin info from {metadata_path}:")
-            print(content)
+    if not metadata_path.exists():
+        # Matches the retired Rust command: a missing file is information, not an error.
+        print(f"No metadata.txt found in {path}")
+        print("This might be a qgis-sdk Plugin class — import it to see metadata:")
+        print("  from my_plugin import MyPlugin")
+        print("  print(MyPlugin.metadata_txt())")
         return 0
+
+    content = metadata_path.read_text(encoding="utf-8")
+    if args.json:
+        data: dict = {}
+        for line in content.splitlines():
+            if line.startswith("[") or not line.strip():
+                continue
+            if "=" in line:
+                k, v = line.split("=", 1)
+                data[k.strip()] = v.strip()
+        # serde_json's default map is sorted; keep that order and raw UTF-8.
+        print(json.dumps(dict(sorted(data.items())), indent=2, ensure_ascii=False))
     else:
-        print(f"No metadata.txt found in {path}", file=sys.stderr)
-        print("Try: from my_plugin import MyPlugin; print(MyPlugin.metadata_txt())")
-        return 1
+        print(f"Plugin info from {metadata_path}:")
+        print(content)
+    return 0
 
 
 def _cmd_version(_args: argparse.Namespace) -> int:
-    if HAS_RUST and core is not None:
-        try:
-            v = core.version()
-            print(f"qgis-plugin {v} (Rust-native, from qgis-sdk)")
-            print(f"  Python API: qgis_sdk {v}")
-            print(f"  Rust core: {'yes' if HAS_RUST else 'no (fallback)'}")
-            return 0
-        except Exception:
-            pass
+    from . import __version__
 
-    # Fallback
+    print(f"qgis-sdk {__version__} (Python, from qgis-sdk)")
+    print(
+        "  UI: dialogs (.ui + uic.loadUiType) + WebEngine "
+        "(QWebChannel, qrc:///qtwebchannel/qwebchannel.js)"
+    )
+    return 0
+
+
+def _run_cargo(argv: List[str]) -> int:
+    """Run cargo in the plugin directory. A missing cargo is a failed command."""
     try:
-        from . import __version__
-        print(f"qgis-plugin {__version__} (Python fallback)")
-    except Exception:
-        print("qgis-plugin 0.1.0 (Python fallback)")
-    return 0
-
-
-def _cmd_build(args: argparse.Namespace) -> int:
-    print(f"Building plugin (rust={args.rust})...")
-    if args.rust and not Path("Cargo.toml").exists():
-        print("qgis-plugin: Cargo.toml not found — run `qgis-plugin rust init` first", file=sys.stderr)
+        return subprocess.run(["cargo", *argv]).returncode
+    except FileNotFoundError:
+        print("qgis-sdk: cargo was not found on PATH", file=sys.stderr)
         return 1
-    print(f"  Build complete. Output in {args.output}")
-    return 0
 
 
 def _cmd_test(args: argparse.Namespace) -> int:
-    print(f"Running tests (python={not args.rust}, rust={not args.python})...")
+    only_python = bool(args.python) and not bool(args.rust)
+    only_rust = bool(args.rust) and not bool(args.python)
+    run_python = not only_rust
+    run_rust = not only_python and Path("Cargo.toml").exists()
+    if only_rust and not Path("Cargo.toml").exists():
+        print("qgis-sdk test: --rust needs a Cargo.toml — run `qgis-sdk rust init` first", file=sys.stderr)
+        return 1
+    print(f"Running tests (python={run_python}, rust={run_rust})...")
+    if run_python:
+        returncode = subprocess.run([sys.executable, "-m", "pytest", "-q"]).returncode
+        if returncode:
+            return returncode
+    if run_rust:
+        return _run_cargo(["test"])
     return 0
 
 
 def _cmd_install(args: argparse.Namespace) -> int:
     profile = Path(args.profile) if args.profile else Path.home() / ".local/share/QGIS/QGIS3/profiles/default/python/plugins"
-    print(f"Installing to {profile}")
+    try:
+        package_dir = _plugin_package_dir(Path("."))
+    except ValueError as exc:
+        print(f"qgis-sdk install: {exc}", file=sys.stderr)
+        return 1
+    if package_dir is None:
+        print("qgis-sdk install: no plugin package found (a folder with __init__.py)", file=sys.stderr)
+        return 1
+    target = profile / package_dir.name
+    print(f"Installing {package_dir.name} to {target}")
     profile.mkdir(parents=True, exist_ok=True)
+    shutil.copytree(package_dir, target, dirs_exist_ok=True, ignore=_ignored_entries)
+    metadata = Path(".") / "metadata.txt"
+    if metadata.is_file() and not (target / "metadata.txt").exists():
+        shutil.copy(metadata, target / "metadata.txt")
     print("✅ Installed")
     return 0
+
+
+def _cmd_dev(args: argparse.Namespace) -> int:
+    print(
+        "qgis-sdk dev: watch mode is not implemented in this package. "
+        "Run `qgis-sdk build` and `qgis-sdk install` after each change.",
+        file=sys.stderr,
+    )
+    return 2
+
+
+def _cmd_publish(args: argparse.Namespace) -> int:
+    if not args.zip:
+        print("qgis-sdk publish: --zip is required", file=sys.stderr)
+        return 1
+    archive = Path(args.zip)
+    if not archive.is_file():
+        print(f"qgis-sdk publish: archive not found: {archive}", file=sys.stderr)
+        return 1
+    if args.dry_run:
+        print(f"Dry run: would upload {archive} to the QGIS plugin repository")
+        return 0
+    print(
+        "qgis-sdk publish: upload to the QGIS plugin repository is not implemented. "
+        "Use --dry-run to check the archive.",
+        file=sys.stderr,
+    )
+    return 2
 
 
 def _cmd_bootstrap(args: argparse.Namespace) -> int:
@@ -254,7 +243,7 @@ def _cmd_bootstrap(args: argparse.Namespace) -> int:
         print(f"  Usage in __init__.py: from .bootstrap import ensure_qgis_sdk; ensure_qgis_sdk(auto_install=True)")
         return 0
     except Exception as exc:
-        print(f"qgis-plugin bootstrap: {exc}", file=sys.stderr)
+        print(f"qgis-sdk bootstrap: {exc}", file=sys.stderr)
         return 1
 
 
@@ -266,7 +255,7 @@ def _cmd_vendor(args: argparse.Namespace) -> int:
         import shutil
         src = Path(offline_wheel)
         if not src.exists():
-            print(f"qgis-plugin vendor: wheel not found: {src}", file=sys.stderr)
+            print(f"qgis-sdk vendor: wheel not found: {src}", file=sys.stderr)
             return 1
         shutil.copy(src, output / src.name)
         print(f"✅ Vendored offline wheel to {output / src.name}")
@@ -283,7 +272,7 @@ def _cmd_vendor(args: argparse.Namespace) -> int:
             print(f"✅ Downloaded wheels to {output}")
             return 0
         except Exception as exc:
-            print(f"qgis-plugin vendor: {exc}", file=sys.stderr)
+            print(f"qgis-sdk vendor: {exc}", file=sys.stderr)
             print(f"  Build wheel first: python -m build, or provide --offline-wheel path")
             return 1
     else:
@@ -294,37 +283,82 @@ def _cmd_vendor(args: argparse.Namespace) -> int:
         return 0
 
 
-def _cmd_package(args: argparse.Namespace) -> int:
-    output = Path(args.output)
+_IGNORED_NAMES = {"__pycache__", ".pytest_cache", ".mypy_cache"}
+
+
+def _ignored_entries(directory: str, names: List[str]) -> List[str]:
+    return [name for name in names if name in _IGNORED_NAMES or name.endswith(".pyc")]
+
+
+def _plugin_package_dir(base: Path) -> Optional[Path]:
+    """The plugin package: the first child folder of ``base`` that has an ``__init__.py``."""
+    candidates = sorted(child for child in base.iterdir() if child.is_dir() and (child / "__init__.py").is_file())
+    return candidates[0] if candidates else None
+
+
+def _archive_plugin(base: Path, output: Path) -> Path:
+    """Zip the plugin package under ``output`` as ``<name>.zip`` with a ``<name>/`` root folder."""
+    package_dir = _plugin_package_dir(base)
+    if package_dir is None:
+        raise ValueError("no plugin package found (a folder with __init__.py)")
     output.mkdir(parents=True, exist_ok=True)
-    bundle = getattr(args, "bundle", False)
-    offline_wheel = getattr(args, "offline_wheel", None)
-    print(f"Packaging plugin to {output}... (bundle={bundle})")
+    archive = output / f"{package_dir.name}.zip"
+    with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as zf:
+        for path in sorted(package_dir.rglob("*")):
+            if path.is_dir():
+                continue
+            relative = path.relative_to(package_dir)
+            if any(part in _IGNORED_NAMES for part in relative.parts) or path.suffix == ".pyc":
+                continue
+            zf.write(path, f"{package_dir.name}/{relative.as_posix()}")
+        metadata = base / "metadata.txt"
+        if metadata.is_file() and not (package_dir / "metadata.txt").is_file():
+            zf.write(metadata, f"{package_dir.name}/metadata.txt")
+    return archive
+
+
+def _vendor_bundle(package_dir: Path, bundle: bool, offline_wheel: Optional[str]) -> None:
+    """Copy bootstrap.py and an optional offline wheel into the plugin package."""
     if bundle:
-        print(f"  Bundle mode: including bootstrap.py + wheels/ for self-install")
-        # Ensure bootstrap.py exists in plugin dir
-        # Find plugin package dir (first dir with __init__.py)
-        cwd = Path(".")
-        pkg_dirs = [d for d in cwd.iterdir() if d.is_dir() and (d / "__init__.py").exists()]
-        if pkg_dirs:
-            pkg_dir = pkg_dirs[0]
-            bootstrap_src = Path(__file__).parent / "bootstrap.py"
-            if bootstrap_src.exists():
-                target = pkg_dir / "bootstrap.py"
-                if not target.exists():
-                    import shutil
-                    shutil.copy(bootstrap_src, target)
-                    print(f"  Vendored bootstrap.py to {target}")
-        if offline_wheel:
-            wheels_dir = Path("wheels")
-            wheels_dir.mkdir(exist_ok=True)
-            import shutil
-            src = Path(offline_wheel)
-            if src.exists():
-                shutil.copy(src, wheels_dir / src.name)
-                print(f"  Vendored offline wheel to {wheels_dir / src.name}")
-    print(f"  Created {output / 'plugin.zip'}")
+        bootstrap_src = Path(__file__).parent / "bootstrap.py"
+        target = package_dir / "bootstrap.py"
+        if bootstrap_src.exists() and not target.exists():
+            shutil.copy(bootstrap_src, target)
+    if offline_wheel:
+        wheel = Path(offline_wheel)
+        if not wheel.is_file():
+            raise ValueError(f"offline wheel not found: {wheel}")
+        wheels = package_dir / "wheels"
+        wheels.mkdir(exist_ok=True)
+        shutil.copy(wheel, wheels / wheel.name)
+
+
+def _cmd_package(args: argparse.Namespace) -> int:
+    if getattr(args, "rust", False):
+        if not Path("Cargo.toml").exists():
+            print("qgis-sdk package: --rust needs a Cargo.toml — run `qgis-sdk rust init` first", file=sys.stderr)
+            return 1
+        returncode = _run_cargo(["build", "--release"])
+        if returncode:
+            return returncode
+    bundle = bool(getattr(args, "bundle", False))
+    offline_wheel = getattr(args, "offline_wheel", None)
+    try:
+        package_dir = _plugin_package_dir(Path("."))
+        if package_dir is None:
+            raise ValueError("no plugin package found (a folder with __init__.py)")
+        if bundle or offline_wheel:
+            _vendor_bundle(package_dir, bundle, offline_wheel)
+        archive = _archive_plugin(Path("."), Path(args.output))
+    except ValueError as exc:
+        print(f"qgis-sdk package: {exc}", file=sys.stderr)
+        return 1
+    print(f"✅ Packaged plugin to {archive}")
     return 0
+
+
+def _cmd_build(args: argparse.Namespace) -> int:
+    return _cmd_package(args)
 
 
 def _cmd_rust_init(args: argparse.Namespace) -> int:
@@ -370,8 +404,10 @@ fn _native(m: &Bound<'_, PyModule>) -> PyResult<()> {
 
 
 def _cmd_rust_build(args: argparse.Namespace) -> int:
-    print(f"Building Rust module ({'release' if args.release else 'debug'})...")
-    return 0
+    if not Path("Cargo.toml").exists():
+        print("qgis-sdk rust build: no Cargo.toml here — run `qgis-sdk rust init` first", file=sys.stderr)
+        return 1
+    return _run_cargo(["build", "--release"] if args.release else ["build"])
 
 
 def _cmd_ui_add_dialog(args: argparse.Namespace) -> int:
@@ -404,7 +440,7 @@ def _cmd_ui_add_dialog(args: argparse.Namespace) -> int:
         print(f"  Pattern: uic.loadUiType + WA_DeleteOnClose + QSettings")
         return 0
     except Exception as exc:
-        print(f"qgis-plugin: {exc}", file=sys.stderr)
+        print(f"qgis-sdk: {exc}", file=sys.stderr)
         return 1
 
 
@@ -436,7 +472,7 @@ def _cmd_ui_add_web(args: argparse.Namespace) -> int:
         print(f"  Python: WebDialog.from_file + set_bridge + runJavaScript")
         return 0
     except Exception as exc:
-        print(f"qgis-plugin: {exc}", file=sys.stderr)
+        print(f"qgis-sdk: {exc}", file=sys.stderr)
         return 1
 
 
@@ -445,18 +481,18 @@ def _cmd_bridge_generate(args: argparse.Namespace) -> int:
     try:
         from .bridge import generate_js_wrapper, generate_package, generate_ts_bridge, load_bridge_class
     except ImportError as e:
-        print(f"qgis-plugin: bridge module not available: {e}", file=sys.stderr)
+        print(f"qgis-sdk: bridge module not available: {e}", file=sys.stderr)
         return 1
 
     if not args.bridge:
-        print("qgis-plugin bridge generate: --bridge is required (e.g. my_plugin.dialogs.web_dialog:Bridge)", file=sys.stderr)
+        print("qgis-sdk bridge generate: --bridge is required (e.g. my_plugin.dialogs.web_dialog:Bridge)", file=sys.stderr)
         return 1
 
     try:
         bridge_cls = load_bridge_class(args.bridge)
         print(f"Loaded bridge: {bridge_cls.__module__}.{bridge_cls.__name__}")
     except Exception as exc:
-        print(f"qgis-plugin: failed to load bridge '{args.bridge}': {exc}", file=sys.stderr)
+        print(f"qgis-sdk: failed to load bridge '{args.bridge}': {exc}", file=sys.stderr)
         return 1
 
     output = Path(args.output) if args.output else Path("web/bridge.d.ts")
@@ -474,7 +510,7 @@ def _cmd_bridge_generate(args: argparse.Namespace) -> int:
         print(f"  - bridge.d.ts (typed interface)")
         print(f"  - bridge.js (auto-injects qrc:///qtwebchannel/qwebchannel.js + Promise wrapper)")
         print(f"  - index.ts, react.ts, vue.ts, webcomponents.ts")
-        print(f"  Usage: import {{ createBridge }} from '@qgis-sdk/bridge'; import type {{ {bridge_name} }} from './bridge.d.ts'")
+        print(f"  Usage: import {{ createBridge }} from '@archont561/qgis-sdk'; import type {{ {bridge_name} }} from './bridge.d.ts'")
         return 0
 
     # Single file mode
@@ -490,177 +526,261 @@ def _cmd_bridge_generate(args: argparse.Namespace) -> int:
     print(f"  To: {output}")
     if output.suffix != ".js":
         print(f"  Framework: {args.framework}")
-        print(f"  Use with @qgis-sdk/bridge: npm install @qgis-sdk/bridge")
-        print(f"  import {{ createBridge }} from '@qgis-sdk/bridge'; import type {{ {bridge_name} }} from './{output.name}'")
+        print(f"  Use with @archont561/qgis-sdk: npm install @archont561/qgis-sdk")
+        print(f"  import {{ createBridge }} from '@archont561/qgis-sdk'; import type {{ {bridge_name} }} from './{output.name}'")
         if args.framework != "vanilla":
-            print(f"  For {args.framework}: import {{ useQgisBridge }} from '@qgis-sdk/bridge/{args.framework}'")
+            print(f"  For {args.framework}: import {{ useQgisBridge }} from '@archont561/qgis-sdk/{args.framework}'")
     return 0
 
 
-def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
-        prog="qgis-plugin",
-        description="QGIS plugin SDK — scaffold, build, test, and publish plugins (native Rust speed)",
+def _invoke(handler, **kwargs) -> None:
+    """Run an ``_cmd_*`` handler with the options typer parsed.
+
+    A non-zero handler result becomes the process exit code.
+    """
+    code = handler(argparse.Namespace(**kwargs))
+    if code:
+        raise typer.Exit(code)
+
+
+def _ask_dialog_name() -> str:
+    """Ask for a dialog name only at an interactive terminal; otherwise use the default."""
+    default = "main_dialog"
+    if not sys.stdin.isatty():
+        return default
+    import questionary
+
+    answer = questionary.text("Dialog name", default=default).ask()
+    if answer is None:
+        raise typer.Abort()
+    return answer.strip() or default
+
+
+app = typer.Typer(
+    name="qgis-sdk",
+    help="QGIS plugin SDK: scaffold, build, test, install, and package QGIS plugins.",
+    no_args_is_help=True,
+    add_completion=False,
+)
+rust_app = typer.Typer(help="Rust acceleration helpers.", no_args_is_help=True)
+ui_app = typer.Typer(help="Add UI scaffolding to a plugin.", no_args_is_help=True)
+bridge_app = typer.Typer(help="Generate bridge typings for web UIs.", no_args_is_help=True)
+app.add_typer(rust_app, name="rust")
+app.add_typer(ui_app, name="ui")
+app.add_typer(bridge_app, name="bridge")
+
+class PluginType(str, Enum):
+    general = "general"
+    processing = "processing"
+    provider = "provider"
+    server = "server"
+
+
+class Framework(str, Enum):
+    vanilla = "vanilla"
+    react = "react"
+    vue = "vue"
+    webcomponents = "webcomponents"
+    bun = "bun"
+
+
+class BridgeFramework(str, Enum):
+    vanilla = "vanilla"
+    react = "react"
+    vue = "vue"
+    webcomponents = "webcomponents"
+
+
+@app.command("new")
+def new_command(
+    name: Optional[str] = typer.Argument(None, help="Plugin name, for example my_plugin."),
+    plugin_type: PluginType = typer.Option(PluginType.general, "--type", help="Plugin type."),
+    output: Optional[str] = typer.Option(None, "-o", "--output", help="Directory to create the plugin in."),
+    rust: bool = typer.Option(False, "--rust", help="Include a Rust crate scaffold."),
+    web: bool = typer.Option(False, "--web", help="Include a web UI."),
+    framework: Framework = typer.Option(Framework.vanilla, "--framework", help="Web UI framework."),
+    declarative: bool = typer.Option(False, "--declarative", help="Use the declarative plugin layout."),
+    bun: bool = typer.Option(False, "--bun", help="Use Bun for the web UI (implies --declarative)."),
+    bundle: bool = typer.Option(False, "--bundle", help="Include bootstrap.py and wheels/ for an offline self-install zip."),
+    offline_wheel: Optional[str] = typer.Option(None, "--offline-wheel", help="Path to a qgis_sdk wheel to vendor for offline install."),
+    ui: bool = typer.Option(True, "--ui/--no-ui", help="Include UI dialogs (default: yes)."),
+    author: Optional[str] = typer.Option(None, "--author", help="Plugin author."),
+    email: Optional[str] = typer.Option(None, "--email", help="Author email."),
+) -> int:
+    """Scaffold a new plugin."""
+    return _invoke(
+        _cmd_new,
+        name=name,
+        type=plugin_type.value,
+        output=output,
+        rust=rust,
+        web=web,
+        framework=framework.value,
+        declarative=declarative,
+        bun=bun,
+        bundle=bundle,
+        offline_wheel=offline_wheel,
+        no_ui=not ui,
+        author=author,
+        email=email,
     )
-    sub = parser.add_subparsers(dest="command", required=True)
 
-    # new
-    p_new = sub.add_parser("new", help="Scaffold a new plugin project")
-    p_new.add_argument("name", nargs="?", help="Plugin name (e.g. my_plugin)")
-    p_new.add_argument("--rust", action="store_true", help="Include Rust acceleration")
-    p_new.add_argument("--web", action="store_true", help="Include WebEngine HTML + QWebChannel scaffolding (vanilla + React + Vue + Web Components)")
-    p_new.add_argument("--framework", default="vanilla", choices=["vanilla", "react", "vue", "webcomponents", "bun"], help="Web framework for --web: vanilla (Leaflet), react (React 18 hook), vue (Vue 3 Composition API), webcomponents (native Shadow DOM), bun (declarative + complete QGIS API + bun workspaces)")
-    p_new.add_argument("--declarative", action="store_true", help="Use new declarative API (@plugin, @toolbar, @action, @task, @bridge) + self-installing bootstrap + QGIS Web API")
-    p_new.add_argument("--bun", action="store_true", help="Alias for --declarative --framework bun — scaffold with bun workspaces and window.qgis API")
-    p_new.add_argument("--bundle", action="store_true", help="Include bootstrap.py + wheels/ for offline self-install zip")
-    p_new.add_argument("--offline-wheel", help="Path to qgis_sdk wheel to vendor for offline install")
-    p_new.add_argument("--ui", action="store_true", default=True, help="Include UI dialogs (default: true)")
-    p_new.add_argument("--no-ui", action="store_true", help="Skip UI scaffolding")
-    p_new.add_argument("--type", default="general", choices=["general", "processing", "provider", "server"], help="Plugin type")
-    p_new.add_argument("-o", "--output", help="Output directory")
-    p_new.add_argument("--author", help="Author name")
-    p_new.add_argument("--email", help="Author email")
-    p_new.set_defaults(func=_cmd_new)
 
-    # build
-    p_build = sub.add_parser("build", help="Build and package the plugin")
-    p_build.add_argument("--rust", action="store_true", help="Include Rust module")
-    p_build.add_argument("-o", "--output", default="dist", help="Output directory")
-    p_build.set_defaults(func=_cmd_build)
+@app.command("validate")
+def validate_command(path: str = typer.Argument(".", help="Plugin directory.")) -> int:
+    """Check a plugin's structure and metadata."""
+    return _invoke(_cmd_validate, path=path)
 
-    # test
-    p_test = sub.add_parser("test", help="Run tests")
-    p_test.add_argument("--python", action="store_true", help="Run only Python tests")
-    p_test.add_argument("--rust", action="store_true", help="Run only Rust tests")
-    p_test.set_defaults(func=_cmd_test)
 
-    # install
-    p_install = sub.add_parser("install", help="Install into local QGIS")
-    p_install.add_argument("--profile", help="QGIS profile directory")
-    p_install.set_defaults(func=_cmd_install)
+@app.command("info")
+def info_command(
+    path: str = typer.Argument(".", help="Plugin directory."),
+    json_output: bool = typer.Option(False, "--json", help="Print machine-readable JSON."),
+) -> int:
+    """Show plugin information."""
+    return _invoke(_cmd_info, path=path, json=json_output)
 
-    # dev
-    p_dev = sub.add_parser("dev", help="Watch mode: rebuild on file change")
-    p_dev.add_argument("--rust", action="store_true", help="Include Rust")
-    p_dev.add_argument("--launch", action="store_true", help="Launch QGIS after install")
-    p_dev.set_defaults(func=lambda args: print("Watch mode...") or 0)
 
-    # package
-    p_pkg = sub.add_parser("package", help="Create .zip for QGIS Plugin Repository")
-    p_pkg.add_argument("-o", "--output", default="dist", help="Output directory")
-    p_pkg.add_argument("--rust", action="store_true", help="Include Rust")
-    p_pkg.add_argument("--bundle", action="store_true", help="Bundle self-installing runtime: include bootstrap.py + wheels/ + extlibs .gitignore for offline zip")
-    p_pkg.add_argument("--offline-wheel", help="Path to qgis_sdk wheel to vendor for offline install (copied to wheels/)")
-    p_pkg.set_defaults(func=_cmd_package)
+@app.command("version")
+def version_command() -> int:
+    """Print the qgis-sdk version."""
+    return _invoke(_cmd_version)
 
-    # bootstrap
-    p_bootstrap = sub.add_parser("bootstrap", help="Generate vendored bootstrap.py self-install helper (<300 LOC)")
-    p_bootstrap.add_argument("-o", "--output", default="bootstrap.py", help="Output file (default: bootstrap.py or plugin/bootstrap.py)")
-    p_bootstrap.set_defaults(func=_cmd_bootstrap)
 
-    # vendor
-    p_vendor = sub.add_parser("vendor", help="Vendor qgis-sdk wheel for offline zip distribution")
-    p_vendor.add_argument("-o", "--output", default="wheels", help="Output directory for wheels (default: wheels)")
-    p_vendor.add_argument("--offline-wheel", help="Path to existing wheel to copy")
-    p_vendor.set_defaults(func=_cmd_vendor)
+@app.command("build")
+def build_command(
+    output: str = typer.Option("dist", "-o", "--output", help="Directory for the plugin archive."),
+    rust: bool = typer.Option(False, "--rust", help="Build the Rust crate first (release)."),
+) -> int:
+    """Build and package the plugin."""
+    return _invoke(_cmd_build, output=output, rust=rust)
 
-    # publish
-    p_pub = sub.add_parser("publish", help="Upload to QGIS Plugin Repository")
-    p_pub.add_argument("--zip", help="Path to .zip")
-    p_pub.add_argument("--dry-run", action="store_true", help="Dry run")
-    p_pub.set_defaults(func=lambda args: print(f"Publishing {args.zip} (dry_run={args.dry_run})") or 0)
 
-    # validate
-    p_val = sub.add_parser("validate", help="Check plugin structure and metadata")
-    p_val.add_argument("path", nargs="?", default=".", help="Plugin directory")
-    p_val.set_defaults(func=_cmd_validate)
+@app.command("package")
+def package_command(
+    output: str = typer.Option("dist", "-o", "--output", help="Directory for the plugin archive."),
+    rust: bool = typer.Option(False, "--rust", help="Build the Rust crate first (release)."),
+    bundle: bool = typer.Option(False, "--bundle", help="Include bootstrap.py and wheels/ for an offline self-install zip."),
+    offline_wheel: Optional[str] = typer.Option(None, "--offline-wheel", help="Path to a qgis_sdk wheel to vendor for offline install."),
+) -> int:
+    """Zip the plugin package into an archive QGIS can install."""
+    return _invoke(_cmd_package, output=output, rust=rust, bundle=bundle, offline_wheel=offline_wheel)
 
-    # info
-    p_info = sub.add_parser("info", help="Show plugin info")
-    p_info.add_argument("path", nargs="?", default=".", help="Plugin directory")
-    p_info.add_argument("--json", action="store_true", help="Print JSON")
-    p_info.set_defaults(func=_cmd_info)
 
-    # version
-    p_ver = sub.add_parser("version", help="Print version information")
-    p_ver.set_defaults(func=_cmd_version)
+@app.command("test")
+def test_command(
+    python: bool = typer.Option(False, "--python", help="Run only the Python tests."),
+    rust: bool = typer.Option(False, "--rust", help="Run only the Rust tests."),
+) -> int:
+    """Run the Python tests and, when present, the Rust tests."""
+    return _invoke(_cmd_test, python=python, rust=rust)
 
-    # rust
-    p_rust = sub.add_parser("rust", help="Rust acceleration helpers")
-    rust_sub = p_rust.add_subparsers(dest="rust_command", required=True)
 
-    p_rust_init = rust_sub.add_parser("init", help="Add Rust acceleration to existing plugin")
-    p_rust_init.add_argument("path", nargs="?", default=".", help="Plugin directory")
-    p_rust_init.set_defaults(func=_cmd_rust_init)
+@app.command("install")
+def install_command(
+    profile: Optional[str] = typer.Option(None, "--profile", help="QGIS plugins directory (default: the default profile)."),
+) -> int:
+    """Copy the plugin into a QGIS profile."""
+    return _invoke(_cmd_install, profile=profile)
 
-    p_rust_build = rust_sub.add_parser("build", help="Build the Rust module")
-    p_rust_build.add_argument("--release", action="store_true", help="Release build")
-    p_rust_build.set_defaults(func=_cmd_rust_build)
 
-    # ui
-    p_ui = sub.add_parser("ui", help="UI helpers (dialogs, web)")
-    ui_sub = p_ui.add_subparsers(dest="ui_command", required=True)
+@app.command("dev")
+def dev_command(
+    rust: bool = typer.Option(False, "--rust", help="Include Rust."),
+    launch: bool = typer.Option(False, "--launch", help="Launch QGIS after install."),
+) -> int:
+    """Watch mode: rebuild on file change (not implemented)."""
+    return _invoke(_cmd_dev, rust=rust, launch=launch)
 
-    p_ui_add_dialog = ui_sub.add_parser("add-dialog", help="Add UI dialog scaffolding to existing plugin")
-    p_ui_add_dialog.add_argument("path", nargs="?", default=".", help="Plugin directory")
-    p_ui_add_dialog.add_argument("--name", default="main_dialog", help="Dialog name")
-    p_ui_add_dialog.set_defaults(func=_cmd_ui_add_dialog)
 
-    p_ui_add_web = ui_sub.add_parser("add-web", help="Add WebEngine scaffolding to existing plugin")
-    p_ui_add_web.add_argument("path", nargs="?", default=".", help="Plugin directory")
-    p_ui_add_web.set_defaults(func=_cmd_ui_add_web)
+@app.command("publish")
+def publish_command(
+    zip_path: Optional[str] = typer.Option(None, "--zip", help="Archive to publish."),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Check the archive without uploading."),
+) -> int:
+    """Upload an archive to the QGIS plugin repository (not implemented; use --dry-run)."""
+    return _invoke(_cmd_publish, zip=zip_path, dry_run=dry_run)
 
-    # bridge — NEW: typed TS generation from Python bridge
-    p_bridge = sub.add_parser("bridge", help="Bridge helpers — generate TS types from Python bridge")
-    bridge_sub = p_bridge.add_subparsers(dest="bridge_command", required=True)
 
-    p_bridge_gen = bridge_sub.add_parser("generate", help="Generate TypeScript interface from Python bridge class")
-    p_bridge_gen.add_argument("--bridge", required=True, help="Dotted path to bridge class, e.g. my_plugin.dialogs.web_dialog:Bridge or my_plugin.dialogs.web_dialog.Bridge")
-    p_bridge_gen.add_argument("-o", "--output", default="web/bridge.d.ts", help="Output file or dir (default: web/bridge.d.ts). Use --package to output full package")
-    p_bridge_gen.add_argument("--name", help="TS interface name (default: Python class name)")
-    p_bridge_gen.add_argument("--object-name", default="bridge", help="QWebChannel object name (default: bridge)")
-    p_bridge_gen.add_argument("--framework", default="vanilla", choices=["vanilla", "react", "vue", "webcomponents"], help="Framework hint for generated README")
-    p_bridge_gen.add_argument("--package", action="store_true", help="Generate full package (bridge.d.ts + bridge.js + react.ts + vue.ts + webcomponents.ts + README)")
-    p_bridge_gen.set_defaults(func=_cmd_bridge_generate)
+@app.command("bootstrap")
+def bootstrap_command(
+    output: str = typer.Option("bootstrap.py", "-o", "--output", help="Where to write bootstrap.py."),
+) -> int:
+    """Write the bootstrap.py helper."""
+    return _invoke(_cmd_bootstrap, output=output)
 
-    return parser
+
+@app.command("vendor")
+def vendor_command(
+    output: str = typer.Option("wheels", "-o", "--output", help="Directory for vendored wheels."),
+    offline_wheel: Optional[str] = typer.Option(None, "--offline-wheel", help="Wheel to vendor."),
+) -> int:
+    """Vendor wheels for offline installs."""
+    return _invoke(_cmd_vendor, output=output, offline_wheel=offline_wheel)
+
+
+@rust_app.command("init")
+def rust_init_command(path: str = typer.Argument(".", help="Plugin directory.")) -> int:
+    """Add a Rust crate to a plugin."""
+    return _invoke(_cmd_rust_init, path=path)
+
+
+@rust_app.command("build")
+def rust_build_command(release: bool = typer.Option(False, "--release", help="Release build.")) -> int:
+    """Build the Rust crate with cargo."""
+    return _invoke(_cmd_rust_build, release=release)
+
+
+@ui_app.command("add-dialog")
+def ui_add_dialog_command(
+    path: Optional[str] = typer.Argument(None, help="Plugin directory."),
+    name: Optional[str] = typer.Option(None, "--name", help="Dialog name (default: main_dialog)."),
+) -> int:
+    """Add a dialog to a plugin. Asks for the name at a terminal."""
+    if name is None:
+        name = _ask_dialog_name()
+    return _invoke(_cmd_ui_add_dialog, path=path, name=name)
+
+
+@ui_app.command("add-web")
+def ui_add_web_command(path: Optional[str] = typer.Argument(None, help="Plugin directory.")) -> int:
+    """Add a web UI to a plugin."""
+    return _invoke(_cmd_ui_add_web, path=path)
+
+
+@bridge_app.command("generate")
+def bridge_generate_command(
+    bridge: str = typer.Option(..., "--bridge", help="Dotted path to bridge class, e.g. my_plugin.dialogs.web_dialog:Bridge."),
+    output: str = typer.Option("web/bridge.d.ts", "-o", "--output", help="Output file or dir (default: web/bridge.d.ts)."),
+    name: Optional[str] = typer.Option(None, "--name", help="TS interface name (default: Python class name)."),
+    object_name: str = typer.Option("bridge", "--object-name", help="QWebChannel object name (default: bridge)."),
+    framework: BridgeFramework = typer.Option(BridgeFramework.vanilla, "--framework", help="Framework hint for generated README."),
+    package: bool = typer.Option(False, "--package", help="Generate the full package (bridge.d.ts, bridge.js, framework wrappers, README)."),
+) -> int:
+    """Generate TypeScript typings for a bridge."""
+    return _invoke(
+        _cmd_bridge_generate,
+        bridge=bridge,
+        output=output,
+        name=name,
+        object_name=object_name,
+        framework=framework.value,
+        package=package,
+    )
 
 
 def main(argv: Optional[List[str]] = None) -> int:
-    """Entry point for qgis-plugin and qgis-sdk console scripts."""
-    parser = build_parser()
-    args = parser.parse_args(argv)
-
-    # If Rust binary exists on PATH, we could delegate for exact parity,
-    # but Python path using Rust extension is already native speed.
+    """Run the CLI and return the exit code. Usage errors return 2."""
+    command = typer.main.get_command(app)
+    args = list(sys.argv[1:] if argv is None else argv)
     try:
-        return args.func(args)
-    except Exception as exc:
-        print(f"qgis-plugin: {exc}", file=sys.stderr)
+        command.main(args=args, prog_name="qgis-sdk")
+    except SystemExit as exc:
+        return int(exc.code or 0)
+    except Exception as exc:  # pragma: no cover - defensive, keeps the exit code honest
+        print(f"qgis-sdk: {exc}", file=sys.stderr)
         return 1
-
-
-def qgis_cli_main(argv: Optional[List[str]] = None) -> int:
-    """
-    Convenience entry point for qgis-cli when qgis-sdk is installed.
-
-    If qgis_rs is available, delegate to it; otherwise try to run qgis-cli binary.
-    """
-    try:
-        from qgis_rs.cli import main as qgis_rs_main  # type: ignore
-        return qgis_rs_main(argv)
-    except ImportError:
-        # Try binary
-        import shutil
-        import subprocess
-
-        binary = shutil.which("qgis-cli")
-        if binary:
-            result = subprocess.run([binary] + (argv or []))
-            return result.returncode
-        else:
-            print("qgis-cli: not found. Install qgis-rs: pip install qgis-rs", file=sys.stderr)
-            return 1
+    return 0
 
 
 if __name__ == "__main__":

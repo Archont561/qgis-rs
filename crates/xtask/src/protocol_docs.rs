@@ -32,7 +32,7 @@ pub const PAGE: &str = "docs/src/content/docs/reference/wire-protocol.mdx";
 
 /// Repository-relative path of the Python client whose exception mapping the
 /// published error table has to agree with.
-pub const PYTHON_TRANSPORT: &str = "py-packages/qgis-rs/python/qgis_rs/_transport.py";
+pub const PYTHON_TRANSPORT: &str = "py-packages/qgis-py/python/qgis_py/_transport.py";
 
 /// The exception a kind maps to when the Python client lists no better one.
 ///

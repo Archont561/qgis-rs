@@ -4,7 +4,7 @@ title: Add frontend framework starter templates for WebEngine plugins
 status: To Do
 assignee: []
 created_date: '2026-09-30 20:49'
-updated_date: '2026-10-08 18:15'
+updated_date: '2026-10-09 15:47'
 labels:
   - qgis-sdk
   - ui
@@ -37,3 +37,9 @@ Provide scaffold presets (--framework react, --framework vue, --framework svelte
 - [ ] #5 Implement the framework presets in the canonical Rust command library. Python and Node entrypoints must invoke that implementation and must not fall back to Python template generation.
 - [ ] #6 Generated snapshots verify each preset file manifest and confirm that --author and --email values are applied consistently in generated plugin code and metadata.txt.
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Templates are now chosen through the @archont561/qgis-sdk Node CLI (TASK-59), with the frontend project scaffolded from the chosen package manager and UI library.
+<!-- SECTION:NOTES:END -->

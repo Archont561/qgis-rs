@@ -1,25 +1,24 @@
 ---
 title: TypeScript / Node.js
-description: Install qgis-rs from npm with native-speed TypeScript API and Rust CLI
+description: Install qgis-rs from npm for a native-speed TypeScript API over the Rust core
 ---
 
 # TypeScript / Node.js
 
-`qgis-rs` for Node.js ships a **NAPI-RS native addon** (`qgis-rs.<platform>.node`) at native speed, plus TypeScript types and **CLI wrappers** (`qgis-cli`, `qgis-plugin`) that run the Rust binaries from `crates/qgis-cli` / `crates/qgis-sdk` when they are installed.
+`@archont561/qgis-node` ships a **NAPI-RS native addon** (`qgis-node.<platform>.node`) at native speed, plus TypeScript types. It is a thin API over the Rust core, which runs or starts QGIS programmatically; the package has no command-line interface.
 
-- **npm**: `npm install qgis-rs` → `require('qgis-rs')` + `qgis-cli` on PATH
+- **npm**: `npm install @archont561/qgis-node` → `require('@archont561/qgis-node')`
 - **API**: `Extent`, `Crs`, `TilePlan`, `Project` via NAPI, QGIS backend optional
-- **CLI**: `qgis-cli` and `qgis-plugin` wrappers that try Rust binary first, fallback to JS
 
-`qgis-rs` (Python) and `qgis-sdk` (Python plugin SDK) can stay — this is the TypeScript counterpart, same Rust workspace.
+`qgis-py` (Python) and `qgis-sdk` (Python plugin SDK) can stay — this is the TypeScript counterpart, same Rust workspace.
 
 ## Installation
 
 ```bash
-npm install qgis-rs
+npm install @archont561/qgis-node
 # or
-yarn add qgis-rs
-pnpm add qgis-rs
+yarn add @archont561/qgis-node
+pnpm add @archont561/qgis-node
 ```
 
 Pre-built binaries for Linux x64 (gnu + musl) and Linux arm64 (gnu). Falls back to pure JS if no native binary, and you can build from source with `bun run build` (requires Rust ≥1.96).
@@ -27,20 +26,20 @@ Pre-built binaries for Linux x64 (gnu + musl) and Linux arm64 (gnu). Falls back 
 From source (the addon builds and tests with [bun](https://bun.sh) — in this repository turbo runs the package's own build/test scripts):
 
 ```bash
-git clone https://github.com/Archont561/qgis-rs
+git clone https://github.com/Archont561/qgis-rust
 cd qgis-rs
 
 # The Bun workspace at the root owns resolution; ts-packages/qgis-node is a
 # member of it, so there is nothing to install in the package directory.
 pixi run bun-install
-bun x turbo run build --filter=qgis-rs
-bun x turbo run test --filter=qgis-rs
+bun x turbo run build --filter=@archont561/qgis-node
+bun x turbo run test --filter=@archont561/qgis-node
 ```
 
 ## TypeScript API
 
 ```typescript
-import { Project, Extent, TilePlan, ZoomRange, Crs, planTiles, version } from 'qgis-rs';
+import { Project, Extent, TilePlan, ZoomRange, Crs, planTiles, version } from '@archont561/qgis-node';
 
 const project = Project.open('map.qgs');
 console.log(project.path, project.format);
@@ -75,30 +74,18 @@ try {
 CommonJS:
 
 ```javascript
-const { Project, Extent, TilePlan, ZoomRange } = require('qgis-rs');
+const { Project, Extent, TilePlan, ZoomRange } = require('@archont561/qgis-node');
 
 const extent = Extent.parse('14,50,15,51');
 const plan = new TilePlan(extent, ZoomRange.parse('10-14'));
 console.log(plan.tileCount());
 ```
 
-## CLI
-
-```bash
-npx qgis-cli --help
-npx qgis-cli info map.qgs --json
-npx qgis-cli tiles map.qgs -z 10-14 -b 14,50,15,51 -o ./tiles/ --dry-run
-npx qgis-plugin --help
-npx qgis-plugin new my_plugin --type processing --rust
-```
-
-The wrappers (`bin/qgis-cli.js`, `bin/qgis-plugin.js`) try to find the Rust binary (`target/release/qgis-cli`, `~/.cargo/bin/qgis-cli`, or on PATH) for native speed, otherwise fallback to JS implementation using the NAPI addon (or pure JS fallback).
-
 ## With Express
 
 ```typescript
 import express from 'express';
-import { Project } from 'qgis-rs';
+import { Project } from '@archont561/qgis-node';
 
 const app = express();
 const project = Project.open('map.qgs');
@@ -118,17 +105,14 @@ qgis-rs npm package
 ├── src/
 │   ├── index.js             → JS wrapper (Extent, Crs, TilePlan, Project…) over that call
 │   └── index.d.ts           → TypeScript types
-└── bin/
-    ├── qgis-cli.js          → Node wrapper around the Rust binary
-    └── qgis-plugin.js       → same for plugin SDK
 ```
 
 There is no JavaScript fallback: every value this package returns is computed
 by Rust, so a platform without a matching addon builds one rather than quietly
 getting different answers.
 
-- Rust: `crates/qgis-protocol` (the wire format), `crates/qgis-engine` (the dispatcher), `crates/qgis-render` (pure Rust), `crates/qgis-cli`, `crates/qgis-node` (NAPI addon), `crates/qgis-sdk`
-- JS: `ts-packages/qgis-node/` — npm package (the typed client); the addon is built from `crates/qgis-node/`
+- Rust: `crates/qgis-protocol` (the wire format), `crates/qgis-engine` (the dispatcher), `crates/qgis-render` (pure Rust), `ts-packages/qgis-node/src-rust` (NAPI addon)
+- JS: `ts-packages/qgis-node/` — npm package (the typed client); the addon is built from `ts-packages/qgis-node/src-rust/`
 
 ## Conda-forge
 
@@ -136,14 +120,12 @@ For conda, install the runtime the addon needs plus QGIS:
 
 ```bash
 conda install -c conda-forge nodejs qgis
-npm install qgis-rs
+npm install @archont561/qgis-node
 ```
 
 There is no Node.js toolchain in this repository — the addon is built, tested and
 packed with bun, and the build only needs cargo. The `nodejs` above is for
 *consuming* the published package, not for building it.
-
-`qgis-cli` binary from conda-forge `qgis-rs` Python package is also on `$PREFIX/bin`.
 
 ## Performance
 

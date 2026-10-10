@@ -125,7 +125,7 @@ file was first written on and the Arena sandbox of 2026-10-03.
 
 - **`gh` may well be installed and may well be able to write.** On the Arena sandbox it is at
   `/usr/bin/gh`, authenticated as `Archont561` via `GH_TOKEN`, and
-  `gh api repos/Archont561/qgis-rs --jq .permissions` reports `push` and `admin` — so pull
+  `gh api repos/Archont561/qgis-rust --jq .permissions` reports `push` and `admin` — so pull
   requests, issues and comments are open, not the `403 Resource not accessible by integration` an
   older codespace App token produced. One `gh auth status` plus that permissions query settles it
   in two seconds; only fall back to handing the user a title and body when the query says so.
@@ -139,7 +139,7 @@ file was first written on and the Arena sandbox of 2026-10-03.
   turbo out with `--env-mode=loose` and `CARGO_NET_OFFLINE=true` on the pixi process, so the napi
   build keeps `CARGO_HOME` and resolves from `.pixi-sandbox/vendor` instead of reaching for
   crates.io; and `patchelf` is now declared in `pixi.toml` and carried in the pack, so
-  `qgis-rs-py#build` produces a wheel here rather than dying on `Failed to execute 'patchelf'`.
+  `qgis-py-dist#build` produces a wheel here rather than dying on `Failed to execute 'patchelf'`.
   Measured 2026-10-04 on a freshly restored sandbox: 3m35s cold, 1m56s warm, every fan-out green.
   One caveat that is not a bug: the gate's format-drift step is `git diff --exit-code`, so it
   fails on **any** uncommitted change, including your own work in progress. Commit first, then
@@ -222,7 +222,7 @@ says `Merged: PR #N …` or `Pushed straight to main at <sha>`). Do these in ord
 the report:
 
 1. **Watch the post-merge runs.** List them (`gh run list --branch main --limit 5` if `gh` exists,
-   otherwise the Actions tab, or `curl` `…/repos/Archont561/qgis-rs/actions/runs?branch=main`) and
+   otherwise the Actions tab, or `curl` `…/repos/Archont561/qgis-rust/actions/runs?branch=main`) and
    read the verdict of every workflow the merge triggered: `ci`, `docs`, and — on a push that
    touches a sandbox input — **`publish sandbox`**, which repacks the transport; also `relock` and
    `autorelease` on a release commit. A red post-merge run belongs to **this** session — fix it
@@ -247,7 +247,7 @@ the report:
    | Rust | **194 passing across 42 non-empty test-binary runs** (31 integration files in `crates/*/tests/*.rs`, 5 of them re-run under the `qgis` feature) | `turbo run test` |
    | Python, `qgis-sdk` | **123 passed, 2 skipped** | `turbo run test` |
    | Python, `qgis-rs` | **21 passed** | `turbo run test` — its `build` works here now that `patchelf` is packed |
-   | Bun | **44** = 17 `@qgis-sdk/bridge` + 14 `@qgis/test-utils` + 13 `qgis-rs` (`ts-packages/qgis-node`) | `turbo run test` |
+   | Bun | **44** = 17 `@archont561/qgis-sdk` + 14 `@qgis/test-utils` + 13 `qgis-rs` (`ts-packages/qgis-node`) | `turbo run test` |
    | C++ | **14 GoogleTest cases** (9 examples + 5 RapidCheck properties) in one ctest target | `xtask test-cpp`, called by `@qgis/rust`'s `test` |
 
    Every one of those came from a single green `pixi run gates`, so there is no longer a second

@@ -1,20 +1,15 @@
 {
-	"name": "qgis-rs",
+	"name": "@archont561/qgis-node",
 	"version": "0.1.0",
-	"description": "Node.js / TypeScript bindings and CLI for qgis-rs \u2014 native-speed QGIS rendering, tiling, and plugin tools",
+	"description": "Node.js / TypeScript bindings for qgis-rs — a thin API over the Rust core that runs QGIS natively",
 	"main": "src/index.js",
 	"types": "src/index.d.ts",
-	"bin": {
-		"qgis-cli": "./bin/qgis-cli.js",
-		"qgis-plugin": "./bin/qgis-plugin.js",
-		"qgis-sdk": "./bin/qgis-sdk.js"
-	},
 	"scripts": {
-		"build": "napi build --platform --release --cargo-cwd ../../crates/qgis-node --js false --dts .napi-generated.d.ts .",
-		"build:debug": "napi build --platform --cargo-cwd ../../crates/qgis-node --js false --dts .napi-generated.d.ts .",
-		"test": "QGIS_REQUIRE_NATIVE=1 bun test tests/contract.test.js",
+		"build": "napi build --platform --release --cargo-cwd src-rust --js false --dts .napi-generated.d.ts .",
+		"build:debug": "napi build --platform --cargo-cwd src-rust --js false --dts .napi-generated.d.ts .",
+		"test": "QGIS_REQUIRE_NATIVE=1 bun test tests/",
 		"coverage": "QGIS_REQUIRE_NATIVE=1 bun test --coverage tests/contract.test.js",
-		"pack:check": "cargo run -q -p xtask --manifest-path ../../Cargo.toml -- pack-check ts-packages/qgis-node src/index.js src/index.d.ts README.md bin/ 'qgis-rs.*.node'",
+		"pack:check": "cargo run -q -p xtask --manifest-path ../../Cargo.toml -- pack-check ts-packages/qgis-node src/index.js src/index.d.ts README.md 'qgis-node.*.node'",
 		"lint": "bunx biome check .",
 		"format": "bunx biome format --write .",
 		"prepublishOnly": "napi prepublish -t npm",
@@ -28,21 +23,20 @@
 		"tiles",
 		"rust",
 		"napi",
-		"cli",
 		"typescript"
 	],
 	"author": "qgis-rs contributors",
 	"license": "GPL-2.0-or-later",
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/Archont561/qgis-rs"
+		"url": "https://github.com/Archont561/qgis-rust"
 	},
 	"bugs": {
-		"url": "https://github.com/Archont561/qgis-rs/issues"
+		"url": "https://github.com/Archont561/qgis-rust/issues"
 	},
-	"homepage": "https://archont561.github.io/qgis-rs/",
+	"homepage": "https://archont561.github.io/qgis-rust/",
 	"napi": {
-		"name": "qgis-rs",
+		"name": "qgis-node",
 		"triples": {
 			"defaults": false,
 			"additional": [
@@ -51,7 +45,7 @@
 				"x86_64-unknown-linux-musl"
 			]
 		},
-		"binaryName": "qgis-rs"
+		"binaryName": "qgis-node"
 	},
 	"devDependencies": {
 		"@napi-rs/cli": "^2.18",
@@ -65,8 +59,7 @@
 	},
 	"files": [
 		"src/",
-		"qgis-rs.*.node",
-		"bin/",
+		"qgis-node.*.node",
 		"README.md"
 	]
 }

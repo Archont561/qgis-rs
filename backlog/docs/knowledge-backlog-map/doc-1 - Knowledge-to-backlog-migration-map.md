@@ -44,8 +44,8 @@ into `backlog/docs/roadmap/` and its planning content was mapped to milestones.
 | `api-design.md`: qgis-render project/layer/feature/geometry/CRS/render API | Existing specification; implementation is split by capability | TASK-5–TASK-12 and TASK-25.3; the document now states that it is not a status ledger |
 | `api-design.md`: CLI commands and protocol-facing operations | Existing specification and documentation gap | TASK-17, TASK-20, TASK-21, TASK-26; implemented pure-Rust behavior remains in crate tests |
 | `api-design.md`: HTTP WMS/WFS/OGC API surface | Existing specification with integration work | TASK-19; no duplicate task created |
-| `qgis-plugin-sdk.md`: plugin, algorithm, network, task, wrapper, packaging, and Rust-acceleration sections | Existing SDK specification and implementation evidence | TASK-1–TASK-4, TASK-3, TASK-13–TASK-18, TASK-26; status table now points to owners |
-| `qgis-plugin-ui.md`: Qt Designer, WebEngine, QWebChannel, framework templates, testing | Existing UI specification and evidence | TASK-1–TASK-4, TASK-3, TASK-18; status is explicitly owned by Backlog.md |
+| `qgis-sdk.md`: plugin, algorithm, network, task, wrapper, packaging, and Rust-acceleration sections | Existing SDK specification and implementation evidence | TASK-1–TASK-4, TASK-3, TASK-13–TASK-18, TASK-26; status table now points to owners |
+| `qgis-ui.md`: Qt Designer, WebEngine, QWebChannel, framework templates, testing | Existing UI specification and evidence | TASK-1–TASK-4, TASK-3, TASK-18; status is explicitly owned by Backlog.md |
 | `qgis-vector-layer.md`: current bindings and future fields/features/geometry/editing | Durable binding reference plus existing work | TASK-5–TASK-7, TASK-11, TASK-25.2; future list now links task IDs |
 | `scaffold.md`: scaffold usage, generated files, and post-scaffold steps | Durable contributor how-to | TASK-3 and TASK-5–TASK-7; no new job |
 | `testing.md`: QGIS environment, fixtures, single-threading, test commands | Durable testing runbook with stale command names corrected | TASK-1, TASK-2, TASK-4, TASK-23; repository gates are D10/`pixi run gates` |
@@ -79,14 +79,14 @@ rationale remain in the source documents.
 | `api-design.md` 3.1–3.3 HTTP/OGC server | Target server contract | TASK-19 |
 | `api-design.md` 4–5 Python/Node bindings | D09 host-language boundary and target ergonomic APIs | TASK-20, TASK-26; no duplicate binding task |
 | `api-design.md` 6 type reference / 7 design principles | Durable specification | Keep as knowledge |
-| `qgis-plugin-sdk.md` sections 1–4 plugin, processing, wrappers, plugin types | SDK specification and implementation work | TASK-3, TASK-4, TASK-13–TASK-16 |
-| `qgis-plugin-sdk.md` sections 5–6 CLI/configuration | Existing CLI and packaging work | TASK-3, TASK-17, TASK-26 |
-| `qgis-plugin-sdk.md` sections 7–8 testing/unified backend | Runtime proof and backend boundary | TASK-1, TASK-2, TASK-4, TASK-13–TASK-16, TASK-23 |
-| `qgis-plugin-sdk.md` sections 9–11 product structure/effort/alternatives | Durable product context; old estimates are historical | Keep as knowledge; no status task |
-| `qgis-plugin-sdk.md` section 12 implementation evidence | Evidence snapshot, not status | TASK-1–TASK-4, TASK-13–TASK-18, TASK-26 |
-| `qgis-plugin-ui.md` sections 1–3 Qt/WebEngine/declarative modules | UI specification and implementation evidence | TASK-3, TASK-18 |
-| `qgis-plugin-ui.md` sections 4–5 templates/testing | Scaffold and runtime test work | TASK-3, TASK-1, TASK-2, TASK-4 |
-| `qgis-plugin-ui.md` sections 6–7 references/status/typed bridge | Durable reference plus package follow-up | TASK-18; status in Backlog.md |
+| `qgis-sdk.md` sections 1–4 plugin, processing, wrappers, plugin types | SDK specification and implementation work | TASK-3, TASK-4, TASK-13–TASK-16 |
+| `qgis-sdk.md` sections 5–6 CLI/configuration | Existing CLI and packaging work | TASK-3, TASK-17, TASK-26 |
+| `qgis-sdk.md` sections 7–8 testing/unified backend | Runtime proof and backend boundary | TASK-1, TASK-2, TASK-4, TASK-13–TASK-16, TASK-23 |
+| `qgis-sdk.md` sections 9–11 product structure/effort/alternatives | Durable product context; old estimates are historical | Keep as knowledge; no status task |
+| `qgis-sdk.md` section 12 implementation evidence | Evidence snapshot, not status | TASK-1–TASK-4, TASK-13–TASK-18, TASK-26 |
+| `qgis-ui.md` sections 1–3 Qt/WebEngine/declarative modules | UI specification and implementation evidence | TASK-3, TASK-18 |
+| `qgis-ui.md` sections 4–5 templates/testing | Scaffold and runtime test work | TASK-3, TASK-1, TASK-2, TASK-4 |
+| `qgis-ui.md` sections 6–7 references/status/typed bridge | Durable reference plus package follow-up | TASK-18; status in Backlog.md |
 | `qgis-vector-layer.md` overview/current bindings/provider/fixture | Durable binding reference | Keep as knowledge |
 | `qgis-vector-layer.md` Future Additions | Existing actionable binding work | TASK-5–TASK-7, TASK-11, TASK-12, TASK-14, TASK-25.2 |
 | `scaffold.md` usage/generated files/wiring | Durable how-to | TASK-3; concrete bindings TASK-5–TASK-7 |
@@ -117,7 +117,7 @@ still useful; the disposition below says whether it governs current work.
 | [D10 — xtask over Shell Scripts](../../../.knowledge/decisions/D10-xtask-over-shell-scripts.md) | **Accepted** | Repository automation is `pixi run xtask`; gate and release proof are TASK-21 and the D10 commands. |
 | [D11 — Tests Outside `src/`](../../../.knowledge/decisions/D11-tests-outside-src.md) | **Accepted** | Source/tests layout is current repository policy; property/fixture migration is TASK-23. |
 | [D12 — QGIS Native Manager over C ABI](../../../.knowledge/decisions/D12-qgis-native-manager-over-c-abi.md) | **Accepted** | Current RFC 19 gate: owner queue, normative protocol, path artifacts, deferred crash isolation. TASK-25.1–TASK-25.3 depend on it. |
-| [D13 — Rust CLI, FFI, and QGIS SDK product boundaries](../../../.knowledge/decisions/D13-rust-cli-ffi-and-qgis-sdk-boundaries.md) | **Accepted** | Product boundaries for qgis-cli / qgis-plugin / qgis_rs / qgis_sdk; CLI launcher stabilization is TASK-42; the ui preview dev loop is doc-10 / TASK-54. |
+| [D13 — Rust CLI, FFI, and QGIS SDK product boundaries](../../../.knowledge/decisions/D13-rust-cli-ffi-and-qgis-sdk-boundaries.md) | **Accepted** | Product boundaries for qgis-cli / qgis_rs / qgis_sdk; CLI launcher stabilization is TASK-42; the ui preview dev loop is doc-10 / TASK-54. |
 | [D14 — qgis-sdk CLI transport](../../../.knowledge/decisions/D14-qgis-sdk-cli-transport-argv-forwarding.md) | **Accepted** | CLI transport is native argv forwarding (`cli_main` pyfunction; Python parses nothing); capabilities stay on the D09 wire protocol; a missing native extension is a loud CLI error. Implementation is TASK-26 / TASK-41 / TASK-42. |
 
 ## Existing-task reconciliation

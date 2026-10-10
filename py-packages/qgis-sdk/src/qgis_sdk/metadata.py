@@ -12,12 +12,22 @@ from __future__ import annotations
 
 import os
 from collections.abc import Iterable, Mapping
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from .plugin import Plugin
 
-__all__ = ["METADATA_FIELDS", "VALID_CATEGORIES", "render_metadata", "write_metadata", "validate_metadata"]
+__all__ = [
+    "METADATA_FIELDS",
+    "MetadataField",
+    "VALID_CATEGORIES",
+    "metadata_fields",
+    "render_metadata",
+    "render_metadata_from_dict",
+    "write_metadata",
+    "validate_metadata",
+]
 
 #: Valid QGIS plugin categories per https://plugins.qgis.org documentation
 VALID_CATEGORIES = (
@@ -133,3 +143,47 @@ def write_metadata(plugin: type[Plugin], directory: str | os.PathLike[str]) -> s
 def as_mapping(plugin: type[Plugin]) -> Mapping[str, str]:
     """Return the metadata as a mapping, for tests and tooling."""
     return dict(metadata_items(plugin))
+
+
+@dataclass(frozen=True)
+class MetadataField:
+    """One row of :data:`METADATA_FIELDS`: the attribute name and the metadata key."""
+
+    attr: str
+    key: str
+
+
+def metadata_fields() -> list[MetadataField]:
+    """The metadata fields, in the order ``metadata.txt`` lists them."""
+    return [MetadataField(attr, key) for attr, key in METADATA_FIELDS]
+
+
+def render_metadata_from_dict(values: Mapping[str, object]) -> str:
+    """Render a ``metadata.txt`` body from a mapping keyed by attribute name.
+
+    Mirrors the retired Rust renderer: ``None`` and blank values are skipped,
+    strings are trimmed, lists drop blank items and join with ``", "``, and any
+    other value is written with ``str``. Unknown keys are ignored.
+    """
+    lines = ["[general]"]
+    for attribute, key in METADATA_FIELDS:
+        if attribute not in values:
+            continue
+        value = values[attribute]
+        if value is None:
+            continue
+        if isinstance(value, bool):
+            text = str(value)
+        elif isinstance(value, str):
+            text = value.strip()
+            if not text:
+                continue
+        elif isinstance(value, (list, tuple)):
+            items = [str(item) for item in value if str(item).strip()]
+            if not items:
+                continue
+            text = ", ".join(items)
+        else:
+            text = str(value)
+        lines.append(f"{key}={text}")
+    return "\n".join(lines) + "\n"

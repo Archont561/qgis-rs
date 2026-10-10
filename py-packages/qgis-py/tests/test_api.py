@@ -1,0 +1,220 @@
+"""The Python client, tested across the real FFI boundary.
+
+Geometry and tile arithmetic are tested in the Rust crates; what these checks
+own is the boundary itself — that the transport is live, that values survive
+the JSON round trip, and that an engine refusal arrives as the Python
+exception a caller would try to catch.
+"""
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+import pytest
+
+import qgis_py
+from qgis_py import _transport
+
+
+def test_the_transport_is_the_compiled_extension() -> None:
+    # The import of qgis_py._core is what makes this package work at all: there
+    # is no pure-Python fallback behind it, so a missing extension is an
+    # ImportError at import time rather than a silently different answer.
+    assert _transport.TRANSPORT_VERSION == qgis_py.TRANSPORT_VERSION
+    assert qgis_py.transport_version() == qgis_py.TRANSPORT_VERSION
+    assert _core_is_compiled()
+
+
+def _core_is_compiled() -> bool:
+    from qgis_py import _core  # type: ignore[attr-defined]
+
+    return _core.__file__.endswith((".so", ".pyd", ".dylib"))
+
+
+def test_the_engine_describes_itself() -> None:
+    info = qgis_py.engine_info()
+
+    assert info["engine"] == "qgis-engine"
+    assert info["version"] == qgis_py.version() == qgis_py.__version__
+    assert info["transport_version"] == qgis_py.TRANSPORT_VERSION
+    assert "plan_tiles" in info["operations"]
+    assert "api_describe" in info["operations"]
+    assert qgis_py.MAX_ZOOM == 22
+
+
+def test_public_types_and_values_cross_the_boundary() -> None:
+    for name in ("Extent", "Crs", "Tile", "ZoomRange", "TilePlan", "Project"):
+        assert hasattr(qgis_py, name)
+
+    extent = qgis_py.Extent.parse("14,50,15,51")
+    assert extent.to_tuple() == (14.0, 50.0, 15.0, 51.0)
+    assert extent.width() == 1.0
+    assert extent.contains(14.5, 50.5)
+    assert not extent.intersects("20,20,30,30")
+
+    crs = qgis_py.Crs.from_epsg(4326)
+    assert crs.auth_id == "EPSG:4326"
+    assert crs.is_geographic()
+    assert crs.units() == "degrees"
+
+    plan = qgis_py.TilePlan(extent, qgis_py.ZoomRange.parse("10-14"))
+    assert plan.tile_count() == 4568
+    assert plan.levels()[0].tile_count() == 24
+    assert plan.level(10).to_tuple() == (10, 551, 554, 342, 347, 24)
+
+
+def test_an_extent_can_be_given_the_way_the_caller_has_it() -> None:
+    # Text, a sequence and an Extent all reach the same engine parser, so a
+    # caller never has to convert before asking.
+    for bounds in ("14,50,15,51", [14, 50, 15, 51], qgis_py.Extent(14, 50, 15, 51)):
+        assert qgis_py.TilePlan(bounds, 10).tile_count() == 24
+
+
+def test_tiles_round_trip_through_the_engine() -> None:
+    tile = qgis_py.Tile.from_lon_lat(10, 13.9, 51.1)
+
+    assert (tile.z, tile.x, tile.y) == (10, 551, 342)
+    assert tile.bounds().min_x == 13.7109375
+    assert str(tile) == "10/551/342"
+
+
+def test_plan_tiles_tuple_shape_crosses_the_boundary() -> None:
+    total, levels = qgis_py.plan_tiles("14,50,15,51", "10-14")
+
+    assert isinstance(total, int)
+    assert total == 4568
+    assert len(levels) == 5
+    assert levels[0] == (10, 551, 554, 342, 347, 24)
+
+
+def test_enumerating_tiles_is_a_separate_ask() -> None:
+    plan = qgis_py.TilePlan("14,50,15,51", 10)
+    tiles = plan.iter_tiles()
+
+    assert len(tiles) == plan.tile_count()
+    assert tiles[0] == qgis_py.Tile(10, 551, 342)
+
+
+def test_engine_refusals_arrive_as_python_exceptions() -> None:
+    with pytest.raises(ValueError, match="extent"):
+        qgis_py.Extent.parse("not-an-extent")
+    with pytest.raises(ValueError, match="zoom range"):
+        qgis_py.ZoomRange.parse("14-10")
+    with pytest.raises(ValueError, match="coordinate reference system"):
+        qgis_py.Crs.from_auth_id("3857")
+    with pytest.raises(FileNotFoundError, match="project not found"):
+        qgis_py.Project.open("/nope/missing.qgs")
+
+    # Every one of them is also an EngineError carrying the wire `kind`, which
+    # is what a caller branches on when the prose is not enough.
+    with pytest.raises(qgis_py.EngineError) as caught:
+        qgis_py.Extent.parse("not-an-extent")
+    assert caught.value.kind == "invalid_extent"
+
+
+def test_project_layer_and_render_backend_boundaries_are_honest(tmp_path) -> None:
+    path = tmp_path / "map.qgs"
+    path.write_text("<qgis></qgis>", encoding="utf-8")
+    project = qgis_py.Project.open(str(path))
+
+    with pytest.raises(NotImplementedError, match="QGIS backend"):
+        project.layers()
+    with pytest.raises(qgis_py.EngineError) as caught_render:
+        project.render(tmp_path / "map.png")
+    assert caught_render.value.kind == "qgis"
+
+
+def test_project_path_and_info_cross_the_boundary(tmp_path) -> None:
+    path = tmp_path / "map.qgs"
+    path.write_text("<qgis></qgis>", encoding="utf-8")
+
+    project = qgis_py.Project.open(str(path))
+    info = project.info()
+
+    assert project.format == "qgs"
+    assert info.format == "qgs"
+    assert info.size_bytes > 0
+    assert info.note is not None
+    assert info.to_dict()["size_bytes"] == info.size_bytes
+
+
+def test_a_raw_request_can_be_sent_when_a_client_type_is_missing() -> None:
+    # The transport is public: an operation this client has no class for is
+    # still reachable, which is what keeps a new engine usable from an older
+    # wheel.
+    echoed = qgis_py.invoke("ping", {"any": "payload"})
+
+    assert echoed["echo"] == {"any": "payload"}
+    assert echoed["engine"] == "qgis-engine"
+
+
+def _layer_lifecycle_fixture() -> dict:
+    fixture = Path(__file__).resolve().parents[3] / "test-fixtures" / "layer-lifecycle.json"
+    return json.loads(fixture.read_text(encoding="utf-8"))
+
+
+def test_layer_lifecycle_golden_values_match_the_shared_wire_fixture() -> None:
+    fixture = _layer_lifecycle_fixture()
+    operations = qgis_py.engine_info()["operations"]
+
+    for operation in ("layer_open", "layer_info", "layer_close", "layer_features"):
+        assert operation in operations
+        case = fixture["operations"][operation]
+        request = case["request"]
+        response = case["response"]
+        assert request["transport_version"] == qgis_py.TRANSPORT_VERSION
+        assert request["operation"] == operation
+        assert response == {
+            "transport_version": qgis_py.TRANSPORT_VERSION,
+            "ok": True,
+            "result": response["result"],
+        }
+
+    assert fixture["operations"]["layer_open"]["response"]["result"] == {
+        "layer_id": 7,
+        "is_valid": True,
+        "name": "points",
+    }
+    info = fixture["operations"]["layer_info"]["response"]["result"]
+    assert info["feature_count"] == 3
+    assert [field["name"] for field in info["fields"]] == ["fid", "name"]
+
+    page = fixture["operations"]["layer_features"]["response"]["result"]
+    assert page["limit"] == 2
+    assert page["next_offset"] == 2
+    assert len(page["features"]) == 2
+    assert page["features"][0]["attributes"] == {"fid": 1, "name": "alpha"}
+
+    assert fixture["errors"] == {
+        "closed_layer": {
+            "request": {
+                "transport_version": 1,
+                "operation": "layer_info",
+                "payload": {"layer_id": 7},
+            },
+            "response": {
+                "transport_version": 1,
+                "ok": False,
+                "result": {
+                    "kind": "invalid_object_id",
+                    "error": "the layer_id is not live",
+                },
+            },
+        },
+        "invalid_layer": {
+            "request": {
+                "transport_version": 1,
+                "operation": "layer_info",
+                "payload": {"layer_id": 0},
+            },
+            "response": {
+                "transport_version": 1,
+                "ok": False,
+                "result": {
+                    "kind": "invalid_object_id",
+                    "error": "layer_id must be a positive integer",
+                },
+            },
+        },
+    }

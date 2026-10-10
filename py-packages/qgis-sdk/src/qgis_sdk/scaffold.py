@@ -1,13 +1,12 @@
 """
-Pure-Python scaffolding for QGIS plugins — fallback when Rust not available.
-Rust version in crates/qgis-sdk/src/lib.rs does same at native speed.
+Pure-Python scaffolding for QGIS plugins.
 
 Now includes UI templates:
 - dialogs/main_dialog.py + ui/main_dialog.ui (Qt Designer)
 - web/map.html + dialogs/web_dialog.py when with_web=True
 - web/react.html (React 18), web/vue.html (Vue 3), web/components.html (Web Components)
 - frontend/ Vite templates when web_framework=react/vue
-- web/bridge.d.ts auto-generated from Python Bridge + @qgis-sdk/bridge usage
+- web/bridge.d.ts auto-generated from Python Bridge + @archont561/qgis-sdk usage
 - services/network.py + services/tasks.py — QgsNetworkAccessManager + QgsTaskManager wrappers
 """
 
@@ -187,18 +186,18 @@ DIALOGS_WEB_DIALOG_PY = '''"""
 Web dialog — QWebEngineView + QWebChannel bridge (Python ↔ JS).
 
 Supports any frontend: vanilla, React, Vue, Web Components.
-Uses @qgis-sdk/bridge for typed, auto-injected qwebchannel.js.
+Uses @archont561/qgis-sdk for typed, auto-injected qwebchannel.js.
 
 Python side: define typed Bridge, register via channel.registerObject("bridge", Bridge())
-JS side: npm install @qgis-sdk/bridge, then:
+JS side: npm install @archont561/qgis-sdk, then:
 
-    import { createBridge } from '@qgis-sdk/bridge';
+    import { createBridge } from '@archont561/qgis-sdk';
     import type { Bridge } from './web/bridge.d.ts';
     const bridge = await createBridge<Bridge>();
 
 Or legacy: <script src="qrc:///qtwebchannel/qwebchannel.js"></script> + new QWebChannel(...)
 
-Generate types: qgis-plugin bridge generate --bridge {name}.dialogs.web_dialog:Bridge --output web/bridge.d.ts
+Generate types: qgis-sdk bridge generate --bridge {name}.dialogs.web_dialog:Bridge --output web/bridge.d.ts
 """
 
 from pathlib import Path
@@ -207,7 +206,7 @@ from qgis_sdk.ui import WebDialog
 HTML_FILE = Path(__file__).parent.parent / "web" / "map.html"
 
 class MapBridge:
-    """Example bridge — methods become TS via qgis-plugin bridge generate."""
+    """Example bridge — methods become TS via qgis-sdk bridge generate."""
     def get_layer(self) -> dict:
         import json
         return {"name": "buildings", "count": 100}
@@ -485,6 +484,8 @@ WEB_MAP_HTML = """<!DOCTYPE html>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="qrc:///qtwebchannel/qwebchannel.js"></script>
+<script src="qgis-sdk.js"></script>
+<!-- One QWebChannel per page: open it with qgisChannel(transport, cb), which qgis-sdk.js publishes. A second `new QWebChannel` takes over the first one's replies. -->
 <style>
   html, body { height: 100%; margin: 0; padding: 0; font-family: sans-serif; }
   #map { height: 85%; }
@@ -498,14 +499,14 @@ WEB_MAP_HTML = """<!DOCTYPE html>
   <strong id="layer-name">Loading...</strong>
   <button onclick="sendToPython()">Send to Python</button>
   <button onclick="requestExtent()">Get Extent</button>
-  <small>Using <code>qrc:///qtwebchannel/qwebchannel.js</code> — or <code>npm install @qgis-sdk/bridge</code> for typed Promise API</small>
+  <small>Using <code>qrc:///qtwebchannel/qwebchannel.js</code> — or <code>npm install @archont561/qgis-sdk</code> for typed Promise API</small>
 </div>
 <div id="map"></div>
 <script type="module">
   var bridge = null;
   var map = L.map('map').setView([51.505, -0.09], 13);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-  new QWebChannel(qt.webChannelTransport, function(channel) {
+  qgisChannel(qt.webChannelTransport, function(channel) {
     bridge = channel.objects.bridge;
     if (bridge) {
       bridge.get_layer(function(result) {
@@ -549,6 +550,8 @@ WEB_REACT_HTML = """<!DOCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>QGIS + React</title>
 <script src="qrc:///qtwebchannel/qwebchannel.js"></script>
+<script src="qgis-sdk.js"></script>
+<!-- One QWebChannel per page: open it with qgisChannel(transport, cb), which qgis-sdk.js publishes. A second `new QWebChannel` takes over the first one's replies. -->
 <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -570,7 +573,7 @@ function useQgisBridge() {
   const [bridge, setBridge] = useState(null);
   const [ready, setReady] = useState(false);
   useEffect(() => {
-    new QWebChannel(qt.webChannelTransport, (channel) => {
+    qgisChannel(qt.webChannelTransport, (channel) => {
       setBridge(channel.objects.bridge);
       setReady(true);
     });
@@ -597,10 +600,10 @@ function App() {
       bridge.log(`Hello from React at ${new Date().toISOString()}`, (reply) => { console.log(reply); setCount(c=>c+1); });
     }
   };
-  if (!ready) return <div className="header">Connecting to QGIS... (tip: <code>npm install @qgis-sdk/bridge</code> for typed <code>useQgisBridge&lt;Bridge&gt;</code>)</div>;
+  if (!ready) return <div className="header">Connecting to QGIS... (tip: <code>npm install @archont561/qgis-sdk</code> for typed <code>useQgisBridge&lt;Bridge&gt;</code>)</div>;
   return (
     <>
-      <div className="header"><h2 style={{margin:0}}>QGIS + React</h2><small>Bridge: {ready ? "connected" : "connecting"} | Calls: {count} | <code>bridge.d.ts</code> generated via <code>qgis-plugin bridge generate</code></small></div>
+      <div className="header"><h2 style={{margin:0}}>QGIS + React</h2><small>Bridge: {ready ? "connected" : "connecting"} | Calls: {count} | <code>bridge.d.ts</code> generated via <code>qgis-sdk bridge generate</code></small></div>
       <div className="content">
         <div className="layer-card"><h3>Layer Info</h3><p><strong>Name:</strong> {layer ? layer.name : "Loading..."}</p><p><strong>Features:</strong> {layer ? layer.count : "-"}</p><button onClick={loadLayer}>Reload</button><button onClick={sendToPython}>Send to Python</button></div>
       </div>
@@ -624,6 +627,8 @@ WEB_VUE_HTML = """<!DOCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>QGIS + Vue</title>
 <script src="qrc:///qtwebchannel/qwebchannel.js"></script>
+<script src="qgis-sdk.js"></script>
+<!-- One QWebChannel per page: open it with qgisChannel(transport, cb), which qgis-sdk.js publishes. A second `new QWebChannel` takes over the first one's replies. -->
 <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
 <style>
   html, body { margin:0; padding:0; font-family: sans-serif; height:100%; }
@@ -659,7 +664,7 @@ createApp({
       if (bridge.value && bridge.value.log) bridge.value.log(`Hello from Vue`, (reply) => { callCount.value++; });
     };
     onMounted(() => {
-      new QWebChannel(qt.webChannelTransport, (channel) => { bridge.value = channel.objects.bridge; ready.value = true; loadLayer(); });
+      qgisChannel(qt.webChannelTransport, (channel) => { bridge.value = channel.objects.bridge; ready.value = true; loadLayer(); });
       window.updateFromVue = (data) => { const info = typeof data === 'string' ? JSON.parse(data) : data; message.value = info.message || JSON.stringify(info); window.dispatchEvent(new CustomEvent('qgis-message', {detail: info})); };
       window.qgisBridge = window.qgisBridge || {};
       window.qgisBridge.onMessage = window.updateFromVue;
@@ -680,6 +685,8 @@ WEB_COMPONENTS_HTML = """<!DOCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>QGIS + Web Components</title>
 <script src="qrc:///qtwebchannel/qwebchannel.js"></script>
+<script src="qgis-sdk.js"></script>
+<!-- One QWebChannel per page: open it with qgisChannel(transport, cb), which qgis-sdk.js publishes. A second `new QWebChannel` takes over the first one's replies. -->
 <style>
   html, body { margin:0; padding:0; font-family: sans-serif; height:100%; }
   .header { padding:12px; background:#f5f5f5; border-bottom:1px solid #ddd; }
@@ -719,7 +726,7 @@ class QgisToolbar extends HTMLElement {
 }
 customElements.define('qgis-toolbar', QgisToolbar);
 let bridge=null;
-new QWebChannel(qt.webChannelTransport, (channel)=>{ bridge=channel.objects.bridge; document.getElementById('status').textContent='Bridge connected'; document.getElementById('layerCard').setBridge(bridge); document.getElementById('toolbar').setBridge(bridge); });
+qgisChannel(qt.webChannelTransport, (channel)=>{ bridge=channel.objects.bridge; document.getElementById('status').textContent='Bridge connected'; document.getElementById('layerCard').setBridge(bridge); document.getElementById('toolbar').setBridge(bridge); });
 window.updateFromWC=(data)=>{ const info=typeof data==='string'?JSON.parse(data):data; document.getElementById('layerCard').update(info); window.dispatchEvent(new CustomEvent('qgis-message', {detail: info})); };
 window.qgisBridge = window.qgisBridge || {};
 window.qgisBridge.onMessage = window.updateFromWC;
@@ -762,30 +769,30 @@ def _generate_bridge_dts(web_dir: Path, plugin_package_name: str):
         (web_dir / "bridge.d.ts").write_text(ts_code, encoding="utf-8")
 
         wrapper = f"""/**
- * Bridge usage with @qgis-sdk/bridge
+ * Bridge usage with @archont561/qgis-sdk
  * Auto-generated by qgis-sdk scaffold — regenerate via:
- *   qgis-plugin bridge generate --bridge {plugin_package_name}.dialogs.web_dialog:Bridge --output web/bridge.d.ts
- *   qgis-plugin bridge generate --bridge {plugin_package_name}.dialogs.web_dialog:Bridge --output web/ --package
+ *   qgis-sdk bridge generate --bridge {plugin_package_name}.dialogs.web_dialog:Bridge --output web/bridge.d.ts
+ *   qgis-sdk bridge generate --bridge {plugin_package_name}.dialogs.web_dialog:Bridge --output web/ --package
  *
- * Install: npm install @qgis-sdk/bridge
+ * Install: npm install @archont561/qgis-sdk
  */
 
 // Vanilla JS / TS
-// import {{ createBridge }} from '@qgis-sdk/bridge';
+// import {{ createBridge }} from '@archont561/qgis-sdk';
 // import type {{ Bridge }} from './bridge.d.ts';
 // const bridge = await createBridge<Bridge>();
 
 // React
-// import {{ useQgisBridge }} from '@qgis-sdk/bridge/react';
+// import {{ useQgisBridge }} from '@archont561/qgis-sdk/react';
 // import type {{ Bridge }} from './bridge.d.ts';
 // const {{ bridge, ready }} = useQgisBridge<Bridge>();
 
 // Vue
-// import {{ useQgisBridge }} from '@qgis-sdk/bridge/vue';
+// import {{ useQgisBridge }} from '@archont561/qgis-sdk/vue';
 // const {{ bridge, ready }} = useQgisBridge<Bridge>();
 
 // Web Components
-// import '@qgis-sdk/bridge/webcomponents';
+// import '@archont561/qgis-sdk/webcomponents';
 // <qgis-bridge object-name="bridge"></qgis-bridge>
 
 export type {{ Bridge }} from './bridge.d.ts';
@@ -796,7 +803,7 @@ export type {{ Bridge }} from './bridge.d.ts';
         (web_dir / "bridge.d.ts").write_text(
             """/**
  * Auto-generated Bridge interface — fallback
- * Regenerate via: qgis-plugin bridge generate --bridge my_plugin.dialogs.web_dialog:Bridge --output web/bridge.d.ts
+ * Regenerate via: qgis-sdk bridge generate --bridge my_plugin.dialogs.web_dialog:Bridge --output web/bridge.d.ts
  */
 export interface Bridge {
   get_layer(callback: (result: any) => void): void;
@@ -811,6 +818,17 @@ export interface Bridge {
 """,
             encoding="utf-8",
         )
+
+
+_VENDORED_BRIDGE_DIR = Path(__file__).parent / "assets" / "bridge"
+_VENDORED_BRIDGE_FILE = "qgis-sdk.js"
+
+
+def _link_vendored_bridge(web_dir: Path) -> None:
+    """Copy the pinned @archont561/qgis-sdk browser bundle into web/. Only WebEngine UIs call this."""
+    import shutil
+
+    shutil.copyfile(_VENDORED_BRIDGE_DIR / _VENDORED_BRIDGE_FILE, web_dir / _VENDORED_BRIDGE_FILE)
 
 
 def scaffold_plugin(
@@ -837,7 +855,7 @@ def scaffold_plugin(
     email = email or "you@example.com"
 
     if with_web:
-        init_py = f'''"""{name} — QGIS plugin with UI + WebEngine (React/Vue/Web Components) + @qgis-sdk/bridge + network + tasks."""
+        init_py = f'''"""{name} — QGIS plugin with UI + WebEngine (React/Vue/Web Components) + @archont561/qgis-sdk + network + tasks."""
 
 from qgis_sdk import Plugin, action, toolbar
 
@@ -1022,6 +1040,7 @@ def classFactory(iface):
         (web_dir / "__init__.py").write_text("", encoding="utf-8")
 
         _generate_bridge_dts(web_dir, name)
+        _link_vendored_bridge(web_dir)
 
         if web_framework in ("react", "vue"):
             frontend_dir = base / name / "frontend"
@@ -1040,7 +1059,7 @@ def classFactory(iface):
   "dependencies": {
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "@qgis-sdk/bridge": "^0.1.0"
+    "@archont561/qgis-sdk": "^0.1.0"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.2.0",
@@ -1077,7 +1096,7 @@ export default defineConfig({ plugins: [react()], base: './' });
                 src_dir.mkdir()
                 (src_dir / "App.tsx").write_text(
                     f"""import {{ useEffect, useState }} from 'react';
-import {{ useQgisBridge }} from '@qgis-sdk/bridge/react';
+import {{ useQgisBridge }} from '@archont561/qgis-sdk/react';
 import type {{ Bridge }} from '../../web/bridge.d.ts';
 
 export default function App() {{
@@ -1095,7 +1114,7 @@ export default function App() {{
 
   return (
     <div style={{{{ padding: 16 }}}}>\
-      <h2>{name} — React + @qgis-sdk/bridge</h2>
+      <h2>{name} — React + @archont561/qgis-sdk</h2>
       <p>Layer: {{layer?.name}} ({{layer?.count}})</p>
       <button onClick={{() => bridge?.log("hello from React")}}>Send to Python</button>
     </div>
@@ -1134,7 +1153,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(<App />);
   },
   "dependencies": {
     "vue": "^3.4.0",
-    "@qgis-sdk/bridge": "^0.1.0"
+    "@archont561/qgis-sdk": "^0.1.0"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.0.0",
@@ -1171,7 +1190,7 @@ export default defineConfig({ plugins: [vue()], base: './' });
                 (src_dir / "App.vue").write_text(
                     f"""<script setup lang="ts">
 import {{ ref, watch }} from 'vue';
-import {{ useQgisBridge }} from '@qgis-sdk/bridge/vue';
+import {{ useQgisBridge }} from '@archont561/qgis-sdk/vue';
 import type {{ Bridge }} from '../../web/bridge.d.ts';
 
 const {{ bridge, ready }} = useQgisBridge<Bridge>();
@@ -1186,7 +1205,7 @@ watch(ready, async (r) => {{
 
 <template>
   <div style="padding:16px">
-    <h2>{name} — Vue + @qgis-sdk/bridge</h2>
+    <h2>{name} — Vue + @archont561/qgis-sdk</h2>
     <div v-if="!ready">Connecting to QGIS... (auto-injects qrc:///qtwebchannel/qwebchannel.js)</div>
     <div v-else>
       <p>Layer: {{{{ layer?.name }}}} ({{{{ layer?.count }}}})</p>
@@ -1236,7 +1255,7 @@ QGIS plugin built with qgis-sdk — with UI dialogs, WebEngine (React/Vue/Web Co
 
 - **Dialogs via PyQt**: `dialogs/main_dialog.py` loads `ui/main_dialog.ui` via `uic.loadUiType`
 - **WebEngine HTML**: `web/map.html` (Leaflet) + `web/react.html` (React 18) + `web/vue.html` (Vue 3) + `web/components.html` (Web Components) + QWebChannel bridge `qrc:///qtwebchannel/qwebchannel.js`
-- **Typed bridge**: `web/bridge.d.ts` auto-generated from Python Bridge via `qgis-plugin bridge generate`, runtime via `npm install @qgis-sdk/bridge`
+- **Typed bridge**: `web/bridge.d.ts` auto-generated from Python Bridge via `qgis-sdk bridge generate`, runtime via `npm install @archont561/qgis-sdk`
 - **Network**: `services/network.py` — `qgis_sdk.network.NetworkManager` wrapper around `QgsNetworkAccessManager` (proxy, cache, auth), fallback to urllib for testing
 - **Tasks**: `services/tasks.py` — `qgis_sdk.tasks.TaskManager` wrapper around `QgsTaskManager` / `QgsTask`, decorator `@task`, fallback to ThreadPoolExecutor
 - **Declarative fallback**: `qgis_sdk.ui.Dialog` / `WebDialog` for testing without QGIS
@@ -1247,16 +1266,16 @@ QGIS plugin built with qgis-sdk — with UI dialogs, WebEngine (React/Vue/Web Co
 ```bash
 pip install qgis-sdk
 python -m pytest
-qgis-plugin install
-qgis-plugin dev
-qgis-plugin package
+qgis-sdk install
+qgis-sdk dev
+qgis-sdk package
 ```
 
 ### Bridge generation
 
 ```bash
-qgis-plugin bridge generate --bridge {name}.dialogs.web_dialog:Bridge --output web/bridge.d.ts
-qgis-plugin bridge generate --bridge {name}.dialogs.web_dialog:Bridge --output web/ --package
+qgis-sdk bridge generate --bridge {name}.dialogs.web_dialog:Bridge --output web/bridge.d.ts
+qgis-sdk bridge generate --bridge {name}.dialogs.web_dialog:Bridge --output web/ --package
 ```
 
 ### Network
@@ -1350,7 +1369,7 @@ class MainDialog(QDialog, FORM_CLASS):
         self.setAttribute(Qt.WA_DeleteOnClose)
 ```
 
-### WebEngine + QWebChannel + @qgis-sdk/bridge
+### WebEngine + QWebChannel + @archont561/qgis-sdk
 
 ```python
 from qgis_sdk.ui import WebDialog, web_bridge
@@ -1695,7 +1714,7 @@ WEB_BUN_INDEX_HTML = """<!DOCTYPE html>
       bridge = window.qgisBridge;
     } else {
       try {
-        const { createQgisBridge } = await import('@qgis-sdk/bridge');
+        const { createQgisBridge } = await import('@archont561/qgis-sdk');
         const res = await createQgisBridge();
         qgis = res.qgis;
         bridge = res.bridge;
@@ -1764,7 +1783,7 @@ WEB_BUN_INDEX_HTML = """<!DOCTYPE html>
 """
 
 WEB_BUN_APP_TS = """// {name} web app — using complete QGIS API via bun, no custom bridge boilerplate
-import { createQgisBridge, QgisBridge } from '@qgis-sdk/bridge';
+import { createQgisBridge, QgisBridge } from '@archont561/qgis-sdk';
 
 const { bridge, qgis } = await createQgisBridge();
 
@@ -1820,7 +1839,7 @@ WEB_BUN_PACKAGE_JSON = """{
     "test": "bun test"
   },
   "dependencies": {
-    "@qgis-sdk/bridge": "workspace:*"
+    "@archont561/qgis-sdk": "workspace:*"
   },
   "devDependencies": {
     "vite": "^5.0.0"
@@ -1949,7 +1968,7 @@ Declarative QGIS plugin with self-installing runtime and complete QGIS Web API v
 - **Self-installing**: `bootstrap.py` vendored (<300 LOC), auto-installs `qgis-sdk` to `extlibs/` via pip, fallback to `wheels/` or PyPI. No CLI needed.
 - **Declarative**: `@plugin(permissions=[...])`, `@toolbar`, `@action`, `@task`, `@bridge`, `@setting`
 - **Complete QGIS API in JS**: `window.qgis` with `layers.addVector/list/zoom`, `project.crs/setCrs`, `message.info/warning`, `tasks.run`, `network.fetch` (via QgsNetworkAccessManager), `iface`, `settings`, `processing`
-- **Bun**: `bun install`, `bun run build`, `bun test` — uses `@qgis-sdk/bridge` with EventTarget/WebSocket-like API
+- **Bun**: `bun install`, `bun run build`, `bun test` — uses `@archont561/qgis-sdk` with EventTarget/WebSocket-like API
 
 ## Quick start
 
@@ -1972,15 +1991,15 @@ Plugin zip contains `bootstrap.py` + `extlibs/` gitignored. On first load in QGI
 To vendor offline wheel:
 
 ```bash
-qgis-plugin vendor --output {name}/wheels
+qgis-sdk vendor --output {name}/wheels
 # or
-qgis-plugin package --bundle --offline-wheel dist/qgis_sdk-0.1.0-py3-none-any.whl
+qgis-sdk package --bundle --offline-wheel dist/qgis_sdk-0.1.0-py3-none-any.whl
 ```
 
 ## JS QGIS API
 
 ```js
-import {{ createQgisBridge }} from '@qgis-sdk/bridge';
+import {{ createQgisBridge }} from '@archont561/qgis-sdk';
 const {{ qgis, bridge }} = await createQgisBridge();
 
 // Layers
@@ -2038,7 +2057,7 @@ bun test  # JS tests via bun:test
 ## Packaging
 
 ```bash
-qgis-plugin package --bundle --offline-wheel dist/qgis_sdk-*.whl
+qgis-sdk package --bundle --offline-wheel dist/qgis_sdk-*.whl
 # produces zip with extlibs empty, wheels/ contains wheel, bootstrap.py vendored
 ```
 """

@@ -208,13 +208,13 @@ def test_scaffold_generates_bridge_dts(tmp_path: Path):
     assert "export interface Bridge" in dts
     assert "get_layer" in dts
 
-    # Frontend should include @qgis-sdk/bridge
+    # Frontend should include @archont561/qgis-sdk
     pkg_json = (base / "bridge_test_plugin" / "frontend" / "package.json").read_text()
-    assert "@qgis-sdk/bridge" in pkg_json
+    assert "@archont561/qgis-sdk" in pkg_json
 
-    # Frontend App.tsx should use @qgis-sdk/bridge/react
+    # Frontend App.tsx should use @archont561/qgis-sdk/react
     app_tsx = (base / "bridge_test_plugin" / "frontend" / "src" / "App.tsx").read_text()
-    assert "@qgis-sdk/bridge" in app_tsx
+    assert "@archont561/qgis-sdk" in app_tsx
     assert "useQgisBridge" in app_tsx
     assert "Bridge" in app_tsx
 
@@ -227,7 +227,7 @@ def test_scaffold_vue_includes_bridge(tmp_path: Path):
 
     assert (base / "bridge_vue_plugin" / "web" / "bridge.d.ts").exists()
     pkg_json = (base / "bridge_vue_plugin" / "frontend" / "package.json").read_text()
-    assert "@qgis-sdk/bridge" in pkg_json
+    assert "@archont561/qgis-sdk" in pkg_json
 
     app_vue = (base / "bridge_vue_plugin" / "frontend" / "src" / "App.vue").read_text()
-    assert "@qgis-sdk/bridge" in app_vue
+    assert "@archont561/qgis-sdk" in app_vue

@@ -38,10 +38,10 @@ pub const CRATES: &[&str] = &[
 ];
 
 /// The Python distributions maturin builds wheels for.
-const PY_DISTRIBUTIONS: &[&str] = &["py-packages/qgis-rs", "py-packages/qgis-sdk"];
+const PY_DISTRIBUTIONS: &[&str] = &["py-packages/qgis-py", "py-packages/qgis-sdk"];
 
 /// The npm packages that are packed and uploaded.
-const NPM_PACKAGES: &[&str] = &["ts-packages/qgis-node", "ts-packages/qgis-sdk-bridge"];
+const NPM_PACKAGES: &[&str] = &["ts-packages/qgis-node", "ts-packages/qgis-sdk"];
 
 #[derive(Debug, Subcommand)]
 pub enum Release {
@@ -188,6 +188,22 @@ fn build_artifacts() -> Result<()> {
     }
 
     step("Python wheels");
+    // auditwheel repairs the extension in place, and that file is hard-linked
+    // into target/. Cargo sees nothing to rebuild, so a second wheel build
+    // from the same tree fails with "could not be located". Relink both
+    // extensions so each wheel is packed from a fresh link.
+    pixi(
+        "default",
+        [
+            "cargo",
+            "clean",
+            "-p",
+            "qgis-py",
+            "-p",
+            "qgis-sdk",
+            "--release",
+        ],
+    )?;
     for distribution in PY_DISTRIBUTIONS {
         pixi(
             "default",
@@ -221,8 +237,12 @@ fn build_artifacts() -> Result<()> {
 
     step("npm tarballs");
     // The addon has to be compiled before it can be packed: `files` lists
-    // qgis-rs.*.node, and pack:check is what proves it is there.
-    turbo_run(&["build", "--filter=qgis-rs", "--filter=@qgis-sdk/bridge"])?;
+    // qgis-node.*.node, and pack:check is what proves it is there.
+    turbo_run(&[
+        "build",
+        "--filter=@archont561/qgis-node",
+        "--filter=@archont561/qgis-sdk",
+    ])?;
     turbo_run(&["pack:check"])?;
     for package in NPM_PACKAGES {
         run_in(

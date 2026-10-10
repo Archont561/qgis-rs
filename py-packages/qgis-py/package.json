@@ -1,0 +1,13 @@
+{
+	"name": "qgis-py-dist",
+	"private": true,
+	"version": "0.1.0",
+	"description": "Bun/Turbo facade for the qgis-py Python distribution. `build` is the whole maturin story: `maturin develop --release` (installs into pixi's default environment and puts the extension next to the mixed-layout Python sources pytest imports) plus `maturin build --release` for the shippable wheel, from one compilation — and it ends by importing `._core`, so a build that produced no native extension fails here instead of as a bare assertion in the test suite. `test` and `coverage` therefore only run pytest, and CI needs no separate maturin or virtualenv step.",
+	"scripts": {
+		"build": "pixi run -e default bash -c 'rm -rf dist && maturin develop --release && cargo clean -p qgis-py --release && maturin build --release --out dist && python -c \"import qgis_py._core\"'",
+		"test": "pixi run -e default env QGIS_REQUIRE_NATIVE=1 python -m pytest tests -v",
+		"coverage": "pixi run -e default env QGIS_REQUIRE_NATIVE=1 python -m pytest tests -v --cov=qgis_py --cov-report=term-missing --cov-report=xml:../../target/coverage/python-qgis-py.xml",
+		"lint": "bunx biome check package.json",
+		"format": "bunx biome format --write package.json"
+	}
+}

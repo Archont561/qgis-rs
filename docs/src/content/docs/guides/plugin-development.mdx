@@ -46,7 +46,7 @@ class BufferAdvanced(Algorithm):
 Scaffold with UI:
 
 ```bash
-qgis-plugin new my_plugin --web
+qgis-sdk new my_plugin --web
 ```
 
 Generated:
@@ -89,9 +89,9 @@ if dlg.exec() == Dialog.Accepted:
 ## WebEngine HTML + QWebChannel
 
 ```bash
-qgis-plugin new my_plugin --web
+qgis-sdk new my_plugin --web
 # or add to existing
-qgis-plugin ui add-web ./my_plugin
+qgis-sdk ui add-web ./my_plugin
 ```
 
 Generated:
@@ -147,27 +147,27 @@ class BufferFast(Algorithm):
 
 ```bash
 # Scaffold with UI + Web
-qgis-plugin new my-plugin --web
-qgis-plugin new my-plugin --no-ui
+qgis-sdk new my-plugin --web
+qgis-sdk new my-plugin --no-ui
 
 # UI helpers
-qgis-plugin ui add-dialog ./my_plugin --name custom_dialog
-qgis-plugin ui add-web ./my_plugin
+qgis-sdk ui add-dialog ./my_plugin --name custom_dialog
+qgis-sdk ui add-web ./my_plugin
 
 # Development mode
-qgis-plugin dev
+qgis-sdk dev
 
 # Build and package (includes ui/*.ui, web/*.html, icons/*)
-qgis-plugin build
-qgis-plugin package -o dist/
+qgis-sdk build
+qgis-sdk package -o dist/
 
 # Publish to QGIS Plugin Repository
-qgis-plugin publish
+qgis-sdk publish
 ```
 
 ## Packaging
 
-`qgis-plugin package` includes `ui/`, `web/`, `icons/`, `dialogs/` automatically:
+`qgis-sdk package` includes `ui/`, `web/`, `icons/`, `dialogs/` automatically:
 
 ```toml
 [tool.hatch.build.targets.wheel]
@@ -178,28 +178,28 @@ include = [
 ]
 ```
 
-## Typed Bridge with @qgis-sdk/bridge
+## Typed Bridge with @archont561/qgis-sdk
 
 Generate TypeScript types from Python bridge classes:
 
 ```bash
-qgis-plugin bridge generate --bridge my_plugin.dialogs.web_dialog:Bridge --output web/bridge.d.ts
-qgis-plugin bridge generate --bridge my_plugin.dialogs.web_dialog:Bridge --output web/ --package
+qgis-sdk bridge generate --bridge my_plugin.dialogs.web_dialog:Bridge --output web/bridge.d.ts
+qgis-sdk bridge generate --bridge my_plugin.dialogs.web_dialog:Bridge --output web/ --package
 ```
 
 Python → TS with Promise API:
 
 ```typescript
-import { createBridge } from '@qgis-sdk/bridge';
+import { createBridge } from '@archont561/qgis-sdk';
 import type { Bridge } from './web/bridge.d.ts';
 
 const bridge = await createBridge<Bridge>(); // auto-injects qrc:///qtwebchannel/qwebchannel.js
 const layer = await bridge.get_layer(); // typed!
 ```
 
-- React: `import { useQgisBridge } from '@qgis-sdk/bridge/react'`
-- Vue: `import { useQgisBridge } from '@qgis-sdk/bridge/vue'`
-- Web Components: `<qgis-bridge>` + `import '@qgis-sdk/bridge/webcomponents'`
+- React: `import { useQgisBridge } from '@archont561/qgis-sdk/react'`
+- Vue: `import { useQgisBridge } from '@archont561/qgis-sdk/vue'`
+- Web Components: `<qgis-bridge>` + `import '@archont561/qgis-sdk/webcomponents'`
 
 See [Typed Bridge Guide](/guides/typed-bridge) and [Web Frameworks Guide](/guides/web-frameworks) for full details.
 
@@ -233,4 +233,4 @@ See [Testing Fixtures Guide](/guides/testing-fixtures).
 - [Typed Bridge Guide](/guides/typed-bridge) — generate TS types, Promise API, auto-inject
 - [Web Frameworks Guide](/guides/web-frameworks) — React/Vue/Web Components in QWebEngine
 - [Testing Fixtures Guide](/guides/testing-fixtures) — test without QGIS
-- [qgis-plugin-sdk](https://github.com/Archont561/qgis-rs/blob/main/.knowledge/qgis-plugin-sdk.md) and [qgis-plugin-ui](https://github.com/Archont561/qgis-rs/blob/main/.knowledge/qgis-plugin-ui.md) design docs
+- [qgis-sdk](https://github.com/Archont561/qgis-rust/blob/main/.knowledge/qgis-sdk.md) and [qgis-ui](https://github.com/Archont561/qgis-rust/blob/main/.knowledge/qgis-ui.md) design docs

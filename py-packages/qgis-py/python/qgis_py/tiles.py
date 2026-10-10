@@ -1,0 +1,11 @@
+"""Tiling helpers.
+
+A convenience namespace — the types are defined once in :mod:`qgis_py._api`
+and re-exported here so ``from qgis_py.tiles import TilePlan`` keeps working.
+"""
+
+from __future__ import annotations
+
+from ._api import Tile, TilePlan, ZoomLevelPlan, ZoomRange, plan_tiles
+
+__all__ = ["Tile", "TilePlan", "ZoomLevelPlan", "ZoomRange", "plan_tiles"]

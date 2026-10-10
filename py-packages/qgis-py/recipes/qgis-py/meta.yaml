@@ -1,0 +1,73 @@
+{% set name = "qgis-py" %}
+{% set version = "0.1.0" %}
+
+package:
+  name: {{ name|lower }}
+  version: {{ version }}
+
+source:
+  path: ../../../..
+
+build:
+  number: 0
+  script:
+    # Build the Python extension with maturin. qgis-py is a thin FFI layer and
+    # ships no command-line interface; the CLI is crates/qgis-cli.
+    - (cd py-packages/qgis-py && maturin build --release --strip -o ../../dist --interpreter python)
+    - pip install dist/qgis_py-*.whl --no-deps -vv
+
+requirements:
+  build:
+    - {{ compiler('rust') }}
+    - {{ compiler('c') }}
+    - {{ compiler('cxx') }}
+    - python                                 # [build_platform != target_platform]
+    - cross-python_{{ target_platform }}     # [build_platform != target_platform]
+    - pip
+    - maturin >=1.7
+    - setuptools
+    - wheel
+  host:
+    - python
+    - pip
+    - maturin >=1.7
+    # Optional: QGIS for full backend — uncomment for full build
+    # - qgis >=3.44.9,<4
+    # - qt-main
+  run:
+    - python
+    # QGIS is optional — pure-Rust ops work without it, but rendering needs it
+    # Users who want full rendering can `conda install -c conda-forge qgis`
+    # For a full-stack conda package, uncomment:
+    # - qgis >=3.44.9,<4
+
+test:
+  imports:
+    - qgis_py
+  commands:
+    - python -c "import qgis_py; print(qgis_py.__version__); e = qgis_py.Extent.parse('14,50,15,51'); print(e); plan = qgis_py.TilePlan(e, qgis_py.ZoomRange.parse('10-14')); print(plan.tile_count())"
+  requires:
+    - pip
+
+about:
+  home: https://github.com/Archont561/qgis-rust
+  license: GPL-2.0-or-later
+  license_family: GPL
+  license_file: LICENSE-MIT
+  summary: Python API over the Rust QGIS engine — native-speed rendering and tiling
+  description: |
+    qgis-py exposes the QGIS rendering and tiling engine as a Python package
+    that installs from pip or conda-forge and runs at native Rust speed.
+
+    Features:
+    - `pip install qgis-py` or `conda install -c conda-forge qgis-py`
+    - `import qgis_py` — Python API via PyO3 (Extent, Crs, TilePlan, Project)
+    - A thin FFI layer: every answer comes from the Rust engine
+    - Pure-Rust ops (tile planning, extent parsing) work without QGIS
+    - Full rendering when QGIS is available (conda-forge qgis package)
+  doc_url: https://archont561.github.io/qgis-rust/
+  dev_url: https://github.com/Archont561/qgis-rust
+
+extra:
+  recipe-maintainers:
+    - Archont561

@@ -4,7 +4,7 @@ title: Stabilize Python and Node FFI clients and CLI launchers
 status: To Do
 assignee: []
 created_date: '2026-10-03 09:35'
-updated_date: '2026-10-03 22:06'
+updated_date: '2026-10-09 15:47'
 labels:
   - ffi
   - python
@@ -47,3 +47,9 @@ Keep qgis-py and qgis-node thin protocol adapters while adding the shared capabi
 - [ ] #5 Python and npm CLI launchers execute the canonical Rust binary without duplicate command semantics or silent fallbacks
 - [ ] #6 FFI, launcher, and cross-language tests run through the existing Qt/QGIS/WebEngine gates without requiring WebEngine for pure operations
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Scope split: the Node qgis-cli launcher is replaced by a binary download (TASK-58). The Python side has no argparse qgis-cli after the TASK-57 work.
+<!-- SECTION:NOTES:END -->

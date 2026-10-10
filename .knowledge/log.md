@@ -1,5 +1,131 @@
 # Bundle Update Log
 
+## 2026-10-10 (qgis-sdk migration, slice 6: typer CLI, real commands, live text)
+
+* **Dependencies**: `typer>=0.27,<1` and `questionary>=2.1,<3` are the approved qgis-sdk dependencies. They are in `pixi.toml` (`py-runtime` feature) and in `py-packages/qgis-sdk/pyproject.toml`. `pixi.lock` is refreshed by `relock.yml`, because `pixi lock` cannot reach conda.anaconda.org from this sandbox.
+* **CLI**: `cli.py` is a typer application (`app`, `main(argv) -> int`). Option names and choices match the retired argparse tree. Usage errors return 2. Questionary asks for the dialog name only at a TTY (`ui add-dialog`).
+* **Commands that now do their work**: `package` (and `build`) writes `<name>.zip` with the plugin package folder and its `metadata.txt`. `install` copies the package into the QGIS profile. `test` runs pytest and cargo as requested. `rust build` runs cargo. `dev` and `publish` without `--dry-run` exit non-zero with "not implemented". `publish --dry-run` checks that the archive exists.
+* **Bundle**: `package --bundle` copies `bootstrap.py` into the package. `--offline-wheel` copies the wheel into `<package>/wheels/`, so it ships inside the archive. The retired code put wheels next to the package, outside the zip.
+* **Metadata**: `metadata_fields()` and `render_metadata_from_dict()` are ported. They use the same `METADATA_FIELDS` table `render_metadata` already uses (20 fields), so there is one table.
+* **Scripts**: `QGIS_REQUIRE_NATIVE=1` is removed from the qgis-sdk `package.json` test scripts. No qgis-sdk code read it. qgis-py and qgis-node keep it.
+* **Live text**: doc-1, doc-3 and doc-7 no longer name the retired executable or the retired crates. doc-7 carries a supersession banner pointing to D15. README and `.knowledge/qgis-ui.md` no longer cite `HAS_RUST` or `_core`.
+* **Blocked here**: `cargo` cannot reach crates.io (TLS EOF) and there is no vendored cache, so `cargo test -p xtask --offline` cannot run in this sandbox. The `gates` task runs the same xtask suite; CI is the proof for it.
+
+## 2026-10-10 (qgis-sdk migration, slice 5: _core, the crates and maturin)
+
+* **Landed on `arena/8333daf5-qgis-rs`**: `1e238d9` (drop `_core`, its fallback and the Rust flags), `66923fe` (setuptools backend), `2d8d69a` (remove `crates/qgis-sdk` and `crates/qgis-sdk-core`). `pixi run gates` exit 0 at `2d8d69a`. qgis-sdk pytest 459 passed, 4 skipped. `cargo test -p xtask` and `cargo check --workspace` pass.
+* **User answers**: remove both crates, not only `qgis-sdk`. Switch to setuptools in the same slice, since the backend built the extension from the crate. Remove the qgis-sdk xtask rules and keep the qgis-cli ones.
+* **Removed**: `HAS_RUST`/`RUST_VERSION`, the `_core` import blocks, `_fallback_cli.py`, the compiled `.so`. The retired import block had also reset `__version__` to a literal when `_core` was missing. `tests/test_pure_python.py` pins the surface.
+* **Packaging**: `pyproject.toml` uses `setuptools.build_meta`, with `assets/bridge/*` as explicit package data. The package `pixi.toml`, the conda recipe and `package.json` build follow. `pip wheel` builds a wheel with the assets, the entry point and no bytecode caches.
+* **xtask**: `FORBIDDEN_EDGES`, `CANONICAL_BINARIES` (qgis-sdk entry) and `TRACKED_FALLBACKS` are emptied. The "allowlisted but gone" case has no live entry to test, so it is removed. The rule code stays. `the_qgis_sdk_rust_crates_are_retired` pins the removal.
+* **Gate note**: `TRACKED_FALLBACKS` pointed at `_fallback_cli.py`. Deleting that file made the contract self-check fail, so the allowlist had to be emptied in the same commit as the file's deletion.
+* **Live text corrected**: README, docs mdx pages, the qgis-node README, `ARCHITECTURE.md`, the Cargo comments and `turbo.json`. `.knowledge/` pages, D13/D14 and the qgis-plugin material are still open.
+* **Still open**: D13/D14 supersession, the `qgis-plugin` cleanup in live files, the typer/questionary CLI (TASK-57), the stale TASK-44 note, and `rust init`/`rust build`/`ui add-*`/`metadata_fields`/`render_metadata_from_dict` on the Python side.
+* **Next session opening prompt**:
+
+  > Read the slice 5 entry in `.knowledge/log.md`. Supersede D14 with a new decision record, and update D13 and the live `.knowledge/` pages that name `crates/qgis-sdk`, maturin or `_core`. Leave historical log entries and completed task notes unchanged. Stop after the gates for review.
+
+## 2026-10-10 (qgis-sdk migration, slice 4: new)
+
+* **Landed**: `fc4ee92` (`new` routes through the Python scaffold only). `pixi run gates` exit 0. qgis-sdk pytest 449 passed, 4 skipped.
+* **Decision (user answer)**: the Python scaffold is the single spec. The native Rust template was older (no network, tasks or services) and its docstring had a doubled quote. It is no longer selected even when the extension is importable.
+* **Tests**: `tests/test_new_parity.py` (2). A native stub fails the test if it is called. The tree produced by `cli.main` must equal the direct Python scaffold tree.
+* **Gate note**: a stale `_fallback_cli.cpython-311.pyc` in `__pycache__` failed the "no new fallbacks" boundary check. Clearing `__pycache__` fixed it. Generated caches are not tracked.
+* **Still on `_core`**: `__init__.py` (`HAS_RUST`, `RUST_VERSION`), `styles.py` (unused import), `_fallback_cli.py`. The `_core` extension and the crates are removed in one slice.
+* **Next session opening prompt**:
+
+  > Read the `new` entry in `.knowledge/log.md`. Remove `_core` from `__init__.py`, `styles.py` and `_fallback_cli.py`, then remove `crates/qgis-sdk` and `crates/qgis-sdk-core` as one slice. Stop after the gates for review.
+
+## 2026-10-10 (qgis-sdk migration, slices 2 and 3: info and version)
+
+* **Landed on `arena/8333daf5-qgis-rs`**: `4ea73de` (info), `e9b77a2` (version). `pixi run gates` exit 0 at `e9b77a2`. qgis-sdk pytest 447 passed, 4 skipped.
+* **info**: the Rust command is the spec, since there was one Rust implementation. A missing metadata file is reported on stdout with exit 0. `--json` keeps sorted keys and unescaped UTF-8, as serde_json did. `tests/test_info_parity.py` (8).
+* **version**: reads the version from package metadata, with a source-tree fallback. Drops the "Rust-native" label, which is no longer true. Output is otherwise unchanged. `tests/test_version_parity.py` (3).
+* **Test corrected**: `tests/test_ui.py::test_validate_web_missing_qwebchannel` accepted a pass when no Rust core was present. It now asserts the single rule set, so it fails if the old stub behaviour returns.
+* **Still on `_core`**: `new` (vanilla layout), which is the 360-line Rust `cmd_new`, and `styles.py`'s unused import. Both belong to later slices.
+* **Next session opening prompt**:
+
+  > Read the info and version entries in `.knowledge/log.md`. Port the next Rust-only command, `rust init`, then `rust build`, with red tests at the `cli.main` seam. Keep `_core` only for `new` until its slice. Stop after each slice's gates for review.
+
+## 2026-10-10 (port Rust validate to Python, slice 1 of the qgis-sdk migration)
+
+* **Landed on `arena/8333daf5-qgis-rs`**: `ac719ea` (feat). `pixi run gates` exit 0. qgis-sdk pytest 436 passed, 4 skipped.
+* **Finding that set the order**: the Python stub fallback (`_fallback_cli.py`) returned no errors from `validate`, and two Rust implementations disagreed. The `qgis-sdk` crate required `[general]`, `name=` and `version=`. `qgis-sdk-core` required a metadata or `.py` file, and checked qwebchannel in web HTML. Deleting the crate first would have made `validate` a silent no-op.
+* **Decision (user)**: the port keeps the union of both rule sets.
+* **Port**: `qgis_sdk/plugin_validation.py` is now the only validator. `cli._cmd_validate` calls it and no longer uses `_core`. `tests/test_validate_parity.py` (13 tests) pins the behaviour at the `cli.main` seam.
+* **Deviation from red-first**: the red tests were run (3 failed against the union spec) but not committed on their own. They share a commit with the port.
+* **Still Rust-only**: `info`, `version`, `metadata_fields`, `render_metadata_from_dict`, `rust init`, `ui add-*`, `build`/`test`/`package`/`install`, and `new`. The crates `qgis-sdk` and `qgis-sdk-core` stay until each is ported.
+* **Next session opening prompt**:
+
+  > Read the validate-port entry in `.knowledge/log.md`. Continue the qgis-sdk migration with the next Rust-only command, `info`, then `version`, using red tests at the `cli.main` seam. Keep the crates until every command is ported, then remove them as one slice. Stop after each slice's gates for review.
+
+## 2026-10-09 (remove built-in CLIs from qgis-py and qgis-node)
+
+* **Landed on `arena/8333daf5-qgis-rs`**: `5122a61` and `2f73d3c` (red guard tests for qgis-py and qgis-node), `47a909a` (qgis-py CLI removed), `db85d37` (qgis-sdk `qgis-cli` shim removed), `41b02b4` (qgis-node CLI removed), `92fffc9` (docs), a root `package.json` comma fix, and a format commit. `pixi run gates` exit 0 at HEAD.
+* **qgis-py**: `python/qgis_py/cli.py`, `scripts/stage_cli.py`, `_bin/`, the `[project.scripts]` entries, and the CLI tests are gone. The wheel holds 163 entries, no CLI module, no console scripts, and `_core` is present. Its `build` script no longer stages a binary, and `xtask release` no longer calls `stage_cli.py`.
+* **qgis-sdk (scope extension)**: its `qgis-cli` console script delegated to `qgis_py.cli`, which no longer exists, so it was removed with `qgis_cli_main` and the recipe lines. The `qgis-sdk` command is unchanged. pytest 423 passed, 4 skipped.
+* **qgis-node**: `bin/`, `src/cli.js`, `scripts/stage-cli.js`, `npm/*`, and `tests/cli.test.js` are gone. `optionalDependencies`, `bin`, the `cli` keyword, and the `build:cli` script are removed. `runCli` and `resolveCliBinary` are no longer exported. The addon loader and its triple list stay, because they select the `.node` file. `bun.lock` lost only the three platform workspaces. `pack:check` passes. bun suite: 160 pass, 0 fail.
+* **Coverage note**: `tests/cli.test.js` covered `cliTriple` platform resolution and the `runCli` boundary. Those cases went with the CLI code they tested. No addon-loading case was lost.
+* **Auditwheel**: the `libQt5Core` repair failure noted earlier did not reproduce in the gate's wheel build. Not investigated further.
+* **Unchanged**: `crates/qgis-cli` (standalone binary, still shipped by its own release path) and the `docs/src/content/docs/cli/*` pages describing it. The xtask boundary fixture that mentions `qgis-cli` is parser test data.
+* **Backlog**: TASK-58 has AC 3 checked and a note that ACs 1-2 are superseded. It stays In Progress for an owner decision to close. TASK-61 has a note that its CLI half is superseded. Its WebEngine global is unchanged.
+* **Stop for review**: the slice is committed and gated. Nothing is pushed or opened as a PR.
+* **Next session opening prompt**:
+
+  > Confirm the pixi environments (`scripts/restore.sh`, `export PATH="$HOME/.local/bin:$PATH"`, `pixi run bun-install`, `pixi run setup`). Read the CLI-removal entry in `.knowledge/log.md`. Ask whether TASK-58 should be closed, since its CLI scope is removed. Open items: verify the WebEngine global in a real QtWebEngine page, and the CI matrix for per-platform wheels. Propose the next slice and stop before writing code.
+
+## 2026-10-09 (wheel bytecode exclusion)
+
+* **Landed on `arena/8333daf5-qgis-rs`**: `9900014` (exclusion, with `test_packaging.py` in qgis-py and qgis-sdk), `b4ca204` (relink fix), and a format commit. `pixi run gates` exit 0.
+* **Exclusion**: `[tool.maturin] exclude = ["**/__pycache__/**", "**/*.pyc"]` in both pyprojects. Red first: the qgis-py wheel held 4 bytecode entries. Now 0 in both wheels.
+* **Second bug, found while verifying**: a second `maturin build` from the same tree failed with `Cannot repair wheel, because required library libQt5Core-<hash>.so.5 could not be located`. Cause: auditwheel repairs the extension in place, the file is hard-linked into `target/release/deps` and `target/maturin`, and cargo sees nothing to rebuild. The first build after a clean succeeds; the second fails. The failure also left an empty 22-byte wheel behind. Fix: `cargo clean -p qgis-py -p qgis-sdk --release` in the release xtask before the wheel loop, and in both package `build` scripts before `maturin build`. Verified: two consecutive release-shaped rounds both pass, and both wheels have 0 bytecode entries.
+* **Also noticed, unchanged**: `maturin build --manifest-path <pyproject>` fails with `cargo metadata` in this maturin (1.15.0). The release fallback to running from the package directory is what works.
+* **Measured**: qgis-py wheel 121 MB (repaired QGIS and Qt libraries are bundled), qgis-sdk wheel 430 KB. The qgis-cli binary is not repaired, so it needs QGIS installed at runtime, as before.
+* **Next session opening prompt**: as in the previous entry, minus the pycache item. The open items are the real QtWebEngine check, and the CI matrix for per-platform wheels and npm packages (TASK-58, TASK-61).
+
+## 2026-10-09 (slice 6 and the WebEngine global, TASK-61)
+
+* **Landed on `arena/8333daf5-qgis-rs`**: `c38f1be` (slice 6, prebuilt qgis-cli in qgis-py), `2cdd15d` (WebEngine global), and two format commits. `pixi run gates` exit 0 after each. TASK-61 is **Done**.
+* **Slice 6, prebuilt qgis-cli for qgis-py**: `py-packages/qgis-py/scripts/stage_cli.py` builds `qgis-cli` and stages it in `python/qgis_py/_bin/`, which git ignores through the existing `_*` rule. `qgis-cli` (console script) now runs `binary_main`, which runs the bundled binary with the same argv and exit status. `qgis-py` still runs the Python parser. `xtask release build-artifacts` stages the binary before the maturin loop, and the package `build` script does too. Verified: the wheel holds `qgis_py/_bin/qgis-cli` at mode 0755, and `binary_main(['--help'])` returns 0.
+* **WebEngine global**: the bundle now enters through `src/browser.ts`. On a WebEngine page (`qt.webChannelTransport` or `QWebChannel` present) it publishes `window.qgis`, `window.qgisBridge`, `window.qgisReady`, and `window.qgisChannel(transport, cb)`. Outside WebEngine it publishes nothing. The four scaffolded pages load `qgis-sdk.js` after `qwebchannel.js`.
+* **Double-channel bug, found while wiring it**: Qt's `QWebChannel` constructor assigns `transport.onmessage` (checked in qwebchannel 6.2.0, from npm). A second channel on one transport takes over the first one's replies. The bundle and the page's own `new QWebChannel` would have broken each other. Fix: `src/channel.ts` caches one channel per transport. The bridge (`window.ts`) and the templates both open it through `openChannel`/`qgisChannel`. Tests: `channel.test.ts` (3), `browser.test.ts` (5).
+* **Measured**: qgis-py pytest 24 passed. `@archont561/qgis-sdk` 106 bun tests. qgis-sdk vendoring tests 10. xtask 150 passed.
+* **Not verified here**: a real QtWebEngine page. Only a fake channel ran (node smoke test: one channel for two callers). The bundle's auto-connect logs one console error on pages where Python does not register a `bridge` object. The qgis-cli binary links QGIS shared libraries (auditwheel does not repair it), so it needs QGIS at runtime, as the Node binary does. Only linux-x64 was built. The CI matrix and per-platform wheel publishing are still unbuilt, as recorded for TASK-58.
+* **Pre-existing, not changed**: `py-packages/qgis-py/python/qgis_py/__pycache__` gets into the wheel when maturin runs in a dirty tree. Clean it before release builds.
+
+* **Next session opening prompt**:
+
+  > Confirm the pixi environments (`scripts/restore.sh`, `export PATH="$HOME/.local/bin:$PATH"`, `pixi run bun-install`, `pixi run setup`). Read the slice 6 and WebEngine entry in `.knowledge/log.md`. Open items: verify the WebEngine global in a real QtWebEngine page, the CI matrix for per-platform qgis-cli wheels and npm packages (TASK-58, TASK-61), and the `__pycache__` exclusion in the wheel. Propose the slice and stop before writing code.
+
+## 2026-10-09 (slice 5, TASK-56 bridge vendoring)
+
+* **Landed on `arena/8333daf5-qgis-rs`** in `91cd574` (feat). `pixi run gates` exit 0 on that commit. TASK-56 is **Done** (AC1–AC4 checked).
+* **Bundle**: `ts-packages/qgis-sdk` gained `build:bundle`, an IIFE from `bun build` (`QgisSdk` global, browser target). `build` runs it after bunup.
+* **Vendored**: `py-packages/qgis-sdk/src/qgis_sdk/assets/bridge/` holds `qgis-sdk.js` (18 KB) and `manifest.json`, which pins package, version, and sha256. `py-packages/qgis-sdk/scripts/vendor_bridge.py` refreshes both from `dist/bundle/`.
+* **Linked only for WebEngine UIs**: `_link_vendored_bridge` runs inside the `with_web` block of `scaffold_plugin`, so it copies `web/qgis-sdk.js`. Plain scaffolds ship no bundle. The `bun` declarative template uses the npm package and is unchanged.
+* **Tests**: `tests/test_bridge_vendor.py` (5). Three were red before the change. Manifest-to-file sha, manifest-to-package version, and scaffold copy are all checked.
+* **Measured**: qgis-sdk Python 417 passed / 4 skipped. `@archont561/qgis-sdk` 99 bun tests, typecheck clean, lint exit 0 with 126 warnings (not counted against this slice).
+* **Not done**: the HTML templates do not yet load `web/qgis-sdk.js` with a `<script>` tag. The bundle is copied but not referenced. Next step: pick the global name and wire it into the WebEngine templates.
+* **Pushed**: slices 3 and 4 (`985d333`, `7f5cc79`, `15bce63`) were pushed with this slice.
+
+* **Next session opening prompt**:
+
+  > Confirm the pixi environments (`scripts/restore.sh`, `export PATH="$HOME/.local/bin:$PATH"`, `pixi run bun-install`, `pixi run setup`). Read the slice 5 entry in `.knowledge/log.md`. Slice 6 (prebuilt `qgis-cli` for qgis-py) is next. Inventory before editing, and propose the slice and stop for review before writing code.
+
+## 2026-10-09 (TASK-58, prebuilt qgis-cli through @archont561/qgis-node)
+
+* **Landed on `arena/8333daf5-qgis-rs`** (commits `fc18ca6` feat, then a format commit and a test-script commit): TASK-58 is **In Progress**, not Done. The package is `@archont561/qgis-node` and follows the Biome model. Each platform has a package in `optionalDependencies` that holds `bin/qgis-cli`, and the bin shim resolves the one for the machine. Nothing is downloaded at install or run time. Platforms: `linux-x64-gnu`, `linux-arm64-gnu`, `linux-x64-musl` (`npm/<triple>/`), plus `win32-x64-msvc` in the resolver, with no package yet.
+* **Removed**: the `qgis-plugin` and `qgis-sdk` bins. `qgis-cli` is the only command.
+* **Added**: `runCli(argv)` returns `{ exitCode, stdout, stderr }` (typed in `index.d.ts`), and `resolveCliBinary`. `scripts/stage-cli.js` builds qgis-cli for this machine and stages it.
+* **Renamed**: the napi addon is `qgis-node.<triple>.node` across turbo, biome, `pack:check`, the loader, and `scripts/version.ts`. The stale `@qgis-rs/node-<triple>` loader candidate is gone.
+* **Measured**: `pixi run gates` exit 0. `@archont561/qgis-node` test: **19 pass** (13 contract, 6 CLI, with the real binary run under `QGIS_REQUIRE_NATIVE=1`).
+* **Gotchas**: qgis-cli links QGIS, so it builds only in the **default** pixi env (`pixi run -e default node ts-packages/qgis-node/scripts/stage-cli.js`). The `bun` env has no Qt headers and fails in `qgis-sys`. `pixi run bun …` runs from the repository root, so package scripts need `cd` or an explicit path. The first `test` script ran only `contract.test.js`, and the gate missed the CLI suite until it was widened to `tests/`.
+* **Open**: CI does not build the other platforms, and `release.rs` `NPM_PACKAGES` does not publish the platform packages yet. Both are needed before a real release.
+
+* **Next session opening prompt**:
+
+  > Confirm the pixi environments (`scripts/restore.sh`, `export PATH="$HOME/.local/bin:$PATH"`, `pixi run bun-install`, `pixi run setup`). Read the 2026-10-09 TASK-58 entry in `.knowledge/log.md`. TASK-58 stays In Progress: propose the slice for the CI matrix that builds each platform package, and for publishing the platform packages in the release step. Propose the slice and stop before writing code.
+
 ## 2026-10-08 (session 13)
 
 * **Landed in PR #48** (squash-merged; the squash SHA is the PR's merge commit): TASK-2 — **Done (6/6 ACs, 2/2 DoD)**. The CI test lane used to run one permissive pytest pass over `qgis-sdk`, so the pure-Python suite and the QGIS integration suite were never separate strict passes, and no log said which QGIS backed the run. `test` in `py-packages/qgis-sdk/package.json` now runs `test:pure`, `test:qt` and `test:qgis` in sequence, each strict and each with `QGIS_REQUIRE_NATIVE=1` (without it `test_native_extension_is_used_in_ci` asserts only a bool). `coverage` stays the permissive whole-suite run.

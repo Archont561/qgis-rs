@@ -115,10 +115,10 @@ Targets: `crates/qgis-engine/src/lib.rs`, `payload.rs`, `tests/engine.rs`, `crat
 
 #### P1.3 SDK CLI/scaffold and workflow tooling
 
-Targets: `crates/qgis-sdk/src/lib.rs`, `crates/qgis-sdk/src/bin/qgis-plugin.rs`, and `crates/xtask/src/{ci,lints,release,scaffold,util}.rs`.
+Targets: `crates/xtask/src/{ci,lints,release,scaffold,util}.rs`. The Rust SDK CLI targets (`crates/qgis-sdk` and its binary) were removed; the `qgis-sdk` command is now `py-packages/qgis-sdk/src/qgis_sdk/cli.py` (typer), per D15.
 
-- Make `qgis-plugin.rs` a thin argument-to-library adapter. Extract cohesive modules for command parsing, scaffold request normalization, template/render selection, filesystem writes, and validation. Do not maintain two independent scaffold implementations without a documented contract.
-- Compare Rust SDK templates with Python `qgis_sdk/scaffold.py` templates. First add generated-file manifest/golden tests and identify intentional language-specific templates versus accidental source-of-truth duplication. Only then centralize metadata or shared contract fragments.
+- (Superseded by D15) Do not split the CLI across a Rust adapter and a second implementation. The Python scaffold is the single spec for `qgis-sdk new`.
+- (Superseded by D15) The Rust SDK templates were removed, so there is no template comparison. Keep the generated-file manifest/golden tests on `qgis_sdk/scaffold.py`.
 - For `xtask`, separate pure plans (files/commands/targets) from process execution and environment discovery. Inject a narrow command runner/filesystem seam in tests; do not mock every standard-library call. Keep CI/lint/release commands and failure text compatible.
 
 **Verification:** matrix tests for all scaffold options, generated manifest and selected-file snapshots, dry-run command plans, and an actual subprocess smoke test after environment restoration.

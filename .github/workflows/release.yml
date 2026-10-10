@@ -87,11 +87,11 @@ jobs:
       - name: Publish to prefix.dev
         id: prefix
         continue-on-error: true
-        run: pixi upload prefix --channel '@archont561/qgis-rs' --generate-attestation dist/conda/*.conda
+        run: pixi upload prefix --channel '@archont561/archont561' --generate-attestation dist/conda/*.conda
 
       # PyPI exchanges this job's OIDC identity for a short-lived upload token.
-      # Configure the qgis-rs and qgis-sdk projects on PyPI to trust
-      # Archont561/qgis-rs, release.yml, environment release before the first
+      # Configure the qgis-py and qgis-sdk projects on PyPI to trust
+      # Archont561/qgis-rust, release.yml, environment release before the first
       # upload; no PYPI_TOKEN belongs in GitHub secrets.
       - name: Publish to PyPI
         id: pypi

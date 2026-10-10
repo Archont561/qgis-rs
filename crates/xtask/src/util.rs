@@ -127,6 +127,14 @@ where
 /// `tests` is in the list because the shim's GoogleTest suite is C++ the
 /// repository maintains: before it was, a test file could be committed
 /// unformatted and the format-drift gate would still be green.
+/// Cargo packages that live outside `crates/`, each beside the language package
+/// it serves (D13 §2). They are workspace members, so every Rust check must see
+/// them as well as `crates/*`.
+pub const RUST_CRATE_ROOTS: &[&str] = &[
+    "py-packages/qgis-py/src-rust",
+    "ts-packages/qgis-node/src-rust",
+];
+
 pub const CPP_TREES: &[&str] = &[
     "crates/qgis-sys/src",
     "crates/qgis-sys/include",

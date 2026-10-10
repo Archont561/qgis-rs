@@ -23,13 +23,6 @@ import json
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
-try:
-    # Try Rust core for validation
-    from . import _core as _rust_core
-    HAS_RUST = True
-except ImportError:
-    _rust_core = None
-    HAS_RUST = False
 
 # Try qgis-styles Rust crate via qgis_render (if available)
 try:
@@ -278,7 +271,7 @@ class StyleSheet:
 
         return {
             "version": 8,
-            "name": self.name or "qgis-rs style",
+            "name": self.name or "qgis-sdk style",
             "layers": layers,
         }
 
@@ -299,4 +292,4 @@ class StyleSheet:
         return count
 
 
-__all__ = ["Rgba", "Symbol", "Renderer", "LayerStyle", "StyleSheet", "HAS_RUST", "HAS_QGIS_STYLES"]
+__all__ = ["Rgba", "Symbol", "Renderer", "LayerStyle", "StyleSheet", "HAS_QGIS_STYLES"]

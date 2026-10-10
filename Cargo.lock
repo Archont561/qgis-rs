@@ -844,18 +844,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "qgis-sdk"
+name = "qgis-rs"
 version = "0.1.0"
 dependencies = [
- "anyhow",
- "clap",
- "pyo3",
  "qgis-cli",
  "qgis-render",
- "rstest",
- "serde",
- "serde_json",
- "thiserror",
+ "qgis-server",
+ "qgis-styles",
 ]
 
 [[package]]

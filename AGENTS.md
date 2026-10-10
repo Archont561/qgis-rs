@@ -23,7 +23,7 @@ The `.knowledge/` directory contains design documents, decision records, and arc
 - **ROADMAP.md** — Development roadmap and priorities
 - **decisions/** — Architecture Decision Records (D01-D11)
 - **api-design.md** — Public API specification
-- **qgis-plugin-sdk.md** — Plugin framework design
+- **qgis-sdk.md** — Plugin framework design
 
 **Always consult the knowledge base before making architectural decisions.**
 
@@ -80,7 +80,7 @@ workflow so IDs, dependencies, acceptance criteria, and status remain consistent
 - Convert strings at the boundary (QString ↔ Rust String)
 - Never expose Qt types to Rust (convert to primitives)
 
-**Rust ↔ Python / Node** (`crates/qgis-py`, `crates/qgis-node` — see
+**Rust ↔ Python / Node** (`py-packages/qgis-py/src-rust`, `ts-packages/qgis-node/src-rust` — see
 [D09](.knowledge/decisions/D09-wire-protocol-over-ffi.md)):
 
 - Each binding crate exposes **one** function, `invoke(request_json) -> response_json`.
@@ -91,7 +91,7 @@ workflow so IDs, dependencies, acceptance criteria, and status remain consistent
 - Everything on the wire is `snake_case`, including operation names. The
   JavaScript client renames to camelCase at its own edge; Python does not rename.
 - The ergonomic classes live in the host languages
-  (`py-packages/qgis-rs/python/qgis_rs/_api.py`, `ts-packages/qgis-node/src/index.js`),
+  (`py-packages/qgis-py/python/qgis_py/_api.py`, `ts-packages/qgis-node/src/index.js`),
   never in the binding crates. There are no pure-Python or pure-JS fallbacks.
 
 ### Repository automation
@@ -160,6 +160,7 @@ bun x turbo run test --filter=qgis-sdk
 - Use `--test-threads=1` to avoid Qt threading issues
 - Tests should be idempotent and not modify shared state
 - Name a test after the behaviour it pins down, not the function it calls
+- C++ example tests use GoogleTest with behavior-oriented suite/test names and explicit Given / When / Then sections. Test observable behavior through agreed public seams. Preserve RapidCheck invariant tests. Do not introduce another BDD framework or custom syntax solely for style.
 
 ## Commit Messages
 

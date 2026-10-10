@@ -4,7 +4,7 @@ title: Build the TypeScript QGIS bridge test harness
 status: Done
 assignee: []
 created_date: '2026-10-03 09:16'
-updated_date: '2026-10-05 20:24'
+updated_date: '2026-10-09 15:47'
 labels:
   - testing
   - typescript
@@ -50,6 +50,8 @@ Extend @qgis/test-utils with a scripted bridge transport and BridgeHarness. Use 
 2026-10-05: Finding worth keeping - QgisBridge.call settles a caller-supplied callback with the RAW wire answer and its promise with the DECODED value. The two deliberately disagree, so the property states that relationship (one callback invocation, one resolution, JSON.parse of the first equals the second) rather than asserting equality. A second finding: a truncated JSON answer neither parses nor rejects; the decode is best-effort and the string survives, so a task handle degrades to task_id 'unknown'. Both are now pinned by tests instead of being folklore.
 
 2026-10-05: Evidence - bun 47 to 119 across the two packages (@qgis/test-utils 14 to 37, @qgis-sdk/bridge 68 to 82); lint, typecheck and test green for both. No test opens a socket, waits on a timer or needs QWebEngine: facade tests construct LayersAPI/TasksAPI/MessageAPI/NetworkAPI directly over harness.target('qgis'), task progress arrives because the test emits it, and the three bridge-package property runs finish in ~190 ms total.
+
+Path update: the bridge test harness moves to ts-packages/qgis-sdk with the package rename in TASK-56.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary

@@ -1,7 +1,7 @@
 # crates/qgis-engine — the dispatcher behind the one FFI function.
 #
-# `invoke(&str) -> String` is everything a language binding needs: crates/qgis-py
-# and crates/qgis-node are ~30 lines each because of it. Operations are added
+# `invoke(&str) -> String` is everything a language binding needs: py-packages/qgis-py/src-rust
+# and ts-packages/qgis-node/src-rust are ~30 lines each because of it. Operations are added
 # here and in qgis-protocol, never in a binding.
 
 [package]

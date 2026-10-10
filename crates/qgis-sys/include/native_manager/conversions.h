@@ -16,7 +16,7 @@
 /// `manager.cpp` because that translation unit cannot be loaded without a
 /// QGIS prefix and a QApplication, while these functions can be — and are,
 /// by `crates/qgis-sys/tests/cpp/conversions_test.cpp`.
-namespace qgis_rs::native_manager {
+namespace qgis_sys::native_manager {
 
 /// The JSON transport version this manager speaks.
 ///
@@ -64,4 +64,4 @@ char* copy_response(const std::string& response);
 /// pair cannot drift apart across the ABI.
 void free_response(char* response);
 
-}  // namespace qgis_rs::native_manager
+}  // namespace qgis_sys::native_manager

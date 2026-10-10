@@ -1,5 +1,5 @@
 /**
- * Type definitions for qgis-rs.
+ * Type definitions for @archont561/qgis-node.
  *
  * The addon exposes one function; everything here is the JavaScript client
  * written against it (see index.js and

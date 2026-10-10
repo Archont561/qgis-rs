@@ -203,7 +203,7 @@ pub fn pack_check(package_dir: &str, required: &[String]) -> Result<()> {
 /// Whether at least one file matches a `*`-pattern inside `directory`.
 ///
 /// Only the forms the packages actually use are supported — one `*` in the
-/// file-name part, optionally under a subdirectory (`qgis-rs.*.node`,
+/// file-name part, optionally under a subdirectory (`qgis-node.*.node`,
 /// `dist/*.whl`) — which is why this is twenty lines instead of a glob
 /// dependency nobody else in the workspace needs.
 pub fn glob_matches(directory: &Path, pattern: &str) -> Result<bool> {
@@ -326,7 +326,7 @@ pub fn check_sources() -> Result<()> {
         "check-sources: every source file in {} trees is visible to git",
         SOURCE_TREES.len()
     );
-    Ok(())
+    check_retired_names()
 }
 
 /// Outcome of checking the QCA soname required by QGIS.
@@ -379,5 +379,111 @@ pub fn setup_qca() -> Result<()> {
             lib.join("libqca-qt5.so.2").display()
         ),
     }
+    Ok(())
+}
+
+/// Names that were renamed or removed and must not come back in tracked text.
+///
+/// Each is a spelling the project no longer ships: the bridge package before
+/// TASK-56, the `qgis-rs-py` distribution before the `qgis-py` rename, the
+/// `qgis-rs` npm and pip names that TASK-58 and the Python rename retired, and
+/// the Python `qgis_rs` import shim, and the old repository path (the repository
+/// is `qgis-rust`; `qgis-rs` remains the crate API name). The C++ namespace of the native manager was `qgis_rs::`; it is
+/// `qgis_sys::` now, and the old spelling is listed so it cannot return.
+pub const RETIRED_NAMES: &[&str] = &[
+    "@qgis-sdk/bridge",
+    "qgis-sdk-bridge",
+    "qgis-rs-py",
+    "@qgis-rs/",
+    "pip install qgis-rs",
+    "npm install qgis-rs",
+    "import qgis_rs",
+    "from qgis_rs",
+    "Archont561/qgis-rs",
+    "qgis_rs::native_manager",
+];
+
+/// The retired `qgis-plugin` command. It is matched as a whole token, so a longer
+/// name that merely starts with it is not a hit.
+pub const RETIRED_COMMAND: &str = "qgis-plugin";
+
+/// Tracked text that may name a retired spelling on purpose: history, and the
+/// rule itself with its tests (which must spell the names they forbid).
+pub fn is_retired_name_history(path: &str) -> bool {
+    path.starts_with("backlog/")
+        || path.starts_with(".knowledge/decisions/")
+        || path == ".knowledge/log.md"
+        || path == "CHANGELOG.md"
+        || path.ends_with(".lock")
+        || path == "crates/xtask/src/lints.rs"
+        || path == "crates/xtask/src/boundaries.rs"
+        || path == "crates/xtask/tests/boundaries.rs"
+        || path == "crates/xtask/tests/retired_names.rs"
+}
+
+/// Every retired spelling that `text` contains, in the order of [`RETIRED_NAMES`],
+/// followed by [`RETIRED_COMMAND`] when it appears as a whole token.
+pub fn retired_names_in(text: &str) -> Vec<&'static str> {
+    let mut hits: Vec<&'static str> = RETIRED_NAMES
+        .iter()
+        .copied()
+        .filter(|name| text.contains(name))
+        .collect();
+    let bounded =
+        |byte: Option<char>| byte.is_none_or(|c| !(c.is_alphanumeric() || c == '-' || c == '_'));
+    let mut from = 0;
+    while let Some(offset) = text[from..].find(RETIRED_COMMAND) {
+        let start = from + offset;
+        let end = start + RETIRED_COMMAND.len();
+        let before = text[..start].chars().next_back();
+        let after = text[end..].chars().next();
+        if bounded(before) && bounded(after) {
+            hits.push(RETIRED_COMMAND);
+            break;
+        }
+        from = end;
+    }
+    hits
+}
+
+/// Fail when a tracked file, outside the history allowlist, still spells a
+/// retired name. Runs inside [`check_sources`], so it is part of `pixi run gates`.
+pub fn check_retired_names() -> Result<()> {
+    let root = repo_root();
+    if !root.join(".git").exists() {
+        return Ok(());
+    }
+    let listed = crate::util::capture("git", ["ls-files".to_string()])?;
+    if !listed.status.success() {
+        bail!(
+            "git ls-files failed: {}",
+            String::from_utf8_lossy(&listed.stderr)
+        );
+    }
+    let mut offenders = Vec::new();
+    for path in std::str::from_utf8(&listed.stdout)
+        .context("git listed a path that is not UTF-8")?
+        .lines()
+    {
+        if is_retired_name_history(path) {
+            continue;
+        }
+        let Ok(text) = std::fs::read_to_string(root.join(path)) else {
+            continue;
+        };
+        for name in retired_names_in(&text) {
+            offenders.push(format!("{path}: {name}"));
+        }
+    }
+    if !offenders.is_empty() {
+        for offender in &offenders {
+            eprintln!("retired name: {offender}");
+        }
+        bail!(
+            "{} retired name(s) in tracked files — use the current name, or record history in the backlog or .knowledge/log.md",
+            offenders.len()
+        );
+    }
+    println!("check-sources: no retired names in tracked files");
     Ok(())
 }

@@ -15,6 +15,10 @@ fn repo() -> PathBuf {
         ("ts-packages/web/package.json", r#"{"name":"@qgis/web"}"#),
         ("py-packages/sdk/package.json", r#"{"name":"sdk-py"}"#),
         ("docs/package.json", r#"{"name":"docs"}"#),
+        (
+            "py-packages/qgis-py/src-rust/Cargo.toml",
+            "[package]\nname = \"qgis-py\"\n",
+        ),
     ] {
         let path = root.join(path);
         fs::create_dir_all(path.parent().unwrap()).unwrap();
@@ -28,6 +32,9 @@ fn repo() -> PathBuf {
 #[case("ts-packages/web/src/index.ts", Scope::Package("@qgis/web".into()))]
 #[case("py-packages/sdk/tests/test_api.py", Scope::Package("sdk-py".into()))]
 #[case("docs/src/content/docs/index.mdx", Scope::Package("docs".into()))]
+// A binding crate lives beside its language package, but its change is a Cargo
+// change: the Rust scope, not the package.json scope of py-packages/qgis-py.
+#[case("py-packages/qgis-py/src-rust/src/lib.rs", Scope::Rust("qgis-py".into()))]
 fn a_leaf_change_selects_its_owner(repo: PathBuf, #[case] changed: &str, #[case] expected: Scope) {
     let result = plan(&repo, &[PathBuf::from(changed)], false).unwrap();
     assert_eq!(result.scopes, [expected]);

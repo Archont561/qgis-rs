@@ -1,0 +1,28 @@
+# The qgis-rs meta crate: one dependency for the engine crates, each behind a
+# feature flag. `default = ["render"]`, so the QGIS-backed rendering engine is
+# the one that is on unless a caller turns it off.
+#
+# The engines are the crates under crates/, re-exported under their short
+# names: `qgis_rs::render`, `qgis_rs::server`, `qgis_rs::styles`, `qgis_rs::cli`.
+
+[package]
+name = "qgis-rs"
+description = "The qgis-rs engines behind feature flags: render, server, styles and cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+keywords = ["qgis", "gis", "rendering", "tiles", "rust"]
+categories = ["science::geo"]
+
+[features]
+default = ["render"]
+render = ["dep:qgis-render"]
+server = ["dep:qgis-server"]
+styles = ["dep:qgis-styles"]
+cli = ["dep:qgis-cli"]
+
+[dependencies]
+qgis-render = { workspace = true, optional = true }
+qgis-server = { workspace = true, optional = true }
+qgis-styles = { workspace = true, optional = true }
+qgis-cli = { workspace = true, optional = true }

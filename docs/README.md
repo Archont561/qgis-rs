@@ -91,7 +91,7 @@ The sidebar is configured in `astro.config.mjs`.
 ## Deployment
 
 The site is published to **GitHub Pages** at
-<https://archont561.github.io/qgis-rs/> by
+<https://archont561.github.io/qgis-rust/> by
 [`.github/workflows/docs.yml`](../../.github/workflows/docs.yml), which builds
 pull requests and publishes after documentation changes land on `main` (and can
 also be run manually via *Actions → Docs → Run workflow*).
@@ -109,7 +109,7 @@ Two consequences worth knowing:
 - Root-absolute links in content (`[Quick Start](/getting-started/quick-start)`)
   are prefixed with `base` at build time by
   [`remark-base-links.mjs`](./remark-base-links.mjs). Add new links the same
-  way — do not hardcode `/qgis-rs/…`.
+  way — do not hardcode `/qgis-rust/…`.
 - `base` also applies to `astro dev`, so the dev server listens on
   `http://localhost:4321/qgis-rs`.
 

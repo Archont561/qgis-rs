@@ -25,9 +25,9 @@ It tries:
 5. download from PyPI via urllib
 
 For bundling:
-    qgis-plugin bootstrap --output my_plugin/bootstrap.py
-    qgis-plugin vendor --output my_plugin/vendor
-    qgis-plugin package --bundle
+    qgis-sdk bootstrap --output my_plugin/bootstrap.py
+    qgis-sdk vendor --output my_plugin/vendor
+    qgis-sdk package --bundle
 """
 
 from __future__ import annotations
@@ -206,7 +206,7 @@ def show_manual_instructions(parent=None):
             "or\n"
             "conda install -c conda-forge qgis-sdk\n\n"
             "Then restart QGIS.\n\n"
-            "Docs: https://archont561.github.io/qgis-rs/getting-started/python-sdk/"
+            "Docs: https://archont561.github.io/qgis-rust/getting-started/python-sdk/"
         )
     except Exception:
         print("Manual install: pip install qgis-sdk")

@@ -3,20 +3,22 @@ type: Decision
 id: D14
 title: qgis-sdk CLI transport — native argv forwarding; capabilities over the wire protocol
 description: "The Python qgis-sdk CLI forwards raw argv to one `cli_main` pyfunction in the `_core` extension and parses nothing; engine capabilities cross the D09 wire protocol."
-status: accepted
+status: superseded
+superseded_by: D15
 tags: [architecture, cli, ffi, pyo3, qgis-sdk, python, rust]
 date: 2026-10-09
 ---
 
 # D14: qgis-sdk CLI transport — native argv forwarding; capabilities over the wire protocol
 
+> **Superseded by [D15 — qgis-sdk CLI is pure Python on typer and questionary](D15-qgis-sdk-cli-pure-python-typer.md).** The decision below is kept as the record of what was accepted on 2026-10-09. The `_core` transport and the Rust CLI it describes have been removed.
+
 ## Context
 
 The qgis-sdk Python CLI currently has three overlapping paths: Python command
 handlers in `py-packages/qgis-sdk/src/qgis_sdk/cli.py`, a pure-Python
 `_fallback_cli.py`, and Rust CLI implementations in
-`crates/qgis-sdk/src/bin/qgis-plugin.rs` plus the incomplete sibling-delegating
-`qgis-sdk.rs`. TASK-26 exists to collapse them: command behavior implemented
+the Rust binaries under `crates/qgis-sdk` and their incomplete sibling delegation. TASK-26 exists to collapse them: command behavior implemented
 once in Rust, Python a thin client. D09 fixed the transport for *engine
 capabilities* (`invoke(json) -> json` per binding); D13 fixed the product
 boundaries (no second parser in the `qgis-sdk` alias; the CLI path stays
@@ -38,7 +40,7 @@ fn cli_main(argv: Vec<OsString>) -> i32
 
 clap owns all CLI parsing: subcommands, `--help`, defaults, `choices`, error
 messages, and (via `clap_complete`) shell completion. The Python console
-scripts (`qgis-plugin`, `qgis-sdk`) are thin forwarders:
+scripts are thin forwarders:
 
 ```python
 def main() -> int:
@@ -59,17 +61,22 @@ qgis-py protocol gains no namespaced CLI-invocation surface. There is also no
 separate qgis-sdk protocol/engine pair: shared components are reused, and the
 CLI behavior lives in the Rust CLI library (below).
 
-### 3. Crate layout: one parser, two frontends, no pyo3 in qgis-cli
+### 3. Crate layout: one parser, two frontends, no pyo3 in the library
 
-- `crates/qgis-cli` gains a **lib target** holding the clap command tree and
-  handlers. It stays pure Rust — no pyo3, no qgis-sys (TASK-41's pure surface is
-  preserved). `src/main.rs` becomes a thin binary over the lib.
-- `crates/qgis-sdk` — the crate that already carries the pyo3/maturin wiring —
-  depends on the `qgis-cli` lib and adds the `cli_main` pyfunction above. The
-  Python extension and the Rust binary share one parser.
-- `crates/qgis-sdk/src/bin/qgis-plugin.rs` and the sibling-delegating
-  `qgis-sdk.rs` collapse into the same lib; `qgis-sdk` remains an exact alias
-  of `qgis-plugin` (D13), not a second parser.
+- `crates/qgis-sdk-core` is a new **pure-Rust library** holding the clap command
+  tree and the plugin handlers, with `pub fn run_cli(argv) -> i32` as its entry
+  point. It has no pyo3, no qgis-sys and no QGIS. It is not published (the plugin
+  CLI is not a crates.io product), and it is a dependency only of `qgis-sdk`.
+- The two Rust binaries are each a
+  one-line `main` over `qgis_sdk_core::main_entry()`. `qgis-sdk` is an exact
+  alias of the plugin CLI (D13 §1): same parser, same help, same exit codes, with
+  no sibling-process delegation and no reduced reimplementation.
+- `crates/qgis-sdk` depends on `qgis-sdk-core` and adds the `cli_main` pyfunction
+  above. The Python extension and the Rust binaries share one parser.
+- `qgis-cli` is **not** changed by this decision. It stays the GIS-execution CLI
+  (D13 §1), so plugin tooling does not enter it. An earlier draft of this record
+  put the command tree into `qgis-cli`; that conflicted with D13's rejected
+  alternative "Put every SDK command in `qgis-cli`" and was corrected here.
 
 ### 4. Type stub beside the extension
 

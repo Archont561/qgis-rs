@@ -1,6 +1,6 @@
 ---
 title: Web Frameworks in QGIS
-description: Use React, Vue, or Web Components inside QWebEngineView with @qgis-sdk/bridge
+description: Use React, Vue, or Web Components inside QWebEngineView with @archont561/qgis-sdk
 ---
 
 # Web Frameworks in QGIS
@@ -22,17 +22,17 @@ For QGIS plugins, **Web Components** is often best (small, offline, no CDN). Rea
 
 ```bash
 # Vanilla (Leaflet + all examples)
-qgis-plugin new my_plugin --web
+qgis-sdk new my_plugin --web
 
 # React
-qgis-plugin new my_plugin --web --framework react
-# Creates web/react.html (CDN demo) + web/map.html + web/bridge.d.ts + frontend/ (Vite + React + @qgis-sdk/bridge)
+qgis-sdk new my_plugin --web --framework react
+# Creates web/react.html (CDN demo) + web/map.html + web/bridge.d.ts + frontend/ (Vite + React + @archont561/qgis-sdk)
 
 # Vue
-qgis-plugin new my_plugin --web --framework vue
+qgis-sdk new my_plugin --web --framework vue
 
 # Web Components
-qgis-plugin new my_plugin --web --framework webcomponents
+qgis-sdk new my_plugin --web --framework webcomponents
 ```
 
 Generated structure:
@@ -49,7 +49,7 @@ my_plugin/
 │   │   ├── bridge.d.ts       # Typed interface (auto-generated)
 │   │   └── bridge.ts         # Usage examples
 │   ├── frontend/             # Vite (only for react/vue)
-│   │   ├── package.json      # with @qgis-sdk/bridge
+│   │   ├── package.json      # with @archont561/qgis-sdk
 │   │   ├── vite.config.js
 │   │   ├── tsconfig.json
 │   │   ├── index.html
@@ -78,8 +78,8 @@ my_plugin/
 <body>
 <div id="map"></div>
 <script type="module">
-  // Modern with @qgis-sdk/bridge
-  // import { createBridge } from '@qgis-sdk/bridge';
+  // Modern with @archont561/qgis-sdk
+  // import { createBridge } from '@archont561/qgis-sdk';
   // import type { Bridge } from './bridge.d.ts';
   // const bridge = await createBridge<Bridge>();
 
@@ -142,13 +142,13 @@ function App() {
 </script>
 ```
 
-### Production (Vite + @qgis-sdk/bridge)
+### Production (Vite + @archont561/qgis-sdk)
 
 `frontend/src/App.tsx` (scaffolded):
 
 ```tsx
 import { useEffect, useState } from 'react';
-import { useQgisBridge } from '@qgis-sdk/bridge/react';
+import { useQgisBridge } from '@archont561/qgis-sdk/react';
 import type { Bridge } from '../../web/bridge.d.ts';
 
 export default function App() {
@@ -166,7 +166,7 @@ export default function App() {
 
   return (
     <div style={{ padding: 16 }}>
-      <h2>My Plugin — React + @qgis-sdk/bridge</h2>
+      <h2>My Plugin — React + @archont561/qgis-sdk</h2>
       <p>Layer: {layer?.name} ({layer?.count})</p>
       <button onClick={() => bridge?.log("hello from React")}>Send to Python</button>
     </div>
@@ -181,7 +181,7 @@ export default function App() {
   "dependencies": {
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "@qgis-sdk/bridge": "^0.1.0"
+    "@archont561/qgis-sdk": "^0.1.0"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.2.0",
@@ -242,14 +242,14 @@ createApp({
 </script>
 ```
 
-### Production (Vite + @qgis-sdk/bridge)
+### Production (Vite + @archont561/qgis-sdk)
 
 `frontend/src/App.vue`:
 
 ```vue
 <script setup lang="ts">
 import { ref, watch } from 'vue';
-import { useQgisBridge } from '@qgis-sdk/bridge/vue';
+import { useQgisBridge } from '@archont561/qgis-sdk/vue';
 import type { Bridge } from '../../web/bridge.d.ts';
 
 const { bridge, ready } = useQgisBridge<Bridge>();
@@ -264,7 +264,7 @@ watch(ready, async (r) => {
 
 <template>
   <div style="padding:16px">
-    <h2>My Plugin — Vue + @qgis-sdk/bridge</h2>
+    <h2>My Plugin — Vue + @archont561/qgis-sdk</h2>
     <div v-if="!ready">Connecting to QGIS... (auto-injects qrc:///qtwebchannel/qwebchannel.js)</div>
     <div v-else>
       <p>Layer: {{ layer?.name }} ({{ layer?.count }})</p>
@@ -308,12 +308,12 @@ new QWebChannel(qt.webChannelTransport, ch => {
 </script>
 ```
 
-### With @qgis-sdk/bridge
+### With @archont561/qgis-sdk
 
 ```html
 <qgis-bridge object-name="bridge" id="qgisBridge"></qgis-bridge>
 <script type="module">
-import '@qgis-sdk/bridge/webcomponents';
+import '@archont561/qgis-sdk/webcomponents';
 const el = document.getElementById('qgisBridge');
 el.addEventListener('qgis-bridge-ready', async (e) => {
   const layer = await e.detail.bridge.get_layer();
@@ -326,7 +326,7 @@ el.addEventListener('qgis-message', e => console.log(e.detail));
 Mixin:
 
 ```typescript
-import { withQgisBridge } from '@qgis-sdk/bridge/webcomponents';
+import { withQgisBridge } from '@archont561/qgis-sdk/webcomponents';
 
 class MyMap extends withQgisBridge(HTMLElement) {
   onBridgeReady(bridge) {
@@ -355,8 +355,8 @@ web_view.page().runJavaScript(f"window.dispatchEvent(new CustomEvent('qgis-messa
 JS (any framework):
 
 ```typescript
-// Via @qgis-sdk/bridge helper
-import { onQgisMessage } from '@qgis-sdk/bridge';
+// Via @archont561/qgis-sdk helper
+import { onQgisMessage } from '@archont561/qgis-sdk';
 onQgisMessage(data => console.log(data));
 
 // Via CustomEvent
@@ -404,7 +404,7 @@ For JS, use `vitest` + `jsdom`:
 
 ```typescript
 import { describe, it, expect, vi } from 'vitest';
-import { createBridge } from '@qgis-sdk/bridge';
+import { createBridge } from '@archont561/qgis-sdk';
 
 // Mock QWebChannel
 global.QWebChannel = vi.fn((transport, cb) => {

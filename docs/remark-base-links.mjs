@@ -6,14 +6,14 @@
  * page"), but links written inside `.md`/`.mdx` content are emitted verbatim.
  * A link like `[Quick Start](/getting-started/quick-start)` therefore points at
  * `https://archont561.github.io/getting-started/quick-start` instead of
- * `https://archont561.github.io/qgis-rs/getting-started/quick-start`, i.e. a
+ * `https://archont561.github.io/qgis-rust/getting-started/quick-start`, i.e. a
  * 404 on GitHub Pages.
  *
  * Usage (docs/astro.config.mjs):
  *
  *   markdown: { remarkPlugins: [remarkBaseLinks(base)] }
  *
- * @param {string} base Astro `base`, e.g. `/qgis-rs`.
+ * @param {string} base Astro `base`, e.g. `/qgis-rust`.
  */
 export default function remarkBaseLinks(base) {
 	const prefix = base && base !== "/" ? base.replace(/\/+$/, "") : "";
@@ -21,7 +21,7 @@ export default function remarkBaseLinks(base) {
 	const visit = (node) => {
 		const url = node.url;
 		// Only touch root-absolute URLs: `/foo`, not `https://…`, `//cdn…`, `#anchor`,
-		// `mailto:…` or already-prefixed `/qgis-rs/…`.
+		// `mailto:…` or already-prefixed `/qgis-rust/…`.
 		if (
 			typeof url === "string" &&
 			url.startsWith("/") &&

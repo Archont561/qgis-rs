@@ -82,5 +82,7 @@ ts-packages/qgis-node/*.node
 
 # python — wheels and editable installs built from py-packages/<name>
 py-packages/*/*.egg-info/
+py-packages/*/src/*.egg-info/
+py-packages/*/build/
 py-packages/*/.pytest_cache/
 gate.log

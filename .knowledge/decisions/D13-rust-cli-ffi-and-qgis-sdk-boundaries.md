@@ -20,14 +20,16 @@ The full product specification is [doc-7 — Rust CLI, Cross-Language FFI, and Q
 
 ## Decision
 
+> **Amended by [D15](D15-qgis-sdk-cli-pure-python-typer.md).** `qgis-sdk` is the plugin CLI, a pure-Python typer application. The second name and the alias are retired. The enforcement table below reflects that.
+
 ### 1. Separate product responsibilities
 
 - `qgis-cli` executes GIS work: inspection, validation, tile planning, batch planning, rendering, export, and serving.
-- `qgis-plugin` is the canonical plugin-development CLI: scaffolding, metadata, validation, build, test, development, packaging, bridge generation, installation, and publishing.
-- `qgis-sdk` may be an exact compatibility alias for `qgis-plugin`; it must not have a second parser or reduced implementation.
-- `qgis_rs` is the standalone Python client for the Rust engine.
+- `qgis-sdk` is the canonical plugin-development CLI: scaffolding, metadata, validation, build, test, development, packaging, bridge generation, installation, and publishing. It is a pure-Python typer application (D15).
+- No second name exists for the plugin CLI (D15).
+- `qgis_py` is the standalone Python client for the Rust engine.
 - `qgis_sdk` is the QGIS-hosted Python plugin SDK and uses PyQGIS/PyQt for live QGIS objects, UI, Processing, tasks, feedback, and lifecycle.
-- `@qgis-sdk/bridge` is the WebEngine/QWebChannel client and is separate from the Node native addon.
+- `@archont561/qgis-sdk` is the WebEngine/QWebChannel client and is separate from the Node native addon.
 
 ### 2. Keep the FFI thin
 
@@ -48,7 +50,7 @@ qgis-protocol <- qgis-engine <- qgis-render
 qgis-sdk-core -> qgis-protocol
 qgis-sdk-core may reuse qgis-engine/qgis-render where useful
 qgis_sdk._core -> qgis-sdk-core
-qgis_rs._core -> qgis-engine
+qgis_py._core -> qgis-engine
 ```
 
 `qgis-sdk` must not directly depend on `qgis-py`. Optional plugin acceleration may use a separately validated Rust engine adapter, but the base SDK must not require `qgis-rs` or its PyO3 extension.
@@ -97,20 +99,19 @@ them on every gate run (TASK-40), and the rest of this record is a claim a revie
 
 | Rule | Enforced by | How it fails |
 | --- | --- | --- |
-| §3 `qgis-sdk` must not depend on `qgis-py` | `FORBIDDEN_EDGES` | a dependency key in `crates/qgis-sdk/Cargo.toml` |
+| §3 `qgis-sdk` must not depend on `qgis-py` | `FORBIDDEN_EDGES` — retired: `qgis-sdk` has no Rust crate (D15) | not applicable |
 | §4 binding crates own no process semantics | `BINDING_CRATES` | a `[[bin]]` in `qgis-py` or `qgis-node` |
-| §1 one owner per canonical executable | `CANONICAL_BINARIES` | `qgis-cli`, `qgis-plugin` or `qgis-sdk` declared by nobody or by two crates |
+| §1 one owner per canonical executable | `CANONICAL_BINARIES` | `qgis-cli` declared by nobody or by two crates; `qgis-sdk` is a Python console script (D15) |
 | §4 no-fallback policy | `TRACKED_FALLBACKS` | a new `*fallback*` file under `crates/`, `py-packages/` or `ts-packages/` |
 
-The no-fallback rule is an allowlist rather than a prohibition, because one fallback predates this
-record: `py-packages/qgis-sdk/src/qgis_sdk/_fallback_cli.py`, imported by `qgis_sdk.cli` when
-`qgis_sdk._core` is missing, which TASK-43 removes with the hosted-runtime split. An exception
+The no-fallback rule is an allowlist rather than a prohibition. One fallback predated this
+record, `py-packages/qgis-sdk/src/qgis_sdk/_fallback_cli.py`. It was removed with the native
+`_core` extension (D15), and the allowlist is now empty. An exception
 with a name and an owner is a debt; an exception nobody counted is a second set of answers.
 
 Three things the check deliberately does not decide: whether a binary's *behaviour* matches its
 contract (that is a test in the owning package), whether a Python distribution's console scripts
-shadow a canonical binary on `PATH` (`py-packages/qgis-sdk` ships a `qgis-cli` entry point, which
-TASK-44 reconciles), and whether the host-language wrappers stay thin (a review question).
+shadow a canonical binary on `PATH` (`py-packages/qgis-sdk` ships only the `qgis-sdk` console script, D15), and whether the host-language wrappers stay thin (a review question).
 
 ## Implementation gates
 
@@ -118,7 +119,7 @@ TASK-44 reconciles), and whether the host-language wrappers stay thin (a review 
 - [TASK-41](../../backlog/tasks/task-41%20-%20Build-the-pure-Rust-qgis-cli-capability-surface.md) builds the standalone CLI capabilities.
 - [TASK-42](../../backlog/tasks/task-42%20-%20Stabilize-Python-and-Node-FFI-clients-and-CLI-launchers.md) stabilizes FFI clients and launchers.
 - [TASK-43](../../backlog/tasks/task-43%20-%20Separate-qgis-sdk-hosted-runtime-from-qgis-rs-and-qgis-py.md) enforces the hosted-runtime dependency boundary.
-- [TASK-44](../../backlog/tasks/task-44%20-%20Package-the-Rust-native-qgis-plugin-and-qgis-sdk-CLI.md) packages the canonical plugin CLI and exact alias.
+- [TASK-44](../../backlog/tasks/task-44%20-%20Package-the-Rust-native-qgis-plugin-and-qgis-sdk-CLI.md) packaged the plugin CLI. Its Rust-native framing is superseded by D15.
 - [TASK-26](../../backlog/tasks/task-26%20-%20Refactor-qgis-sdk-CLI-onto-the-shared-Rust-engine-wire-protocol.md) implements the shared Rust/wire CLI refactor.
 
 All feature and bug-fix implementation follows the repository refactor and TDD skills. Tests establish public seams before structural changes, implementation proceeds in small red-green-refactor slices, and QGIS/Qt/WebEngine gates remain separate from pure tests.

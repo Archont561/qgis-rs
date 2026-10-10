@@ -1,11 +1,11 @@
 [build-system]
-requires = ["maturin>=1.7,<2"]
-build-backend = "maturin"
+requires = ["setuptools>=77", "wheel"]
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "qgis-sdk"
 version = "0.1.0"
-description = "Python SDK for building QGIS plugins on top of PyQGIS — with Rust-native CLI and acceleration"
+description = "Python SDK for building QGIS plugins on top of PyQGIS, with a typer-based CLI"
 readme = "README.md"
 # The Python this wheel supports is the one QGIS is bundled with, not a range of
 # its own. A plugin SDK is useless on any other interpreter, since `import
@@ -13,50 +13,45 @@ readme = "README.md"
 # step with `python` in the root pixi.toml and the qgis build's ABI.
 requires-python = ">=3.12,<3.13"
 license = { text = "GPL-2.0-or-later" }
-keywords = ["qgis", "gis", "plugin", "pyqgis", "rust", "cli"]
+keywords = ["qgis", "gis", "plugin", "pyqgis", "cli"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: GNU General Public License v2 or later (GPLv2+)",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
-    "Programming Language :: Rust",
     "Topic :: Scientific/Engineering :: GIS",
 ]
 # No hard PyPI deps — QGIS comes from conda-forge qgis package for full backend,
 # but pure-Python SDK works without QGIS for testing.
-dependencies = []
+dependencies = ["typer>=0.27,<1", "questionary>=2.1,<3"]
 
 [project.optional-dependencies]
 test = ["pytest>=8", "hypothesis>=6.168,<7"]
-dev = ["pytest>=8", "maturin>=1.7", "hypothesis>=6.168,<7"]
+dev = ["pytest>=8", "hypothesis>=6.168,<7"]
 
 [project.urls]
-Homepage = "https://github.com/Archont561/qgis-rs"
-Repository = "https://github.com/Archont561/qgis-rs"
-Issues = "https://github.com/Archont561/qgis-rs/issues"
-Documentation = "https://archont561.github.io/qgis-rs/"
+Homepage = "https://github.com/Archont561/qgis-rust"
+Repository = "https://github.com/Archont561/qgis-rust"
+Issues = "https://github.com/Archont561/qgis-rust/issues"
+Documentation = "https://archont561.github.io/qgis-rust/"
 
 [project.scripts]
-qgis-plugin = "qgis_sdk.cli:main"
 qgis-sdk = "qgis_sdk.cli:main"
-# Keep qgis-cli also available when qgis-sdk is installed, for convenience
-qgis-cli = "qgis_sdk.cli:qgis_cli_main"
 
 [project.entry-points.pytest11]
 qgis_sdk = "qgis_sdk.testing"
 
-[tool.maturin]
-features = ["pyo3/extension-module", "python"]
-# The Rust core lives in the Cargo workspace, not here. `python-source` stays
-# relative to this directory, so `maturin develop` still puts `qgis_sdk` and
-# the compiled `qgis_sdk._core` next to each other.
-manifest-path = "../../crates/qgis-sdk/Cargo.toml"
-module-name = "qgis_sdk._core"
-python-source = "src"
-bindings = "pyo3"
-strip = true
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+# The bridge JS and its manifest are data files, not Python modules, so they
+# must be listed or the wheel ships without them.
+qgis_sdk = ["assets/bridge/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -2,17 +2,17 @@
 	"name": "qgis-sdk-py",
 	"private": true,
 	"version": "0.1.0",
-	"description": "Bun/Turbo facade for the qgis-sdk Python distribution. `build` is the whole maturin story: `maturin develop --release` (installs into pixi's default environment and puts the extension next to the mixed-layout Python sources pytest imports) plus `maturin build --release` for the shippable wheel, from one compilation — and it ends by importing `._core`, because this distribution still has a silent pure-Python fallback that a build must not be able to produce. `test` and `coverage` therefore only run pytest, and CI needs no separate maturin or virtualenv step. `test` runs the `pure`, `qt` and `qgis` gates in sequence, strictly, so CI executes the pure-Python suite and the QGIS integration suite as separate passes and each one fails outright when its layer is missing — a gate that skips has proved nothing. `coverage` remains the permissive whole-suite run that skips a layer this machine cannot reach. `test:webengine` stays opt-in. Only `test` is fanned out by turbo; the gates are opt-in, which is what keeps QWebEngine off the critical path of ordinary bridge tests.",
+	"description": "Bun/Turbo facade for the qgis-sdk Python distribution. `build` installs the package in editable mode into pixi's default environment and builds the shippable wheel with setuptools. `test` and `coverage` run pytest. `test` runs the `pure`, `qt` and `qgis` gates in sequence, strictly, so CI executes the pure-Python suite and the QGIS integration suite as separate passes and each one fails outright when its layer is missing. A gate that skips has proved nothing. `coverage` remains the permissive whole-suite run that skips a layer this machine cannot reach. `test:webengine` stays opt-in. Only `test` is fanned out by turbo; the gates are opt-in, which keeps QWebEngine off the critical path of ordinary bridge tests.",
 	"scripts": {
-		"build": "pixi run -e default bash -c 'rm -rf dist && maturin develop --release && maturin build --release --out dist && python -c \"import qgis_sdk._core\"'",
+		"build": "pixi run -e default bash -c 'rm -rf dist && python -m pip install --no-deps -e . && python -m pip wheel --no-deps -w dist . && python -c \"import qgis_sdk\"'",
 		"test": "bun run test:pure && bun run test:qt && bun run test:qgis",
-		"test:pure": "pixi run -e default env QGIS_TEST_LAYER=pure QGIS_REQUIRE_NATIVE=1 python -m pytest tests -v",
-		"test:qt": "pixi run -e default env QGIS_TEST_LAYER=qt QGIS_REQUIRE_NATIVE=1 python -m pytest tests -v",
-		"test:qgis": "pixi run -e default env QGIS_TEST_LAYER=qgis QGIS_REQUIRE_NATIVE=1 python -m pytest tests -v",
+		"test:pure": "pixi run -e default env QGIS_TEST_LAYER=pure python -m pytest tests -v",
+		"test:qt": "pixi run -e default env QGIS_TEST_LAYER=qt python -m pytest tests -v",
+		"test:qgis": "pixi run -e default env QGIS_TEST_LAYER=qgis python -m pytest tests -v",
 		"test:webengine": "pixi run -e default env QGIS_TEST_LAYER=webengine python -m pytest tests -v",
-		"coverage": "pixi run -e default env QGIS_REQUIRE_NATIVE=1 python -m pytest tests -v --cov=qgis_sdk --cov-report=term-missing --cov-report=xml:../../target/coverage/python-qgis-sdk.xml",
+		"coverage": "pixi run -e default env python -m pytest tests -v --cov=qgis_sdk --cov-report=term-missing --cov-report=xml:../../target/coverage/python-qgis-sdk.xml",
 		"lint": "bunx biome check package.json",
 		"format": "bunx biome format --write package.json",
-		"doctor": "pixi run -e default env QGIS_REQUIRE_NATIVE=1 python scripts/doctor.py"
+		"doctor": "pixi run -e default env python scripts/doctor.py"
 	}
 }

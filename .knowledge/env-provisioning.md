@@ -147,7 +147,7 @@ resolves the dependency graph, not what a build script compiles). The old list a
 named `ts-packages/qgis-node/Cargo.toml`, `ts-packages/qgis-node/build.rs` and
 `ts-packages/qgis-node/package-scripts/**` — paths that stopped existing when
 `packages/` was split into `crates/`, `ts-packages/` and `py-packages/` (`c569e12`),
-which moved the napi crate to `crates/qgis-node`.
+which moved the napi crate to `ts-packages/qgis-node/src-rust`.
 
 The relock bot needs no path either: a `GITHUB_TOKEN` push starts no workflow, so it
 dispatches `publish-sandbox.yml` explicitly after pushing a lock commit.

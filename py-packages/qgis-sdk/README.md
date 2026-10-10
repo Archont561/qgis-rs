@@ -8,10 +8,10 @@ It is a **pixi workspace package** and **maturin Python package**: the `[package
 qgis-sdk = better PyQGIS + declarative plugin/algorithm/UI definitions + Rust CLI at native speed
 ```
 
-- **pip**: `pip install qgis-sdk` → `import qgis_sdk` + `qgis-plugin` binary on PATH (Rust)
+- **pip**: `pip install qgis-sdk` → `import qgis_sdk` + `qgis-sdk` binary on PATH (Rust)
 - **conda**: `conda install -c conda-forge qgis-sdk` → same, with QGIS backend
 - **API**: `from qgis_sdk import Plugin, Algorithm, Dialog, WebDialog` — Pythonic, type-hinted, testable without QGIS
-- **CLI**: `qgis-plugin` (Rust binary) + `qgis-plugin` Python console script — scaffold, build, test, package at native speed
+- **CLI**: `qgis-sdk` (Rust binary) + `qgis-sdk` Python console script — scaffold, build, test, package at native speed
 - **UI**: `qgis_sdk.ui` — Qt Designer `.ui` + `uic.loadUiType` + `WA_DeleteOnClose` + `QSettings` + `QWebEngineView` + `QWebChannel` bridge
 
 ## What it gives you
@@ -23,8 +23,8 @@ qgis-sdk = better PyQGIS + declarative plugin/algorithm/UI definitions + Rust CL
 | `Algorithm`, `parameter`, `output` | Declarative Processing parameters and outputs. |
 | `Dialog`, `field`, `layout`, `Button`, `@dialog` | Declarative dialogs via PyQt — testable without QGIS, with `QSettings` persistence. |
 | `WebDialog`, `@web_bridge` | QWebEngineView + HTML/CSS/JS + QWebChannel bridge (Python ↔ JS via `pyqtSlot` + `runJavaScript`). |
-| `generate_ts_bridge()`, `generate_package()` | Generate TypeScript types from Python bridge classes → `bridge.d.ts` with Promise+callback overloads, for `@qgis-sdk/bridge`. |
-| `@qgis-sdk/bridge` (npm) | Typed bridge runtime: auto-injects `qrc:///qtwebchannel/qwebchannel.js`, `createBridge<T>()` Promise API, React `useQgisBridge`, Vue composable, Web Components `<qgis-bridge>`. |
+| `generate_ts_bridge()`, `generate_package()` | Generate TypeScript types from Python bridge classes → `bridge.d.ts` with Promise+callback overloads, for `@archont561/qgis-sdk`. |
+| `@archont561/qgis-sdk` (npm) | Typed bridge runtime: auto-injects `qrc:///qtwebchannel/qwebchannel.js`, `createBridge<T>()` Promise API, React `useQgisBridge`, Vue composable, Web Components `<qgis-bridge>`. |
 | `qgis_sdk.testing` | Pytest fixtures + fakes, one module per concern: `FakeIface`, `FakeDialog`, `FakeWebView`, `BridgeHarness`, `FakeNetworkTransport`, the `PENDING/RUNNING/SUCCESS/FAILURE/CANCELED` `FakeTaskManager`, `Call`/`CallLog`, `mock_features/source/context`, and Hypothesis strategies in `qgis_sdk.testing.strategies`. Discoverable via `pytest_plugins = ["qgis_sdk.testing"]`. |
 | `qgis_core()` / `require_qgis()` | Lazy PyQGIS access with an actionable error when the bindings are missing. |
 
@@ -84,9 +84,9 @@ pip install qgis-sdk
 What you get:
 
 - `qgis_sdk` Python module (Plugin, Algorithm, metadata, plus Rust `_core` for native speed)
-- `qgis-plugin` executable (Rust binary, built by maturin)
+- `qgis-sdk` executable (Rust binary, built by maturin)
 - `qgis-sdk` executable (alias)
-- `qgis-plugin` and `qgis-sdk` console scripts (`python -m qgis_sdk.cli`)
+- `qgis-sdk` and `qgis-sdk` console scripts (`python -m qgis_sdk.cli`)
 
 Pre-built wheels for Linux x86_64 and Linux arm64. If no wheel matches, pip builds from source via maturin (requires Rust ≥1.96).
 
@@ -98,12 +98,12 @@ conda install -c conda-forge qgis-sdk
 pixi add qgis-sdk
 ```
 
-The conda-forge package depends on `qgis >=3.44.9`, so PyQGIS works out of the box, plus `qgis-plugin` binary in `$CONDA_PREFIX/bin`.
+The conda-forge package depends on `qgis >=3.44.9`, so PyQGIS works out of the box, plus `qgis-sdk` binary in `$CONDA_PREFIX/bin`.
 
 ### From source (development)
 
 ```bash
-git clone https://github.com/Archont561/qgis-rs
+git clone https://github.com/Archont561/qgis-rust
 cd qgis-rs
 
 # Python dev with maturin (Rust-native)
@@ -113,7 +113,7 @@ pip install maturin
 # Or via pixi (conda env with QGIS)
 pixi install -e default
 pixi run -e default python -m pytest py-packages/qgis-sdk/tests -v
-pixi run -e default qgis-plugin --help
+pixi run -e default qgis-sdk --help
 
 # Test without Rust (pure Python fallback)
 python -m pytest py-packages/qgis-sdk/tests -q
@@ -123,41 +123,41 @@ python -m pytest py-packages/qgis-sdk/tests -q
 
 ```bash
 # Scaffold a new plugin (Rust does file creation at native speed)
-qgis-plugin new my_plugin --type processing --rust
-qgis-plugin new my_plugin --web --author "Your Name" --email "you@example.com"
-qgis-plugin new my_plugin --web --framework react # react, vue, webcomponents, vanilla
-qgis-plugin new my_plugin --no-ui  # skip UI scaffolding
+qgis-sdk new my_plugin --type processing --rust
+qgis-sdk new my_plugin --web --author "Your Name" --email "you@example.com"
+qgis-sdk new my_plugin --web --framework react # react, vue, webcomponents, vanilla
+qgis-sdk new my_plugin --no-ui  # skip UI scaffolding
 
 # Typed bridge generation (Python -> TS)
-qgis-plugin bridge generate --bridge my_plugin.dialogs.web_dialog:Bridge --output web/bridge.d.ts
-qgis-plugin bridge generate --bridge my_plugin.dialogs.web_dialog:Bridge --output web/ --package --framework react
+qgis-sdk bridge generate --bridge my_plugin.dialogs.web_dialog:Bridge --output web/bridge.d.ts
+qgis-sdk bridge generate --bridge my_plugin.dialogs.web_dialog:Bridge --output web/ --package --framework react
 
 # Validate structure
-qgis-plugin validate
-qgis-plugin validate ./my_plugin --json
+qgis-sdk validate
+qgis-sdk validate ./my_plugin --json
 
 # Build, test, install
-qgis-plugin build
-qgis-plugin test
-qgis-plugin install
-qgis-plugin dev --rust --launch
+qgis-sdk build
+qgis-sdk test
+qgis-sdk install
+qgis-sdk dev --rust --launch
 
 # Package for QGIS Plugin Repository (includes ui/*.ui, web/*.html, web/*.d.ts, icons/*)
-qgis-plugin package -o dist/
-qgis-plugin publish --zip dist/my_plugin-0.1.0.zip --dry-run
+qgis-sdk package -o dist/
+qgis-sdk publish --zip dist/my_plugin-0.1.0.zip --dry-run
 
 # Rust acceleration
-qgis-plugin rust init
-qgis-plugin rust build --release
+qgis-sdk rust init
+qgis-sdk rust build --release
 
 # UI helpers
-qgis-plugin ui add-dialog ./my_plugin --name custom_dialog
-qgis-plugin ui add-web ./my_plugin
+qgis-sdk ui add-dialog ./my_plugin --name custom_dialog
+qgis-sdk ui add-web ./my_plugin
 
 # Info and version
-qgis-plugin info
-qgis-plugin info --json
-qgis-plugin version
+qgis-sdk info
+qgis-sdk info --json
+qgis-sdk version
 
 # Via Python module (same speed — uses Rust extension directly)
 python -m qgis_sdk.cli new my_plugin --web --framework react
@@ -245,36 +245,36 @@ function updateFromPython(data) {
 ```
 
 Python → JS: `dlg.run_js("updateFromPython({center: [51.5, -0.09]})")` or `runJavaScript("window.qgisBridge.onMessage(...)")` → `CustomEvent('qgis-message')`  
-JS → Python: `@pyqtSlot(result=str)` + `QWebChannel.registerObject("bridge", bridge_obj)` → `await bridge.get_layer()` via `@qgis-sdk/bridge`
+JS → Python: `@pyqtSlot(result=str)` + `QWebChannel.registerObject("bridge", bridge_obj)` → `await bridge.get_layer()` via `@archont561/qgis-sdk`
 
-### Typed bridge with @qgis-sdk/bridge (npm)
+### Typed bridge with @archont561/qgis-sdk (npm)
 
 ```bash
-npm install @qgis-sdk/bridge
-qgis-plugin bridge generate --bridge my_plugin.dialogs.web_dialog:Bridge --output web/bridge.d.ts
+npm install @archont561/qgis-sdk
+qgis-sdk bridge generate --bridge my_plugin.dialogs.web_dialog:Bridge --output web/bridge.d.ts
 ```
 
 ```typescript
-import { createBridge } from '@qgis-sdk/bridge';
+import { createBridge } from '@archont561/qgis-sdk';
 import type { Bridge } from './web/bridge.d.ts';
 
 const bridge = await createBridge<Bridge>(); // auto-injects qrc:///qtwebchannel/qwebchannel.js
 const layer = await bridge.get_layer(); // typed!
 
 // React
-import { useQgisBridge } from '@qgis-sdk/bridge/react';
+import { useQgisBridge } from '@archont561/qgis-sdk/react';
 const { bridge, ready } = useQgisBridge<Bridge>();
 
 // Vue
-import { useQgisBridge } from '@qgis-sdk/bridge/vue';
+import { useQgisBridge } from '@archont561/qgis-sdk/vue';
 const { bridge, ready } = useQgisBridge<Bridge>();
 
 // Web Components
-import '@qgis-sdk/bridge/webcomponents';
+import '@archont561/qgis-sdk/webcomponents';
 <qgis-bridge object-name="bridge"></qgis-bridge>
 ```
 
-See [Typed Bridge Guide](https://archont561.github.io/qgis-rs/guides/typed-bridge/) and [Web Frameworks Guide](https://archont561.github.io/qgis-rs/guides/web-frameworks/).
+See [Typed Bridge Guide](https://archont561.github.io/qgis-rust/guides/typed-bridge/) and [Web Frameworks Guide](https://archont561.github.io/qgis-rust/guides/web-frameworks/).
 
 ### Testing fixtures (no QGIS needed)
 
@@ -322,7 +322,7 @@ Fakes: `FakeIface`, `FakeAction`, `FakeDialog`, `FakeWebView`, `FakeBridge`,
 `mock_features()`, `mock_source()`, plus Hypothesis strategies in
 `qgis_sdk.testing.strategies`. Markers `qgis`, `qt`, `webengine` and
 `pure_python` skip a test whose layer is missing instead of handing it a fake.
-See [Testing Fixtures Guide](https://archont561.github.io/qgis-rs/guides/testing-fixtures/).
+See [Testing Fixtures Guide](https://archont561.github.io/qgis-rust/guides/testing-fixtures/).
 
 Skipping is the right default and a poor proof. To assert that a layer really
 works, run its gate — it narrows the suite to that layer and **fails** if the
@@ -391,3 +391,26 @@ The declarative layers (`Plugin`, decorators, `metadata.txt`, `Algorithm`
 parameters) are implemented and unit-tested. The QGIS bridges —
 `qgis_sdk.qt.make_action` and `qgis_sdk.processing_bridge.build_algorithm` —
 are written against PyQGIS but need a QGIS environment to exercise.
+
+## Vendored bridge bundle
+
+WebEngine scaffolds (`--web`) copy a pinned browser bundle of `@archont561/qgis-sdk`
+into `web/qgis-sdk.js`. Plain scaffolds do not include it.
+
+The bundle lives in `src/qgis_sdk/assets/bridge/` together with `manifest.json`, which
+pins the package version and the bundle's sha256. To refresh it:
+
+```sh
+cd ts-packages/qgis-sdk && bun run build
+python py-packages/qgis-sdk/scripts/vendor_bridge.py
+```
+
+On a WebEngine page the bundle publishes the QGIS API as globals, so a plain script
+needs no bundler: `window.qgis` (layers, project, message, tasks, network, iface, settings),
+`window.qgisBridge`, and `window.qgisReady` (a promise for `window.qgis`). It also publishes
+`window.qgisChannel(transport, cb)`, which the scaffolded pages use. Open the page's
+QWebChannel through it rather than with `new QWebChannel(...)`, because a second channel on
+one transport takes over the first one's replies. Outside WebEngine nothing is published.
+
+`tests/test_bridge_vendor.py` fails if the vendored file and manifest drift apart, or if
+the manifest version differs from the TypeScript package.

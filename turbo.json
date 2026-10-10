@@ -65,14 +65,13 @@
 			"cache": false,
 			"persistent": false
 		},
-		"qgis-rs#build": {
+		"@archont561/qgis-node#build": {
 			"inputs": [
 				"index.js",
 				"index.d.ts",
-				"fallback.js",
 				"bin/**",
 				"package.json",
-				"../../crates/qgis-node/**",
+				"src-rust/**",
 				"../../crates/qgis-render/**",
 				"../../crates/qgis-server/**",
 				"../../crates/qgis-styles/**",
@@ -80,28 +79,27 @@
 				"../../Cargo.toml",
 				"../../Cargo.lock"
 			],
-			"outputs": ["qgis-rs.*.node", ".napi-generated.d.ts"]
+			"outputs": ["qgis-node.*.node", ".napi-generated.d.ts"]
 		},
-		"qgis-rs#test": {
+		"@archont561/qgis-node#test": {
 			"inputs": [
 				"index.js",
-				"fallback.js",
 				"bin/**",
 				"tests/**",
 				"package.json",
-				"../../crates/qgis-node/**",
+				"src-rust/**",
 				"../../crates/qgis-render/**",
 				"../../crates/qgis-server/**",
 				"../../crates/qgis-styles/**"
 			],
 			"dependsOn": ["build"]
 		},
-		"qgis-rs-py#build": {
+		"qgis-py-dist#build": {
 			"inputs": [
 				"pyproject.toml",
 				"python/**",
 				"tests/**",
-				"../../crates/qgis-py/**",
+				"src-rust/**",
 				"../../crates/qgis-render/**",
 				"../../Cargo.toml",
 				"../../Cargo.lock"
@@ -115,7 +113,6 @@
 				"src/**",
 				"tests/**",
 				"scripts/**",
-				"../../crates/qgis-sdk/**",
 				"../../Cargo.toml",
 				"../../Cargo.lock"
 			],
@@ -134,7 +131,7 @@
 		"@qgis/rust#format": {
 			"cache": false
 		},
-		"qgis-rs-py#test": {
+		"qgis-py-dist#test": {
 			"dependsOn": ["build"],
 			"cache": false
 		},

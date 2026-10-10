@@ -55,16 +55,10 @@ pub struct Tree {
 
 /// Dependency edges the contract forbids: `(crate, must not depend on, why)`.
 ///
-/// Only *direct* edges are listed, because that is what the rule is about —
-/// `qgis-sdk` reaching `qgis-engine` through `qgis-cli` is the sanctioned reuse
-/// path (D13 §3), while naming `qgis-py` would couple two Python extensions
-/// built for two different interpreters.
-pub const FORBIDDEN_EDGES: &[(&str, &str, &str)] = &[(
-    "qgis-sdk",
-    "qgis-py",
-    "D13 §3: the hosted SDK must not load the standalone engine's extension; \
-     share Rust through qgis-protocol/qgis-engine instead",
-)];
+/// Empty since `qgis-sdk` became pure Python: its Rust crates were removed, so
+/// there is no hosted crate left to reach across to `qgis-py`. The rule's shape
+/// stays so a future binding crate can name an edge here.
+pub const FORBIDDEN_EDGES: &[(&str, &str, &str)] = &[];
 
 /// Crates that exist only to carry the wire protocol into another language.
 ///
@@ -74,22 +68,23 @@ pub const FORBIDDEN_EDGES: &[(&str, &str, &str)] = &[(
 pub const BINDING_CRATES: &[&str] = &["qgis-py", "qgis-node"];
 
 /// `(executable, the one crate allowed to declare it)` — D13 §1 and §4.
-pub const CANONICAL_BINARIES: &[(&str, &str)] = &[
-    ("qgis-cli", "qgis-cli"),
-    ("qgis-plugin", "qgis-sdk"),
-    ("qgis-sdk", "qgis-sdk"),
-];
+///
+/// `qgis-sdk` is not listed: it is a pure-Python distribution with no Rust
+/// binary, so its `qgis-sdk` console command is a Python entry point.
+pub const CANONICAL_BINARIES: &[(&str, &str)] = &[("qgis-cli", "qgis-cli")];
+
+/// Repository automation executables. They are not product commands, so they
+/// need no D13 owner: `xtask` is the only one, and it is never shipped.
+pub const TOOLING_BINARIES: &[&str] = &["xtask"];
 
 /// Fallback modules that exist today, each with the task that removes it.
 ///
 /// The no-fallback policy (D09, D13 §4) is about *new* ones: an allowlist
 /// turns the survivors into something a reader can count and a task can close,
 /// where a silent exception is how a second set of answers survives a rewrite.
-pub const TRACKED_FALLBACKS: &[(&str, &str)] = &[(
-    "py-packages/qgis-sdk/src/qgis_sdk/_fallback_cli.py",
-    "TASK-43 removes it with the hosted-runtime split; qgis_sdk.cli imports it \
-     when qgis_sdk._core is missing",
-)];
+///
+/// Empty: the qgis-sdk fallback went with its native `_core` extension.
+pub const TRACKED_FALLBACKS: &[(&str, &str)] = &[];
 
 /// One broken rule, named the way the gate prints it.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -188,6 +183,23 @@ pub fn violations(tree: &Tree) -> Vec<Violation> {
         }
     }
 
+    for facts in &tree.crates {
+        for binary in &facts.binaries {
+            if !CANONICAL_BINARIES.iter().any(|(name, _)| name == binary)
+                && !TOOLING_BINARIES.contains(&binary.as_str())
+            {
+                found.push(Violation {
+                    rule: "canonical executables",
+                    detail: format!(
+                        "{binary} is declared by {} but is not a canonical executable; \
+                         qgis-sdk is the only plugin command (D13 §1, D15)",
+                        facts.name
+                    ),
+                });
+            }
+        }
+    }
+
     for path in &tree.fallbacks {
         if !TRACKED_FALLBACKS.iter().any(|(tracked, _)| tracked == path) {
             found.push(Violation {
@@ -225,6 +237,12 @@ pub fn violations(tree: &Tree) -> Vec<Violation> {
 pub fn read_tree(root: &Path) -> Result<Tree> {
     let mut crates = Vec::new();
     for manifest in manifests(&root.join("crates"), "Cargo.toml")? {
+        let text = std::fs::read_to_string(&manifest)
+            .with_context(|| format!("cannot read {}", manifest.display()))?;
+        crates.push(parse_crate(&text));
+    }
+    for directory in crate::util::RUST_CRATE_ROOTS {
+        let manifest = root.join(directory).join("Cargo.toml");
         let text = std::fs::read_to_string(&manifest)
             .with_context(|| format!("cannot read {}", manifest.display()))?;
         crates.push(parse_crate(&text));

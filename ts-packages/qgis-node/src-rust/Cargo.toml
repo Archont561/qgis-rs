@@ -1,0 +1,51 @@
+# ts-packages/qgis-node/src-rust — the Rust core of the `@archont561/qgis-node` npm package.
+#
+# Builds the NAPI addon only. The addon is ~20 lines: it forwards one JSON
+# string to `qgis-engine` and hands one back (D09). The JS side —
+# package.json, index.js, the .d.ts and the CLI wrappers — lives in
+# ../, and drives this crate with:
+#
+#   napi build --platform --release \
+#     --cargo-cwd src-rust .
+#
+# The positional destination `.` puts the compiled .node file next to the
+# package.json, so npm users never see this directory.
+#
+# This crate deliberately has NO [[bin]] targets. It used to declare
+# `qgis-cli` stub, but bin names must be unique across the whole workspace:
+# every bin resolves to the same target/<profile>/<name>, so the stub silently
+# overwrote the real binary from crates/qgis-cli (whichever crate linked last won). The package ships
+# no command-line interface.
+
+[package]
+name = "qgis-node"
+description = "NAPI addon behind the `qgis-rs` npm package"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+keywords = ["qgis", "gis", "rendering", "tiles", "napi", "cli", "typescript"]
+categories = ["science::geo", "api-bindings"]
+
+[lib]
+name = "qgis_node"
+crate-type = ["cdylib"]
+path = "src/lib.rs"
+
+[dependencies]
+# The addon needs the QGIS-free engine by default. The Bun build runs in the
+# dedicated QGIS-free environment; consumers that embed it alongside QGIS can
+# opt into the backend explicitly with `--features qgis`.
+qgis-engine = { workspace = true, default-features = false }
+
+napi = { version = "2.16", features = ["napi4"] }
+napi-derive = "2.16"
+
+[build-dependencies]
+napi-build = "2.1"
+
+[dev-dependencies]
+serde_json = { workspace = true }
+
+[features]
+default = []
+qgis = ["qgis-engine/qgis"]

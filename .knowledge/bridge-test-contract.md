@@ -3,7 +3,7 @@
 **Status:** normative, version 1 · **Owner:** TASK-31 · **Fixtures:** [`test-fixtures/bridge/`](/test-fixtures/bridge/)
 
 The *bridge* is the seam between a plugin's web UI and its Python host: a QWebChannel
-endpoint on one side, `@qgis-sdk/bridge` on the other. It is **not** the engine transport
+endpoint on one side, `@archont561/qgis-sdk` on the other. It is **not** the engine transport
 (`crates/qgis-protocol`, `transport_version`), which is in-process Rust ↔ binding. Two wires,
 two version numbers, deliberately — but one set of conventions, because a developer who has
 read one should not be surprised by the other.
@@ -162,7 +162,7 @@ are the same code.
   reads the same files with `json` and asserts the conventions a router must honour:
   request-id correlation, the `ok`/`result`/`error` split, the closed kind set, snake_case
   wire names, handle opacity and session scope.
-- **TypeScript** — `ts-packages/qgis-sdk-bridge/tests/bridge-contract.test.ts`, under `bun
+- **TypeScript** — `ts-packages/qgis-sdk/tests/bridge-contract.test.ts`, under `bun
   test`, no QWebChannel and no globals. Same files, client-side view: every manifest method
   yields exactly one proxy path, unknown methods fail predictably, events are not responses.
 

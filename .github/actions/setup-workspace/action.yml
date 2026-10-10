@@ -1,4 +1,4 @@
-name: Set up the qgis-rs workspace
+name: Set up the qgis-rust workspace
 description: >-
   Install pixi, restore the environment/cargo/turbo caches and install the
   frozen Bun workspace — everything a CI lane needs before it can run

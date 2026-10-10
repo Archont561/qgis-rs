@@ -1,0 +1,43 @@
+# py-packages/qgis-py/src-rust — the Rust core of the `qgis-py` Python distribution.
+#
+# Builds the PyO3 extension module, imported by Python as `qgis_py._core`
+# (built by maturin, driven from ../pyproject.toml).
+#
+# The lib target is ~40 lines: it forwards one JSON string to `qgis-engine` and
+# hands one back (D09). The ergonomic Python API, the tests, the conda recipe
+# and the pixi `[package]` manifest live in ../ (py-packages/qgis-py/).
+#
+# This crate deliberately has NO [[bin]] targets: it is a thin FFI layer over
+# the engine, and the command-line tool is crates/qgis-cli, not part of any
+# binding.
+
+[package]
+name = "qgis-py"
+description = "PyO3 extension module behind the `qgis-rs` Python package"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+keywords = ["qgis", "gis", "rendering", "tiles", "pyo3", "cli"]
+categories = ["science::geo", "api-bindings"]
+
+[lib]
+# Import name inside the wheel: `qgis_py._core` (see [tool.maturin] in the
+# Python package's pyproject.toml) — the #[pymodule] fn in src/lib.rs is what
+# produces PyInit__core, so the artifact name here is free to be unique. It
+# MUST be unique across the workspace: two cdylibs that share a name resolve to
+# the same target/debug/lib<name>.so and overwrite each other on every build.
+name = "qgis_py_core"
+crate-type = ["cdylib"]
+path = "src/lib.rs"
+
+[dependencies]
+# The extension module needs nothing but the engine: no domain crate, no serde,
+# no error type (D09).
+qgis-engine = { workspace = true }
+
+pyo3 = { version = "0.22" }
+
+[features]
+default = ["python", "qgis"]
+python = ["pyo3/extension-module"]
+qgis = ["qgis-engine/qgis"]

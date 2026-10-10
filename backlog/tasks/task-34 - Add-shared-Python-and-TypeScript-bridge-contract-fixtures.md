@@ -5,7 +5,7 @@ status: Done
 assignee:
   - '@me'
 created_date: '2026-10-03 09:16'
-updated_date: '2026-10-06 07:02'
+updated_date: '2026-10-09 15:47'
 labels:
   - testing
   - bridge
@@ -50,6 +50,8 @@ Keep test-fixtures/bridge/cases.json as the sole catalogue already consumed by P
 2026-10-06: Started. Confirmed seams: Python fixture loader/validator, TypeScript contract-fixtures API, and repository xtask fixture-validation command. Existing golden JSON remains the independent source of truth.
 
 2026-10-06: The shared tree already contained canonical descriptions, successful and malformed requests, responses/errors, events/task progress, handles, and explicit golden values from TASK-31/TASK-33; Python Hypothesis and TypeScript fast-check suites both discover those values through cases.json. Added validate-bridge-fixtures as an xtask command and repo lint with strict catalogue, description, schema, request, response, and event parsing.
+
+Path update: the shared fixtures are consumed from @archont561/qgis-sdk after TASK-56.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary

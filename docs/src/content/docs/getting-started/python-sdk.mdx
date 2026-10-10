@@ -5,9 +5,9 @@ description: Build QGIS plugins with Python + Rust-native CLI, installable from 
 
 # Plugin SDK — qgis-sdk
 
-`qgis-sdk` is a Python framework for building QGIS plugins — now with a **Rust-native CLI** (`qgis-plugin`) and optional Rust acceleration, all installable from pip or conda-forge at native speed.
+`qgis-sdk` is a Python framework for building QGIS plugins — now with a **Rust-native CLI** (`qgis-sdk`) and optional Rust acceleration, all installable from pip or conda-forge at native speed.
 
-- **pip**: `pip install qgis-sdk` → `import qgis_sdk` + `qgis-plugin` binary on PATH
+- **pip**: `pip install qgis-sdk` → `import qgis_sdk` + `qgis-sdk` binary on PATH
 - **conda**: `conda install -c conda-forge qgis-sdk` → same, with QGIS backend
 
 `qgis-rs` (rendering/tiling) can stay alongside — both packages share the same Rust workspace and both ship Rust binaries.
@@ -22,17 +22,16 @@ pixi add qgis-sdk
 
 # Test
 python -c "import qgis_sdk; print(qgis_sdk.__version__, qgis_sdk.HAS_RUST)"
-qgis-plugin --help
-qgis-plugin version
+qgis-sdk --help
+qgis-sdk version
 ```
 
 From source:
 
 ```bash
-git clone https://github.com/Archont561/qgis-rs
+git clone https://github.com/Archont561/qgis-rust
 cd qgis-rs
-pip install maturin
-(cd py-packages/qgis-sdk && maturin develop)
+pip install -e ./py-packages/qgis-sdk
 python -m pytest py-packages/qgis-sdk/tests -v
 ```
 
@@ -60,7 +59,7 @@ class MyPlugin(Plugin):
     def open_settings(self, iface):
         ...
 
-# metadata.txt generation (Rust-accelerated when _core present)
+# metadata.txt generation
 print(MyPlugin.metadata_txt())
 MyPlugin.write_metadata("./my_plugin")
 ```
@@ -90,27 +89,27 @@ class BufferAdvanced(Algorithm):
 
 ```bash
 # Scaffold
-qgis-plugin new my_plugin --type processing --rust
-qgis-plugin new my_plugin --author "Your Name" --email "you@example.com"
+qgis-sdk new my_plugin --type processing --rust
+qgis-sdk new my_plugin --author "Your Name" --email "you@example.com"
 
 # Validate
-qgis-plugin validate
-qgis-plugin validate ./my_plugin
-qgis-plugin info ./my_plugin --json
+qgis-sdk validate
+qgis-sdk validate ./my_plugin
+qgis-sdk info ./my_plugin --json
 
 # Build, test, install
-qgis-plugin build
-qgis-plugin test
-qgis-plugin install
-qgis-plugin dev --rust --launch
+qgis-sdk build
+qgis-sdk test
+qgis-sdk install
+qgis-sdk dev --rust --launch
 
 # Package for QGIS Plugin Repository
-qgis-plugin package -o dist/
-qgis-plugin publish --zip dist/my_plugin-0.1.0.zip --dry-run
+qgis-sdk package -o dist/
+qgis-sdk publish --zip dist/my_plugin-0.1.0.zip --dry-run
 
 # Rust acceleration
-qgis-plugin rust init
-qgis-plugin rust build --release
+qgis-sdk rust init
+qgis-sdk rust build --release
 
 # Via Python module (same speed — uses Rust extension directly)
 python -m qgis_sdk.cli new my_plugin
@@ -141,50 +140,46 @@ qgis-sdk version  # alias
 qgis-sdk wheel
 ├── qgis_sdk/
 │   ├── __init__.py       → Python API (Plugin, Algorithm, metadata)
-│   ├── _core.so          → Rust cdylib (PyO3) — metadata, validation, scaffolding at native speed
-│   ├── _fallback_cli.py  → pure-Python fallback when _core not built
-│   ├── scaffold.py       → pure-Python scaffolding fallback
-│   ├── cli.py            → Python CLI wrapper (uses _core directly)
+│   ├── cli.py            → typer CLI (`qgis-sdk`); questionary prompts for UI scaffolding
+│   ├── plugin_validation.py → `qgis-sdk validate` rules
 │   ├── plugin.py         → Plugin base class
 │   ├── algorithm.py      → Algorithm base class
 │   └── runtime.py        → lazy PyQGIS access
 └── bin/
-    ├── qgis-plugin       → Rust binary (native speed)
+    ├── qgis-sdk       → Rust binary (native speed)
     └── qgis-sdk          → alias binary
 ```
 
-- Rust crate: `crates/qgis-sdk/Cargo.toml` — lib `_core` + bins `qgis-plugin`, `qgis-sdk`,
-  reached from `py-packages/qgis-sdk/pyproject.toml` via `[tool.maturin].manifest-path`
-- Python: `src/qgis_sdk/` with `pyproject.toml` using maturin
-- Conda: `conda-recipe/meta.yaml` builds Rust binaries + Python wheel
+- Python: `src/qgis_sdk/` with `pyproject.toml` using the setuptools backend; no native code
+- Conda: `recipes/qgis-sdk/meta.yaml` builds Rust binaries + Python wheel
 
 ## UI, Typed Bridge, and Testing
 
 ### UI Dialogs + WebEngine
 
 ```bash
-qgis-plugin new my_plugin --web --framework react
+qgis-sdk new my_plugin --web --framework react
 # Generates ui/main_dialog.ui + dialogs/main_dialog.py + web/map.html + web/bridge.d.ts + frontend/
 ```
 
 See [Plugin Development Guide](/guides/plugin-development/) and [Web Frameworks Guide](/guides/web-frameworks/).
 
-### Typed Bridge — @qgis-sdk/bridge
+### Typed Bridge — @archont561/qgis-sdk
 
 ```bash
-npm install @qgis-sdk/bridge
-qgis-plugin bridge generate --bridge my_plugin.dialogs.web_dialog:Bridge --output web/bridge.d.ts
+npm install @archont561/qgis-sdk
+qgis-sdk bridge generate --bridge my_plugin.dialogs.web_dialog:Bridge --output web/bridge.d.ts
 ```
 
 ```typescript
-import { createBridge } from '@qgis-sdk/bridge';
+import { createBridge } from '@archont561/qgis-sdk';
 import type { Bridge } from './web/bridge.d.ts';
 const bridge = await createBridge<Bridge>(); // auto-injects qrc:///qtwebchannel/qwebchannel.js
 ```
 
-React: `import { useQgisBridge } from '@qgis-sdk/bridge/react'`  
-Vue: `import { useQgisBridge } from '@qgis-sdk/bridge/vue'`  
-Web Components: `<qgis-bridge>` + `import '@qgis-sdk/bridge/webcomponents'`
+React: `import { useQgisBridge } from '@archont561/qgis-sdk/react'`  
+Vue: `import { useQgisBridge } from '@archont561/qgis-sdk/vue'`  
+Web Components: `<qgis-bridge>` + `import '@archont561/qgis-sdk/webcomponents'`
 
 See [Typed Bridge Guide](/guides/typed-bridge/).
 
@@ -217,10 +212,10 @@ See [Testing Fixtures Guide](/guides/testing-fixtures/).
 
 ## Conda-forge
 
-See `py-packages/qgis-sdk/conda-recipe/meta.yaml`. It builds Rust binaries and Python extension and installs both.
+See `py-packages/qgis-sdk/recipes/qgis-sdk/meta.yaml`. It builds Rust binaries and Python extension and installs both.
 
 To publish:
 
 1. Fork https://github.com/conda-forge/staged-recipes
-2. Copy `conda-recipe/` to `recipes/qgis-sdk/`
+2. Copy `recipes/qgis-sdk/` to `recipes/qgis-sdk/`
 3. Open PR

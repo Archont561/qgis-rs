@@ -1,0 +1,112 @@
+{
+	"name": "@archont561/qgis-sdk",
+	"version": "0.1.0",
+	"description": "Typed QWebChannel bridge for QGIS plugins — window-like EventTarget, complete QGIS Web API (layers, tasks, network, messageBar), React/Vue/Svelte/Web Components adapters, description loader (no codegen), built with bun",
+	"main": "dist/index.js",
+	"types": "dist/index.d.ts",
+	"module": "dist/index.js",
+	"type": "module",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js",
+			"require": "./dist/index.cjs"
+		},
+		"./react": {
+			"types": "./dist/react.d.ts",
+			"import": "./dist/react.js"
+		},
+		"./vue": {
+			"types": "./dist/vue.d.ts",
+			"import": "./dist/vue.js"
+		},
+		"./svelte": {
+			"types": "./dist/svelte.d.ts",
+			"import": "./dist/svelte.js"
+		},
+		"./webcomponents": {
+			"types": "./dist/webcomponents.d.ts",
+			"import": "./dist/webcomponents.js"
+		},
+		"./loader": {
+			"types": "./dist/loader.d.ts",
+			"import": "./dist/loader.js"
+		},
+		"./qgis": {
+			"types": "./dist/qgis.d.ts",
+			"import": "./dist/qgis.js"
+		},
+		"./window": {
+			"types": "./dist/window.d.ts",
+			"import": "./dist/window.js"
+		},
+		"./description": {
+			"types": "./dist/description.d.ts",
+			"import": "./dist/description.js"
+		}
+	},
+	"files": [
+		"dist/",
+		"README.md"
+	],
+	"scripts": {
+		"build": "bunup && bun run build:bundle",
+		"build:bundle": "bun build src/browser.ts --format=iife --global-name=QgisSdk --minify --target=browser --outfile=dist/bundle/qgis-sdk.js",
+		"dev": "bunup --watch",
+		"test": "bun test ./tests",
+		"coverage": "bun test ./tests --coverage",
+		"test:watch": "bun test ./tests --watch",
+		"typecheck": "tsc --noEmit --project tsconfig.test.json",
+		"pack:check": "cargo run -q -p xtask --manifest-path ../../Cargo.toml -- pack-check ts-packages/qgis-sdk dist/index.js dist/index.cjs dist/index.d.ts dist/react.js dist/react.d.ts dist/vue.js dist/vue.d.ts dist/svelte.js dist/svelte.d.ts dist/webcomponents.js dist/webcomponents.d.ts dist/loader.js dist/loader.d.ts dist/qgis.js dist/qgis.d.ts dist/window.js dist/window.d.ts dist/description.js dist/description.d.ts README.md",
+		"lint": "bunx biome check .",
+		"format": "bunx biome format --write .",
+		"prepublishOnly": "bun run build"
+	},
+	"keywords": [
+		"qgis",
+		"qwebchannel",
+		"qgis-sdk",
+		"pyqt",
+		"webengine",
+		"typescript",
+		"react",
+		"vue",
+		"svelte",
+		"web-components",
+		"bridge",
+		"bun",
+		"eventtarget",
+		"websocket",
+		"eventsource"
+	],
+	"author": "qgis-rs contributors",
+	"license": "GPL-2.0-or-later",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/Archont561/qgis-rust"
+	},
+	"homepage": "https://archont561.github.io/qgis-rust/",
+	"devDependencies": {
+		"@qgis/test-utils": "workspace:*",
+		"@types/bun": "latest",
+		"bunup": "^0.16.32",
+		"fast-check": "^4.10.2",
+		"typescript": "^5.4.5"
+	},
+	"peerDependencies": {
+		"react": ">=18.0.0",
+		"vue": ">=3.0.0",
+		"svelte": ">=4.0.0"
+	},
+	"peerDependenciesMeta": {
+		"react": {
+			"optional": true
+		},
+		"vue": {
+			"optional": true
+		},
+		"svelte": {
+			"optional": true
+		}
+	}
+}

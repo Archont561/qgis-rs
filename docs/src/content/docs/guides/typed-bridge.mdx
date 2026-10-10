@@ -1,6 +1,6 @@
 ---
 title: Typed QWebChannel Bridge
-description: Generate TypeScript types from Python bridge classes and use @qgis-sdk/bridge with auto-injecting qwebchannel.js, Promise API, and framework adapters
+description: Generate TypeScript types from Python bridge classes and use @archont561/qgis-sdk with auto-injecting qwebchannel.js, Promise API, and framework adapters
 ---
 
 # Typed QWebChannel Bridge
@@ -21,7 +21,7 @@ new QWebChannel(qt.webChannelTransport, channel => {
 </script>
 ```
 
-`@qgis-sdk/bridge` improves this:
+`@archont561/qgis-sdk` improves this:
 
 - **Auto-injects** `qrc:///qtwebchannel/qwebchannel.js` with fallbacks (`./qwebchannel.js`, CDN)
 - **Promisifies** callback-style to `Promise`
@@ -86,13 +86,13 @@ web_view.page().setWebChannel(channel)
 
 ```bash
 # Generate single .d.ts file
-qgis-plugin bridge generate --bridge my_plugin.dialogs.web_dialog:Bridge --output web/bridge.d.ts
+qgis-sdk bridge generate --bridge my_plugin.dialogs.web_dialog:Bridge --output web/bridge.d.ts
 
 # Generate full package (bridge.d.ts + bridge.js + react.ts + vue.ts + webcomponents.ts)
-qgis-plugin bridge generate --bridge my_plugin.dialogs.web_dialog:Bridge --output web/ --package
+qgis-sdk bridge generate --bridge my_plugin.dialogs.web_dialog:Bridge --output web/ --package
 
 # Custom names
-qgis-plugin bridge generate --bridge my_plugin.dialogs.web_dialog:MapBridge --output web/bridge.d.ts --name MapBridge --object-name bridge --framework react
+qgis-sdk bridge generate --bridge my_plugin.dialogs.web_dialog:MapBridge --output web/bridge.d.ts --name MapBridge --object-name bridge --framework react
 ```
 
 Supports both notations:
@@ -160,15 +160,15 @@ Type mapping:
 ### Install
 
 ```bash
-npm install @qgis-sdk/bridge
-# pnpm add @qgis-sdk/bridge
-# bun add @qgis-sdk/bridge
+npm install @archont561/qgis-sdk
+# pnpm add @archont561/qgis-sdk
+# bun add @archont561/qgis-sdk
 ```
 
 ### Vanilla JS / TypeScript
 
 ```typescript
-import { createBridge } from '@qgis-sdk/bridge';
+import { createBridge } from '@archont561/qgis-sdk';
 import type { Bridge } from './web/bridge.d.ts';
 
 const bridge = await createBridge<Bridge>();
@@ -193,7 +193,7 @@ bridge.get_layer((result) => {
 Options:
 
 ```typescript
-import { createBridge } from '@qgis-sdk/bridge';
+import { createBridge } from '@archont561/qgis-sdk';
 
 const bridge = await createBridge<Bridge>({
   objectName: 'bridge', // default, must match Python channel.registerObject
@@ -220,7 +220,7 @@ web_view.page().runJavaScript(f"window.dispatchEvent(new CustomEvent('qgis-messa
 JS:
 
 ```typescript
-import { onQgisMessage } from '@qgis-sdk/bridge';
+import { onQgisMessage } from '@archont561/qgis-sdk';
 
 // Via helper
 const unsubscribe = onQgisMessage((data) => {
@@ -244,7 +244,7 @@ window.qgisBridge.onMessage = (data) => { /* ... */ };
 ### React
 
 ```tsx
-import { useQgisBridge } from '@qgis-sdk/bridge/react';
+import { useQgisBridge } from '@archont561/qgis-sdk/react';
 import type { Bridge } from './web/bridge.d.ts';
 import { useEffect, useState } from 'react';
 
@@ -275,20 +275,20 @@ For bundlers where React is imported:
 
 ```typescript
 import { useState, useEffect } from 'react';
-import { createReactHook } from '@qgis-sdk/bridge/react';
+import { createReactHook } from '@archont561/qgis-sdk/react';
 import type { Bridge } from './bridge';
 
 const useQgisBridge = createReactHook<Bridge>({ useState, useEffect });
 ```
 
-Vite template (scaffolded via `qgis-plugin new my_plugin --web --framework react`):
+Vite template (scaffolded via `qgis-sdk new my_plugin --web --framework react`):
 
 ```json
 {
   "dependencies": {
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "@qgis-sdk/bridge": "^0.1.0"
+    "@archont561/qgis-sdk": "^0.1.0"
   }
 }
 ```
@@ -298,7 +298,7 @@ Vite template (scaffolded via `qgis-plugin new my_plugin --web --framework react
 ```vue
 <script setup lang="ts">
 import { ref, watch } from 'vue';
-import { useQgisBridge } from '@qgis-sdk/bridge/vue';
+import { useQgisBridge } from '@archont561/qgis-sdk/vue';
 import type { Bridge } from './web/bridge.d.ts';
 
 const { bridge, ready, error } = useQgisBridge<Bridge>();
@@ -325,7 +325,7 @@ For bundlers:
 
 ```typescript
 import { ref, onMounted } from 'vue';
-import { createVueComposable } from '@qgis-sdk/bridge/vue';
+import { createVueComposable } from '@archont561/qgis-sdk/vue';
 
 const useQgisBridge = createVueComposable<Bridge>({ ref, onMounted });
 ```
@@ -337,7 +337,7 @@ HTML:
 ```html
 <qgis-bridge object-name="bridge" id="qgisBridge"></qgis-bridge>
 <script type="module">
-  import '@qgis-sdk/bridge/webcomponents';
+  import '@archont561/qgis-sdk/webcomponents';
   const el = document.getElementById('qgisBridge');
   el.addEventListener('qgis-bridge-ready', async (e) => {
     const layer = await e.detail.bridge.get_layer();
@@ -352,7 +352,7 @@ HTML:
 JS Mixin:
 
 ```typescript
-import { withQgisBridge } from '@qgis-sdk/bridge/webcomponents';
+import { withQgisBridge } from '@archont561/qgis-sdk/webcomponents';
 
 class MyMap extends withQgisBridge(HTMLElement) {
   onBridgeReady(bridge) {
@@ -367,21 +367,21 @@ customElements.define('my-map', MyMap);
 
 ## Scaffold Integration
 
-`qgis-plugin new` with `--web` now always generates `web/bridge.d.ts`:
+`qgis-sdk new` with `--web` now always generates `web/bridge.d.ts`:
 
 ```bash
-qgis-plugin new my_plugin --web --framework react
+qgis-sdk new my_plugin --web --framework react
 # Creates:
-# my_plugin/web/map.html (Leaflet + @qgis-sdk/bridge comment)
+# my_plugin/web/map.html (Leaflet + @archont561/qgis-sdk comment)
 # my_plugin/web/react.html (React CDN + useQgisBridge)
 # my_plugin/web/bridge.d.ts (typed interface)
 # my_plugin/web/bridge.ts (usage examples)
-# my_plugin/frontend/package.json (with @qgis-sdk/bridge)
+# my_plugin/frontend/package.json (with @archont561/qgis-sdk)
 # my_plugin/frontend/src/App.tsx (typed hook)
 
-qgis-plugin new my_plugin --web --framework vue
-qgis-plugin new my_plugin --web --framework webcomponents
-qgis-plugin new my_plugin --web # all 4 examples
+qgis-sdk new my_plugin --web --framework vue
+qgis-sdk new my_plugin --web --framework webcomponents
+qgis-sdk new my_plugin --web # all 4 examples
 ```
 
 Production build:
@@ -408,7 +408,7 @@ find /usr -name qwebchannel.js 2>/dev/null
 cp /usr/share/qt5/.../qwebchannel.js ./web/
 ```
 
-`@qgis-sdk/bridge` auto-tries local `./qwebchannel.js` before CDN, so offline works.
+`@archont561/qgis-sdk` auto-tries local `./qwebchannel.js` before CDN, so offline works.
 
 ## API Reference
 

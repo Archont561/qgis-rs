@@ -92,7 +92,7 @@ Keep these seams separate:
   second application instance.
 - Import Qt WebEngine before application creation when the target is a
   `QWebEngineView`; the current probe intentionally avoids WebEngine. See
-  [QGIS Plugin UI](qgis-plugin-ui.md).
+  [QGIS Plugin UI](qgis-ui.md).
 - Keep visual iteration separate from behavior: signals, QGIS layer access,
   task execution, and bridge calls need normal fixture-driven tests. The agent
   may change visual parameters, not executable Python or QGIS state.
@@ -123,7 +123,7 @@ capture/analyze/review/history loop, not the browser-specific tooling.
 
 ## Related records
 
-- [QGIS Plugin UI](qgis-plugin-ui.md) — existing dialog, WebEngine, and bridge guidance.
+- [QGIS Plugin UI](qgis-ui.md) — existing dialog, WebEngine, and bridge guidance.
 - [Testing](testing.md) — offscreen Qt, QGIS lifecycle, serialized test rules.
 - [D05: Threading](decisions/D05-threading.md) — Qt/QGIS thread affinity.
 - [TASK-1](../backlog/tasks/task-1%20-%20Make%20the%20full%20QGIS%20SDK%20test%20suite%20headless%20and%20CI-green.md) — restore stable headless SDK execution.
