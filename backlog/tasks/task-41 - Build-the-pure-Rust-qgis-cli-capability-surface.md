@@ -4,7 +4,7 @@ title: Build the pure-Rust qgis-cli capability surface
 status: In Progress
 assignee: []
 created_date: '2026-10-03 09:35'
-updated_date: '2026-10-10 15:07'
+updated_date: '2026-10-10 16:40'
 labels:
   - cli
   - rust
@@ -64,4 +64,61 @@ Metadata-only inspect implemented at the approved subprocess seams. Reports supp
 Observed red-to-green for the missing command, missing-input classification, invalid/non-file classification, filesystem errors, human report and non-UTF-8 serialization panic. Pure CLI/render: 107 integration tests + 1 doc test passed. Native-feature CLI: 49 tests passed (20 inspection, 15 legacy CLI, 3 discovery, 11 validation). Pure clippy -D warnings, source/boundary checks, pure dependency tree and ldd checks passed. Docs build passed (50 pages). Full offline/loose turbo suite passed 12/12 (4 cached): Rust 361 + 30, SDK 490 passed/3 skipped/8 deselected, qt 3, qgis 5, qgis-py-dist 18, Bun 160, CTest 1 target. Repository gate result follows. AC1 remains the only checked criterion; this does not complete inspect manifests or AC2-AC6.
 
 Repository gate passed after the focused local commit: pixi run gates exit 0, 8/8 (4 cached), with formatting, workspace Clippy and conventional-message hooks passing. Final help/docs clarify that inspect never initializes QGIS, but a native-enabled binary still needs its shared libraries; pure use is --no-default-features. No further runtime behavior change. Full task remains In Progress with AC1 only checked; no push or merge.
+
+Owner approved a deterministic tile-planning slice plus a reconciliation of the
+three surfaces that report a plan. `qgis-cli plan tiles --bounds ... --zoom ...`
+counts an XYZ pyramid from an extent alone: no project argument, no file opened,
+no backend initialised, nothing written. This is what the legacy
+`tiles <project> --dry-run` cannot do, because that command shares the renderer
+and so calls `Project::open` before counting anything.
+
+The reconciliation is the substantive part. The engine said `tile_count`, MCP
+said `total_tiles`, and MCP's per-level `tiles` was a *count* where the engine's
+top-level `tiles` is the *enumerated array* — one word carrying two meanings
+across a single boundary. All three now emit `qgis_render::TilePlanReport`,
+defined once. The engine's wire response is byte-identical: Python reads
+`planned["tile_count"]`/`planned["levels"]`, and Node reads `_planned.bounds`
+and `_planned.zooms` as objects, so changing it would have broken two shipped
+clients and quietly done TASK-42's work. MCP's output did change — `total_tiles`
+to `tile_count`, `levels[].tiles` to `levels[].tile_count`, and the string
+echoes of bounds/zoom became the structured values — and MCP was the only
+in-repo consumer of the old names.
+
+`plan` reuses the exit-10 category `validate` already established rather than
+adding its own, so malformed input means the same thing whichever pure command
+refused it. Exits are 0 success, 2 usage, 10 unreadable bounds/zoom or an
+unordered extent/zoom range. Legacy `tiles` flags, its "Would render" wording
+and the 4568-tile golden are now pinned byte-exact rather than by substring.
+
+Public seams: new `crates/qgis-cli/tests/plan_tiles.rs` (15 tests) covers
+argv/streams/status at the process boundary with `PATH=""` and an empty
+tempdir — no-project success, golden per-level rows, the shared JSON key set,
+determinism, no filesystem writes, exit codes, and JSON failures that keep
+stdout parseable. Its `json_is_the_engine_and_mcp_answer` test asserts the CLI
+report equals both the engine's `plan_tiles` result and the MCP tool's report,
+which is what stops a fourth spelling appearing. `qgis-render` gained two tests
+pinning the report's values and key names; `qgis-mcp` gained one pinning its
+serialised keys; `crates/qgis-cli/tests/discovery.rs` now asserts `plan` is in
+the parser-derived command list and adds no engine operation.
+
+Observed red before green for the missing `plan` command, the missing
+`TilePlanReport`/`report()` seam, the missing engine key names, and MCP's old
+field names. Verification: pure focused suites passed; `cargo nextest
+--workspace --no-default-features` **380 across 60 binaries** (was 361/59) and
+native-feature **31 across 7** (was 30/7); 0 failures. Clippy `-D warnings`
+passed for both profiles. `pixi run gates` exit 0, **8/8** (4 cached).
+`CARGO_NET_OFFLINE=true pixi run -- bun x turbo run test --env-mode=loose
+--force` exit 0, **12/12, 0 cached**: Python 490 passed/3 skipped/8 deselected,
+qt 3, qgis 5, qgis-py-dist 18, Bun 160, CTest 1 target — all unchanged. No
+lockfile drift: `Cargo.lock`, `pixi.lock` and `bun.lock` are untouched, the new
+`qgis-mcp` dev-dependency being a workspace member already in the graph.
+`ldd` on the `--no-default-features` binary shows only libc/libm/libpthread/
+libgcc_s, and `cargo tree` confirms `qgis-mcp` stays out of the shipped binary.
+
+TASK-41 stays In Progress with AC1 the only checked criterion. AC2 needs
+`batch plan` as well as the now-shipped `validate`/`inspect`/`tiles plan`. XML
+and container manifests still need parser dependencies locked and vendored on a
+network-capable runner; native execution gates, atomic artifacts and filesystem
+policy, cancellation and resource limits remain open. Nothing pushed or merged.
+
 <!-- SECTION:NOTES:END -->
