@@ -4,7 +4,7 @@ title: Stabilize Python and Node FFI client contracts
 status: To Do
 assignee: []
 created_date: '2026-10-03 09:35'
-updated_date: '2026-10-10 13:52'
+updated_date: '2026-10-10 17:01'
 labels:
   - ffi
   - python
@@ -67,4 +67,20 @@ TASK-43 owns the hosted SDK dependency/ownership boundary; TASK-63 owns the reve
 Scope split: the Node qgis-cli launcher is replaced by a binary download (TASK-58). The Python side has no argparse qgis-cli after the TASK-57 work.
 
 2026-10-10 owner-approved scope update: renamed to FFI client contracts. Former AC5 (Python/npm launchers executing the canonical binary) is superseded by an explicit no-CLI-semantics boundary; AC6 no longer requires launcher tests. Existing adapter exports are visible in py-packages/qgis-py/src-rust/src/lib.rs and ts-packages/qgis-node/src-rust/src/lib.rs; this inspection is not acceptance proof for the full contract. Replaced the dangling crates/qgis-py/ARCHITECTURE.md reference with current package documentation. Status and TASK-40/TASK-31 dependencies remain unchanged; all replacement criteria remain unchecked. Earlier scope-split notes are historical, not instructions to restore removed launchers.
+
+Evidence audit (2026-10-10, read-only; no source changed). Measured what already ships against each criterion so implementation starts from a baseline instead of re-deriving it.
+
+AC1 — proven. Both addons expose exactly one callable plus transport introspection and nothing per-QGIS-class: py-packages/qgis-py/src-rust/src/lib.rs:28-40 (#[pyfunction] invoke, transport_version) and ts-packages/qgis-node/src-rust/src/lib.rs:21-39 (#[napi] invoke, transport_version). lib.rs:6-7 records the rule that a new capability is a qgis-engine operation, not a new pyfunction/napi export.
+
+AC2 — partially covered, and the gap is breadth rather than soundness. test-fixtures/layer-lifecycle.json is genuinely shared: py-packages/qgis-py/tests/test_api.py:157 and ts-packages/qgis-node/tests/contract.test.js:188 both consume it, and crates/qgis-sys/tests/api_mappings.rs:95-125 (#![cfg(feature = "qgis")]) drives the real native manager with its requests and asserts the responses match, so the fixture is anchored to actual behaviour rather than self-consistent by construction. But it pins 4 of the protocol's operations, 1 of the 16 ErrorKind variants (invalid_object_id; see the error_kinds! block at crates/qgis-protocol/src/lib.rs:441-476), no capabilities case, and no artifact-metadata case for render_map/export_features. Cancellation is defined nowhere in crates/qgis-protocol or crates/qgis-engine, so this criterion's "where defined" clause is currently vacuous; record that rather than letting a later slice invent a cancellation contract.
+
+AC3 — one concrete gap. Kind-based mapping without matching English prose is in place on both sides (_transport.py:89 _EXCEPTION_BY_KIND, commented "one kind cannot become two exception types"; index.js:73-80 EngineError carrying kind and detail), contextual detail is preserved, and the raw escape hatch is public in both (qgis_py __all__ includes "invoke"; ts-packages/qgis-node/src/index.d.ts:226). The gap: transport mismatch is implemented in both clients (_transport.py:131-138 raising TransportMismatch, index.js:89-95 throwing EngineError("unsupported_transport")) and no test in either language exercises it — grep over py-packages/qgis-py/tests/*.py and ts-packages/qgis-node/tests/*.js returns no TransportMismatch or unsupported_transport reference. Two shipped error paths are unexercised.
+
+AC4 — structurally satisfied. The boundary is one JSON string in each direction, so no pointer, live object or QVariant can cross it; bounded pages (layer_features limit/next_offset) and path-based artifacts (RenderedMap) are used by both clients.
+
+AC5 — strongly proven. A grep for argv, sys.argv, process.argv, argparse, click, typer, clap and Command::new across py-packages/qgis-py/src-rust/src, py-packages/qgis-py/python, ts-packages/qgis-node/src and ts-packages/qgis-node/src-rust/src returns nothing. py-packages/qgis-py/tests/test_no_cli.py pins no console_scripts or gui-scripts, no qgis_py.cli module and no _bin directory; ts-packages/qgis-node/tests/no-cli.test.js pins no bin, no optionalDependencies, no src/cli.js, no bin/, no scripts/stage-cli.js and no npm/ platform packages.
+
+AC6 — tests are under tests/ in both packages and run in the existing gates (16 qgis-node tests, 18 qgis-py-dist tests at the 2026-10-10 baseline), with no WebEngine requirement for pure operations.
+
+Two items need a decision before they can be implemented rather than audited: whether the shared fixture should grow to cover every ErrorKind and the artifact-metadata operations, and whether cancellation is in scope at all.
 <!-- SECTION:NOTES:END -->
