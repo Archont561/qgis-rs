@@ -15,6 +15,7 @@ The `qgis-cli` binary provides command-line access to qgis-rs rendering and serv
 | `capabilities` | Discover operation availability and domain limits |
 | `doctor` | Diagnose pure-engine readiness and optional QGIS support |
 | `validate` | Validate extents, CRS syntax, zoom ranges and XYZ tiles |
+| `inspect` | Inspect project file metadata only, without parsing or validation |
 | [`render`](/cli/render) | Render a QGIS project to an image |
 | [`tiles`](/cli/tiles) | Generate tile pyramids |
 | [`batch`](/cli/batch) | Batch render multiple extents |
@@ -114,6 +115,66 @@ mapping applies only to `validate`; legacy commands keep their existing exits.
 Render settings, output-format validation, batch manifests, and operation
 requests are not part of this slice. Use `validate --help` for the supported
 kinds rather than interpreting discovery's engine operation list as validators.
+
+## Metadata-only project inspection
+
+```bash
+qgis-cli inspect map.qgs --json
+qgis-cli inspect "maps/city project.QGZ"
+# Put flags before -- when the path starts with a minus:
+qgis-cli inspect --json -- -map.qgs
+```
+
+`inspect` reads **filesystem metadata only**. It does not read file contents,
+parse XML, inspect ZIP entries, validate CRS/layers, or initialize QGIS—even
+in a native-enabled build. Success means metadata was obtained from a supported
+regular file, **not that the project is valid**. Empty files, malformed XML and
+non-ZIP bytes with a `.qgz` name can all return success. A native-enabled binary
+still has its native shared-library dependencies; use the pure build described
+above when those libraries are absent.
+
+For a seven-byte file containing `<qgis/>`, the JSON report is:
+
+```json
+{
+  "inspection": "file_metadata",
+  "qgis_validation": "not_performed",
+  "value": {"path": "map.qgs", "format": "qgs", "size_bytes": 7},
+  "error": null
+}
+```
+
+- Format comes from the supplied path's `.qgs` or `.qgz` extension,
+  case-insensitively, not from its contents or a symlink target's name.
+- Paths are reported as supplied, without canonicalization. Spaces and Unicode
+  are supported. Non-UTF-8 paths are rejected rather than serialized lossily.
+- Symlinks are followed: regular targets are accepted, directory/special-file
+  targets are rejected, and dangling targets count as missing input.
+- Filesystem metadata is checked before file type, extension and UTF-8 checks.
+  Symlink loops, permission errors and other stat failures are filesystem errors.
+- The command writes no artifacts or configuration and performs no implicit
+  network requests or provider access. It does not prohibit an OS-managed
+  network filesystem or a symlink target outside the current directory.
+
+| Exit | Meaning | JSON error code |
+|------|---------|-----------------|
+| 0 | Metadata inspection succeeded | `error: null` |
+| 2 | Missing/extra arguments or invalid options | No JSON report; usage on stderr |
+| 10 | Unsupported extension, non-regular file, or non-UTF-8 path | `invalid_input` |
+| 11 | Missing file or dangling symlink | `missing_input` |
+| 14 | Other filesystem metadata failure | `filesystem_failure` |
+
+For inspection failures, `value` is `null`; `error` contains `code` and `message`.
+The scope/validation markers remain present, and diagnostics also go to stderr.
+JSON stdout contains only one report. Reports are deterministic for unchanged
+input, filesystem and runtime state; filesystem diagnostic text can vary by OS.
+Omit `--json` for readable metadata and explicit inspection limits; human-mode
+failures write only to stderr.
+
+Legacy `info` remains separate, with its existing report, flags and exits.
+No engine operation or FFI contract changes are implied by the new CLI command.
+XML/container manifests, declared project metadata, native validation, planning,
+atomic artifacts, cancellation and resource limits remain later TASK-41 slices.
 
 ## Installation
 

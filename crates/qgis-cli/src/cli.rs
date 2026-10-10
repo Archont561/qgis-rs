@@ -33,6 +33,8 @@ pub enum Command {
     Tiles(TilesArgs),
     /// Render many extents listed in a CSV file
     Batch(BatchArgs),
+    /// Inspect project file metadata without parsing contents or initializing QGIS
+    Inspect(InspectArgs),
     /// Describe a project
     Info(InfoArgs),
     /// Serve a project over HTTP: WMS, WFS, tiles and OGC API Features
@@ -135,6 +137,17 @@ pub struct BatchArgs {
     /// Zoom level to render at
     #[arg(short, long)]
     pub zoom: Option<String>,
+}
+
+/// `qgis-cli inspect <project>` — filesystem metadata, not project validation.
+#[derive(Debug, Parser)]
+pub struct InspectArgs {
+    /// Local .qgs or .qgz file; contents are not read or validated
+    pub project: PathBuf,
+
+    /// Write a deterministic JSON report to stdout
+    #[arg(long)]
+    pub json: bool,
 }
 
 /// `qgis-cli info <project>`

@@ -147,12 +147,15 @@ fn info_prints_json_without_needing_qgis(cli: Cli) {
     assert!(run.succeeded(), "{}", run.stderr);
 
     let parsed: serde_json::Value = serde_json::from_str(&run.stdout).expect("valid json");
-    assert_eq!(parsed["format"], "qgz");
-    assert!(parsed["size_bytes"].as_u64().expect("size") > 0);
-    assert!(parsed["note"]
-        .as_str()
-        .expect("note")
-        .contains("QGIS backend"));
+    assert!(run.stderr.is_empty());
+    assert_eq!(
+        parsed,
+        serde_json::json!({
+            "path": project, "format": "qgz", "size_bytes": 13,
+            "crs": null, "layer_count": null, "extent": null,
+            "note": "CRS, layer count and extent are only available through the native QGIS backend project reader"
+        })
+    );
 }
 
 #[rstest]
@@ -171,14 +174,26 @@ fn operations_that_need_qgis_say_so(cli: Cli) {
 
 #[rstest]
 fn a_missing_project_is_reported_with_its_path(cli: Cli) {
-    let run = cli.run(&["info", "/definitely/not/here.qgs"]);
-    assert!(!run.succeeded());
-    assert!(run.stderr.contains("project not found"), "{}", run.stderr);
-    assert!(
-        run.stderr.contains("/definitely/not/here.qgs"),
-        "{}",
-        run.stderr
-    );
+    let path = cli.path("missing.qgs");
+    for args in [vec!["info", &path], vec!["info", &path, "--json"]] {
+        let run = cli.run(&args);
+        assert_eq!(run.status.code(), Some(1));
+        assert!(run.stdout.is_empty());
+        assert!(run.stderr.contains("project not found"), "{}", run.stderr);
+        assert!(run.stderr.contains(&path), "{}", run.stderr);
+    }
+}
+
+#[rstest]
+fn legacy_info_keeps_its_human_report(cli: Cli) {
+    let project = cli.project("map.qgs");
+    let run = cli.run(&["info", &utf8(&project)]);
+    assert_eq!(run.status.code(), Some(0));
+    assert!(run.stderr.is_empty());
+    assert_eq!(run.stdout, format!(
+        "path:    {}\nformat:  qgs\nsize:    13 bytes\ncrs:     unknown\nlayers:  unknown\nnote:    CRS, layer count and extent are only available through the native QGIS backend project reader\n",
+        project.display()
+    ));
 }
 
 #[rstest]

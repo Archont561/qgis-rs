@@ -227,12 +227,19 @@ qgis-cli version --json                               # versions and target
 qgis-cli capabilities --json                          # actual engine availability
 qgis-cli doctor                                      # optional backend diagnostics
 qgis-cli validate extent "14,50,15,51" --json         # pure input validation
+qgis-cli inspect map.qgs --json                        # file metadata only, not validation
 qgis-cli render map.qgs -o output.png                  # render a project
 qgis-cli tiles map.qgs -z 10-14 -b 14,50,15,51 -o ./tiles/
 qgis-cli serve map.qgs --port 8080                     # WMS/WFS server
 qgis-cli info map.qgs                                  # inspect a project
 qgis-cli mcp                                           # serve to an AI assistant over MCP
 ```
+
+`inspect` reports the supplied path, extension-derived format and byte size,
+with `inspection: "file_metadata"` and `qgis_validation: "not_performed"`.
+It does not read XML/ZIP contents, initialize QGIS or establish project validity.
+Its exit codes are 0 (success), 2 (usage), 10 (invalid input), 11 (missing input)
+and 14 (filesystem failure); legacy `info` and other command exits are unchanged.
 
 See the [CLI documentation](https://archont561.github.io/qgis-rust/cli/) for all commands.
 
