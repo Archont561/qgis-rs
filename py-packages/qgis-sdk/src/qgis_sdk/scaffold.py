@@ -835,7 +835,6 @@ def scaffold_plugin(
     name: str,
     path: str,
     plugin_type: str = "general",
-    with_rust: bool = False,
     with_web: bool = False,
     with_ui: bool = True,
     web_framework: str = "vanilla",
@@ -1480,39 +1479,6 @@ def test_tasks(fake_task_manager):
         encoding="utf-8",
     )
 
-    if with_rust:
-        cargo_toml = f"""[package]
-name = "{name}"
-version = "0.1.0"
-edition = "2021"
-
-[lib]
-name = "_native"
-crate-type = ["cdylib"]
-
-[dependencies]
-pyo3 = {{ version = "0.22", features = ["extension-module"] }}
-"""
-
-        (base / "Cargo.toml").write_text(cargo_toml, encoding="utf-8")
-        (base / "src").mkdir(exist_ok=True)
-        (base / "src" / "lib.rs").write_text(
-            """use pyo3::prelude::*;
-
-#[pyfunction]
-fn hello() -> &'static str {
-    "Hello from Rust!"
-}
-
-#[pymodule]
-fn _native(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    m.add_function(wrap_pyfunction!(hello, m)?)?;
-    Ok(())
-}
-""",
-            encoding="utf-8",
-        )
-
     return str(base)
 # ── New declarative + self-installing + QGIS Web API templates (bun) ───────
 
@@ -2121,7 +2087,6 @@ def scaffold_plugin(
     name: str,
     path: str,
     plugin_type: str = "general",
-    with_rust: bool = False,
     with_web: bool = False,
     with_ui: bool = True,
     web_framework: str = "vanilla",
@@ -2134,4 +2099,4 @@ def scaffold_plugin(
 ) -> str:
     if declarative or web_framework == "bun":
         return scaffold_plugin_declarative(name, path, author=author, email=email, with_bundle=with_bundle, offline_wheel=offline_wheel)
-    return _original_scaffold_plugin(name, path, plugin_type, with_rust, with_web, with_ui, web_framework, author, email)
+    return _original_scaffold_plugin(name, path, plugin_type, with_web, with_ui, web_framework, author, email)

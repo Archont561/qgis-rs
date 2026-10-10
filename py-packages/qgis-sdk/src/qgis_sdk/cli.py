@@ -24,12 +24,10 @@ from .plugin_validation import validate_plugin_structure
 
 def _cmd_new(args: argparse.Namespace) -> int:
     """Scaffold a new plugin."""
-    name = args.name
+    name = (args.name or "").strip()
     if not name:
-        name = typer.prompt("Plugin name").strip()
-        if not name:
-            print("qgis-sdk: plugin name must not be empty", file=sys.stderr)
-            return 1
+        print("qgis-sdk new: a plugin name is required", file=sys.stderr)
+        return 2
 
     output_dir = Path(args.output) if args.output else Path(".")
     plugin_path = output_dir / name
@@ -52,7 +50,6 @@ def _cmd_new(args: argparse.Namespace) -> int:
             name,
             str(output_dir),
             args.type,
-            args.rust,
             with_web=args.web,
             with_ui=not args.no_ui,
             web_framework=framework,
@@ -155,31 +152,9 @@ def _cmd_version(_args: argparse.Namespace) -> int:
     return 0
 
 
-def _run_cargo(argv: List[str]) -> int:
-    """Run cargo in the plugin directory. A missing cargo is a failed command."""
-    try:
-        return subprocess.run(["cargo", *argv]).returncode
-    except FileNotFoundError:
-        print("qgis-sdk: cargo was not found on PATH", file=sys.stderr)
-        return 1
-
-
 def _cmd_test(args: argparse.Namespace) -> int:
-    only_python = bool(args.python) and not bool(args.rust)
-    only_rust = bool(args.rust) and not bool(args.python)
-    run_python = not only_rust
-    run_rust = not only_python and Path("Cargo.toml").exists()
-    if only_rust and not Path("Cargo.toml").exists():
-        print("qgis-sdk test: --rust needs a Cargo.toml — run `qgis-sdk rust init` first", file=sys.stderr)
-        return 1
-    print(f"Running tests (python={run_python}, rust={run_rust})...")
-    if run_python:
-        returncode = subprocess.run([sys.executable, "-m", "pytest", "-q"]).returncode
-        if returncode:
-            return returncode
-    if run_rust:
-        return _run_cargo(["test"])
-    return 0
+    print("Running tests...")
+    return subprocess.run([sys.executable, "-m", "pytest", "-q"]).returncode
 
 
 def _cmd_install(args: argparse.Namespace) -> int:
@@ -290,9 +265,26 @@ def _ignored_entries(directory: str, names: List[str]) -> List[str]:
     return [name for name in names if name in _IGNORED_NAMES or name.endswith(".pyc")]
 
 
+_NOT_PLUGIN_PACKAGES = {"tests", "test", "docs", "dist", "wheels", "build", "node_modules", "extlibs"}
+
+
 def _plugin_package_dir(base: Path) -> Optional[Path]:
-    """The plugin package: the first child folder of ``base`` that has an ``__init__.py``."""
-    candidates = sorted(child for child in base.iterdir() if child.is_dir() and (child / "__init__.py").is_file())
+    """The plugin package under ``base``: a child folder with an ``__init__.py``.
+
+    A scaffolded plugin also has a ``tests/`` package, so test, output and hidden folders
+    are skipped, and a package named after the project folder wins over any other.
+    """
+    candidates = sorted(
+        child
+        for child in base.iterdir()
+        if child.is_dir()
+        and not child.name.startswith(".")
+        and child.name not in _NOT_PLUGIN_PACKAGES
+        and (child / "__init__.py").is_file()
+    )
+    for child in candidates:
+        if child.name == base.resolve().name:
+            return child
     return candidates[0] if candidates else None
 
 
@@ -334,13 +326,6 @@ def _vendor_bundle(package_dir: Path, bundle: bool, offline_wheel: Optional[str]
 
 
 def _cmd_package(args: argparse.Namespace) -> int:
-    if getattr(args, "rust", False):
-        if not Path("Cargo.toml").exists():
-            print("qgis-sdk package: --rust needs a Cargo.toml — run `qgis-sdk rust init` first", file=sys.stderr)
-            return 1
-        returncode = _run_cargo(["build", "--release"])
-        if returncode:
-            return returncode
     bundle = bool(getattr(args, "bundle", False))
     offline_wheel = getattr(args, "offline_wheel", None)
     try:
@@ -359,55 +344,6 @@ def _cmd_package(args: argparse.Namespace) -> int:
 
 def _cmd_build(args: argparse.Namespace) -> int:
     return _cmd_package(args)
-
-
-def _cmd_rust_init(args: argparse.Namespace) -> int:
-    path = Path(args.path) if args.path else Path(".")
-    print(f"Adding Rust acceleration to plugin in {path}...")
-    if (path / "Cargo.toml").exists():
-        print("  Cargo.toml already exists — skipping")
-        return 0
-
-    cargo_toml = """[package]
-name = "my_plugin_native"
-version = "0.1.0"
-edition = "2021"
-
-[lib]
-name = "_native"
-crate-type = ["cdylib"]
-
-[dependencies]
-pyo3 = { version = "0.22", features = ["extension-module"] }
-"""
-
-    (path / "Cargo.toml").write_text(cargo_toml, encoding="utf-8")
-    (path / "src").mkdir(exist_ok=True)
-    (path / "src" / "lib.rs").write_text(
-        """use pyo3::prelude::*;
-
-#[pyfunction]
-fn hello() -> &'static str {
-    "Hello from Rust!"
-}
-
-#[pymodule]
-fn _native(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    m.add_function(wrap_pyfunction!(hello, m)?)?;
-    Ok(())
-}
-""",
-        encoding="utf-8",
-    )
-    print("✅ Added Rust acceleration")
-    return 0
-
-
-def _cmd_rust_build(args: argparse.Namespace) -> int:
-    if not Path("Cargo.toml").exists():
-        print("qgis-sdk rust build: no Cargo.toml here — run `qgis-sdk rust init` first", file=sys.stderr)
-        return 1
-    return _run_cargo(["build", "--release"] if args.release else ["build"])
 
 
 def _cmd_ui_add_dialog(args: argparse.Namespace) -> int:
@@ -546,7 +482,7 @@ def _invoke(handler, **kwargs) -> None:
 def _ask_dialog_name() -> str:
     """Ask for a dialog name only at an interactive terminal; otherwise use the default."""
     default = "main_dialog"
-    if not sys.stdin.isatty():
+    if not _interactive():
         return default
     import questionary
 
@@ -562,10 +498,8 @@ app = typer.Typer(
     no_args_is_help=True,
     add_completion=False,
 )
-rust_app = typer.Typer(help="Rust acceleration helpers.", no_args_is_help=True)
 ui_app = typer.Typer(help="Add UI scaffolding to a plugin.", no_args_is_help=True)
 bridge_app = typer.Typer(help="Generate bridge typings for web UIs.", no_args_is_help=True)
-app.add_typer(rust_app, name="rust")
 app.add_typer(ui_app, name="ui")
 app.add_typer(bridge_app, name="bridge")
 
@@ -591,29 +525,76 @@ class BridgeFramework(str, Enum):
     webcomponents = "webcomponents"
 
 
+def _interactive() -> bool:
+    """True only at a terminal, where a prompt can be answered. A CI run never prompts."""
+    return sys.stdin.isatty() and sys.stdout.isatty()
+
+
+def _answered(answer):
+    """questionary returns None on Ctrl-C; that aborts the command like any typer prompt."""
+    if answer is None:
+        raise typer.Abort()
+    return answer
+
+
 @app.command("new")
 def new_command(
-    name: Optional[str] = typer.Argument(None, help="Plugin name, for example my_plugin."),
-    plugin_type: PluginType = typer.Option(PluginType.general, "--type", help="Plugin type."),
+    name: Optional[str] = typer.Argument(None, help="Plugin name, for example my_plugin. Asked for at a terminal when omitted."),
+    plugin_type: Optional[PluginType] = typer.Option(None, "--type", help="Plugin type. Asked for at a terminal when omitted (default: general)."),
     output: Optional[str] = typer.Option(None, "-o", "--output", help="Directory to create the plugin in."),
-    rust: bool = typer.Option(False, "--rust", help="Include a Rust crate scaffold."),
     web: bool = typer.Option(False, "--web", help="Include a web UI."),
     framework: Framework = typer.Option(Framework.vanilla, "--framework", help="Web UI framework."),
     declarative: bool = typer.Option(False, "--declarative", help="Use the declarative plugin layout."),
     bun: bool = typer.Option(False, "--bun", help="Use Bun for the web UI (implies --declarative)."),
     bundle: bool = typer.Option(False, "--bundle", help="Include bootstrap.py and wheels/ for an offline self-install zip."),
     offline_wheel: Optional[str] = typer.Option(None, "--offline-wheel", help="Path to a qgis_sdk wheel to vendor for offline install."),
-    ui: bool = typer.Option(True, "--ui/--no-ui", help="Include UI dialogs (default: yes)."),
-    author: Optional[str] = typer.Option(None, "--author", help="Plugin author."),
-    email: Optional[str] = typer.Option(None, "--email", help="Author email."),
+    ui: Optional[bool] = typer.Option(None, "--ui/--no-ui", help="Include UI dialogs. Asked for at a terminal when omitted (default: yes)."),
+    author: Optional[str] = typer.Option(None, "--author", help="Plugin author. Asked for at a terminal when omitted."),
+    email: Optional[str] = typer.Option(None, "--email", help="Author email. Asked for at a terminal when omitted."),
 ) -> int:
     """Scaffold a new plugin."""
+    interactive = _interactive()
+    if not name:
+        if not interactive:
+            print("qgis-sdk new: a plugin name is required when not running at a terminal", file=sys.stderr)
+            raise typer.Exit(2)
+        import questionary
+
+        name = _answered(questionary.text("Plugin name", default="my_plugin").ask())
+    if plugin_type is None:
+        if interactive:
+            import questionary
+
+            choice = _answered(
+                questionary.select(
+                    "Plugin type",
+                    choices=[item.value for item in PluginType],
+                    default=PluginType.general.value,
+                ).ask()
+            )
+            plugin_type = PluginType(choice)
+        else:
+            plugin_type = PluginType.general
+    if ui is None:
+        if interactive:
+            import questionary
+
+            ui = _answered(questionary.confirm("Include UI dialogs?", default=True).ask())
+        else:
+            ui = True
+    if interactive and author is None:
+        import questionary
+
+        author = _answered(questionary.text("Author", default="").ask()).strip() or None
+    if interactive and email is None:
+        import questionary
+
+        email = _answered(questionary.text("Author email", default="").ask()).strip() or None
     return _invoke(
         _cmd_new,
         name=name,
         type=plugin_type.value,
         output=output,
-        rust=rust,
         web=web,
         framework=framework.value,
         declarative=declarative,
@@ -650,30 +631,25 @@ def version_command() -> int:
 @app.command("build")
 def build_command(
     output: str = typer.Option("dist", "-o", "--output", help="Directory for the plugin archive."),
-    rust: bool = typer.Option(False, "--rust", help="Build the Rust crate first (release)."),
 ) -> int:
     """Build and package the plugin."""
-    return _invoke(_cmd_build, output=output, rust=rust)
+    return _invoke(_cmd_build, output=output)
 
 
 @app.command("package")
 def package_command(
     output: str = typer.Option("dist", "-o", "--output", help="Directory for the plugin archive."),
-    rust: bool = typer.Option(False, "--rust", help="Build the Rust crate first (release)."),
     bundle: bool = typer.Option(False, "--bundle", help="Include bootstrap.py and wheels/ for an offline self-install zip."),
     offline_wheel: Optional[str] = typer.Option(None, "--offline-wheel", help="Path to a qgis_sdk wheel to vendor for offline install."),
 ) -> int:
     """Zip the plugin package into an archive QGIS can install."""
-    return _invoke(_cmd_package, output=output, rust=rust, bundle=bundle, offline_wheel=offline_wheel)
+    return _invoke(_cmd_package, output=output, bundle=bundle, offline_wheel=offline_wheel)
 
 
 @app.command("test")
-def test_command(
-    python: bool = typer.Option(False, "--python", help="Run only the Python tests."),
-    rust: bool = typer.Option(False, "--rust", help="Run only the Rust tests."),
-) -> int:
-    """Run the Python tests and, when present, the Rust tests."""
-    return _invoke(_cmd_test, python=python, rust=rust)
+def test_command() -> int:
+    """Run the plugin's Python tests with pytest."""
+    return _invoke(_cmd_test)
 
 
 @app.command("install")
@@ -686,11 +662,10 @@ def install_command(
 
 @app.command("dev")
 def dev_command(
-    rust: bool = typer.Option(False, "--rust", help="Include Rust."),
     launch: bool = typer.Option(False, "--launch", help="Launch QGIS after install."),
 ) -> int:
     """Watch mode: rebuild on file change (not implemented)."""
-    return _invoke(_cmd_dev, rust=rust, launch=launch)
+    return _invoke(_cmd_dev, launch=launch)
 
 
 @app.command("publish")
@@ -717,18 +692,6 @@ def vendor_command(
 ) -> int:
     """Vendor wheels for offline installs."""
     return _invoke(_cmd_vendor, output=output, offline_wheel=offline_wheel)
-
-
-@rust_app.command("init")
-def rust_init_command(path: str = typer.Argument(".", help="Plugin directory.")) -> int:
-    """Add a Rust crate to a plugin."""
-    return _invoke(_cmd_rust_init, path=path)
-
-
-@rust_app.command("build")
-def rust_build_command(release: bool = typer.Option(False, "--release", help="Release build.")) -> int:
-    """Build the Rust crate with cargo."""
-    return _invoke(_cmd_rust_build, release=release)
 
 
 @ui_app.command("add-dialog")

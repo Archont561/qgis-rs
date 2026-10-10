@@ -23,8 +23,6 @@ Installed via `pip install qgis-sdk` → binary `qgis-sdk` on PATH + `python -m 
 | `validate` | Check structure and metadata |
 | `info` | Show plugin info |
 | `version` | Print version |
-| `rust init` | Add Rust acceleration |
-| `rust build` | Build Rust module |
 | `ui add-dialog` | Add UI dialog scaffolding |
 | `ui add-web` | Add WebEngine scaffolding |
 | `bridge generate` | Generate TS types from Python bridge |
@@ -32,14 +30,13 @@ Installed via `pip install qgis-sdk` → binary `qgis-sdk` on PATH + `python -m 
 ## new
 
 ```bash
-qgis-sdk new my_plugin --type processing --rust
+qgis-sdk new my_plugin --type processing
 qgis-sdk new my_plugin --web --framework react --author "Name" --email "a@b.com"
 qgis-sdk new my_plugin --no-ui -o /tmp
 ```
 
 Options:
 - `name` — plugin name (e.g. `my_plugin`)
-- `--rust` — include Rust acceleration
 - `--web` — include WebEngine HTML + QWebChannel (vanilla + React + Vue + WebComponents)
 - `--framework` — `vanilla`, `react`, `vue`, `webcomponents` (default `vanilla`)
 - `--ui` / `--no-ui` — include UI dialogs (default true)
@@ -122,7 +119,7 @@ qgis-sdk ui add-web ./my_plugin
 qgis-sdk build -o dist/
 qgis-sdk test
 qgis-sdk install --profile ~/.local/share/QGIS/QGIS3/profiles/default/python/plugins
-qgis-sdk dev --rust --launch
+qgis-sdk dev --launch
 qgis-sdk package -o dist/
 qgis-sdk publish --zip dist/my_plugin-0.1.0.zip --dry-run
 ```
@@ -139,15 +136,6 @@ qgis-sdk version
 Validation checks:
 - `metadata.txt` exists
 - If Rust core: checks HTML references `qwebchannel.js`
-
-## rust
-
-```bash
-qgis-sdk rust init ./my_plugin
-# Creates Cargo.toml + src/lib.rs
-
-qgis-sdk rust build --release
-```
 
 ## Python Module
 

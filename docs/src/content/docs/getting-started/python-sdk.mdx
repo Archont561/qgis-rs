@@ -85,11 +85,11 @@ class BufferAdvanced(Algorithm):
         return {self.output_layer.name: distance}
 ```
 
-## CLI — Rust-native
+## CLI — pure Python
 
 ```bash
 # Scaffold
-qgis-sdk new my_plugin --type processing --rust
+qgis-sdk new my_plugin --type processing
 qgis-sdk new my_plugin --author "Your Name" --email "you@example.com"
 
 # Validate
@@ -101,17 +101,13 @@ qgis-sdk info ./my_plugin --json
 qgis-sdk build
 qgis-sdk test
 qgis-sdk install
-qgis-sdk dev --rust --launch
+qgis-sdk dev --launch
 
 # Package for QGIS Plugin Repository
 qgis-sdk package -o dist/
 qgis-sdk publish --zip dist/my_plugin-0.1.0.zip --dry-run
 
-# Rust acceleration
-qgis-sdk rust init
-qgis-sdk rust build --release
-
-# Via Python module (same speed — uses Rust extension directly)
+# Same CLI via Python
 python -m qgis_sdk.cli new my_plugin
 python -m qgis_sdk.cli validate
 qgis-sdk version  # alias
@@ -119,7 +115,7 @@ qgis-sdk version  # alias
 
 ### Commands
 
-| Command | Pure Rust? | Description |
+| Command | Pure Python? | Description |
 |---------|------------|-------------|
 | `new` | ✅ | Scaffold new plugin |
 | `build` | ✅ | Build package |
@@ -130,8 +126,6 @@ qgis-sdk version  # alias
 | `publish` | ✅ | Upload to repo |
 | `validate` | ✅ | Check structure |
 | `info` | ✅ | Show metadata |
-| `rust init` | ✅ | Add Rust module |
-| `rust build` | ✅ | Build Rust module |
 | `version` | ✅ | Print version |
 
 ## Architecture
