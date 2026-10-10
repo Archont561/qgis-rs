@@ -39,20 +39,27 @@ Rust.
 - `qgis-cli` stays the GIS-execution CLI in Rust (D13 §1). Plugin tooling does
   not enter it.
 
-### 2. Prompts with questionary, only for non-web UI scaffolding
+### 2. Prompts with questionary, only for non-web scaffolding
 
-`questionary` is used only where the user chooses UI scaffolding interactively
-(`qgis-sdk ui add-dialog` when the dialog name is missing). Other missing inputs
-are typer options or `typer.prompt`. A non-interactive run never prompts.
+`questionary` is used only for non-web scaffolding choices, and only at a terminal
+(stdin and stdout are both a TTY). Each question has a flag that answers it for CI:
+
+- `qgis-sdk new` asks for the plugin name (positional argument), `--type`, `--ui/--no-ui`,
+  `--author` and `--email`.
+- `qgis-sdk ui add-dialog` asks for the dialog name (`--name`).
+
+A non-interactive run never prompts. A missing plugin name then fails with exit code 2.
+Web choices (`--web`, `--framework`) stay flags only.
 
 ### 3. Every command does what it reports
 
 A command either performs its work or fails with a non-zero exit code. Printing
 "Built" or "Created" without writing the artifact is a defect.
 
-- `qgis-sdk rust build` runs `cargo build` (with `--release` when asked) in the
-  plugin directory. It fails when there is no `Cargo.toml`.
 - `qgis-sdk package` writes the plugin archive it names.
+- *Amended 2026-10-10 (TASK-57):* the `rust` subcommand, every `--rust` flag and the
+  cargo passthrough are removed. qgis-sdk contains no Rust, so the plugin CLI does
+  not build a crate. A plugin that wants Rust runs cargo itself.
 - `metadata_fields()` and `render_metadata_from_dict()` are ported to Python with
   the same field table and output format as the retired Rust functions.
 

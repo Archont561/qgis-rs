@@ -115,7 +115,7 @@ qgis-cli tiles map.qgs -z 10-14 -b 14,50,15,51 --dry-run
 
 # Plugin SDK (Python)
 python -c "import qgis_sdk; print(qgis_sdk.__version__)"
-qgis-sdk new my_plugin --type processing --rust
+qgis-sdk new my_plugin --type processing
 
 # TypeScript
 node -e "const { TilePlan, Extent, ZoomRange } = require('@archont561/qgis-node'); console.log(new TilePlan(Extent.parse('14,50,15,51'), ZoomRange.parse('10-14')).tileCount())"

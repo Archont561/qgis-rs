@@ -62,14 +62,6 @@ def test_cli_new_and_validate(tmp_path, capsys):
         data = json.loads(json_text)
         assert "name" in data or "qgisMinimumVersion" in data or "my_test_plugin" in str(data)
 
-def test_cli_new_with_rust(tmp_path, capsys):
-    from qgis_sdk.cli import main
-    rc = main(["new", "my_rust_plugin", "--rust", "-o", str(tmp_path)])
-    assert rc == 0
-    plugin_dir = tmp_path / "my_rust_plugin"
-    assert (plugin_dir / "Cargo.toml").exists()
-    assert (plugin_dir / "src" / "lib.rs").exists()
-
 def test_cli_build_and_package(tmp_path, capsys):
     from qgis_sdk.cli import main
     # Create minimal plugin dir
@@ -92,15 +84,6 @@ def test_cli_build_and_package(tmp_path, capsys):
         assert (plugin_dir / "dist" / "test_pkg.zip").is_file()
     finally:
         os.chdir(orig)
-
-def test_cli_rust_init(tmp_path, capsys):
-    from qgis_sdk.cli import main
-    plugin_dir = tmp_path / "rust_init_test"
-    plugin_dir.mkdir()
-
-    rc = main(["rust", "init", str(plugin_dir)])
-    assert rc == 0
-    assert (plugin_dir / "Cargo.toml").exists()
 
 def test_cli_module_entrypoint_displays_help():
     """The installed Python entrypoint should expose the plugin CLI help."""

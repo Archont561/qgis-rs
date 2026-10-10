@@ -119,11 +119,11 @@ pixi run -e default qgis-sdk --help
 python -m pytest py-packages/qgis-sdk/tests -q
 ```
 
-## CLI — Rust-native, pip-installable
+## CLI — pure Python, pip-installable
 
 ```bash
-# Scaffold a new plugin (Rust does file creation at native speed)
-qgis-sdk new my_plugin --type processing --rust
+# Scaffold a new plugin. At a terminal, missing choices are asked for; flags answer them for CI.
+qgis-sdk new my_plugin --type processing
 qgis-sdk new my_plugin --web --author "Your Name" --email "you@example.com"
 qgis-sdk new my_plugin --web --framework react # react, vue, webcomponents, vanilla
 qgis-sdk new my_plugin --no-ui  # skip UI scaffolding
@@ -140,15 +140,11 @@ qgis-sdk validate ./my_plugin --json
 qgis-sdk build
 qgis-sdk test
 qgis-sdk install
-qgis-sdk dev --rust --launch
+qgis-sdk dev --launch
 
 # Package for QGIS Plugin Repository (includes ui/*.ui, web/*.html, web/*.d.ts, icons/*)
 qgis-sdk package -o dist/
 qgis-sdk publish --zip dist/my_plugin-0.1.0.zip --dry-run
-
-# Rust acceleration
-qgis-sdk rust init
-qgis-sdk rust build --release
 
 # UI helpers
 qgis-sdk ui add-dialog ./my_plugin --name custom_dialog

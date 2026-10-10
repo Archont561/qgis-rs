@@ -55,20 +55,6 @@ def test_build_writes_the_same_archive_as_package(plugin_root, capsys):
     assert (plugin_root / "dist" / "demo_plugin.zip").is_file()
 
 
-def test_build_with_rust_needs_a_cargo_manifest(plugin_root, capsys):
-    code = cli.main(["build", "--rust"])
-
-    assert code == 1
-    assert "Cargo.toml" in capsys.readouterr().err
-
-
-def test_rust_build_without_a_cargo_manifest_fails(plugin_root, capsys):
-    code = cli.main(["rust", "build"])
-
-    assert code == 1
-    assert "Cargo.toml" in capsys.readouterr().err
-
-
 def test_install_copies_the_plugin_into_the_profile(plugin_root, tmp_path, capsys):
     profile = tmp_path / "profile" / "plugins"
 
@@ -126,7 +112,7 @@ def test_test_runs_the_python_suite_and_reports_its_result(plugin_root, monkeypa
 
     monkeypatch.setattr(cli.subprocess, "run", fake_run)
 
-    code = cli.main(["test", "--python"])
+    code = cli.main(["test"])
 
     assert code == 3
     assert any(argv[1:3] == ["-m", "pytest"] for argv in calls)

@@ -1,10 +1,10 @@
 ---
 id: TASK-58
 title: Ship the prebuilt qgis-cli binary through @archont561/qgis-node
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-10-09 15:47'
-updated_date: '2026-10-09 21:02'
+updated_date: '2026-10-10 08:12'
 labels:
   - qgis-node
   - cli
@@ -40,4 +40,12 @@ Still open: CI matrix builds for the other platforms, publishing platform packag
 Gap: qgis-cli is gitignored, so a fresh checkout has no staged binary and the qgis-node CLI tests fail under QGIS_REQUIRE_NATIVE=1 until scripts/stage-cli.js runs in the default env. Needs a CI or gates step that stages it.
 
 Superseded: built-in qgis-cli removed from qgis-node in 41b02b4. ACs 1-2 no longer apply; AC 3 met. Left In Progress for owner decision to close.
+
+Closed by owner decision. ACs 1-2 are superseded by D15 and by removing the built-in qgis-cli from qgis-node in 41b02b4, so they stay unchecked and are not work left to do. AC3 is checked. Still open, not in this task: the CI matrix that builds the other platforms, release.rs publishing of the platform packages, and the win32 package. Those need a new task before a release.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Closed as Done on the owner decision recorded in the 2026-10-10 session. The qgis-cli binary ships through @archont561/qgis-node as platform packages (linux-x64-gnu, linux-arm64-gnu, linux-x64-musl). The remaining platform and release work needs a new task.
+<!-- SECTION:FINAL_SUMMARY:END -->
