@@ -221,6 +221,10 @@ Generates the builder pattern and the FFI calls to configure `QgsMapSettings`. B
 
 ## Comparison: Three Paths
 
+> Historical comparison: D07 was retired as a rejected, unadopted draft on
+> 2026-10-10. Its column and the combined option below are not current product
+> commitments; see D12, D13 and D15 for the governing architecture.
+
 | | D07: Rust Plugins | D08: Standalone App | Both |
 |---|---|---|---|
 | Bridge | PyO3 (Python↔Rust) | CXX (C++↔Rust) | Both bridges |
@@ -239,4 +243,4 @@ Generates the builder pattern and the FFI calls to configure `QgsMapSettings`. B
 3. Has a clear product shape (tile server, CLI, library)
 4. Requires only ~6 types and ~28 FFI functions
 5. Avoids the signal/slot problem entirely (waitForFinished)
-6. Can later add D07 (Processing plugins) as a second product
+6. Historical option, withdrawn on 2026-10-10: adding D07 as a second product. The D07 scope pivot was never adopted.

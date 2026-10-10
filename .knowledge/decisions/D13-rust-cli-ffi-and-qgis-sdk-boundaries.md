@@ -57,10 +57,12 @@ extension, and the CLI is a typer application at
 `py-packages/qgis-sdk/src/qgis_sdk/cli.py`. The edges this record used to draw
 from `qgis-sdk-core` to `qgis-protocol` describe crates that do not exist.
 
-`qgis-sdk` must not directly depend on `qgis-py`, and now cannot: there is no
-native module on either side to couple. The optional-acceleration adapter this
-section allowed is ruled out too — a plugin that wants a Rust hot path builds and
-ships its own extension, outside the SDK.
+`qgis-sdk` must not directly depend on `qgis-py`. Removing the SDK Rust crate
+alone does not enforce Python dependency or import boundaries: TASK-43 audits
+those against D15, while TASK-63 separately owns the reverse import probe.
+The optional-acceleration adapter this section allowed is ruled out too — a
+plugin that wants a Rust hot path builds and ships its own extension, outside
+the SDK.
 
 ### 4. Keep CLI and FFI contracts separate
 
@@ -86,7 +88,7 @@ Pure Rust CLI operations require no QGIS, Python, Qt, or WebEngine. Native QGIS 
 
 - There are several named products and package entry points to document.
 - Some plugin commands orchestrate Python, QGIS, pytest or frontend tools instead of implementing those ecosystems internally. `cargo` and `maturin` are no longer among them: D15 §3 as amended removed the cargo passthrough, so the plugin CLI drives no Rust build.
-- Optional acceleration needs explicit ABI and capability checks.
+- Plugin-owned Rust extensions need their own ABI and capability policy; this is outside the SDK contract, not a requirement to restore an SDK acceleration adapter (D15).
 - Shared protocol and cross-language fixtures become release obligations.
 
 ## Rejected alternatives
@@ -124,8 +126,8 @@ shadow a canonical binary on `PATH` (`py-packages/qgis-sdk` ships only the `qgis
 
 - [TASK-40](../../backlog/tasks/task-40%20-%20Define-Rust-CLI-FFI-and-QGIS-SDK-product-boundaries.md) records and tests the product contract.
 - [TASK-41](../../backlog/tasks/task-41%20-%20Build-the-pure-Rust-qgis-cli-capability-surface.md) builds the standalone CLI capabilities.
-- [TASK-42](../../backlog/tasks/task-42%20-%20Stabilize-Python-and-Node-FFI-clients-and-CLI-launchers.md) stabilizes FFI clients and launchers.
-- [TASK-43](../../backlog/tasks/task-43%20-%20Separate-qgis-sdk-hosted-runtime-from-qgis-rs-and-qgis-py.md) enforces the hosted-runtime dependency boundary.
+- [TASK-42](../../backlog/tasks/task-42%20-%20Stabilize-Python-and-Node-FFI-clients-and-CLI-launchers.md) stabilizes FFI client contracts. Its former launcher obligations were retired by owner decision on 2026-10-10; binary distribution remains separate packaging work.
+- [TASK-43](../../backlog/tasks/task-43%20-%20Separate-qgis-sdk-hosted-runtime-from-qgis-rs-and-qgis-py.md) enforces pure-Python SDK dependency and hosted-runtime boundaries under D15. Its former SDK-extension and acceleration requirements were retired by owner decision on 2026-10-10.
 - [TASK-44](../../backlog/tasks/task-44%20-%20Package-the-Rust-native-qgis-plugin-and-qgis-sdk-CLI.md) packaged the plugin CLI. Its Rust-native framing is superseded by D15, and its dependency on TASK-26 was dropped when that task was archived.
 - TASK-26, the shared Rust/wire CLI refactor, is **archived**: D15 §1 and §3 as amended reverse what it was written to do, and the crates it names were deleted in `2d8d69a`. Its one surviving outcome — the CLI path does not import PyQGIS or PyQt — was delivered by TASK-57 and is pinned by `tests/test_cli_task57.py`.
 
