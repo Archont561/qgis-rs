@@ -4,7 +4,7 @@ title: Package the Rust-native qgis-plugin and qgis-sdk CLI
 status: To Do
 assignee: []
 created_date: '2026-10-03 09:35'
-updated_date: '2026-10-09 22:43'
+updated_date: '2026-10-10 09:21'
 labels:
   - qgis-sdk
   - cli
@@ -13,7 +13,6 @@ labels:
   - testing
 milestone: m-3
 dependencies:
-  - TASK-26
   - TASK-42
   - TASK-43
 documentation:

@@ -4,7 +4,7 @@ title: Refactor qgis-sdk CLI onto the shared Rust engine wire protocol
 status: To Do
 assignee: []
 created_date: '2026-10-03 01:51'
-updated_date: '2026-10-09 15:47'
+updated_date: '2026-10-10 09:21'
 labels:
   - qgis-sdk
   - qgis-py
@@ -91,4 +91,16 @@ Slice 1 (892ff26): the plugin command tree moved into the pure-Rust qgis-sdk-cor
 Findings that block AC2-AC6 and need decisions: (1) build, test, install, dev, package and publish print messages and write nothing in both Rust and Python; the Rust dirs and chrono are hand-written stubs and the zip name is the constant 20260918. (2) bootstrap, vendor and bridge generate exist only in Python; bridge generate introspects Python classes, so it cannot be a pure-Rust port. (3) AC2 asks for a versioned JSON invoke entry point, but D14 chose argv forwarding; the AC text needs amending or D14 needs revising. TASK-26 stays In Progress.
 
 Superseded (2026-10). The Rust SDK path is removed: qgis-sdk is a pure-Python PyQGIS CLI, and the qgis-plugin binary is dropped. Replaced by TASK-57. AC#2 (JSON invoke), AC#3 and AC#4 no longer apply. AC#5 and AC#6 move to TASK-57.
+
+Archived 2026-10-10 as superseded by D15, on the owner decision recorded in this session.
+
+AC2, AC3 and AC5 and the Implementation Plan all require a Rust engine to own the qgis-sdk CLI behaviour behind a versioned JSON invoke entry point, with Python reduced to a thin wire client and exit-code mapper. D15 section 1 states the opposite: qgis-sdk is a Python console script calling qgis_sdk.cli:main built with typer, there is no native extension, no _core, no _fallback_cli and no Rust CLI crate. D15 section 3 as amended by TASK-57 removes every Rust path from qgis-sdk.
+
+The crates this task names were deleted in 2d8d69a: crates/qgis-sdk and crates/qgis-sdk-core no longer exist. Measured today, the package exports 145 names and contains zero occurrences of rust_accelerated or HAS_RUST.
+
+AC1 stays checked. The decision it records is D14, itself superseded by D15, so the criterion is historically satisfied but no longer load-bearing.
+
+AC4, that the CLI path does not import PyQGIS or PyQt, was achieved by a different route in TASK-57 and is pinned by tests/test_cli_task57.py, which runs a subprocess that blocks every QGIS module before importing the CLI. That outcome survives; this task is not what delivered it.
+
+Implementing the remaining ACs would rebuild exactly what TASK-57 removed, so the task is archived rather than rescoped. The documentation that still describes the retired design is being corrected in TASK-64.
 <!-- SECTION:NOTES:END -->
