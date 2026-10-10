@@ -21,6 +21,8 @@ pub struct Cli {
 pub enum Command {
     /// Validate pure GIS domain input without loading QGIS
     Validate(ValidateArgs),
+    /// Plan deterministic work from input alone, without a project or QGIS
+    Plan(PlanArgs),
     /// Report CLI, engine, transport and backend versions
     Version(DiscoveryArgs),
     /// Describe engine capabilities and the parsed command surface
@@ -253,6 +255,38 @@ pub struct ValidateArgs {
     pub kind: ValidateKind,
     /// Input text; precede a leading minus with `--`
     pub value: String,
+    /// Write a structured report to stdout
+    #[arg(long)]
+    pub json: bool,
+}
+
+/// `qgis-cli plan <what>`.
+#[derive(Debug, Parser)]
+pub struct PlanArgs {
+    /// What to plan
+    #[command(subcommand)]
+    pub command: PlanCommand,
+}
+
+/// What `qgis-cli plan` can plan.
+#[derive(Debug, Subcommand)]
+pub enum PlanCommand {
+    /// Count an XYZ tile pyramid over an extent
+    Tiles(TilesPlanArgs),
+}
+
+/// `qgis-cli plan tiles`.
+///
+/// Separate from `tiles <project> --dry-run`, which counts the same pyramid
+/// but opens a project file first. Nothing here reads a file or writes one.
+#[derive(Debug, Parser)]
+pub struct TilesPlanArgs {
+    /// Area to cover in EPSG:4326, as "minx,miny,maxx,maxy"
+    #[arg(short, long)]
+    pub bounds: String,
+    /// Zoom levels, as "12" or "10-14"
+    #[arg(short, long)]
+    pub zoom: String,
     /// Write a structured report to stdout
     #[arg(long)]
     pub json: bool,

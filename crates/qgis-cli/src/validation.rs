@@ -6,8 +6,17 @@ use qgis_render::{Crs, Extent, Tile, ZoomRange};
 use serde_json::{json, Value};
 
 /// Marker for validation refusals; legacy command errors keep exit 1.
+///
+/// `plan` reuses it rather than adding its own exit-10 category, so malformed
+/// input means the same thing whichever pure command refused it.
 #[derive(Debug)]
 pub(crate) struct InvalidInput(String);
+
+impl InvalidInput {
+    pub(crate) fn new(message: impl Into<String>) -> Self {
+        Self(message.into())
+    }
+}
 
 impl std::fmt::Display for InvalidInput {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -38,7 +47,7 @@ pub(crate) fn run(args: ValidateArgs) -> Result<()> {
     }
     result
         .map(|_| ())
-        .map_err(|error| InvalidInput(error.to_string()).into())
+        .map_err(|error| InvalidInput::new(error.to_string()).into())
 }
 
 fn normalized(args: &ValidateArgs) -> Result<Value> {

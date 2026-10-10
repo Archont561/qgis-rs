@@ -28,7 +28,10 @@ pub use crate::error::{Error, Result};
 pub use crate::extent::Extent;
 pub use crate::project::{LayerSummary, Project, ProjectFormat, ProjectInfo};
 pub use crate::render::{ImageFormat, RenderSettings, RenderedMap};
-pub use crate::tiles::{Tile, TilePlan, ZoomLevelPlan, ZoomRange, MAX_LATITUDE, MAX_ZOOM};
+pub use crate::tiles::{
+    Tile, TilePlan, TilePlanReport, ZoomLevelPlan, ZoomLevelReport, ZoomRange, MAX_LATITUDE,
+    MAX_ZOOM,
+};
 
 // Re-export styles for convenience — qgis-render is the engine that uses them
 pub use qgis_styles::{self as styles, Color, LayerStyle, Renderer, Rgba, StyleSheet, Symbol};

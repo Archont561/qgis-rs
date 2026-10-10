@@ -40,6 +40,7 @@ fn capabilities_are_deterministic_and_separate_commands_from_engine_operations()
     assert!(commands.contains(&serde_json::json!("info")));
     assert!(commands.contains(&serde_json::json!("validate")));
     assert!(commands.contains(&serde_json::json!("inspect")));
+    assert!(commands.contains(&serde_json::json!("plan")));
     assert!(report["command_note"]
         .as_str()
         .unwrap()
@@ -47,8 +48,12 @@ fn capabilities_are_deterministic_and_separate_commands_from_engine_operations()
     let help = run(&["--help"]);
     assert!(help.status.success());
     assert!(String::from_utf8_lossy(&help.stdout).contains("inspect"));
+    assert!(String::from_utf8_lossy(&help.stdout).contains("plan"));
     let ops = report["engine"]["operations"].as_array().unwrap();
     assert!(!ops.iter().any(|op| op["name"] == "inspect"));
+    // `plan tiles` is CLI arithmetic over qgis-render, so it adds no engine
+    // operation of its own — `plan_tiles` already existed before this command.
+    assert!(!ops.iter().any(|op| op["name"] == "plan"));
     assert!(ops
         .iter()
         .any(|op| op["name"] == "plan_tiles" && op["available"] == true));

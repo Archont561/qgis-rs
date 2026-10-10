@@ -223,6 +223,75 @@ impl TilePlan {
             })
         })
     }
+
+    /// The plan as it crosses a boundary, counts included.
+    ///
+    /// Serialising the plan itself loses the per-level counts, because
+    /// [`ZoomLevelPlan::tile_count`] is computed rather than stored, so every
+    /// consumer would re-derive them. The engine wire protocol, the MCP tool
+    /// and `qgis-cli plan tiles` all emit this and nothing else.
+    #[must_use]
+    pub fn report(&self) -> TilePlanReport {
+        TilePlanReport {
+            bounds: self.bounds,
+            zooms: self.zooms,
+            tile_count: self.tile_count(),
+            levels: self.levels().iter().map(ZoomLevelReport::from).collect(),
+        }
+    }
+}
+
+/// One zoom level of a plan, as it crosses a boundary.
+///
+/// Public because [`TilePlan::report`] is, and because three suites — the
+/// engine's, MCP's and the CLI's — assert on these exact key names.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct ZoomLevelReport {
+    /// The zoom level this row describes.
+    pub zoom: u32,
+    /// First (westernmost) column.
+    pub x_min: u32,
+    /// Last (easternmost) column.
+    pub x_max: u32,
+    /// First (northernmost) row.
+    pub y_min: u32,
+    /// Last (southernmost) row.
+    pub y_max: u32,
+    /// Tiles at this level.
+    pub tile_count: u64,
+}
+
+impl From<&ZoomLevelPlan> for ZoomLevelReport {
+    fn from(level: &ZoomLevelPlan) -> Self {
+        Self {
+            zoom: level.zoom,
+            x_min: level.x_min,
+            x_max: level.x_max,
+            y_min: level.y_min,
+            y_max: level.y_max,
+            tile_count: level.tile_count(),
+        }
+    }
+}
+
+/// A whole tile plan, as it crosses a boundary.
+///
+/// One definition on purpose. The engine, MCP and the CLI each had their own
+/// shape for the same answer and they had drifted apart — `tile_count` against
+/// `total_tiles`, and a per-level `tiles` *count* in MCP where the engine's
+/// top-level `tiles` is the *enumerated array*. Public because the three
+/// surfaces share it; the tests in `qgis-render`, `qgis-engine`, `qgis-mcp`
+/// and `qgis-cli` are why.
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct TilePlanReport {
+    /// The area covered, in EPSG:4326.
+    pub bounds: Extent,
+    /// The zoom levels covered.
+    pub zooms: ZoomRange,
+    /// Tiles across every zoom level.
+    pub tile_count: u64,
+    /// One entry per zoom level, shallowest first.
+    pub levels: Vec<ZoomLevelReport>,
 }
 
 /// Tiles per side of the pyramid at `zoom` (`2^zoom`).

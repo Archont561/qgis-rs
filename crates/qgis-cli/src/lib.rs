@@ -9,6 +9,7 @@ pub mod cli;
 pub mod commands;
 mod discovery;
 mod inspection;
+mod plan;
 mod validation;
 
 pub use cli::{Cli, Command};

@@ -88,6 +88,76 @@ fn zoom_range_parsing() {
     }
 }
 
+/// The shape a plan takes when it crosses a boundary.
+///
+/// [`ZoomLevelPlan`] computes its count instead of storing it, so serialising a
+/// level drops the number and every consumer re-derives it. Three consumers
+/// did, and drifted: the engine said `tile_count`, MCP said `total_tiles`, and
+/// MCP's per-level `tiles` was a count where the engine's top-level `tiles` is
+/// the enumerated array. [`TilePlanReport`] is the single definition the engine
+/// wire protocol, the MCP tool and `qgis-cli plan tiles` all emit.
+#[rstest]
+fn a_report_carries_the_counts_a_serialised_level_would_lose(europe_bounds: Extent) {
+    let plan =
+        TilePlan::new(europe_bounds, ZoomRange::parse("10-14").expect("valid")).expect("valid");
+
+    let report = plan.report();
+
+    assert_eq!(report.bounds, europe_bounds);
+    assert_eq!(report.zooms, ZoomRange::new(10, 14).expect("valid"));
+    assert_eq!(report.tile_count, 4568);
+    assert_eq!(report.levels.len(), 5);
+    assert_eq!(
+        report.levels[0],
+        ZoomLevelReport {
+            zoom: 10,
+            x_min: 551,
+            x_max: 554,
+            y_min: 342,
+            y_max: 347,
+            tile_count: 24
+        }
+    );
+    assert_eq!(
+        report
+            .levels
+            .iter()
+            .map(|level| level.tile_count)
+            .sum::<u64>(),
+        report.tile_count
+    );
+}
+
+/// Pins the key names, because they are the wire contract: the Python client
+/// reads `tile_count`/`levels`, and the Node client reads `bounds`/`zooms` as
+/// objects. A rename here is a break in two languages, so it fails here first.
+#[rstest]
+fn a_report_serialises_under_the_wire_key_names(europe_bounds: Extent) {
+    let plan =
+        TilePlan::new(europe_bounds, ZoomRange::parse("10-14").expect("valid")).expect("valid");
+
+    let value = serde_json::to_value(plan.report()).expect("serialises");
+
+    let mut keys: Vec<&String> = value.as_object().expect("object").keys().collect();
+    keys.sort();
+    assert_eq!(keys, ["bounds", "levels", "tile_count", "zooms"]);
+
+    let mut level_keys: Vec<&String> = value["levels"][0]
+        .as_object()
+        .expect("object")
+        .keys()
+        .collect();
+    level_keys.sort();
+    assert_eq!(
+        level_keys,
+        ["tile_count", "x_max", "x_min", "y_max", "y_min", "zoom"]
+    );
+
+    assert_eq!(value["tile_count"], serde_json::json!(4568));
+    assert_eq!(value["zooms"], serde_json::json!({"min": 10, "max": 14}));
+    assert_eq!(value["bounds"]["min_x"], serde_json::json!(14.0));
+}
+
 proptest! {
     #[test]
     fn a_full_world_level_iterates_exactly_its_reported_count(zoom in 0u32..=6) {

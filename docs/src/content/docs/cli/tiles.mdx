@@ -52,6 +52,25 @@ Tile counts grow by roughly 4x per zoom level. Run `--dry-run` before
 committing to a deep pyramid at high resolution.
 :::
 
+## Planning without a project
+
+`--dry-run` still opens `<PROJECT>` before it counts anything, because it shares
+the command that renders. To count a pyramid over an extent with no project on
+disk at all, use [`qgis-cli plan tiles`](/cli/index#deterministic-tile-planning):
+
+```bash
+qgis-cli plan tiles -b 14,50,15,51 -z 10-14
+# z=10  x 551..554  y 342..347  24 tiles
+# …
+# 4568 tiles across zoom levels 10-14
+
+qgis-cli plan tiles -b 14,50,15,51 -z 10-14 --json
+```
+
+Same numbers, no file opened, nothing written, and a `--json` report in the
+shape the engine's `plan_tiles` operation and the MCP `plan_tiles` tool return.
+Malformed `--bounds` or `--zoom` exits **10** rather than the legacy exit 1.
+
 ## Output layout
 
 | `--output` | Result |

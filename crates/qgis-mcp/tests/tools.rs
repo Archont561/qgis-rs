@@ -8,7 +8,7 @@ use std::ops::Deref;
 use std::path::{Path, PathBuf};
 
 use qgis_mcp::*;
-use qgis_render::Extent;
+use qgis_render::{Extent, ZoomRange};
 use rmcp::handler::server::wrapper::Parameters;
 use rstest::{fixture, rstest};
 
@@ -156,14 +156,44 @@ fn crs_info_knows_web_mercator() {
 #[test]
 fn plan_tiles_counts_the_documented_pyramid() {
     let plan = QgisMcpServer::plan_tiles_report("14,50,15,51", "10-14").expect("valid");
-    assert_eq!(plan.total_tiles, 4568);
+    assert_eq!(plan.tile_count, 4568);
     assert_eq!(plan.levels.len(), 5);
-    assert_eq!(plan.levels[0].tiles, 24);
-    assert_eq!(plan.zoom, "10-14");
+    assert_eq!(plan.levels[0].tile_count, 24);
+    assert_eq!(plan.zooms, ZoomRange::new(10, 14).expect("valid"));
+    assert_eq!(plan.bounds, Extent::parse("14,50,15,51").expect("valid"));
 
     let error = QgisMcpServer::plan_tiles_report("14,50,15", "10-14").expect_err("bad bounds");
     assert!(format!("{error:?}").contains("extent"));
     assert!(QgisMcpServer::plan_tiles_report("14,50,15,51", "99").is_err());
+}
+
+/// The MCP answer is the shared report, not a second spelling of it.
+///
+/// MCP once carried its own shape: `total_tiles` where the engine says
+/// `tile_count`, and a per-level `tiles` *count* where the engine's top-level
+/// `tiles` is the *enumerated array* — the same word meaning two things across
+/// one boundary. This pins the reconciliation.
+#[test]
+fn plan_tiles_serialises_under_the_shared_report_keys() {
+    let plan = QgisMcpServer::plan_tiles_report("14,50,15,51", "10-14").expect("valid");
+
+    let value = serde_json::to_value(&plan).expect("serialises");
+
+    let mut keys: Vec<&String> = value.as_object().expect("object").keys().collect();
+    keys.sort();
+    assert_eq!(keys, ["bounds", "levels", "tile_count", "zooms"]);
+
+    let mut level_keys: Vec<&String> = value["levels"][0]
+        .as_object()
+        .expect("object")
+        .keys()
+        .collect();
+    level_keys.sort();
+    assert_eq!(
+        level_keys,
+        ["tile_count", "x_max", "x_min", "y_max", "y_min", "zoom"]
+    );
+    assert_eq!(value["tile_count"], serde_json::json!(4568));
 }
 
 #[rstest]

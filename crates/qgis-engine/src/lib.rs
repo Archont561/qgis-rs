@@ -21,7 +21,7 @@ pub use discovery::discovery;
 // Re-exported, not merely imported: a binding, a test or the CLI can name the
 // transport it was built against without adding a second dependency edge.
 pub use qgis_protocol::{EngineRequest, EngineResponse, ErrorKind, Operation, TRANSPORT_VERSION};
-use qgis_render::{Crs, Error, Project, Tile, TilePlan, ZoomLevelPlan};
+use qgis_render::{Crs, Error, Project, Tile, TilePlan};
 use serde::de::DeserializeOwned;
 use serde_json::{json, Value};
 
@@ -198,20 +198,14 @@ fn native_operation(operation: Operation, payload: &Value) -> EngineResponse {
 
 /// Plan an XYZ pyramid and report it level by level.
 ///
-/// `tile_count` is included per level because [`ZoomLevelPlan`] computes it
-/// rather than storing it, and a client that recomputed it from the x/y ranges
-/// would be the second implementation of a one-line rule.
+/// The shape comes from [`qgis_render::TilePlanReport`] rather than being
+/// assembled here: the MCP tool and `qgis-cli plan tiles` emit the same report,
+/// and three hand-written copies of these key names had already drifted.
 fn plan_tiles(input: PlanTiles) -> Result<Value, Error> {
     let bounds = input.bounds.resolve()?;
     let zooms = input.zooms.resolve()?;
     let plan = TilePlan::new(bounds, zooms)?;
-    let levels: Vec<Value> = plan.levels().iter().map(level_json).collect();
-    let mut result = json!({
-        "bounds": plan.bounds,
-        "zooms": plan.zooms,
-        "tile_count": plan.tile_count(),
-        "levels": levels,
-    });
+    let mut result = serde_json::to_value(plan.report()).expect("a plan report is serialisable");
     // Enumerating every tile is opt-in: a five-level plan over a city is 4568
     // tiles, and a pyramid a client only wants the *count* of should not pay
     // to serialise them. `qgis-cli tiles --dry-run` asks for the counts only.
@@ -219,17 +213,6 @@ fn plan_tiles(input: PlanTiles) -> Result<Value, Error> {
         result["tiles"] = json!(plan.iter().collect::<Vec<Tile>>());
     }
     Ok(result)
-}
-
-fn level_json(level: &ZoomLevelPlan) -> Value {
-    json!({
-        "zoom": level.zoom,
-        "x_min": level.x_min,
-        "x_max": level.x_max,
-        "y_min": level.y_min,
-        "y_max": level.y_max,
-        "tile_count": level.tile_count(),
-    })
 }
 
 /// Deserialise a payload and run an operation over it.

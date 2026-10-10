@@ -21,6 +21,7 @@ use crate::cli::{BatchArgs, Command, ExportArgs, InfoArgs, RenderArgs, ServeArgs
 pub fn run(command: Command) -> Result<()> {
     match command {
         Command::Validate(args) => crate::validation::run(args),
+        Command::Plan(args) => crate::plan::run(args),
         Command::Version(args) | Command::Capabilities(args) | Command::Doctor(args) => {
             crate::discovery::report(args)
         }
