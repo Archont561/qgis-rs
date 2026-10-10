@@ -40,9 +40,13 @@ runs:
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: .pixi/envs
-        key: pixi-envs-${{ runner.os }}-${{ hashFiles('pixi.lock') }}
+        # The environments hold absolute paths to the checkout (the conda linker,
+        # activation scripts), so the key includes the repository name. Keyed on
+        # the lockfile alone, a repository rename restored an environment built
+        # under the old path, and cargo could not find its linker (CI red on main).
+        key: pixi-envs-${{ runner.os }}-${{ github.event.repository.name }}-${{ hashFiles('pixi.lock') }}
         restore-keys: |
-          pixi-envs-${{ runner.os }}-
+          pixi-envs-${{ runner.os }}-${{ github.event.repository.name }}-
 
     - name: Install the pixi environments
       shell: bash
