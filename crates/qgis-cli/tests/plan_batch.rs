@@ -203,8 +203,8 @@ fn a_symlink_loop_has_exit_fourteen_not_a_missing_or_invalid_input(sandbox: Sand
 }
 
 #[rstest]
-fn repeated_plans_preserve_csv_order_unicode_and_duplicate_names(sandbox: Sandbox) {
-    let csv = "# comment\nNAME,minx,miny,maxx,maxy\n same , 14,50,15,51\nŻółć,14,50,15,51,ignored\nname,header,inside,the,file\nsame,14,50,15,51\n";
+fn repeated_plans_preserve_order_unicode_duplicate_and_empty_names(sandbox: Sandbox) {
+    let csv = "# comment\nNAME,minx,miny,maxx,maxy\n same , 14,50,15,51\nŻółć,14,50,15,51,ignored\nname,header,inside,the,file\nsame,14,50,15,51\n,14,50,15,51\n";
     sandbox.write(csv.as_bytes());
     let first = sandbox.run(&[FLAGS, &["--json"]].concat());
     let second = sandbox.run(&[FLAGS, &["--json"]].concat());
@@ -217,12 +217,13 @@ fn repeated_plans_preserve_csv_order_unicode_and_duplicate_names(sandbox: Sandbo
     assert_eq!(
         json_report(&first),
         json!({
-            "extent_count": 3,
-            "tile_count": 13704,
+            "extent_count": 4,
+            "tile_count": 18272,
             "extents": [
                 {"name": "same", "plan": golden_plan()},
                 {"name": "Żółć", "plan": golden_plan()},
-                {"name": "same", "plan": golden_plan()}
+                {"name": "same", "plan": golden_plan()},
+                {"name": "", "plan": golden_plan()}
             ]
         })
     );

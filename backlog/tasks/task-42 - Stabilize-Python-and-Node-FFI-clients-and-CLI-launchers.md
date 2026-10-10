@@ -4,7 +4,7 @@ title: Stabilize Python and Node FFI client contracts
 status: In Progress
 assignee: []
 created_date: '2026-10-03 09:35'
-updated_date: '2026-10-10 21:45'
+updated_date: '2026-10-10 22:21'
 labels:
   - ffi
   - python
@@ -87,4 +87,6 @@ Two items need a decision before they can be implemented rather than audited: wh
 Approved reconstruction on arena/0e2fdd42-qgis-rust: test public qgis_py.invoke at the extension JSON boundary; export invokeWith(binding, operation, payload) in Node with a test-purpose doc comment and delegate normal invoke to it. Pin old/new/missing response versions before success or failure results and preserve supported/received details. TASK-42 AC2 fixture breadth and the owner-approved cancellation non-scope remain a separate slice; no push or merge authorized.
 
 Transport reconstruction evidence: Python test_transport.py characterizes the existing guard with 6 passing cases; Node transport.test.js first failed 6/6 with the absent invokeWith export, then passed after extracting the shared client path and adding supported/received mismatch detail. Old, newer and missing versions are rejected before both ok outcomes; requests are encoded intact, and assertions use public exception types, kind and detail rather than English matching. Focused real-addon Node suite: 22 passed (was 16); Python FFI suite: 24 passed (was 18). Raw invoke escape hatches and the Node injection seam are documented in both package READMEs and Node declarations. AC3 checked; overall task stays In Progress, AC2 breadth remains open. No native exports, launchers or engine wire shapes changed.
+
+Reconstruction-wide forced fan-out is green: gates 8/8; full tests 12/12 with 0 cached, Python FFI 24 and Node 22. Only AC3 is checked; other task ACs remain open. The already-settled AC2 follow-up uses a second ffi-client-contract.json fixture for all 16 ErrorKind variants, full render_map/export_features artifact metadata and capabilities, retaining layer-lifecycle.json as a live-native fixture. Seams remain Python public invoke, Node public invokeWith and Rust public registry/protocol types plus actual engine invoke for engine_info; operation catalog is distinct from executable availability. Cancellation is undefined and out of scope; scripted cases cannot prove every native path. This reconstruction did not create that fixture or widen the approved slice.
 <!-- SECTION:NOTES:END -->
