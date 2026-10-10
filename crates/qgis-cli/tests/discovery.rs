@@ -49,11 +49,17 @@ fn capabilities_are_deterministic_and_separate_commands_from_engine_operations()
     assert!(help.status.success());
     assert!(String::from_utf8_lossy(&help.stdout).contains("inspect"));
     assert!(String::from_utf8_lossy(&help.stdout).contains("plan"));
+    let plan_help = run(&["plan", "--help"]);
+    assert!(plan_help.status.success());
+    let plan_commands = String::from_utf8(plan_help.stdout).unwrap();
+    assert!(plan_commands.contains("tiles"));
+    assert!(plan_commands.contains("batch"));
     let ops = report["engine"]["operations"].as_array().unwrap();
     assert!(!ops.iter().any(|op| op["name"] == "inspect"));
     // `plan tiles` is CLI arithmetic over qgis-render, so it adds no engine
     // operation of its own — `plan_tiles` already existed before this command.
     assert!(!ops.iter().any(|op| op["name"] == "plan"));
+    assert!(!ops.iter().any(|op| op["name"] == "plan_batch"));
     assert!(ops
         .iter()
         .any(|op| op["name"] == "plan_tiles" && op["available"] == true));

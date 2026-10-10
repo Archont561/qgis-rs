@@ -1,72 +1,131 @@
 ---
 title: batch
-description: Render many extents from one QGIS project in parallel with qgis-cli batch.
+description: Plan XYZ pyramids from a CSV without loading a project, and distinguish the legacy batch rendering gate.
 ---
 
-# `qgis-cli batch`
+# Batch planning and rendering
 
-Renders the same project for many extents in a single run, reusing the loaded
-project and spreading the work over several workers.
-
-## Synopsis
+## Pure planning: `qgis-cli plan batch`
 
 ```bash
-qgis-cli batch <PROJECT> --extents <FILE> --output <DIR> [OPTIONS]
+qgis-cli plan batch --extents extents.csv --zoom 10-14
+qgis-cli plan batch --extents extents.csv -z 10 --json
 ```
 
-## Options
+Planning takes **no project or output argument**. It reads filesystem metadata
+and the supplied UTF-8 CSV, computes one XYZ pyramid per named EPSG:4326 extent,
+and initializes no backend. It does not render, create directories, write
+artifacts or configuration, or invoke Python, Node or WebEngine. Native-enabled
+builds still need their shared libraries; use `--no-default-features` for an
+independent pure Rust binary.
 
-| Option | Default | Description |
-|--------|---------|-------------|
-| `--extents <FILE>` | — | CSV or GeoJSON file describing the areas to render. |
-| `-o, --output <DIR>` | — | Output directory. One image per extent. |
-| `--size <WxH>` | `1024x768` | Image size for every render. |
-| `--dpi <DPI>` | `96` | Resolution. |
-| `--crs <AUTH:CODE>` | project CRS | Output CRS. |
-| `--format <FORMAT>` | `png` | Image format: `png`, `jpeg`, `webp`. |
-| `--parallel <N>` | number of CPUs | Worker threads. |
-| `--prefix <STR>` | empty | Prefix added to every output file name. |
+| Option | Required | Description |
+|--------|----------|-------------|
+| `--extents <FILE>` | Yes | UTF-8 `name,minx,miny,maxx,maxy` CSV. |
+| `-z, --zoom <RANGE>` | Yes | One level or inclusive range within 0–22, shared by every extent. |
+| `--json` | No | One deterministic JSON report instead of readable text. |
 
-## Extent sources
+### CSV vocabulary
 
-### CSV
-
-The first row is a header; `name` names the output file and the remaining
-columns are the bounding box.
+The existing batch CSV parser is reused, not replaced with a second parser:
 
 ```csv
 name,minx,miny,maxx,maxy
-berlin,13.08,52.33,13.76,52.68
-paris,2.22,48.81,2.47,48.91
+central,14,50,15,51
 ```
 
-### GeoJSON
+- Input order, Unicode names, duplicate names and empty names are preserved.
+  Names are labels, **not validated output paths**.
+- Blank lines and lines beginning with `#` after trimming are skipped.
+- A row whose first field is `name`, case-insensitively, is skipped wherever
+  it appears. Surrounding field whitespace is trimmed.
+- Four finite, ordered numeric coordinates are required after the name.
+  Additional columns are ignored, matching legacy behavior. This is a simple
+  comma-separated format, not quoted-field RFC CSV or GeoJSON.
+- Empty and header/comment-only files are valid zero-work plans.
+- Every row uses the same tile-domain rules as `plan tiles`; there is no new
+  CRS lookup, coordinate transformation or native validation.
 
-Each feature's bounding box becomes an extent. The output file is named after
-the `name` property, falling back to `region-<index>` when it is missing.
+### Reports
 
-## Examples
+With the CSV above and `--zoom 10`, the complete JSON report is:
+
+```json
+{
+  "extent_count": 1,
+  "tile_count": 24,
+  "extents": [
+    {
+      "name": "central",
+      "plan": {
+        "bounds": {"min_x": 14.0, "min_y": 50.0, "max_x": 15.0, "max_y": 51.0},
+        "zooms": {"min": 10, "max": 10},
+        "tile_count": 24,
+        "levels": [
+          {"zoom": 10, "x_min": 551, "x_max": 554, "y_min": 342, "y_max": 347, "tile_count": 24}
+        ]
+      }
+    }
+  ]
+}
+```
+
+Each `plan` is the existing `qgis_render::TilePlanReport`, also emitted by the
+engine, MCP and [`plan tiles`](/cli/#deterministic-tile-planning). No new engine
+operation or FFI wire shape is introduced. Counts are computed without
+enumerating tiles. The top-level `tile_count` sums the rows; overlapping or
+repeated extents are counted separately, not deduplicated.
+
+Without `--json`, the same example prints:
+
+```text
+central: 24 tiles across zoom levels 10-10
+24 tiles across 1 extents
+```
+
+### Failures and filesystem scope
+
+| Exit | Meaning | JSON error code |
+|------|---------|-----------------|
+| 0 | Planning succeeded, including a zero-work plan | No error field |
+| 2 | Missing arguments, extra project/output arguments, or invalid options | No JSON; usage on stderr |
+| 10 | Invalid zoom, malformed/non-finite/unordered CSV coordinates, non-UTF-8 contents, or a non-regular input | `invalid_input` |
+| 11 | Missing CSV or dangling symlink | `missing_input` |
+| 14 | Other filesystem metadata/read failure, including a symlink loop | `filesystem_failure` |
+
+A failed plan emits no partial extents. With `--json`, stdout contains only
+`{"error":{"code":"…","message":"…"}}`; the diagnostic also goes to stderr.
+Human-mode failures write only to stderr. CSV syntax errors retain the existing
+parser's line number. Zoom validation precedes filesystem access.
+
+Symlinks to regular files are followed. There is no new path-containment policy,
+input-size/memory/worker limit or cancellation contract. Output paths, native
+renderability, XML/container inspection and atomic artifact policy remain
+separate work. A successful plan is not a promise that the batch can be rendered.
+
+## Legacy rendering: `qgis-cli batch <PROJECT>`
+
+The existing command and its flags remain separate and unchanged:
 
 ```bash
-# Render every city in a CSV
-qgis-cli batch map.qgs --extents extents.csv -o ./renders/ --size 2048x1536 --parallel 4
-
-# Render GeoJSON regions at print quality
-qgis-cli batch map.qgs --extents regions.geojson -o ./renders/ --size 4096x3072 --dpi 150
-
-# WebP output with a prefix
-qgis-cli batch map.qgs --extents extents.csv -o ./renders/ --format webp --prefix map_
+qgis-cli batch map.qgs --extents extents.csv --output ./renders/ [--zoom 10]
 ```
 
-The run above writes `./renders/berlin.png`, `./renders/paris.png`, and so on.
+| Option | Description |
+|--------|-------------|
+| `<PROJECT>` | Required `.qgs` or `.qgz` project path. |
+| `--extents <FILE>` | Required CSV with the vocabulary described above. |
+| `-o, --output <DIR>` | Required target directory argument. |
+| `-z, --zoom <VALUE>` | Existing optional argument; the gated renderer does not use it yet. |
 
-## Failure handling
-
-A failing extent is reported and skipped; the run continues and exits non-zero
-if any extent failed, so batch jobs are safe to retry.
+This command opens the project first, reads and reports the extents, and then
+fails with the existing batch-rendering backend diagnostic and exit **1**. It
+currently writes no renders. GeoJSON input, image-size/format/worker flags,
+per-extent retry behavior and a working batch renderer are not implemented.
+Use `plan batch` when only a project-independent work estimate is required.
 
 ## See also
 
-- [`qgis-cli render`](/cli/render) — render a single extent
-- [Rendering Projects](/guides/rendering-projects) — batch rendering from Rust
-- [`render` module](/reference/render) — `MapSettings` and friends
+- [`plan tiles`](/cli/#deterministic-tile-planning) — plan one XYZ pyramid
+- [`render`](/cli/render) — the separate rendering command
+- [Rendering Projects](/guides/rendering-projects) — rendering from Rust

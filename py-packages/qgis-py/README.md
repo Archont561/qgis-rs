@@ -103,6 +103,17 @@ except ValueError as e:
     print(f"QGIS rendering failed: {e}")
 ```
 
+## Raw invoke and transport guards
+
+`qgis_py.invoke(operation, payload=None)` is the public escape hatch for
+operations without an ergonomic wrapper. It returns the wire result or raises
+an `EngineError` subclass; branch on `error.kind` and use `error.detail` for
+context, not English prose. Every response version is checked before its
+success or failure result is read. A mismatch raises `TransportMismatch` with
+kind `unsupported_transport` and details `supported` and `received` (`None`
+when the response omits its version). Importing the client still requires the
+compiled extension; there is no Python fallback.
+
 ## Architecture
 
 ```

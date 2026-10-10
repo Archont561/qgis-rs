@@ -4,7 +4,7 @@ title: Build the pure-Rust qgis-cli capability surface
 status: In Progress
 assignee: []
 created_date: '2026-10-03 09:35'
-updated_date: '2026-10-10 16:40'
+updated_date: '2026-10-10 22:21'
 labels:
   - cli
   - rust
@@ -121,4 +121,9 @@ and container manifests still need parser dependencies locked and vendored on a
 network-capable runner; native execution gates, atomic artifacts and filesystem
 policy, cancellation and resource limits remain open. Nothing pushed or merged.
 
+Approved reconstruction: qgis-cli plan batch --extents <csv> --zoom <range> [--json], alongside plan tiles and separate from unchanged legacy batch <project>. Reuse commands::parse_extent_rows and qgis_render::TilePlanReport. Report extent_count, summed tile_count and ordered extents with name/plan; no project, backend initialization or writes. Public seam is the real binary with isolated temporary HOME/config/cache and empty PATH, testing argv, streams, stable exits 0/2/10/11/14 and observable filesystem effects. No parser dependencies, cancellation or resource policy is introduced; AC2 stays open for full inspection scope.
+
+Batch reconstruction implemented and verified: 20 subprocess cases under tests/plan_batch.rs, observed red then green for absent command, human report, domain/UTF-8 error classification, missing input and filesystem failures. Shared error categories reuse inspect Failure without changing legacy diagnostics or exits. JSON embeds the existing TilePlanReport and sums rows without tile enumeration or deduplication; CSV order, Unicode names, duplicate names, comments/header handling, empty work, finite coordinates, malformed-row line numbers and no partial output are pinned. Pure CLI/render/engine: 169 nextest tests across 21 binaries passed; native-enabled CLI: 106 across 11 passed. Pure clippy -D warnings, source/boundary checks passed; ldd shows only libc/libm/libpthread/libgcc_s, and normal dependency tree excludes MCP/Python/Node. Legacy batch and byte-exact tiles --dry-run golden pass. No serde dependency added. AC2 remains open for full project-manifest inspection and remaining task scope; full final fan-out/gate evidence follows.
+
+Reconstruction-wide verification: pixi run gates exit 0, 8/8 (4 cached); forced offline/loose turbo tests exit 0, 12/12 with 0 cached: nextest 400/61 plus native 31/7, SDK Python 490 passed/3 skipped/8 deselected plus qt 3 and qgis 5, Python FFI 24, Bun 166, CTest 1. Final CSV characterization also pins empty names as labels (no output-name policy), within the existing 20 batch cases; all 20 pass on pure and native-enabled profiles. No production change was required for that legacy-parser edge. AC1 only remains checked; no push or merge.
 <!-- SECTION:NOTES:END -->

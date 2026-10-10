@@ -5,18 +5,21 @@ use qgis_render::ProjectFormat;
 use serde_json::{json, Value};
 use std::path::{Path, PathBuf};
 
-/// Inspection failures are scoped so legacy command exits remain unchanged.
+/// Read-only input failures shared by inspect and batch planning.
+///
+/// Legacy execution commands retain their original exit mapping.
 #[derive(Debug)]
 pub(crate) enum Failure {
     MissingInput(PathBuf),
+    MissingExtents(PathBuf),
     InvalidInput(String),
     Filesystem(String),
 }
 
 impl Failure {
-    fn code(&self) -> &'static str {
+    pub(crate) fn code(&self) -> &'static str {
         match self {
-            Self::MissingInput(_) => "missing_input",
+            Self::MissingInput(_) | Self::MissingExtents(_) => "missing_input",
             Self::InvalidInput(_) => "invalid_input",
             Self::Filesystem(_) => "filesystem_failure",
         }
@@ -24,7 +27,7 @@ impl Failure {
 
     pub(crate) fn exit_code(&self) -> u8 {
         match self {
-            Self::MissingInput(_) => 11,
+            Self::MissingInput(_) | Self::MissingExtents(_) => 11,
             Self::InvalidInput(_) => 10,
             Self::Filesystem(_) => 14,
         }
@@ -37,6 +40,9 @@ impl std::fmt::Display for Failure {
             Self::InvalidInput(message) | Self::Filesystem(message) => formatter.write_str(message),
             Self::MissingInput(path) => {
                 write!(formatter, "project file not found: {}", path.display())
+            }
+            Self::MissingExtents(path) => {
+                write!(formatter, "extents CSV not found: {}", path.display())
             }
         }
     }

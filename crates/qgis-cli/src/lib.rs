@@ -5,6 +5,7 @@
 //! argument parsing and command implementations and ship the identical
 //! native-speed CLI.
 
+mod batch_plan;
 pub mod cli;
 pub mod commands;
 mod discovery;

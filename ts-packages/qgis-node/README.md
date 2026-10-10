@@ -114,6 +114,21 @@ app.get('/tiles/:z/:x/:y.png', async (req, res) => {
 app.listen(3000);
 ```
 
+## Raw invoke and transport guards
+
+`invoke(operation, payload)` is the public escape hatch for operations without
+an ergonomic wrapper. It returns the wire result or throws `EngineError`;
+branch on `error.kind` and use `error.detail` for context, not English prose.
+Every response version is checked before its success or failure result is read.
+A mismatch has kind `unsupported_transport` and details `supported` and
+`received` (`null` when the response omits its version).
+
+`invokeWith(binding, operation, payload)` uses the same client with a supplied
+`{ invoke(requestJson): responseJson }` callable. It is public so contract tests
+can inject stale or malformed response versions without mutating the loaded
+addon. Normal `invoke` delegates to it. Importing the package still requires
+the compiled addon; this is not an automatic JavaScript fallback.
+
 ## Architecture
 
 ```

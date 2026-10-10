@@ -273,6 +273,22 @@ pub struct PlanArgs {
 pub enum PlanCommand {
     /// Count an XYZ tile pyramid over an extent
     Tiles(TilesPlanArgs),
+    /// Plan an XYZ pyramid for each named extent in a CSV file
+    Batch(BatchPlanArgs),
+}
+
+/// `qgis-cli plan batch` — read only the supplied CSV, never a project.
+#[derive(Debug, Parser)]
+pub struct BatchPlanArgs {
+    /// CSV file with "name,minx,miny,maxx,maxy" rows in EPSG:4326
+    #[arg(long)]
+    pub extents: PathBuf,
+    /// Zoom levels shared by every extent, as "12" or "10-14"
+    #[arg(short, long)]
+    pub zoom: String,
+    /// Write a structured report to stdout
+    #[arg(long)]
+    pub json: bool,
 }
 
 /// `qgis-cli plan tiles`.
