@@ -61,10 +61,11 @@ runs:
           ~/.cargo/registry/cache
           ~/.cargo/git/db
           target
-        key: cargo-${{ runner.os }}-${{ inputs.cache-suffix }}-${{ hashFiles('Cargo.lock') }}
+        # target/ records absolute paths (CMakeCache.txt, the cpp test build), so
+        # the key carries the repository name, as the pixi key does.
+        key: cargo-${{ runner.os }}-${{ github.event.repository.name }}-${{ inputs.cache-suffix }}-${{ hashFiles('Cargo.lock') }}
         restore-keys: |
-          cargo-${{ runner.os }}-${{ inputs.cache-suffix }}-
-          cargo-${{ runner.os }}-
+          cargo-${{ runner.os }}-${{ github.event.repository.name }}-${{ inputs.cache-suffix }}-
 
     # Turbo validates every entry against its own task hash, so this one is
     # safe across commits. It is also small — most expensive tasks are
@@ -73,10 +74,9 @@ runs:
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: .turbo/cache
-        key: turbo-${{ runner.os }}-${{ inputs.cache-suffix }}-${{ hashFiles('bun.lock', 'turbo.json') }}
+        key: turbo-${{ runner.os }}-${{ github.event.repository.name }}-${{ inputs.cache-suffix }}-${{ hashFiles('bun.lock', 'turbo.json') }}
         restore-keys: |
-          turbo-${{ runner.os }}-${{ inputs.cache-suffix }}-
-          turbo-${{ runner.os }}-
+          turbo-${{ runner.os }}-${{ github.event.repository.name }}-${{ inputs.cache-suffix }}-
 
     # Bun cannot live in `default`: conda-forge qgis needs icu >=78.3 while bun
     # needs icu >=75.1,<76, so the two never solve together.
